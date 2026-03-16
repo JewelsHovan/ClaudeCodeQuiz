@@ -1,0 +1,11 @@
+# Personal study profile (each learner has their own)
+profile/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Plugin databases
+.analytics/
+.knowledge/
+.swarm/
+.tdd/
