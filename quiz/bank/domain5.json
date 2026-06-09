@@ -1,0 +1,487 @@
+[
+  {
+    "id": "d5-001",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "easy",
+    "stem": "A support agent handles long multi-turn conversations. Over time, the running summary condenses the order total ($1,249.00), the order date, and the RMA number into vague phrases like \"a recent high-value order.\" The agent then quotes wrong figures. What is the most reliable fix?",
+    "options": {
+      "A": "Extract transactional facts (amounts, dates, order/RMA numbers, statuses) into a persistent case facts block included in each prompt, outside the summarized history",
+      "B": "Disable summarization entirely and always pass the full raw history",
+      "C": "Instruct the model to never summarize numeric values",
+      "D": "Increase the model's max_tokens so summaries can be longer"
+    },
+    "answer": "A",
+    "explanation": "Progressive summarization reliably degrades precise transactional data (amounts, dates, identifiers). A case facts block stores these values verbatim in a structured block that travels with each prompt OUTSIDE the summarized history, so they are never lost to compression.",
+    "distractors": {
+      "B": "Never summarizing eventually overflows the context window in long conversations; the goal is to keep the facts that matter, not all raw text.",
+      "C": "A prompt instruction is probabilistic and still degrades over many turns; it does not guarantee the values persist.",
+      "D": "Larger max_tokens affects output length, not whether summarization drops precise figures from the running history."
+    },
+    "tags": [
+      "context-management",
+      "case-facts",
+      "summarization"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-002",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "easy",
+    "stem": "A synthesis agent receives a single long concatenation of findings from five subagents. It consistently captures conclusions from the first and last subagents but omits findings from those in the middle. What is the best mitigation?",
+    "options": {
+      "A": "Increase the model's temperature so it explores more of the input",
+      "B": "Truncate the input to only the first and last subagents' findings",
+      "C": "Place a key-findings summary at the beginning and organize the detailed sections with explicit headers",
+      "D": "Process the concatenation in reverse so the middle is seen last"
+    },
+    "answer": "C",
+    "explanation": "This is the \"lost in the middle\" effect: models reliably attend to the beginning and end of long inputs but may skip middle content. Putting a key-findings summary up front and using explicit section headers makes the middle content salient and addressable.",
+    "distractors": {
+      "A": "Temperature controls output randomness, not attention distribution across a long input.",
+      "B": "Truncating the middle deliberately discards exactly the findings being lost.",
+      "D": "Reversing the order just moves the neglected content to a new middle position; the positional bias remains."
+    },
+    "tags": [
+      "context-management",
+      "lost-in-the-middle",
+      "position-aware"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-003",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "easy",
+    "stem": "A customer's first message is: \"Stop wasting my time with bots. I want to speak to a human, now.\" The requested action (checking an order status) is something the agent can easily do. What should the agent do?",
+    "options": {
+      "A": "Acknowledge the frustration, attempt resolution, and escalate only if frustration persists",
+      "B": "Investigate and resolve the order question first, then escalate only if the customer asks again",
+      "C": "Escalate to a human immediately, without first attempting to investigate or resolve",
+      "D": "Ask the customer to explain why they want a human before deciding"
+    },
+    "answer": "C",
+    "explanation": "An explicit request for a human is a hard escalation trigger: escalate immediately, no investigation first. The agent should not gate an explicit human request behind a resolution attempt or interrogation.",
+    "distractors": {
+      "A": "Offering resolution first is the correct response to implicit frustration alone, not to an explicit demand for a human.",
+      "B": "Resolving first applies to implicit frustration, not an explicit human request; delaying here ignores a direct instruction.",
+      "D": "Interrogating the customer about why they want a human adds friction and ignores the explicit request."
+    },
+    "tags": [
+      "escalation",
+      "explicit-request"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-004",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "easy",
+    "stem": "An order lookup tool returns 40+ fields per order, but only 5 are relevant to return processing. Across a long conversation these full payloads accumulate and crowd out context. What is the recommended approach?",
+    "options": {
+      "A": "Switch to a model with a larger context window",
+      "B": "Ask the customer to read the order details aloud to avoid the tool call",
+      "C": "Trim the tool output to only the relevant fields before it enters the conversation context",
+      "D": "Raise max_tokens so the extra fields fit"
+    },
+    "answer": "C",
+    "explanation": "Verbose tool outputs cause context bloat. Trimming to only the fields the task needs, before they accumulate, is the core mitigation and keeps the context lean across many turns.",
+    "distractors": {
+      "A": "A bigger window delays the problem and adds cost; the waste of 35 irrelevant fields per call remains.",
+      "B": "Routing data through the customer is error-prone and unnecessary when the tool already returns it.",
+      "D": "max_tokens governs output length, not the size of accumulated tool results in context."
+    },
+    "tags": [
+      "context-management",
+      "tool-output-trimming"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-005",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "easy",
+    "stem": "During a long codebase-exploration session, Claude Code starts giving inconsistent answers and refers to \"typical patterns\" rather than the specific classes it identified earlier. The verbose discovery output has filled the context. What is the most appropriate first action?",
+    "options": {
+      "A": "Restart from scratch in a brand-new session",
+      "B": "Ask the same questions repeatedly until answers stabilize",
+      "C": "Run /compact to condense the filled context while continuing the same session",
+      "D": "Raise the temperature so the model is more creative"
+    },
+    "answer": "C",
+    "explanation": "When context fills with verbose discovery output and answers degrade, /compact condenses the conversation so the session can continue with the important information retained. It directly targets the bloat causing degradation.",
+    "distractors": {
+      "A": "A full restart throws away all the discovered findings and wastes the prior exploration.",
+      "B": "Re-asking does not reclaim context space and will keep producing degraded, generic answers.",
+      "D": "Higher temperature increases variability, worsening the inconsistency."
+    },
+    "tags": [
+      "context-degradation",
+      "compact"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-006",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "A customer provides only a common name, \"John Smith.\" The get_customer tool returns three distinct accounts matching that name. What should the agent do before taking any account action?",
+    "options": {
+      "A": "Ask the customer for an additional identifier (email, order number, or account ID) to disambiguate",
+      "B": "Pick the account with the most recent activity as the most likely match",
+      "C": "Proceed with all three accounts in parallel and let the customer correct any mistakes",
+      "D": "Pick the account whose city best matches the customer's IP geolocation"
+    },
+    "answer": "A",
+    "explanation": "When a lookup returns multiple customer matches, the agent should request additional identifiers to disambiguate rather than guessing. Heuristic selection risks acting on the wrong person's account.",
+    "distractors": {
+      "B": "\"Most recent activity\" is a heuristic that can easily select the wrong customer.",
+      "C": "Acting on all three accounts risks exposing or modifying other customers' data.",
+      "D": "IP geolocation is an unreliable heuristic and can act on the wrong account."
+    },
+    "tags": [
+      "ambiguity-resolution",
+      "multiple-matches",
+      "escalation"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-007",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "A document-analysis subagent fails on 2 of 5 documents (one timeout, one parse error) but succeeds on 3. Its current behavior is to return an empty result set marked as successful so the workflow does not halt. Why is this the wrong design?",
+    "options": {
+      "A": "It should terminate the entire workflow so a human can intervene",
+      "B": "It should retry the failed documents forever until they succeed",
+      "C": "It is correct — returning empty-as-success keeps the pipeline running",
+      "D": "It silently suppresses errors and discards partial results, hiding the failures from the coordinator and corrupting downstream synthesis"
+    },
+    "answer": "D",
+    "explanation": "Returning empty results marked as success is the silent-suppression anti-pattern: the coordinator cannot tell that 2 documents failed or that 3 succeeded, so synthesis silently treats incomplete data as complete. The subagent should return structured error context plus the partial (3 successful) results.",
+    "distractors": {
+      "A": "Terminating the whole workflow on a partial failure discards the 3 successful results and over-reacts.",
+      "B": "Unbounded retries can hang the pipeline; retries must be bounded and failures eventually reported with context.",
+      "C": "Empty-as-success hides failures and makes the system look complete when it is not."
+    },
+    "tags": [
+      "error-propagation",
+      "graceful-degradation",
+      "partial-results"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-008",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "A web-search subagent hits a transient timeout, then propagates {\"status\": \"error\", \"message\": \"search unavailable\"} to the coordinator. The coordinator blindly retries the same query, which times out again. What two problems does this reveal?",
+    "options": {
+      "A": "The subagent should average across whatever data it has and report success",
+      "B": "The coordinator should never retry, and the subagent should escalate to a human",
+      "C": "The error should have been a JSON-RPC protocol error, and the coordinator should ignore it",
+      "D": "The subagent should attempt local recovery for transient failures, and when it does propagate, it must include structured context (failure type, attempted query, partial results, alternatives)"
+    },
+    "answer": "D",
+    "explanation": "Two issues: (1) transient failures should first be handled by local recovery in the subagent, and (2) any propagated error must carry structured context — failure type, what was attempted, partial results, and potential alternatives — so the coordinator can decide intelligently rather than blindly retrying.",
+    "distractors": {
+      "A": "Fabricating success from incomplete data is exactly the silent-suppression anti-pattern.",
+      "B": "Retries are appropriate for transient faults with the right context; jumping straight to human escalation is premature.",
+      "C": "Tool/agent failures should be reported as readable error context the coordinator can reason over, not buried in protocol errors."
+    },
+    "tags": [
+      "error-propagation",
+      "local-recovery",
+      "structured-error"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-009",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "hard",
+    "stem": "A coordinator must distinguish between a search tool that timed out and a search tool that completed successfully but found zero matching records. Why does this distinction matter for reliability?",
+    "options": {
+      "A": "An access failure (timeout/service down) needs a retry decision, while a valid empty result is correct data and must not trigger retries or be reported as an error",
+      "B": "Both should be reported as empty successes to keep the pipeline simple",
+      "C": "Only the empty result needs handling; timeouts can be ignored",
+      "D": "It does not matter; both should be treated as failures and retried"
+    },
+    "answer": "A",
+    "explanation": "An access failure (timeout, service down) is unresolved and may warrant a retry; a valid empty result is a successful query that genuinely found nothing. Conflating them either wastes retries on real zero-result answers or silently drops real failures, so error reporting must keep them distinguishable.",
+    "distractors": {
+      "B": "Marking a timeout as an empty success hides a real failure from the coordinator.",
+      "C": "Ignoring timeouts means real access failures silently corrupt the results.",
+      "D": "Retrying a genuine zero-result query wastes resources and can never \"succeed\" differently."
+    },
+    "tags": [
+      "error-propagation",
+      "empty-vs-failure",
+      "reliability"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-010",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "A final research report states \"Battery storage costs fell 76% over the last decade\" with no source. The synthesis step compressed findings and dropped the source URLs, excerpts, and dates from the subagents. What design change best prevents this loss of provenance?",
+    "options": {
+      "A": "Have the synthesis agent re-search each claim to re-attach a source after the fact",
+      "B": "Append a generic bibliography of every URL visited at the end of the report",
+      "C": "Require subagents to output structured claim-source mappings (source URL/document, relevant excerpt, publication or collection date) that are preserved through synthesis",
+      "D": "Instruct the synthesis agent to only include claims it is confident about"
+    },
+    "answer": "C",
+    "explanation": "Provenance is lost when findings are compressed without preserving claim-source links. Requiring subagents to emit structured claim-source mappings — URL/document, excerpt, and date — keeps each claim traceable through summarization rather than relying on after-the-fact reconstruction.",
+    "distractors": {
+      "A": "Re-searching after the fact is unreliable and may attach a different source than the one that produced the claim.",
+      "B": "A bulk bibliography does not map specific claims to specific sources, so individual statistics remain unverifiable.",
+      "D": "Confidence filtering does not restore the missing source attribution for the claims that remain."
+    },
+    "tags": [
+      "provenance",
+      "claim-source-mapping",
+      "summarization"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-011",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "Two sources report a key figure differently: one says \"45% growth (2022 data)\" and another says \"52% growth (2024 data).\" The synthesis agent must decide how to present this. What is the correct approach?",
+    "options": {
+      "A": "Silently keep the higher figure since it is more recent",
+      "B": "Report both figures with their source attribution and collection dates, annotating the conflict so the coordinator/reader can reconcile",
+      "C": "Drop both figures because they conflict and report only that growth occurred",
+      "D": "Average the two figures and report 48.5% as a single number"
+    },
+    "answer": "B",
+    "explanation": "Conflicting source values should be annotated with their source attribution and dates rather than arbitrarily resolved. Preserving the dates also prevents a temporal difference from being misread as a contradiction. The reconciliation decision belongs to the coordinator/reader, not a silent heuristic.",
+    "distractors": {
+      "A": "Silently picking one value discards provenance and hides a real conflict.",
+      "C": "Dropping both throws away genuine, datable data points.",
+      "D": "Averaging fabricates a number neither source reported and erases the temporal distinction."
+    },
+    "tags": [
+      "provenance",
+      "conflicting-sources",
+      "temporal-data"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-012",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "You explored a large codebase yesterday and built up significant findings in the session. Overnight, three specific files were modified by teammates. You want to continue the investigation today. What is the best approach?",
+    "options": {
+      "A": "Start a fresh session and re-explore the entire codebase from scratch",
+      "B": "Resume with --resume and explicitly tell the agent which three files changed so it can re-analyze them in a targeted way",
+      "C": "Resume with --resume and let the agent rediscover any changes naturally as it works",
+      "D": "Start a fresh session because resuming will always operate on stale data"
+    },
+    "answer": "B",
+    "explanation": "When prior context is mostly still valid but a few files changed, resume with --resume AND explicitly inform the agent which files changed so it can re-analyze them. This preserves the valid prior work while preventing the agent from reasoning over stale tool results for the changed files.",
+    "distractors": {
+      "A": "Re-exploring everything discards a large amount of still-valid prior work.",
+      "C": "Without being told, the agent may keep using stale cached tool results for the changed files and never notice.",
+      "D": "Resuming is appropriate when most context is valid; a fresh start is only needed when prior results are extensively stale."
+    },
+    "tags": [
+      "session-resume",
+      "context-management",
+      "stale-context"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-013",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "During a long, multi-phase codebase exploration you are worried key findings from early phases will be lost as the session grows. Which combination best preserves them across context boundaries?",
+    "options": {
+      "A": "Persist key findings to scratchpad files, delegate focused questions to subagents, and inject phase summaries into the initial context of the next phase",
+      "B": "Increase the context window and disable any compaction",
+      "C": "Keep everything in the conversation and rely on the model's memory of earlier turns",
+      "D": "Restart the session between phases to keep each phase's context clean"
+    },
+    "answer": "A",
+    "explanation": "The recommended pattern is to externalize findings into scratchpad files, delegate narrow questions to subagents while the main agent coordinates, and summarize each phase's key findings before starting the next phase (injecting those summaries into the new context). This keeps durable knowledge available across context boundaries.",
+    "distractors": {
+      "B": "A larger window still degrades and fills; without externalized findings, early phases are still lost.",
+      "C": "Relying on in-context memory is exactly what fails in long sessions as context degrades.",
+      "D": "Restarting between phases loses cross-phase continuity unless findings are carried forward via summaries/scratchpads."
+    },
+    "tags": [
+      "context-degradation",
+      "scratchpad",
+      "subagent-delegation",
+      "phase-summaries"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-014",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "A team wants the agent to auto-escalate cases it is unsure about. A proposal is to have the model output a self-reported confidence score per case and escalate when it falls below a threshold. Why is this routing signal unreliable?",
+    "options": {
+      "A": "Confidence scores always trend high, so the threshold can simply be raised",
+      "B": "Confidence scores are only valid for extraction tasks, not support routing",
+      "C": "Confidence scores are too expensive to compute at scale",
+      "D": "LLM self-reported confidence is poorly calibrated — models are often confidently wrong on exactly the hard cases that should escalate"
+    },
+    "answer": "D",
+    "explanation": "Self-reported confidence is poorly calibrated: a model can be highly confident yet wrong, particularly on difficult cases — the very ones that need escalation. Routing on this signal lets hard, confidently-wrong cases slip through. A more reliable approach uses an independent review/verification instance rather than the model grading itself.",
+    "distractors": {
+      "A": "The failure is not a simple offset that a higher threshold fixes; confidence does not track correctness.",
+      "B": "Poor calibration of self-reported confidence is a general property, not specific to extraction.",
+      "C": "Cost is not the core issue; calibration is."
+    },
+    "tags": [
+      "escalation",
+      "confidence-calibration",
+      "independent-review"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-015",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "medium",
+    "stem": "An extraction pipeline reports 97% overall accuracy on a labeled set, so the team proposes turning off human review entirely. What is the strongest objection?",
+    "options": {
+      "A": "Accuracy should be measured at higher temperature first",
+      "B": "The model should self-report confidence and route low-confidence items, replacing all validation",
+      "C": "97% is fine; human review can be removed immediately",
+      "D": "Aggregate accuracy can mask segment-level failures — specific document types or fields may perform far worse — so validate accuracy stratified by document type and field before reducing review"
+    },
+    "answer": "D",
+    "explanation": "A high aggregate metric can hide poor performance on particular document types or fields. Before reducing human review you must validate stratified by document type AND field to confirm performance is acceptable across all segments, not just on average.",
+    "distractors": {
+      "A": "Temperature is irrelevant to whether the aggregate masks segment-level failures.",
+      "B": "Self-reported confidence is poorly calibrated and cannot, by itself, substitute for stratified validation.",
+      "C": "Acting on the aggregate alone is exactly the trap; it can hide a failing segment."
+    },
+    "tags": [
+      "human-review",
+      "stratified-validation",
+      "aggregate-metrics"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-016",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "hard",
+    "stem": "An extraction call fails a semantic check: the line items do not sum to the stated invoice total (the JSON is syntactically valid). You implement retry-with-error-feedback that resends the document, the failed extraction, and the specific validation error. What additional safeguard is most important?",
+    "options": {
+      "A": "Bound the number of retries and, when the bound is exhausted, route the item to human review with the captured error context",
+      "B": "Switch to a larger model only after 50 consecutive failures",
+      "C": "Allow unlimited retries until the extraction eventually validates",
+      "D": "Disable validation so the extraction always succeeds"
+    },
+    "answer": "A",
+    "explanation": "Retry-with-error-feedback must be bounded. Some documents will never validate (e.g., the source itself is inconsistent), so unbounded retries waste cost and can loop forever. After the retry bound is hit, escalate the item to human review carrying the validation error context.",
+    "distractors": {
+      "B": "An arbitrary 50-failure threshold is still effectively unbounded per item and delays human handling.",
+      "C": "Unlimited retries can loop indefinitely on inputs that can never satisfy the check, burning cost.",
+      "D": "Disabling validation hides genuine extraction errors — the opposite of reliability."
+    },
+    "tags": [
+      "retry-feedback",
+      "bounded-retries",
+      "human-review"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-017",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "hard",
+    "stem": "A research synthesis must produce a report when one subagent's source domain was unreachable, so that subtopic has thin coverage while others are well-supported. The coordinator's instinct is to abort the whole report. What is the most reliable behavior?",
+    "options": {
+      "A": "Continue with the partial results, explicitly annotate which findings are well-supported versus which subtopics have gaps due to unavailable sources, and proceed",
+      "B": "Silently fill the gap with the model's general knowledge so the report looks complete",
+      "C": "Abort the report entirely because one subtopic is incomplete",
+      "D": "Replace the missing subtopic by duplicating findings from a different subtopic"
+    },
+    "answer": "A",
+    "explanation": "Graceful degradation: a single source/subagent failure should not terminate the whole workflow. Continue with partial results and annotate coverage — distinguishing well-established findings from subtopics with gaps caused by unavailable sources — so the report is honest and still useful.",
+    "distractors": {
+      "B": "Backfilling with general knowledge fabricates coverage and destroys provenance.",
+      "C": "Terminating on a single failure discards substantial valid work and is the anti-pattern to avoid.",
+      "D": "Copying unrelated findings misrepresents the missing subtopic."
+    },
+    "tags": [
+      "graceful-degradation",
+      "coverage-annotation",
+      "partial-results"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-018",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "hard",
+    "stem": "Downstream agents in your pipeline have small context budgets. A research subagent currently returns long prose with its full reasoning chain, overflowing those budgets. How should the subagent's output be redesigned, and how should the final report render mixed content?",
+    "options": {
+      "A": "Return raw tool outputs unchanged and let each downstream agent trim them itself",
+      "B": "Return the full prose and reasoning verbatim, and convert the entire final report to a single uniform format",
+      "C": "Return structured outputs (key facts, citations, relevance scores) with required metadata, and render content types appropriately — financial data as tables, news as prose, technical findings as structured lists",
+      "D": "Return only a one-sentence summary with no metadata, and render everything as a flat bullet list"
+    },
+    "answer": "C",
+    "explanation": "When downstream agents have limited context budgets, subagents should return compact structured data — key facts, citations, relevance scores, and required metadata (dates, source locations) — instead of verbose prose and reasoning chains. The final report should also render each content type in its natural form (tables for financial data, prose for news, structured lists for technical findings) rather than forcing one uniform format.",
+    "distractors": {
+      "A": "Pushing trimming downstream wastes each agent's scarce budget receiving the bloat first.",
+      "B": "Verbatim prose overflows small budgets, and a single uniform format misrepresents different content types.",
+      "D": "Stripping all metadata destroys provenance, and a flat bullet list is wrong for tabular financial data."
+    },
+    "tags": [
+      "structured-subagent-output",
+      "context-budget",
+      "output-formatting",
+      "provenance"
+    ],
+    "source": "original-2026"
+  }
+]

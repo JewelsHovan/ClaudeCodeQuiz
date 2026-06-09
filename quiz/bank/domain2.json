@@ -1,0 +1,483 @@
+[
+  {
+    "id": "d2-001",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "easy",
+    "stem": "Your support agent has two tools with nearly identical descriptions: `analyze_content` (\"Analyze content and return insights\") and `analyze_document` (\"Analyze a document and return insights\"). The model routes requests to the wrong one roughly half the time. What is the single most effective fix?",
+    "options": {
+      "A": "Rewrite the descriptions so each clearly states its distinct purpose, inputs, outputs, and when to use it versus the other",
+      "B": "Delete one of the tools and route everything through the survivor",
+      "C": "Lower the model temperature so tool selection becomes more deterministic",
+      "D": "Force `tool_choice: any` so the model is required to pick one of them"
+    },
+    "answer": "A",
+    "explanation": "Tool descriptions are the PRIMARY mechanism the model uses to select tools. Overlapping, vague descriptions cause misrouting. Differentiating each description (purpose, inputs, outputs, when-to-use-vs-alternatives), and ideally renaming to remove overlap (e.g. `extract_web_results`), fixes selection accuracy.",
+    "distractors": {
+      "B": "Deleting a tool may discard a genuinely needed capability; the real defect is description overlap, not tool count.",
+      "C": "Temperature does not fix ambiguous semantics; the model still cannot tell the tools apart because the descriptions are interchangeable.",
+      "D": "`tool_choice: any` forces a call but does nothing to help the model choose the CORRECT one between two ambiguous options."
+    },
+    "tags": [
+      "tool-descriptions",
+      "tool-selection"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-002",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "easy",
+    "stem": "Your MCP server exposes the company return policy, product SKU catalog, and shipping-zone reference tables so the agent can reason from them. It also exposes the ability to issue a refund. Which mapping to MCP primitives is correct?",
+    "options": {
+      "A": "Expose the policy, catalog, and reference tables as resources; expose refund issuance as a tool",
+      "B": "Expose all four as tools, since they all touch the same backend",
+      "C": "Expose all four as resources, since the agent only reads from them",
+      "D": "Expose the policy and catalog as tools and refund issuance as a resource"
+    },
+    "answer": "A",
+    "explanation": "Resources are application-controlled, read-only reference data the model reasons FROM (catalogs, policies, schemas). Tools are model-controlled ACTIONS with side effects. Issuing a refund is an action, so it must be a tool; the read-only reference data should be resources.",
+    "distractors": {
+      "B": "Modeling read-only reference data as tools forces exploratory tool calls and misuses the model-controlled action primitive for static data.",
+      "C": "Issuing a refund is an action with side effects, not read-only data; it cannot be a resource.",
+      "D": "This reverses the model entirely: read-only data becomes actions and an action becomes read-only data."
+    },
+    "tags": [
+      "mcp",
+      "resources-vs-tools"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-003",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": null,
+    "difficulty": "easy",
+    "stem": "An MCP tool definition omits the `annotations` block entirely. Given the MCP spec's default annotation values, how will a host most reasonably treat this tool?",
+    "options": {
+      "A": "As invalid, because annotations are required for every tool",
+      "B": "As read-only and idempotent, because omitting annotations signals a safe tool",
+      "C": "As identical to a tool with all annotations explicitly set to false",
+      "D": "As potentially destructive and interacting with external entities, because the defaults assume the worst case"
+    },
+    "answer": "D",
+    "explanation": "The default annotation values assume worst case: `destructiveHint` defaults to true and `openWorldHint` defaults to true (while `readOnlyHint` and `idempotentHint` default to false). So an un-annotated tool is treated as potentially destructive and open-world — \"dangerous until proven safe.\"",
+    "distractors": {
+      "A": "Annotations are optional hints, not required fields; their absence does not make the tool definition invalid.",
+      "B": "This inverts the defaults; `readOnlyHint` defaults to false and `idempotentHint` defaults to false, so omission does not signal safety.",
+      "C": "Setting all hints to false differs from defaults — `destructiveHint` and `openWorldHint` default to true, not false."
+    },
+    "tags": [
+      "tool-annotations",
+      "mcp"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-004",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Developer Productivity",
+    "difficulty": "easy",
+    "stem": "Your team wants a Slack MCP server and a PostgreSQL MCP server available to everyone who clones the repo, with credentials supplied per-developer via environment variables and never committed. Where should this configuration live?",
+    "options": {
+      "A": "In the project's `CLAUDE.md` so the instructions travel with the repo",
+      "B": "In each developer's user-scoped `~/.claude.json`",
+      "C": "In a project-scoped `.mcp.json` committed to the repo, using `${VAR}` expansion for credentials",
+      "D": "In a `.mcp.json` with credentials hardcoded, added to `.gitignore`"
+    },
+    "answer": "C",
+    "explanation": "Project-scoped `.mcp.json` is git-tracked and shared with everyone who clones the repo. Environment variable expansion (`${VAR}`) keeps secrets out of the committed file while still letting each developer supply their own credentials.",
+    "distractors": {
+      "A": "CLAUDE.md holds instructions, not MCP server configuration; server config belongs in `.mcp.json` or `~/.claude.json`.",
+      "B": "User scope is per-machine and not shared via the repo; every developer would have to configure it manually and it would not travel with a clone.",
+      "D": "Gitignoring the file defeats the goal of sharing it; the correct pattern is to commit `.mcp.json` and externalize secrets with `${VAR}`."
+    },
+    "tags": [
+      "mcp-scoping",
+      "configuration"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-005",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": null,
+    "difficulty": "easy",
+    "stem": "In `.mcp.json`, a server URL is written as `\"url\": \"${API_BASE_URL}/mcp\"`. A developer who has not set `API_BASE_URL` in their environment tries to start Claude Code. What happens, and what one-character-class change would make it resilient?",
+    "options": {
+      "A": "It silently uses an empty string for the URL; no change is needed",
+      "B": "Expansion fails because the variable is unset; using `${API_BASE_URL:-https://api.example.com}` supplies a default when unset",
+      "C": "It prompts the developer interactively for the value; switch to `${?API_BASE_URL}` to suppress the prompt",
+      "D": "It falls back to localhost automatically; add `${API_BASE_URL!localhost}` to override"
+    },
+    "answer": "B",
+    "explanation": "`${VAR}` expands to the variable's value and FAILS if the variable is unset. The `${VAR:-default}` form substitutes the provided default when the variable is unset, making the config resilient to missing environment variables.",
+    "distractors": {
+      "A": "`${VAR}` does not silently become empty; an unset variable causes expansion to fail.",
+      "C": "There is no `${?VAR}` interactive-prompt syntax in `.mcp.json` expansion; the supported forms are `${VAR}` and `${VAR:-default}`.",
+      "D": "There is no automatic localhost fallback and no `${VAR!default}` syntax; the default form is `${VAR:-default}`."
+    },
+    "tags": [
+      "env-var-expansion",
+      "configuration"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-006",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "A customer asks the agent to refund $750. Company policy caps agent-initiated refunds at $500; anything higher must go through a manager workflow. The `process_refund` MCP tool detects the violation. How should it report this so the agent behaves correctly?",
+    "options": {
+      "A": "Return a JSON-RPC protocol error with code -32603 so the framework handles it",
+      "B": "Return `isError: true` with `isRetryable: false` and a customer-friendly explanation directing the manager-approval workflow",
+      "C": "Return `isError: true` with `errorCategory: \"transient\"` and `isRetryable: true` so the agent retries",
+      "D": "Return an empty success result so the agent moves on without refunding"
+    },
+    "answer": "B",
+    "explanation": "A policy cap is a business-rule violation: not retryable (retrying the same $750 request will always fail) and visible to the model so it can choose an alternative workflow. Use `isError: true` with `isRetryable: false` and a clear, customer-friendly message pointing to the manager-approval path.",
+    "distractors": {
+      "A": "Protocol errors are not seen by the model, so the agent cannot reason about the violation or offer an alternative; business errors belong in `isError`.",
+      "C": "Marking a business violation as transient/retryable causes the agent to pointlessly retry an action that will never succeed.",
+      "D": "An empty success result silently suppresses the failure and may mislead the agent into thinking the refund was processed."
+    },
+    "tags": [
+      "error-handling",
+      "isError",
+      "business-errors"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-007",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": null,
+    "difficulty": "medium",
+    "stem": "An MCP client sends a request naming a tool that the server does not expose (a typo in the tool name). At which layer of MCP's two-layer error model does this surface, and can the model reason about it?",
+    "options": {
+      "A": "As a JSON-RPC protocol error in the `error` field; the model generally does not see it",
+      "B": "As a silently dropped message with no error at all",
+      "C": "As both a protocol error and an `isError` result simultaneously",
+      "D": "As a tool execution error (`isError: true` in the result); the model sees it and can recover"
+    },
+    "answer": "A",
+    "explanation": "Unknown tool names, invalid arguments, and server-level failures are protocol errors and go in the JSON-RPC `error` field (e.g. code -32602). The model does NOT see protocol errors. Only tool-execution errors returned in the `result` with `isError: true` are visible to the model for recovery reasoning.",
+    "distractors": {
+      "B": "The protocol returns a structured JSON-RPC error; the message is not silently dropped.",
+      "C": "An unknown tool is rejected at the protocol layer before execution; it does not also produce a result-level `isError`.",
+      "D": "`isError` is for execution-time failures of a valid tool call, not for an unknown tool name, which is rejected at the protocol layer."
+    },
+    "tags": [
+      "error-handling",
+      "two-layer-errors",
+      "mcp"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-008",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "A document-analysis subagent's `fetch_source` tool hits a 30-second network timeout. The subagent returns `{\"status\": \"error\", \"message\": \"failed\"}` to the coordinator, which immediately re-issues the identical request and times out again. What is the core problem with this error reporting?",
+    "options": {
+      "A": "The error should have been a protocol error so the coordinator's framework retries automatically",
+      "B": "The subagent should have returned an empty success result to avoid alarming the coordinator",
+      "C": "The error lacks structured context — failure type, what was attempted, any partial results, and alternative approaches — so the coordinator cannot make an intelligent recovery decision",
+      "D": "The coordinator should never retry; subagent failures must always escalate to a human"
+    },
+    "answer": "C",
+    "explanation": "A generic \"failed\" status hides the information the coordinator needs to recover well: the failure type (transient timeout), what was attempted, any partial results, and possible alternatives. With structured context the coordinator could, for example, back off, try an alternate source, or proceed with partial data instead of blindly retrying.",
+    "distractors": {
+      "A": "Subagent execution failures are tool-execution errors the model should see, not protocol errors hidden from it; framework auto-retry would not add the missing context either.",
+      "B": "Reporting a failure as empty success suppresses the error and prevents any recovery — an explicit anti-pattern.",
+      "D": "Retrying transient failures is legitimate; the issue is the missing context, not retrying itself, and not every failure warrants human escalation."
+    },
+    "tags": [
+      "error-propagation",
+      "multi-agent",
+      "structured-errors"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-009",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "A `search_orders` tool returns `{\"results\": []}` in two different situations: (1) the orders database was unreachable, and (2) the query ran successfully but the customer genuinely has no matching orders. The agent treats both the same and tells the customer \"you have no orders.\" What is the right design correction?",
+    "options": {
+      "A": "Always retry on an empty result, since empty usually means a transient failure",
+      "B": "Return `isError: true` for both so the agent never tells a customer they have no orders",
+      "C": "Distinguish the two: return `isError: true` with a transient/retryable category for the access failure, and a normal successful empty result for the valid no-matches case",
+      "D": "Return a normal empty result for both and let the agent infer the difference from latency"
+    },
+    "answer": "C",
+    "explanation": "An access failure (database unreachable) is fundamentally different from a valid empty result (query succeeded, zero matches). The access failure should be an `isError: true` transient/retryable error so the agent can retry or escalate; the genuine no-matches case is a successful empty result the agent can report truthfully.",
+    "distractors": {
+      "A": "Retrying every empty result wastes effort on legitimate no-match queries and still conflates the two cases.",
+      "B": "Marking a valid empty result as an error prevents the agent from truthfully telling customers they have no matching orders.",
+      "D": "Latency is an unreliable signal; the tool must explicitly distinguish failure from valid-empty rather than forcing the agent to guess."
+    },
+    "tags": [
+      "error-handling",
+      "empty-results",
+      "access-failure"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-010",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Developer Productivity",
+    "difficulty": "medium",
+    "stem": "Your team needs Claude Code to query an internal, proprietary patient-records system in a HIPAA-regulated environment, with full audit logging and in-house control over data access. A popular community MCP server exists for a generic SQL database but not for this system. What is the appropriate choice?",
+    "options": {
+      "A": "Fork the community server but leave its code unreviewed to ship faster",
+      "B": "Build a custom MCP server tailored to the proprietary system, with the required compliance, audit, and access controls",
+      "C": "Use the community SQL MCP server and point it at the patient-records database to save time",
+      "D": "Avoid MCP entirely and paste records into the prompt manually"
+    },
+    "answer": "B",
+    "explanation": "Proprietary internal systems and regulated industries (healthcare/finance) with custom business logic, audit requirements, and in-house security control are the canonical case for building a CUSTOM MCP server. Community servers are best for standard integrations matching the common case.",
+    "distractors": {
+      "A": "Using unreviewed community code in a regulated, sensitive context is a security and compliance anti-pattern.",
+      "C": "A generic community server will not satisfy proprietary schema needs, audit logging, or HIPAA controls, and points untrusted code at sensitive data.",
+      "D": "Abandoning MCP forfeits structured, controlled tool access and does not address compliance; manual pasting is error-prone and unauditable."
+    },
+    "tags": [
+      "community-vs-custom",
+      "mcp",
+      "compliance"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-011",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "A single research agent has 17 tools and increasingly picks the wrong one, with slow, token-heavy selection turns. Following the tool-count heuristics, what is the most effective architectural change?",
+    "options": {
+      "A": "Merge several tools into a few mega-tools that each take a `mode` parameter",
+      "B": "Partition the 17 tools into specialized subagents of roughly 4-5 tools each, fronted by a coordinator that delegates",
+      "C": "Add a few-shot example for each of the 17 tools to teach correct selection",
+      "D": "Since the count is well under 10, simply rewrite the descriptions to be more distinct"
+    },
+    "answer": "B",
+    "explanation": "Once a tool set grows past ~15, the right move is to PARTITION tools across specialized subagents (about 4-5 tools each) with a coordinator delegating to them. Fixing descriptions is the remedy when the count is under ~10; at 17 tools, description tweaks alone will not overcome attention dilution and tool-space interference.",
+    "distractors": {
+      "A": "Mega-tools with a `mode` flag hide capability behind opaque parameters, harming selection clarity rather than improving it.",
+      "C": "Adding 17 few-shot examples bloats context further and does not address the underlying scaling problem.",
+      "D": "17 is past the partition threshold, not under 10; description rewrites help with small sets but will not resolve degradation at this scale."
+    },
+    "tags": [
+      "tool-count",
+      "subagents",
+      "scaling"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-012",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "Three MCP tools each return data with different date formats: `get_customer` uses Unix timestamps, `lookup_order` uses ISO 8601, and `process_refund` returns numeric status codes. The agent occasionally misreads them. You cannot modify the upstream MCP servers. What is the best client-side fix?",
+    "options": {
+      "A": "Switch to a larger model that is better at parsing mixed formats",
+      "B": "Add a paragraph to the system prompt explaining how to interpret each format",
+      "C": "Add several few-shot examples demonstrating correct interpretation of each format",
+      "D": "Use a PostToolUse hook to deterministically normalize each tool's output into consistent formats before the model sees it"
+    },
+    "answer": "D",
+    "explanation": "A PostToolUse hook intercepts tool results and transforms them deterministically before the model processes them — ideal for normalizing inconsistent output formats without touching the MCP servers. Prompt-based and few-shot approaches are probabilistic; a model swap does not address the structural inconsistency.",
+    "distractors": {
+      "A": "A larger model is costly and still relies on probabilistic parsing rather than guaranteeing consistent formats.",
+      "B": "System-prompt instructions are probabilistic and add ongoing token overhead while still leaving room for misinterpretation.",
+      "C": "Few-shot examples reduce but do not eliminate errors and consume context every turn; normalization should be deterministic."
+    },
+    "tags": [
+      "hooks",
+      "posttooluse",
+      "normalization"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-013",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "Your `lookup_order` tool returns 42 fields per order, but the agent needs only 5 for return processing. Across long conversations the verbose results bloat context. You cannot change the MCP server, and the trimming logic is purely mechanical (keep a fixed field subset). What is the most appropriate mechanism?",
+    "options": {
+      "A": "A PostToolUse hook that trims each `lookup_order` result to the 5 needed fields before it enters context",
+      "B": "Raising max_tokens so the verbose results fit",
+      "C": "Asking customers to read order details aloud to avoid the tool call",
+      "D": "Instructions in CLAUDE.md telling the model to ignore the unused 37 fields"
+    },
+    "answer": "A",
+    "explanation": "Trimming a known, fixed subset of fields is deterministic mechanical work — exactly what a PostToolUse hook is for. It strips the unused fields before the result accumulates in context, preventing bloat without modifying the server. Prompt instructions still leave the full payload in context; raising token limits does not stop the waste.",
+    "distractors": {
+      "B": "Increasing max_tokens accommodates the waste instead of eliminating it and worsens cost and dilution.",
+      "C": "Pushing data entry onto customers degrades the experience and abandons the tool's value.",
+      "D": "Telling the model to ignore fields still loads all 42 into context every turn, so the bloat persists."
+    },
+    "tags": [
+      "hooks",
+      "posttooluse",
+      "context-management"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-014",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "In your repo, Claude Code consistently reaches for the built-in Grep tool instead of your custom `search_internal_kb` MCP tool, even when the answer lives in the internal knowledge base. The MCP tool works when invoked manually. What is the best first remedy?",
+    "options": {
+      "A": "Lower the model temperature to make it favor MCP tools",
+      "B": "Remove the built-in Grep tool so the model is forced to use the MCP tool",
+      "C": "Move the MCP server config into CLAUDE.md so the model notices it",
+      "D": "Enhance the `search_internal_kb` description to clearly explain its capabilities, what it returns, and when to prefer it over file-content search"
+    },
+    "answer": "D",
+    "explanation": "When the model prefers a built-in tool over an MCP tool, the usual cause is that the MCP tool's description does not make its distinct capabilities and outputs clear. Enhancing the description (what it does, what it returns, when to use it over alternatives) steers selection toward it.",
+    "distractors": {
+      "A": "Temperature does not change which tool semantically fits; it will not redirect selection to the MCP tool.",
+      "B": "Removing a useful built-in tool is heavy-handed and breaks legitimate file-content search; the real issue is description clarity.",
+      "C": "MCP server configuration belongs in `.mcp.json`/`~/.claude.json`, not CLAUDE.md, and placement there does not influence tool-selection."
+    },
+    "tags": [
+      "tool-descriptions",
+      "mcp",
+      "built-in-tools"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-015",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "hard",
+    "stem": "A reviewer argues: \"We set `readOnlyHint: true` and `destructiveHint: false` on our `cancel_subscription` tool, so the host can safely auto-approve it without user confirmation.\" Why is this reasoning flawed?",
+    "options": {
+      "A": "Annotations only apply to resources, so they have no bearing on tool approval at all",
+      "B": "The flaw is only that `readOnlyHint` should have been false; with that one change, auto-approval would be safe",
+      "C": "It is sound; annotations are authoritative and hosts should trust them for auto-approval",
+      "D": "Annotations are untrusted hints; the host MUST NOT make security-critical decisions based solely on them and should still enforce its own controls"
+    },
+    "answer": "D",
+    "explanation": "Tool annotations are HINTS, not guarantees. The MCP spec states clients/hosts must not make security-critical decisions based solely on annotations, since a server could advertise misleading values. The host must enforce its own authorization and confirmation policies regardless of what a tool claims.",
+    "distractors": {
+      "A": "Annotations apply to tools (readOnly/destructive/idempotent/openWorld hints); the claim that they only apply to resources is incorrect.",
+      "B": "Even with perfectly accurate annotations, the host still cannot delegate security-critical approval to them; correcting one value does not make sole-reliance safe.",
+      "C": "Annotations are explicitly non-authoritative hints; trusting them for security decisions is exactly what the spec warns against."
+    },
+    "tags": [
+      "tool-annotations",
+      "security",
+      "hints-only"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-016",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": null,
+    "difficulty": "hard",
+    "stem": "You want to guarantee that `validate_identity` runs before `process_refund` is ever callable, on every conversation, with no exceptions. A teammate proposes combining them into one tool; another proposes a forced `tool_choice`; another proposes a hook. Which gives the strongest, deterministic guarantee that verification is enforced?",
+    "options": {
+      "A": "Use `tool_choice: {type: tool, name: validate_identity}` on the first turn so identity is checked first",
+      "B": "Add an emphatic system-prompt rule that the model must always verify before refunding",
+      "C": "Implement a pre-tool-use hook that blocks `process_refund` unless `validate_identity` has already succeeded in the session",
+      "D": "Combine both into a single `validate_and_refund` tool so verification and refund are inseparable"
+    },
+    "answer": "C",
+    "explanation": "When a business rule requires guaranteed compliance, a hook provides deterministic enforcement the model cannot bypass. A pre-tool-use hook that blocks `process_refund` until `validate_identity` has succeeded enforces the ordering regardless of model behavior. Forced tool_choice and prompt rules are model-side and probabilistic; tool-combination can work but couples concerns and forces validation even when it is already done.",
+    "distractors": {
+      "A": "Forced tool_choice only steers the first turn and does not prevent the model from later calling `process_refund` without re-verification; it is not a hard guarantee.",
+      "B": "System-prompt rules are probabilistic and known to be skipped a fraction of the time, so they cannot guarantee compliance.",
+      "D": "Merging the tools couples two distinct concerns, prevents reusing verification independently, and re-runs validation on every refund even when identity was already confirmed."
+    },
+    "tags": [
+      "hooks",
+      "tool-combination",
+      "enforcement"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-017",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "hard",
+    "stem": "A subagent's `extract_fields` tool encounters three distinct failures while processing a batch: a rate-limit (HTTP 429) from the source API, a malformed input record, and an access-denied (403) on one protected document. To enable the best coordinator recovery, how should these be categorized?",
+    "options": {
+      "A": "Rate-limit and access-denied as `transient`/retryable, malformed input as `permission`",
+      "B": "All three as `validation` errors, since each involves bad data of some kind",
+      "C": "All three as `transient` with `isRetryable: true`, since retrying is the simplest uniform policy",
+      "D": "Rate-limit as `transient`/retryable, malformed input as `validation`/not-retryable, access-denied as `permission`/not-retryable"
+    },
+    "answer": "D",
+    "explanation": "Each failure maps to a distinct error category with a distinct recovery: a 429 rate-limit is `transient` and retryable (back off and retry); a malformed record is a `validation` error, not retryable (needs different input); a 403 access-denied is a `permission` error, not retryable (needs different credentials). Accurate categorization lets the coordinator retry only what is retryable and route the rest appropriately.",
+    "distractors": {
+      "A": "Access-denied is a permission failure, not transient, and a malformed record is a validation failure, not permission; this swaps two categories.",
+      "B": "A rate-limit and an access-denied are not validation problems; calling them validation hides their true (retryable vs credential) nature.",
+      "C": "Uniformly marking everything transient causes endless useless retries of the malformed record and the access-denied document, which will never succeed on retry."
+    },
+    "tags": [
+      "error-handling",
+      "error-categories",
+      "structured-errors"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-018",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "hard",
+    "stem": "Your repo has a project-scoped `github` MCP server in committed `.mcp.json`. A developer needs to temporarily point their own session at a forked, experimental GitHub MCP endpoint without changing the shared file or affecting teammates. Given the scope precedence (local > project > user), what should they do?",
+    "options": {
+      "A": "Add a user-scoped `github` server; user scope overrides project scope globally",
+      "B": "Add a local-scoped `github` server entry pointing at the experimental endpoint; local precedence overrides the project entry for that developer only",
+      "C": "Edit the committed `.mcp.json` to the experimental URL and revert before pushing",
+      "D": "Delete the project entry from `.mcp.json` so the experimental server is the only one"
+    },
+    "answer": "B",
+    "explanation": "Local scope is private to the developer and the project, and has the highest precedence (local > project > user). Adding a local-scoped `github` entry overrides the shared project entry only for that developer, leaving the committed `.mcp.json` and teammates untouched.",
+    "distractors": {
+      "A": "User scope is the LOWEST precedence and is overridden by the project entry, so it would not take effect over the committed `github` server.",
+      "C": "Editing the shared committed file risks accidentally pushing the experimental URL and affects everyone until reverted.",
+      "D": "Deleting the project entry modifies the shared file and breaks the server for all teammates."
+    },
+    "tags": [
+      "mcp-scoping",
+      "scope-precedence",
+      "configuration"
+    ],
+    "source": "original-2026"
+  }
+]

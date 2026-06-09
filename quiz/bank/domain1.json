@@ -1,0 +1,657 @@
+[
+  {
+    "id": "d1-001",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "easy",
+    "stem": "Your customer support agent runs an agentic loop. After each model response your code inspects whether the assistant produced any text content; if it did, you treat the task as complete and stop looping. Testers report the agent sometimes quits after saying \"Let me check that order for you\" while a tool call is still pending. What is the correct termination logic?",
+    "options": {
+      "A": "Stop as soon as the assistant emits any text content block alongside its reasoning",
+      "B": "Parse the assistant text for completion phrases like \"all done\" or \"resolved\"",
+      "C": "Continue looping while stop_reason == \"tool_use\" and terminate when stop_reason == \"end_turn\"",
+      "D": "Stop only when there are no tool_use content blocks AND a maximum of 10 iterations has been reached"
+    },
+    "answer": "C",
+    "explanation": "The agentic loop must be driven by stop_reason: execute tools and continue on \"tool_use\", and stop on \"end_turn\". Claude can emit text alongside a tool call, so text presence is not a completion signal.",
+    "distractors": {
+      "A": "This is the exact bug described: Claude often includes thinking-out-loud text alongside a tool_use block.",
+      "B": "Parsing natural-language completion phrases is an explicit anti-pattern and is unreliable.",
+      "D": "An arbitrary iteration cap as a primary stop condition is an anti-pattern; it can truncate legitimate multi-step work."
+    },
+    "tags": [
+      "agent-loop",
+      "stop-conditions",
+      "anti-patterns"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-002",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "easy",
+    "stem": "In your coordinator/subagent research system, the synthesis subagent needs the web search subagent's findings to do its job. A teammate assumes the synthesis subagent will already \"see\" those findings because they happened earlier in the run. How do the findings actually reach the synthesis subagent?",
+    "options": {
+      "A": "They are auto-injected by the Agent SDK from a global shared transcript",
+      "B": "They are streamed peer-to-peer directly from the search subagent to the synthesis subagent",
+      "C": "They must be passed explicitly in the synthesis subagent's prompt when the coordinator spawns it",
+      "D": "They are inherited automatically because all subagents share the coordinator's conversation history"
+    },
+    "answer": "C",
+    "explanation": "Subagents run with isolated context and do not inherit the coordinator's history. The coordinator must explicitly include prior findings in the subagent's spawn prompt.",
+    "distractors": {
+      "A": "There is no global shared transcript that auto-injects context into subagents.",
+      "B": "Subagents do not communicate peer-to-peer; all coordination flows through the coordinator.",
+      "D": "Subagents have isolated context; they do not inherit the coordinator's conversation history."
+    },
+    "tags": [
+      "subagents",
+      "context-isolation",
+      "coordinator"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-003",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "easy",
+    "stem": "Your research coordinator currently runs the web search subagent, waits for it to return, then runs the document analysis subagent, then waits again. These two subagents have no dependency on each other and the sequential waits dominate latency. How should the coordinator run them?",
+    "options": {
+      "A": "Emit both Task tool calls in a single coordinator response so they execute in parallel",
+      "B": "Emit the two Task tool calls in consecutive turns to keep the transcript ordered",
+      "C": "Increase max_tokens so the coordinator can process both subagents' outputs at once",
+      "D": "Spawn a second coordinator instance and give each coordinator one subagent"
+    },
+    "answer": "A",
+    "explanation": "Independent subagents run in parallel when the coordinator emits multiple Task tool calls in one response. This removes the sequential round-trips.",
+    "distractors": {
+      "B": "Consecutive turns produce sequential execution, which is exactly the latency problem described.",
+      "C": "max_tokens governs output length, not concurrency, and does not parallelize the subagents.",
+      "D": "A second coordinator adds complexity and a synchronization burden without enabling parallelism within one task."
+    },
+    "tags": [
+      "orchestration",
+      "parallel",
+      "subagents"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-004",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "easy",
+    "stem": "Compliance requires that your support agent NEVER issue a refund before customer identity is verified. With prompt instructions alone, audits still find a small percentage of refunds issued without prior verification. Which approach gives a deterministic guarantee?",
+    "options": {
+      "A": "Lower temperature so the agent follows the verification instruction more consistently",
+      "B": "Use a pre-tool-call hook that blocks process_refund unless identity verification has completed",
+      "C": "Add several few-shot examples showing verification always preceding refunds",
+      "D": "Strengthen the system prompt with capitalized, emphatic instructions to always verify first"
+    },
+    "answer": "B",
+    "explanation": "A pre-tool-call hook intercepts the outgoing process_refund call and blocks it until the prerequisite is met, giving deterministic (100%) enforcement that prompts cannot guarantee.",
+    "distractors": {
+      "A": "Temperature affects sampling, not rule enforcement; violations can still occur.",
+      "C": "Few-shot examples reduce but do not eliminate violations; they remain best-effort.",
+      "D": "Prompt instructions are probabilistic and have a non-zero failure rate, which is the problem being audited."
+    },
+    "tags": [
+      "hooks",
+      "determinism",
+      "compliance",
+      "tool-gating"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-005",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "easy",
+    "stem": "You must review a pull request that spans 18 files. A single-pass review produces uneven depth per file and occasionally contradicts itself across files. The scope of the review is well understood up front. Which decomposition strategy fits best?",
+    "options": {
+      "A": "Send the entire diff in one prompt but ask the model to be more thorough",
+      "B": "Prompt chaining: analyze each file individually, then run a cross-file integration pass",
+      "C": "Have three independent reviewers process the whole PR and report only consensus issues",
+      "D": "Dynamic adaptive decomposition that invents subtasks based on what each step reveals"
+    },
+    "answer": "B",
+    "explanation": "A predictable, multi-aspect review fits fixed prompt chaining: consistent per-file analysis followed by a cross-file integration pass, which avoids attention dilution.",
+    "distractors": {
+      "A": "A single pass is the failing approach; asking for more thoroughness does not fix attention dilution.",
+      "C": "Consensus-only voting suppresses real bugs that a single reviewer legitimately catches.",
+      "D": "Dynamic adaptive decomposition suits open-ended investigation, not a review whose structure is known in advance."
+    },
+    "tags": [
+      "task-decomposition",
+      "prompt-chaining",
+      "code-review"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-006",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Developer Productivity",
+    "difficulty": "easy",
+    "stem": "Yesterday you ran a long Claude Code session investigating a large service. Since then exactly three files changed. You want to keep building on the prior investigation rather than redo it. What is the best approach?",
+    "options": {
+      "A": "Start a fresh session and re-explore the entire codebase from scratch",
+      "B": "Resume the named session and tell the agent which three files changed, asking for targeted re-analysis",
+      "C": "Resume the session and let the agent rediscover the changes on its own as it works",
+      "D": "Fork the session into two branches and compare the results"
+    },
+    "answer": "B",
+    "explanation": "When prior context is mostly valid and only a few files changed, resume the session and explicitly name the changed files so the agent does targeted re-analysis instead of full re-exploration.",
+    "distractors": {
+      "A": "Starting fresh discards still-valid prior work and is wasteful when only three files changed.",
+      "C": "Letting the agent rediscover changes risks it reasoning over stale tool results without knowing they changed.",
+      "D": "Forking is for comparing divergent approaches, not for continuing one investigation after small edits."
+    },
+    "tags": [
+      "session-management",
+      "resume",
+      "developer-productivity"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-007",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "A customer message reads: \"My order #4821 arrived damaged and I also want to change the email on my account.\" Your agent resolves the damaged-order issue but never touches the email change. What design pattern most directly fixes this class of failure?",
+    "options": {
+      "A": "Add a system-prompt line instructing the agent to always handle every concern",
+      "B": "Require customers to submit only one concern per message",
+      "C": "Decompose the request into distinct concerns, investigate each (in parallel where possible) using shared context, then synthesize one unified resolution",
+      "D": "Run a final regex check that compares the response text against the original request"
+    },
+    "answer": "C",
+    "explanation": "Multi-concern requests should be decomposed into distinct items, each investigated (potentially in parallel) over shared context, then synthesized into one response. This addresses the root cause of dropped concerns.",
+    "distractors": {
+      "A": "A prompt reminder is probabilistic and does not structurally guarantee each concern is handled.",
+      "B": "Forcing single-concern messages shifts burden to the customer and degrades the experience instead of fixing the agent.",
+      "D": "A post-hoc text check can detect a miss but does not resolve the dropped concern and is brittle."
+    },
+    "tags": [
+      "multi-concern",
+      "task-decomposition",
+      "support"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-008",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "Your synthesis subagent must do a quick fact-check while combining findings. Today every check round-trips through the coordinator to the web search subagent, adding ~40% latency. Telemetry shows 85% of these checks are trivial single-fact lookups; the remaining 15% are complex multi-source investigations. What is the best design?",
+    "options": {
+      "A": "Give the synthesis subagent a narrowly scoped verify_fact tool for simple lookups, while complex investigations still route through the coordinator",
+      "B": "Grant the synthesis subagent the full web search toolset so it never has to wait",
+      "C": "Have the synthesis subagent queue all verification needs and send them to the coordinator only at the very end",
+      "D": "Pre-fetch large amounts of extra context during initial research so verification is never needed"
+    },
+    "answer": "A",
+    "explanation": "A scoped cross-role tool handles the 85% common case directly while preserving separation of concerns: complex investigations still route through the coordinator. This balances latency against least-privilege.",
+    "distractors": {
+      "B": "Granting the full search toolset over-provisions the synthesis agent and violates least-privilege, inviting cross-specialization misuse.",
+      "C": "Batching at the end creates blocking dependencies and delays synthesis until all results return.",
+      "D": "Pre-fetching cannot predict which facts will need verification and bloats context."
+    },
+    "tags": [
+      "least-privilege",
+      "scoped-tool",
+      "subagents",
+      "latency"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-009",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "A coordinator splits the research topic \"the impact of AI on creative industries\" into three subtasks, all focused on visual art generation. The final report never mentions AI in music, writing, or film. What orchestration flaw does this illustrate?",
+    "options": {
+      "A": "Missing stop_reason handling in the agent loop",
+      "B": "Over-provisioned subagents holding tools outside their specialization",
+      "C": "Overly narrow task decomposition by the coordinator, which omits major facets of the topic",
+      "D": "Context isolation preventing subagents from sharing findings"
+    },
+    "answer": "C",
+    "explanation": "The coordinator's decomposition was too narrow, collapsing a broad topic into one facet and missing music, writing, and film. Decomposition breadth is a core coordinator responsibility.",
+    "distractors": {
+      "A": "stop_reason governs loop termination, not the breadth of decomposition.",
+      "B": "Over-provisioning concerns tool scope, not the breadth of the topic split, which is the failure here.",
+      "D": "Context isolation is expected and unrelated to omitting whole facets of the topic."
+    },
+    "tags": [
+      "coordinator",
+      "decomposition",
+      "multi-agent"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-010",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "When the coordinator spawns each subagent, the most reliable results come from prompts that state the research goal and quality bar (\"find peer-reviewed cost data for utility-scale solar since 2015; flag any conflicting figures\") rather than rigid step lists. Why is goal-oriented delegation preferred over procedural delegation?",
+    "options": {
+      "A": "Goal-oriented prompts let subagents inherit the coordinator's full history, which procedures block",
+      "B": "Procedural prompts always consume more tokens than goal statements",
+      "C": "Procedural prompts are rejected by the Task tool, which only accepts goal statements",
+      "D": "Goal-oriented prompts let the subagent reason and adapt its approach, while rigid procedures constrain it and break when reality diverges from the assumed steps"
+    },
+    "answer": "D",
+    "explanation": "Specifying goals and quality criteria lets the subagent apply its own reasoning and adapt, which is more robust than hard-coded procedures that fail when discovered conditions differ from assumptions.",
+    "distractors": {
+      "A": "Subagents never inherit coordinator history regardless of prompt style; context is always passed explicitly.",
+      "B": "Token count is not the governing reason; adaptability and robustness are.",
+      "C": "The Task tool accepts procedural prompts; the issue is effectiveness, not acceptance."
+    },
+    "tags": [
+      "delegation",
+      "context-passing",
+      "coordinator"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-011",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "Business policy: the agent may auto-approve refunds up to $500; anything above must go to a human. You implement this with a system-prompt rule. Finance discovers a handful of auto-approved refunds above $500. What change enforces the threshold reliably, and where does the check belong?",
+    "options": {
+      "A": "A stronger system-prompt instruction plus examples of large refunds being escalated",
+      "B": "A nightly batch job that audits refunds and flags any over $500 for human review",
+      "C": "A PostToolUse hook on process_refund that reverses the refund if the amount exceeded $500",
+      "D": "A pre-tool-call hook that inspects the process_refund arguments and blocks/redirects to escalation when the amount exceeds $500"
+    },
+    "answer": "D",
+    "explanation": "A pre-tool-call hook intercepts the outgoing refund call, reads its arguments, and deterministically blocks or redirects amounts over the threshold before any money moves.",
+    "distractors": {
+      "A": "Prompt-and-examples approaches remain probabilistic and produced the violations being investigated.",
+      "B": "A nightly audit detects violations after the fact rather than preventing them.",
+      "C": "A PostToolUse hook fires after execution; the refund has already been issued, so it cannot prevent the violation."
+    },
+    "tags": [
+      "hooks",
+      "pre-tool-call",
+      "compliance",
+      "thresholds"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-012",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "A web search subagent fails on 2 of 5 queries due to transient timeouts and returns {\"status\":\"error\",\"message\":\"search unavailable\"}. The coordinator simply re-issues the identical queries, which time out again. Which combination of fixes best addresses this?",
+    "options": {
+      "A": "The subagent should retry transient failures locally, and when it must propagate, include structured context (failure type, attempted queries, partial results, alternatives) so the coordinator can decide intelligently",
+      "B": "Convert the tool error into a JSON-RPC protocol error so the coordinator notices it sooner",
+      "C": "Have the coordinator immediately escalate the entire task to a human on any subagent error",
+      "D": "The coordinator should hard-cap retries at one and then abort the whole research task"
+    },
+    "answer": "A",
+    "explanation": "Graceful degradation needs both local recovery for transient failures and structured error propagation (type, attempted queries, partial results, alternatives) so the coordinator can make an informed decision rather than blindly retrying.",
+    "distractors": {
+      "B": "Protocol-level errors are typically invisible to the model's reasoning; tool errors should carry actionable context.",
+      "C": "Escalating to a human on any transient error is premature and defeats automated resolution.",
+      "D": "Aborting the whole task discards the 3 successful queries and overreacts to recoverable failures."
+    },
+    "tags": [
+      "error-handling",
+      "graceful-degradation",
+      "subagents"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-013",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "Your research pipeline is coordinator -> (search, analysis) -> synthesis. For cost and latency you want to use the smallest capable model per role. Which model assignment is most defensible?",
+    "options": {
+      "A": "Use the smallest model everywhere, including the coordinator, to minimize cost",
+      "B": "Use Opus 4.8 for every role to guarantee maximum quality everywhere",
+      "C": "Use Opus 4.1 for synthesis since it is the established flagship for complex reasoning",
+      "D": "Use a smaller, faster model for narrow retrieval/extraction subtasks and reserve Opus 4.8 for the coordinator's decomposition and the final synthesis reasoning"
+    },
+    "answer": "D",
+    "explanation": "Match model capability to task difficulty: lightweight models handle bounded retrieval/extraction cheaply, while the hardest reasoning (decomposition, synthesis) is reserved for the flagship Opus 4.8.",
+    "distractors": {
+      "A": "A weak coordinator produces poor decomposition and routing, undermining the whole pipeline.",
+      "B": "Using the flagship for trivial extraction wastes cost and latency with no quality benefit.",
+      "C": "Opus 4.1 is deprecated (retiring Aug 5 2026); Opus 4.8 is the current flagship."
+    },
+    "tags": [
+      "model-selection",
+      "cost",
+      "latency",
+      "opus-4.8"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-014",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Developer Productivity",
+    "difficulty": "medium",
+    "stem": "An engineer asks the agent to \"add comprehensive tests to this large legacy module with no existing test suite.\" The work is open-ended: the right subtasks aren't knowable until the code is explored. Which decomposition approach fits, and what is the right first step?",
+    "options": {
+      "A": "Fixed prompt chaining with a predetermined per-file test-writing sequence",
+      "B": "Immediately generate tests for every function alphabetically to maximize coverage fast",
+      "C": "Escalate to a human because legacy code without tests cannot be handled by an agent",
+      "D": "Dynamic adaptive decomposition: first map the module's structure, identify high-impact areas, then build a prioritized plan that adapts as dependencies surface"
+    },
+    "answer": "D",
+    "explanation": "Open-ended tasks call for dynamic adaptive decomposition: explore and map structure first, identify high-impact areas, then form a prioritized plan that adapts as dependencies are discovered.",
+    "distractors": {
+      "A": "Fixed chaining presupposes a known structure, which is exactly what is missing in open-ended legacy work.",
+      "B": "Alphabetical mass generation ignores impact and dependencies and produces low-value tests.",
+      "C": "This is well within agent capability using the right decomposition; escalation is unwarranted."
+    },
+    "tags": [
+      "task-decomposition",
+      "dynamic-decomposition",
+      "developer-productivity"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-015",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "After exhausting its tools, the agent must escalate a complex billing dispute to a human who does NOT have access to the chat transcript. What should the structured handoff include to make the human effective immediately?",
+    "options": {
+      "A": "A link to re-run the agent so the human can watch it try again",
+      "B": "Just the customer's last message and a note that it needs human attention",
+      "C": "A structured packet: customer ID, root-cause analysis, relevant amounts, recommended action, and the full context the human will lack",
+      "D": "The raw tool-call logs in JSON for the human to parse manually"
+    },
+    "answer": "C",
+    "explanation": "A good handoff gives the human everything needed to act without the transcript: customer ID, root-cause analysis, amounts, a recommended action, and full context.",
+    "distractors": {
+      "A": "Re-running the agent does not transfer understanding and wastes the human's time.",
+      "B": "The last message alone forces the human to reconstruct the case, defeating the purpose of escalation.",
+      "D": "Raw logs are not a synthesized handoff; the human needs analysis and a recommendation, not parsing work."
+    },
+    "tags": [
+      "handoff",
+      "escalation",
+      "support"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-016",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "hard",
+    "stem": "You are designing an automated coding assistant for a single, well-bounded task: fixing lint errors in a small repository using only Read, Edit, and a lint-runner tool. A colleague proposes a coordinator with four specialized subagents. What is the best architectural call?",
+    "options": {
+      "A": "Use a single agent with the three needed tools; the task is narrow and does not justify multi-agent overhead",
+      "B": "Adopt the multi-agent design now so the system can scale later",
+      "C": "Use multiple coordinators for redundancy in case one fails",
+      "D": "Use a coordinator with one subagent to keep the door open for more subagents"
+    },
+    "answer": "A",
+    "explanation": "Multi-agent orchestration adds latency, cost, and coordination complexity. A narrow, single-purpose task with a small toolset is best served by one well-scoped agent.",
+    "distractors": {
+      "B": "Adopting multi-agent for a narrow task is premature optimization that adds overhead without benefit.",
+      "C": "Multiple coordinators add complexity and split control; redundancy is not the concern for this task.",
+      "D": "A coordinator wrapping a single subagent adds an indirection layer with no payoff."
+    },
+    "tags": [
+      "single-vs-multi-agent",
+      "architecture-decision"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-017",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "In your hub-and-spoke design, the synthesis subagent has been given the web search subagent's full tool suite \"just in case.\" Reviewers worry about quality and safety. Which principle is being violated and what is the correct fix?",
+    "options": {
+      "A": "Context isolation; fix by sharing the coordinator's history with synthesis",
+      "B": "Stop-condition design; fix by adding an iteration cap to the synthesis subagent",
+      "C": "Least-privilege tool scoping; fix by restricting each subagent to only the tools its role requires",
+      "D": "Model selection; fix by upgrading synthesis to Opus 4.8"
+    },
+    "answer": "C",
+    "explanation": "Giving a subagent tools outside its specialization violates least-privilege and invites cross-specialization misuse. Each subagent should hold only the tools its role needs.",
+    "distractors": {
+      "A": "Context isolation is unrelated; the issue is over-broad tool access, and sharing history would make things worse.",
+      "B": "An iteration cap does not address over-provisioned tools.",
+      "D": "A bigger model does not fix an over-broad tool surface; scoping does."
+    },
+    "tags": [
+      "least-privilege",
+      "tool-scoping",
+      "multi-agent"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-018",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "Your workflow must enforce: get_customer (verify) must complete before lookup_order or process_refund can run. A teammate argues the ordering is \"nice to have\" and should just be encouraged in the prompt, since most agents naturally call get_customer first anyway. Given this is an identity/financial prerequisite, what is the correct stance?",
+    "options": {
+      "A": "Enforce the prerequisite programmatically by gating lookup_order and process_refund until verification completes, because identity/financial steps require deterministic compliance",
+      "B": "Prompt encouragement is sufficient because the agent usually orders calls correctly",
+      "C": "Make get_customer the only tool initially and add the others to the prompt later",
+      "D": "Allow any order but log violations for later review"
+    },
+    "answer": "A",
+    "explanation": "Identity- and financial-critical ordering requires deterministic enforcement. Programmatic prerequisite gating blocks downstream tools until verification completes; prompt-based ordering has a non-zero failure rate.",
+    "distractors": {
+      "B": "\"Usually correct\" is unacceptable for identity/financial flows; a non-zero failure rate is a compliance breach.",
+      "C": "Dynamically swapping the tool surface is brittle and still relies on the prompt for the real gate.",
+      "D": "Logging after the fact does not prevent the unverified financial action from occurring."
+    },
+    "tags": [
+      "programmatic-enforcement",
+      "prerequisites",
+      "determinism"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-019",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Developer Productivity",
+    "difficulty": "medium",
+    "stem": "An engineer wants to compare two refactoring strategies for the same module, each branching from the same already-completed analysis. They want each exploration to proceed independently without polluting the other's context. Which session capability fits best?",
+    "options": {
+      "A": "Use fork_session to create independent branches from the shared analysis baseline, one per strategy",
+      "B": "Start two completely unrelated new sessions and re-run the analysis in each",
+      "C": "Resume the same named session for both so they share state",
+      "D": "Run both strategies in a single session sequentially in the same context"
+    },
+    "answer": "A",
+    "explanation": "fork_session creates independent branches from a shared baseline, ideal for exploring divergent approaches in parallel without cross-contamination.",
+    "distractors": {
+      "B": "Re-running the analysis twice wastes work; the point is to fork from the existing baseline.",
+      "C": "Sharing one session intermingles the two strategies' context, which is what must be avoided.",
+      "D": "Sequential exploration in one context lets the first strategy's reasoning contaminate the second."
+    },
+    "tags": [
+      "fork-session",
+      "session-management",
+      "comparison"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-020",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "hard",
+    "stem": "Your coordinator runs the same fixed pipeline (search -> analysis -> synthesis -> report) for every query. For a simple factual query (\"what year was the Kyoto Protocol adopted?\"), this still spins up all four subagents, wasting cost and latency. The team also notices some complex queries need an extra verification pass the fixed pipeline never performs. What is the best improvement to the coordinator?",
+    "options": {
+      "A": "Always run the full pipeline but cache results so repeated simple queries are cheap",
+      "B": "Give the coordinator dynamic routing: analyze each query's requirements and invoke only the subagents needed, including re-delegating for an extra verification pass when gaps remain",
+      "C": "Hard-code a second fixed pipeline variant and pick between the two with a keyword match on the query",
+      "D": "Move synthesis logic into the coordinator so only search and analysis remain as subagents"
+    },
+    "answer": "B",
+    "explanation": "A coordinator should dynamically route: examine query requirements, invoke only the necessary subagents, and iteratively re-delegate (e.g., an extra verification pass) when it detects gaps. This handles both the trivial and the complex cases.",
+    "distractors": {
+      "A": "Caching helps repeat queries but still over-provisions on first run and never adds the missing verification pass.",
+      "C": "Two hard-coded variants chosen by keyword matching is brittle and still cannot adapt to gap-driven re-delegation.",
+      "D": "Collapsing synthesis into the coordinator changes responsibilities without enabling per-query routing or refinement."
+    },
+    "tags": [
+      "dynamic-routing",
+      "iterative-refinement",
+      "coordinator"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-021",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "hard",
+    "stem": "You are deciding between (1) a pre-tool-call hook and (2) a system-prompt instruction to control behavior in a Claude Code workflow. Which pairing of requirement-to-mechanism is correct?",
+    "options": {
+      "A": "\"Never let the agent run a destructive migration without explicit approval\" -> system-prompt instruction; \"prefer descriptive commit messages\" -> hook",
+      "B": "\"Never let the agent run a destructive migration without explicit approval\" -> pre-tool-call hook; \"prefer descriptive commit messages\" -> system-prompt instruction",
+      "C": "Both requirements -> system-prompt instructions, since prompts can express any rule",
+      "D": "Both requirements -> hooks, since hooks are always safer than prompts"
+    },
+    "answer": "B",
+    "explanation": "Hard, must-always-hold safety rules (blocking destructive migrations) need deterministic hook enforcement; soft stylistic preferences (commit-message wording) are fine as probabilistic prompt guidance. Match the mechanism to whether 100% compliance is required.",
+    "distractors": {
+      "A": "This reverses the mapping: the critical rule must be a hook and the style preference belongs in the prompt.",
+      "C": "Prompts are probabilistic; a critical safety rule cannot rely on best-effort compliance.",
+      "D": "Over-applying hooks to trivial style preferences adds needless engineering and rigidity; prompts suffice there."
+    },
+    "tags": [
+      "hooks-vs-prompts",
+      "determinism",
+      "control"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-022",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "hard",
+    "stem": "To cut latency, an architect proposes letting subagents message each other directly: the analysis subagent would call the search subagent when it needs more data, bypassing the coordinator entirely. What is the strongest objection within the hub-and-spoke model, and the better alternative?",
+    "options": {
+      "A": "There is no objection; direct subagent-to-subagent calls are the recommended optimization",
+      "B": "Direct peer communication breaks the coordinator's control over delegation, aggregation, and routing; instead expose a narrowly scoped tool to the analysis subagent for the common need while complex coordination still flows through the coordinator",
+      "C": "The objection is cost only; merge analysis and search into one subagent to avoid the call",
+      "D": "The objection is context isolation; share the full conversation history across all subagents to compensate"
+    },
+    "answer": "B",
+    "explanation": "In hub-and-spoke, the coordinator owns all inter-subagent communication, delegation, and aggregation; peer-to-peer calls undermine that control. The principled latency fix is a narrowly scoped cross-role tool for the common case while keeping complex coordination centralized.",
+    "distractors": {
+      "A": "Subagents communicating directly violates the hub-and-spoke principle that the coordinator manages all inter-subagent communication.",
+      "C": "Merging two distinct specializations sacrifices separation of concerns and is not the targeted fix.",
+      "D": "Sharing full history across all subagents abandons context isolation and bloats every subagent's context."
+    },
+    "tags": [
+      "hub-and-spoke",
+      "coordinator",
+      "scoped-tool",
+      "context-isolation"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-023",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "hard",
+    "stem": "A latency-sensitive support agent occasionally enters long tool-use loops on ambiguous tickets, racking up cost while making no progress. You need to bound runaway loops WITHOUT corrupting the normal stop_reason-driven termination for healthy conversations. What is the soundest design?",
+    "options": {
+      "A": "Lower temperature to zero so the agent stops looping on ambiguous tickets",
+      "B": "Parse the agent's text each turn for phrases like \"I'm stuck\" and stop when detected",
+      "C": "Keep stop_reason as the primary termination signal, and add an independent safety budget (max iterations/tokens/time) that, when breached, triggers graceful degradation such as escalation with a structured handoff",
+      "D": "Replace stop_reason handling with a fixed cap of 6 iterations as the single termination mechanism"
+    },
+    "answer": "C",
+    "explanation": "stop_reason should remain the primary termination driver; a separate safety budget acts only as a backstop that triggers graceful degradation (e.g., escalate with a handoff) when breached, rather than replacing normal termination.",
+    "distractors": {
+      "A": "Temperature changes do not bound loop length and can degrade reasoning on ambiguous cases.",
+      "B": "Parsing text for distress phrases is an unreliable natural-language stop signal and an anti-pattern.",
+      "D": "Making an iteration cap the sole stop mechanism is an anti-pattern that truncates legitimate multi-step work."
+    },
+    "tags": [
+      "agent-loop",
+      "stop-conditions",
+      "graceful-degradation",
+      "reliability"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-024",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "hard",
+    "stem": "Profiling your coordinator/subagent system shows it is fast but expensive: the coordinator (Opus 4.8) re-reads every subagent's full raw output, and three subagents run in parallel on every query regardless of need. You must reduce cost while protecting result quality. Which set of changes is most aligned with sound orchestration?",
+    "options": {
+      "A": "Increase the coordinator's context window so it can keep absorbing full raw outputs without trimming",
+      "B": "Have subagents return concise structured results (claims with source metadata) instead of raw dumps, route dynamically so only needed subagents run, and keep Opus 4.8 for the coordinator's decomposition/synthesis reasoning",
+      "C": "Switch the coordinator to a small model and keep passing full raw outputs, since the coordinator only aggregates",
+      "D": "Run all subagents sequentially to lower peak cost, accepting the added latency"
+    },
+    "answer": "B",
+    "explanation": "Cost drops by trimming subagent outputs to concise structured results (preserving provenance), routing dynamically so only needed subagents run, and reserving the flagship for the reasoning that actually needs it. Quality is protected because the hard reasoning still uses Opus 4.8 and provenance is retained.",
+    "distractors": {
+      "A": "A bigger window lets waste persist; the fix is to reduce what flows into context, not to accommodate more of it.",
+      "C": "Decomposition and result aggregation are demanding reasoning tasks; a weak coordinator with full raw dumps harms quality and barely saves cost.",
+      "D": "Serializing subagents trades latency for marginal savings and ignores the real waste: running unneeded subagents and passing raw dumps."
+    },
+    "tags": [
+      "cost",
+      "model-selection",
+      "dynamic-routing",
+      "context-management",
+      "opus-4.8"
+    ],
+    "source": "original-2026"
+  }
+]

@@ -1,0 +1,534 @@
+[
+  {
+    "id": "d4-001",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "easy",
+    "stem": "You define a tool with a strict JSON schema and call the model with tool_use to extract invoice data. After thousands of runs you observe zero malformed-JSON, wrong-type, or out-of-enum errors, yet some extractions still place a vendor's phone number in the email field. What guarantee does tool_use actually provide?",
+    "options": {
+      "A": "It eliminates semantic errors but malformed JSON can still occur under load",
+      "B": "It only validates output after generation, so any class of error can still appear in the returned object",
+      "C": "It guarantees both syntactically and semantically correct output as long as the schema is strict",
+      "D": "It eliminates JSON syntax and type errors but does not prevent semantic errors like values landing in the wrong field"
+    },
+    "answer": "D",
+    "explanation": "Tool use with JSON schemas eliminates SYNTAX-class errors (malformed JSON, wrong types, missing required fields, out-of-enum values) but does NOT prevent SEMANTIC errors such as hallucinated values or data placed in the wrong field. A phone number in the email field is a semantic error.",
+    "distractors": {
+      "A": "This reverses the guarantee. Tool use eliminates syntax errors, not semantic ones.",
+      "B": "Tool use constrains generation to conform to the schema, so syntax/type errors are eliminated, not merely validated after the fact.",
+      "C": "Strict schemas cannot enforce meaning; semantic correctness (right value in right field) is never guaranteed by schema enforcement."
+    },
+    "tags": [
+      "structured-output",
+      "tool_use",
+      "semantic-vs-syntax"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-002",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "easy",
+    "stem": "You are extracting metadata from contracts. About 40% of contracts have no governing-law clause, and the model fabricates plausible jurisdictions for those documents. Your schema currently lists governing_law as a required string. What is the correct fix?",
+    "options": {
+      "A": "Add a strongly worded instruction: 'Never invent a jurisdiction that is not in the document'",
+      "B": "Make governing_law nullable (\"type\": [\"string\", \"null\"]) and remove it from the required list",
+      "C": "Lower the temperature to 0 so the model stops guessing",
+      "D": "Add a post-extraction validation step that checks jurisdictions against a known list"
+    },
+    "answer": "B",
+    "explanation": "Requiring a non-nullable field when the data is sometimes absent is the single biggest driver of hallucination in extraction pipelines. Making the field nullable and optional lets the model return null when the clause is missing, removing the pressure to fabricate.",
+    "distractors": {
+      "A": "Prompt instructions are probabilistic; the schema still forces a string value, so fabrication persists.",
+      "C": "Temperature does not address the structural requirement; a required field must still be populated even at temperature 0.",
+      "D": "Validation may detect a bad value but does not stop the model from fabricating in the first place, and a fabricated-but-real jurisdiction would pass the check."
+    },
+    "tags": [
+      "structured-output",
+      "nullable-fields",
+      "hallucination"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-003",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "easy",
+    "stem": "You need to process 8,000 archived support transcripts to extract sentiment and topic tags. The job runs overnight, results are reviewed the next morning, and you want to cut token costs. Which API approach fits best?",
+    "options": {
+      "A": "The Message Batches API, which offers 50% cost savings on input and output tokens with up to a 24-hour SLA",
+      "B": "Synchronous streaming requests fanned out across many threads for maximum throughput",
+      "C": "The Message Batches API, but only if the workflow needs sub-second latency guarantees",
+      "D": "A single synchronous request packing all 8,000 transcripts into one large context window"
+    },
+    "answer": "A",
+    "explanation": "Overnight, latency-tolerant, non-interactive bulk work is the ideal use case for the Message Batches API: 50% savings on input and output tokens with results delivered within a 24-hour SLA.",
+    "distractors": {
+      "B": "Synchronous requests forfeit the 50% batch savings, and threading adds complexity for a workload that is not latency-sensitive.",
+      "C": "The Batch API provides no latency guarantee; if you needed sub-second responses you would not use batches at all.",
+      "D": "Packing 8,000 transcripts into one request would blow past context limits and provides no cost advantage."
+    },
+    "tags": [
+      "batch-api",
+      "cost-optimization"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-004",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "easy",
+    "stem": "Your automated code reviewer is told to 'be conservative and only report high-confidence issues,' yet it still produces many low-value style nitpicks that developers ignore. What is the most effective prompt change?",
+    "options": {
+      "A": "Replace vague guidance with explicit categorical criteria stating which issues to report (bugs, security flaws) and which to skip (intentional local style)",
+      "B": "Strengthen the wording to 'be EXTREMELY conservative and only flag critical issues'",
+      "C": "Ask the model to assign a confidence score and keep all findings regardless of score",
+      "D": "Raise the temperature so the model produces more varied, less repetitive findings"
+    },
+    "answer": "A",
+    "explanation": "Vague instructions like 'be conservative' do not improve precision. Explicit categorical criteria that define what to report versus what to skip are far more effective at reducing false positives.",
+    "distractors": {
+      "B": "Emphatic but still-vague wording does not give the model a concrete decision boundary, so behavior barely changes.",
+      "C": "A confidence score without a reporting threshold still surfaces the noise; the criteria problem is unaddressed.",
+      "D": "Temperature affects randomness, not the criteria the model uses to decide what is worth reporting."
+    },
+    "tags": [
+      "explicit-criteria",
+      "false-positives"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-005",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "easy",
+    "stem": "You call the model with a single extraction tool and want to guarantee that it ALWAYS returns the structured tool call rather than a free-text answer, while the document type is known and only one schema applies. Which tool_choice setting is correct?",
+    "options": {
+      "A": "tool_choice of type 'none'",
+      "B": "tool_choice of type 'tool' naming that specific tool (forced)",
+      "C": "tool_choice of type 'auto'",
+      "D": "Omit tool_choice entirely and rely on the system prompt to request JSON"
+    },
+    "answer": "B",
+    "explanation": "When exactly one schema applies and you must guarantee that specific tool runs, forced tool_choice ({\"type\": \"tool\", \"name\": ...}) compels the model to call that named tool every time.",
+    "distractors": {
+      "A": "none forbids tool calls entirely, which is the opposite of what you need.",
+      "C": "auto lets the model choose between text and a tool call, so it may return free text and not guarantee structured output.",
+      "D": "Relying on the system prompt to request JSON gives no guarantee and reintroduces the syntax-error risk that tool_use removes."
+    },
+    "tags": [
+      "tool_choice",
+      "structured-output"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-006",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "medium",
+    "stem": "Your pipeline ingests several document types (invoices, purchase orders, receipts), each with its own extraction tool. The document type is unknown at request time, but you must always get one of the structured outputs. Which tool_choice setting is most appropriate?",
+    "options": {
+      "A": "tool_choice of type 'auto' so the model can also answer in text if unsure",
+      "B": "tool_choice of type 'tool' naming the invoice tool, since invoices are most common",
+      "C": "tool_choice of type 'none' with detailed JSON instructions in the prompt",
+      "D": "tool_choice of type 'any', forcing the model to call one of the tools while letting it pick which"
+    },
+    "answer": "D",
+    "explanation": "'any' forces a tool call while letting the model choose which schema fits the document. This guarantees structured output when multiple extraction schemas exist and the document type is unknown.",
+    "distractors": {
+      "A": "auto permits a text-only response, so structured output is not guaranteed.",
+      "B": "Forcing the invoice tool would misextract purchase orders and receipts into the wrong schema.",
+      "C": "none disables tools, reintroducing syntax-error risk and removing the guarantee of structured output."
+    },
+    "tags": [
+      "tool_choice",
+      "structured-output",
+      "multi-schema"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-007",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "medium",
+    "stem": "You want the model to reason through ambiguous documents using extended thinking AND guarantee it returns structured output. You set tool_choice to 'any' and enable extended thinking, but the API rejects the request. What is the correct resolution?",
+    "options": {
+      "A": "Lower max_tokens so the thinking budget fits, which resolves the incompatibility",
+      "B": "Use tool_choice 'auto' with extended thinking, since 'any' and forced tool choice are incompatible with extended thinking",
+      "C": "Switch to forced tool_choice (type 'tool'), which is the only mode compatible with extended thinking",
+      "D": "Keep tool_choice 'any' and disable extended thinking permanently, as the two can never coexist in any form"
+    },
+    "answer": "B",
+    "explanation": "Extended thinking is incompatible with 'any' and forced tool choice. The supported pattern is to use tool_choice 'auto' together with extended thinking, and strongly steer toward the tool via the prompt and schema design.",
+    "distractors": {
+      "A": "The conflict is about the tool_choice mode, not the token budget, so changing max_tokens does not resolve it.",
+      "C": "Forced tool choice ('tool') is also incompatible with extended thinking; only 'auto' works.",
+      "D": "You do not have to abandon extended thinking; 'auto' coexists with it, so this overstates the constraint."
+    },
+    "tags": [
+      "tool_choice",
+      "extended-thinking",
+      "constraints"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-008",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "medium",
+    "stem": "Your classifier assigns each document a category from the enum [finance, legal, technical]. Documents that fit none are being force-fit into the closest category, corrupting downstream analytics. What is the best schema-level fix?",
+    "options": {
+      "A": "Remove the enum constraint and let category be any free-text string",
+      "B": "Add an 'other' value to the enum plus a category_detail string field that the model fills with a free-text explanation when 'other' is chosen",
+      "C": "Add ten more specific categories to the enum to cover every possible case",
+      "D": "Make category nullable so unclassifiable documents return null"
+    },
+    "answer": "B",
+    "explanation": "An 'other' escape-hatch value combined with a detail field captures documents that fit no defined category without forcing a wrong choice, while preserving structured analytics on the known categories and capturing rationale for the unknowns.",
+    "distractors": {
+      "A": "Dropping the enum loses validation entirely and produces inconsistent free-text categories that break analytics.",
+      "C": "Endlessly expanding the enum is unmaintainable and still cannot anticipate every novel document type.",
+      "D": "Null erases the fact that the document WAS classifiable as 'other-but-real' and discards the explanatory detail an escape hatch would capture."
+    },
+    "tags": [
+      "enum-escape-hatch",
+      "schema-design"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-009",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "medium",
+    "stem": "An invoice extraction passes JSON schema validation but fails your business rule because the line-item amounts do not sum to the stated total. The schema is syntactically valid. What kind of error is this and how should you handle it?",
+    "options": {
+      "A": "A transient error; immediately re-send the identical request unchanged",
+      "B": "An unrecoverable error; route the document to manual review without any retry",
+      "C": "A syntax error; enable strict schema mode to prevent it",
+      "D": "A semantic error; implement retry-with-error-feedback by re-sending the document, the failed extraction, and the specific validation error so the model can self-correct"
+    },
+    "answer": "D",
+    "explanation": "Line items not summing to the total is a semantic error, which tool_use cannot prevent. The retry-with-error-feedback pattern sends the original document, the failed extraction, and the precise validation error back so the model can self-correct.",
+    "distractors": {
+      "A": "Re-sending the identical request gives the model no new signal and is likely to reproduce the same mistake.",
+      "B": "Many such errors are recoverable via feedback; jumping straight to manual review wastes the cheap self-correction step.",
+      "C": "Strict schema mode only addresses syntax/type/enum issues; arithmetic consistency is beyond what a schema can enforce."
+    },
+    "tags": [
+      "retry-feedback",
+      "semantic-vs-syntax",
+      "validation"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-010",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "medium",
+    "stem": "You implement retry-with-error-feedback for failed extractions. For one batch of documents, every retry still returns null for the supplier_tax_id field even though your validation requires it. Why are these retries failing?",
+    "options": {
+      "A": "The schema marks the field as nullable, so the model is allowed to skip it",
+      "B": "The field is simply absent from the source documents; retries cannot extract information that is not present",
+      "C": "The temperature is too high, causing the model to drop the field on each attempt",
+      "D": "The retry prompt is not emphatic enough and needs stronger language"
+    },
+    "answer": "B",
+    "explanation": "Retry-with-error-feedback works for format and structural errors, but it cannot conjure data that is genuinely absent from the source. If the tax ID is not in the document, no amount of retrying will produce it; the right move is to allow null and route to manual handling.",
+    "distractors": {
+      "A": "If validation requires the field, marking it nullable is arguably correct, but that is not why extraction returns null; the data is missing.",
+      "C": "Temperature does not cause a consistently-missing field to appear; the information simply is not there.",
+      "D": "Stronger language cannot make the model read data that does not exist in the document."
+    },
+    "tags": [
+      "retry-feedback",
+      "missing-data",
+      "limits"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-011",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "medium",
+    "stem": "Despite detailed written instructions, the model formats extracted citations inconsistently: some documents use inline numeric citations and others use a bibliography, and the output structure varies accordingly. Which technique most directly improves format consistency for these varied structures?",
+    "options": {
+      "A": "Increase the length and detail of the natural-language instructions until every edge case is described",
+      "B": "Forbid the model from extracting citations whose format is ambiguous",
+      "C": "Provide 2-4 targeted few-shot examples that show the correct output for each citation style",
+      "D": "Switch to a larger model and assume the format problem resolves itself"
+    },
+    "answer": "C",
+    "explanation": "When output format is inconsistent despite detailed instructions, especially across varied document structures, a few targeted few-shot examples demonstrating each case is the most direct and reliable fix. It also generalizes to novel variants.",
+    "distractors": {
+      "A": "Ever-longer instructions tend to plateau; demonstrations communicate format more effectively than prose for these cases.",
+      "B": "Skipping ambiguous citations loses data and does not teach the desired format.",
+      "D": "A larger model does not reliably fix a demonstration gap and is a costly, uncertain shortcut."
+    },
+    "tags": [
+      "few-shot",
+      "format-consistency"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-012",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "A support triage agent must decide between escalating to a human and attempting self-service resolution, and it keeps mishandling borderline cases. Which prompting approach best improves its judgment on these ambiguous edge cases?",
+    "options": {
+      "A": "Lowering temperature to make the agent's decisions deterministic",
+      "B": "A forced tool_choice that always calls the escalate tool",
+      "C": "Few-shot examples that show the reasoning for WHY one action was chosen over the alternative in each borderline scenario",
+      "D": "A single global rule: 'When in doubt, always escalate to a human'"
+    },
+    "answer": "C",
+    "explanation": "Few-shot examples are most valuable for ambiguous judgment calls, especially when they show the reasoning for choosing one action over an alternative. This teaches the decision boundary rather than a blanket rule.",
+    "distractors": {
+      "A": "Determinism does not teach the agent where the correct boundary lies; it just makes a flawed decision repeatable.",
+      "B": "Forcing the escalate tool removes the agent's judgment entirely and escalates everything.",
+      "D": "A blanket 'always escalate' rule defeats the purpose of self-service and over-escalates clear-cut cases."
+    },
+    "tags": [
+      "few-shot",
+      "judgment",
+      "reasoning-examples"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-013",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "medium",
+    "stem": "You are designing the JSON schema for invoice extraction. invoice_number always appears, while purchase_order appears only sometimes. To minimize fabrication, how should you mark these two fields?",
+    "options": {
+      "A": "Mark purchase_order as required and invoice_number as optional, since the PO is the primary key in your system",
+      "B": "Make both fields optional so the model has maximum flexibility",
+      "C": "Mark invoice_number as required; make purchase_order optional (and nullable), since only always-present fields should be required",
+      "D": "Mark both fields as required so the model never omits either"
+    },
+    "answer": "C",
+    "explanation": "Only require fields that are always present in the source. invoice_number is always present, so it is required; purchase_order is sometimes absent, so making it optional/nullable prevents the model from fabricating a value to satisfy a required slot.",
+    "distractors": {
+      "A": "Schema requiredness should reflect document presence, not your database's primary key; invoice_number is the always-present field.",
+      "B": "Making invoice_number optional invites the model to omit a value that is reliably present, weakening the extraction unnecessarily.",
+      "D": "Requiring purchase_order forces fabrication on the invoices that lack one, the classic hallucination driver."
+    },
+    "tags": [
+      "schema-design",
+      "required-vs-optional",
+      "hallucination"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-014",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "A team debates using the Message Batches API for a pre-merge CI gate that must pass before developers can merge, and separately for a weekly technical-debt audit. Which workloads are appropriate for the Batch API?",
+    "options": {
+      "A": "Neither, because the Batch API does not support any tool use at all",
+      "B": "Both workloads, since the 50% cost savings apply universally",
+      "C": "Only the pre-merge gate, because it runs more frequently and benefits most from cost savings",
+      "D": "Only the weekly technical-debt audit; the pre-merge gate is blocking and latency-sensitive, which the Batch API cannot serve"
+    },
+    "answer": "D",
+    "explanation": "The Batch API suits latency-tolerant, non-blocking work like a weekly audit. A pre-merge gate blocks developers and needs prompt results, so it must use synchronous calls; the up-to-24-hour SLA is unacceptable there.",
+    "distractors": {
+      "A": "Single-turn tool use works within batch requests; only multi-turn tool-calling loops are unsupported.",
+      "B": "Cost savings do not justify putting a blocking, latency-sensitive gate behind a 24-hour SLA.",
+      "C": "The pre-merge gate is exactly the workload that must NOT use batches because developers wait on it."
+    },
+    "tags": [
+      "batch-api",
+      "latency",
+      "ci"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-015",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "medium",
+    "stem": "You submit 10,000 documents in a single Message Batch. Some requests fail and the successful results return in a different order than you submitted. What is the correct way to correlate results and handle failures?",
+    "options": {
+      "A": "Match results to documents by comparing the output text, since custom_id is not returned in results",
+      "B": "Resubmit the entire batch from scratch whenever any request fails",
+      "C": "Use the custom_id on each request to match results back to documents, then resubmit only the failed custom_ids",
+      "D": "Rely on the array index of the results, since the Batch API preserves submission order"
+    },
+    "answer": "C",
+    "explanation": "Batch results are NOT returned in order, so you must use the custom_id you assigned each request to correlate results. On failure, you resubmit only the affected custom_ids rather than the whole batch.",
+    "distractors": {
+      "A": "custom_id IS returned with each result; matching on output text is fragile and unnecessary.",
+      "B": "Resubmitting all 10,000 wastes cost and the 24-hour SLA when only a handful failed.",
+      "D": "The Batch API explicitly does not guarantee result ordering, so index-based matching is unreliable."
+    },
+    "tags": [
+      "batch-api",
+      "custom_id",
+      "failure-handling"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-016",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "hard",
+    "stem": "A generation agent writes a report section, then is asked to review its own output for subtle factual errors in the same session. It rarely catches its own mistakes. Which approach most reliably surfaces these subtle issues?",
+    "options": {
+      "A": "Enable extended thinking on the generator so it reasons longer before finalizing",
+      "B": "Append 'now carefully double-check your own work for errors' to the generation prompt",
+      "C": "Raise the temperature on the review pass to encourage the model to consider alternatives",
+      "D": "Route the output to an independent review instance that does not carry the generator's reasoning context"
+    },
+    "answer": "D",
+    "explanation": "A model retains its reasoning context from generation and is biased toward defending its own decisions. An independent review instance, lacking that context, is more effective than self-review instructions or extended thinking at catching subtle issues.",
+    "distractors": {
+      "A": "Extended thinking helps reasoning depth but does not overcome the generator's bias toward its own prior conclusions.",
+      "B": "Self-review instructions still run inside the generator's reasoning context, so the same blind spots persist.",
+      "C": "Temperature changes randomness, not the structural problem of self-review bias within one session."
+    },
+    "tags": [
+      "independent-review",
+      "self-review-limitation"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-017",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "hard",
+    "stem": "Source invoices sometimes state a total that disagrees with the sum of their line items. You want the extraction itself to surface these discrepancies for human review rather than silently picking one number. Which schema design best supports this?",
+    "options": {
+      "A": "Extract only the line items and compute the total yourself, discarding the stated total",
+      "B": "Extract both stated_total and calculated_total as separate fields, plus a conflict_detected boolean the model sets when they disagree",
+      "C": "Make the total field nullable so the model returns null whenever the numbers conflict",
+      "D": "Extract a single total field and instruct the model to return the value it judges most likely correct"
+    },
+    "answer": "B",
+    "explanation": "Capturing stated_total and calculated_total separately, plus a conflict_detected flag, lets the pipeline detect inconsistent source data and route it for review instead of silently resolving the conflict. This is a self-correction/validation design pattern.",
+    "distractors": {
+      "A": "Discarding the stated total loses the signal needed to detect a conflict and hides genuine source errors.",
+      "C": "Returning null erases both values and the fact that a conflict existed, providing no actionable signal for review.",
+      "D": "Having the model pick 'the most likely' value silently discards the discrepancy you specifically want surfaced."
+    },
+    "tags": [
+      "schema-design",
+      "self-correction",
+      "conflict-detection"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-018",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "hard",
+    "stem": "An automated reviewer's 'inconsistent error handling' category produces a 60% false-positive rate because different modules intentionally use different patterns, and developers now distrust the reviewer's output across ALL categories. What is the most effective immediate response?",
+    "options": {
+      "A": "Lower the overall sensitivity of every category equally to balance the noise",
+      "B": "Keep the category but ask developers to manually ignore its findings",
+      "C": "Temporarily disable the high-false-positive category to restore trust, then redefine it with explicit criteria and concrete examples before re-enabling",
+      "D": "Add 'be more accurate' to the prompt and keep the category enabled"
+    },
+    "answer": "C",
+    "explanation": "A high false-positive rate in one category undermines trust in all categories. Temporarily disabling the offending category restores trust, and redefining it with explicit categorical criteria and concrete examples fixes the root cause before re-enabling.",
+    "distractors": {
+      "A": "Dampening every category punishes the well-behaved ones and lets the real culprit keep corroding trust.",
+      "B": "Asking humans to filter noise is unsustainable and the cross-category trust damage persists.",
+      "D": "Vague 'be more accurate' wording does not give the model a usable decision boundary, so noise continues eroding trust."
+    },
+    "tags": [
+      "false-positives",
+      "explicit-criteria",
+      "trust"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-019",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "hard",
+    "stem": "You want the model to first emit a JSON object opening so its structured extraction is more reliable and so it cannot preface the output with conversational text. Within the same approach, you also want to steer toward a particular tone or schema. Which technique directly achieves the controlled start of the response?",
+    "options": {
+      "A": "Prefill the assistant turn with the beginning of the desired output (for example, an opening brace) so generation continues from that point",
+      "B": "Increase max_tokens so the model has room to skip the preamble",
+      "C": "Add more system-prompt instructions telling the model not to add preamble",
+      "D": "Set tool_choice to 'none' and ask politely for JSON in the system prompt"
+    },
+    "answer": "A",
+    "explanation": "Prefilling the assistant message with the start of the desired output (such as an opening brace) forces the model to continue from that exact point, eliminating conversational preamble and tightly controlling the response start. (Note: when you can use tool_use, that is the stronger guarantee for structured output, but among these options prefilling is the technique that controls the start.)",
+    "distractors": {
+      "B": "max_tokens controls length, not whether the model begins with conversational text.",
+      "C": "Instructions reduce but do not deterministically prevent preamble the way prefilling the turn does.",
+      "D": "tool_choice 'none' disables tools and still relies on free-form generation that can include preamble."
+    },
+    "tags": [
+      "prefilling",
+      "prompt-engineering"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d4-020",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": null,
+    "difficulty": "hard",
+    "stem": "You are constructing a long extraction prompt that includes a role definition, a set of rules, several reference documents, and one example. The model keeps confusing which block is reference data versus rules versus the example. What is the most effective structural fix?",
+    "options": {
+      "A": "Concatenate everything into one paragraph and trust the model to infer the boundaries",
+      "B": "Convert the entire prompt to a single deeply nested JSON object",
+      "C": "Move all the content into the system prompt and leave the user turn empty",
+      "D": "Wrap each section in distinct XML tags (e.g. <rules>, <documents>, <example>) so the boundaries between content blocks are unambiguous"
+    },
+    "answer": "D",
+    "explanation": "XML tags provide clear, unambiguous structure that separates distinct content blocks (rules, reference documents, examples). This is the recommended way to delineate sections in a complex prompt so the model does not confuse one block for another.",
+    "distractors": {
+      "A": "A single undifferentiated paragraph is exactly what causes the model to confuse the blocks.",
+      "B": "Forcing prose, rules, and documents into nested JSON is awkward and does not improve the model's ability to read the content as distinct sections.",
+      "C": "Relocating to the system prompt does not delineate the internal sections; the boundary problem remains."
+    },
+    "tags": [
+      "xml-tags",
+      "prompt-structure"
+    ],
+    "source": "original-2026"
+  }
+]

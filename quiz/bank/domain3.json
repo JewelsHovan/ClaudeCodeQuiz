@@ -1,0 +1,547 @@
+[
+  {
+    "id": "d3-001",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Developer Productivity",
+    "difficulty": "easy",
+    "stem": "A team wants coding conventions to be shared with everyone who clones the repository and applied automatically in every session. Where should these conventions live?",
+    "options": {
+      "A": "In project-level CLAUDE.md (root or .claude/CLAUDE.md), committed to version control",
+      "B": "In each developer's user-level ~/.claude/CLAUDE.md",
+      "C": "Pasted into the system prompt at the start of every session",
+      "D": "In a .claude/skills/ skill that each developer invokes manually"
+    },
+    "answer": "A",
+    "explanation": "Project-level CLAUDE.md (root CLAUDE.md or .claude/CLAUDE.md) is committed to version control, so it is shared with the whole team and always loaded into context. This is the canonical place for shared, always-on conventions.",
+    "distractors": {
+      "B": "User-level ~/.claude/CLAUDE.md is personal and NOT shared via version control, so teammates would not get the conventions.",
+      "C": "Manually pasting into the system prompt is not shared, not version-controlled, and error-prone.",
+      "D": "Skills require on-demand manual invocation; they are not always loaded, so conventions would be applied inconsistently."
+    },
+    "tags": [
+      "claude-md",
+      "config-hierarchy",
+      "shared-config"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-002",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Developer Productivity",
+    "difficulty": "easy",
+    "stem": "A developer wants to keep a few personal Claude Code preferences (preferred commit message style, verbosity) that should NOT affect teammates. Where should these go?",
+    "options": {
+      "A": "A directory-level CLAUDE.md in the repo's src/ folder",
+      "B": "A .claude/rules/ file with a broad glob pattern",
+      "C": "Root CLAUDE.md committed to the repo",
+      "D": "User-level ~/.claude/CLAUDE.md"
+    },
+    "answer": "D",
+    "explanation": "User-level ~/.claude/CLAUDE.md holds personal preferences that apply across all of a developer's projects and are never shared via version control, making it the correct home for individual, non-team settings.",
+    "distractors": {
+      "A": "A directory CLAUDE.md inside the repo is still committed and shared with teammates.",
+      "B": "A .claude/rules/ file in the repo is shared and scoped by file path, not by individual user.",
+      "C": "Root CLAUDE.md is committed and shared, so personal preferences would leak to the whole team."
+    },
+    "tags": [
+      "claude-md",
+      "personal-vs-shared",
+      "config-hierarchy"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-003",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Claude Code for CI",
+    "difficulty": "easy",
+    "stem": "Your CI job runs `claude \"Review this diff for security issues\"` and the build hangs until it times out. What is the correct fix?",
+    "options": {
+      "A": "Set a shorter session timeout in the CI configuration",
+      "B": "Wrap the command so it pipes 'yes' into Claude Code's stdin",
+      "C": "Add the --interactive=false flag",
+      "D": "Add the -p (print) flag: claude -p \"Review this diff for security issues\""
+    },
+    "answer": "D",
+    "explanation": "The -p (or --print) flag runs Claude Code in non-interactive mode: it processes the prompt, writes output to stdout, and exits. Without it, Claude Code waits for interactive input and hangs in CI.",
+    "distractors": {
+      "A": "A shorter timeout just makes the job fail faster; it does not make Claude Code run non-interactively.",
+      "B": "Piping 'yes' into stdin is a fragile hack that does not properly invoke non-interactive mode.",
+      "C": "--interactive=false is not a real Claude Code flag; -p is the supported mechanism."
+    },
+    "tags": [
+      "ci-cd",
+      "non-interactive",
+      "print-flag",
+      "2026-currency"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-004",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": null,
+    "difficulty": "easy",
+    "stem": "Which statement best captures the difference between CLAUDE.md and a skill?",
+    "options": {
+      "A": "CLAUDE.md is for tool definitions; skills are for documentation",
+      "B": "They are interchangeable; the choice is purely stylistic",
+      "C": "Skills are always loaded; CLAUDE.md is loaded only when a matching file is edited",
+      "D": "CLAUDE.md provides always-loaded universal standards; skills are invoked on-demand for task-specific workflows"
+    },
+    "answer": "D",
+    "explanation": "CLAUDE.md is always loaded into context and carries universal, always-on standards. Skills are invoked on demand for specific task workflows, keeping their (often verbose) instructions out of context until needed.",
+    "distractors": {
+      "A": "Neither is primarily a tool-definition mechanism; both carry instructions/workflows, not tool schemas.",
+      "B": "They serve distinct purposes (always-on vs on-demand), so the choice is functional, not stylistic.",
+      "C": "This reverses the truth: CLAUDE.md is always loaded; skills are on-demand."
+    },
+    "tags": [
+      "skills-vs-claude-md",
+      "config-hierarchy"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-005",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Developer Productivity",
+    "difficulty": "easy",
+    "stem": "Claude Code is behaving inconsistently across sessions and you suspect a stale or wrong memory file is being loaded. Which command helps you verify which memory (CLAUDE.md) files are active?",
+    "options": {
+      "A": "/config",
+      "B": "/rules",
+      "C": "/reload",
+      "D": "/memory"
+    },
+    "answer": "D",
+    "explanation": "The /memory command shows which memory (CLAUDE.md) files are currently loaded, letting you diagnose hierarchy issues such as a user-level file overriding or conflicting with project-level instructions.",
+    "distractors": {
+      "A": "/config is not the command for inspecting loaded memory files.",
+      "B": "/rules is not the command used to list loaded CLAUDE.md memory files.",
+      "C": "/reload is not the diagnostic command for which memory files are loaded."
+    },
+    "tags": [
+      "claude-md",
+      "diagnostics",
+      "memory-command"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-006",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "Your repo has Terraform under infrastructure/, React components under web/, and Python services under services/. Test files live next to the source files they cover throughout all three trees. You want testing conventions to apply to every test file regardless of location, while each language tree keeps its own conventions. What is the best configuration?",
+    "options": {
+      "A": "Put testing conventions in a directory CLAUDE.md at the repo root",
+      "B": "Create a skill that developers invoke before writing any test",
+      "C": "Put all conventions, including testing, in one large root CLAUDE.md",
+      "D": "Use directory-level CLAUDE.md files in each language tree, plus a .claude/rules/ file with a glob like \"**/*.test.*\" (and equivalents) for testing conventions"
+    },
+    "answer": "D",
+    "explanation": "Directory CLAUDE.md files are ideal when conventions are contained within a single directory tree (the per-language conventions). Path-specific .claude/rules/ with glob patterns are ideal when conventions must apply to files spread across the codebase by type (test files everywhere). Combining them matches each need.",
+    "distractors": {
+      "A": "A directory CLAUDE.md at the root applies to the whole tree, not selectively to test files by type.",
+      "B": "A manually invoked skill is not reliable for always-on conventions and adds friction.",
+      "C": "A single root CLAUDE.md loads everything for every file, wasting context and mixing unrelated conventions."
+    },
+    "tags": [
+      "path-specific-rules",
+      "directory-claude-md",
+      "monorepo",
+      "glob"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-007",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": null,
+    "difficulty": "medium",
+    "stem": "You want a custom slash command that accepts a free-form argument the user types after the command name (e.g., /triage <issue-url>) and injects it into the prompt. What is the correct mechanism?",
+    "options": {
+      "A": "Reference $ARGUMENTS in the command's markdown body",
+      "B": "Add context: fork to the command frontmatter",
+      "C": "Define a JSON schema in the command file describing the argument",
+      "D": "Add an argument-hint frontmatter key and Claude will parse the value"
+    },
+    "answer": "A",
+    "explanation": "Custom slash commands substitute the text the user supplies into the command body via the $ARGUMENTS placeholder. This is the mechanism for passing free-form input to a command.",
+    "distractors": {
+      "B": "context: fork controls isolated execution context; it does not capture command arguments.",
+      "C": "Commands do not take a JSON argument schema; $ARGUMENTS is the substitution mechanism.",
+      "D": "argument-hint is a skill frontmatter affordance that prompts for parameters; it is not how commands receive substituted argument text."
+    },
+    "tags": [
+      "commands",
+      "skills-vs-commands",
+      "arguments"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-008",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "You are authoring a codebase-analysis skill that produces hundreds of lines of exploratory output. You want that output kept out of the main conversation so it does not consume the user's context budget. Which frontmatter setting accomplishes this?",
+    "options": {
+      "A": "output: summary",
+      "B": "context: fork",
+      "C": "allowed-tools: [Read, Grep, Glob]",
+      "D": "argument-hint: \"target directory\""
+    },
+    "answer": "B",
+    "explanation": "context: fork runs the skill in an isolated sub-agent context so its verbose output does not pollute the main conversation; only a summary returns. This is the recommended pattern for verbose/exploratory skills.",
+    "distractors": {
+      "A": "output: summary is not a real frontmatter key.",
+      "C": "allowed-tools restricts which tools the skill may use; it does not isolate context.",
+      "D": "argument-hint prompts for a required parameter; it has no effect on context isolation."
+    },
+    "tags": [
+      "skills",
+      "context-fork",
+      "context-management"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-009",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "A skill is supposed to operate read-only (it should never modify files), but it occasionally writes files when the model decides to. What is the most reliable way to guarantee it cannot write?",
+    "options": {
+      "A": "Set context: fork so writes happen in an isolated context",
+      "B": "Set allowed-tools to a read-only set (e.g., Read, Grep, Glob) so write tools are unavailable",
+      "C": "Add a sentence to the skill body saying 'do not modify any files'",
+      "D": "Add an argument-hint warning the user that the skill is read-only"
+    },
+    "answer": "B",
+    "explanation": "allowed-tools restricts the tools available during skill execution. Limiting it to read-only tools makes write/edit tools simply unavailable, giving a deterministic guarantee rather than relying on the model to comply with prose.",
+    "distractors": {
+      "A": "context: fork isolates context but does not prevent the forked context from writing files.",
+      "C": "Prose instructions are probabilistic; the model can still choose to write despite them.",
+      "D": "argument-hint only prompts for parameters; it does not restrict tools."
+    },
+    "tags": [
+      "skills",
+      "allowed-tools",
+      "tool-restriction"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-010",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": null,
+    "difficulty": "medium",
+    "stem": "Two .claude/rules/ files match the file you are editing: rules/general.md with paths [\"src/**/*\"] and rules/payments.md with paths [\"src/payments/**/*.ts\"]. The file is src/payments/charge.ts. Which rule guidance should take precedence when they conflict?",
+    "options": {
+      "A": "Neither; conflicting rules are both ignored",
+      "B": "payments.md, because its glob is more specific to the file",
+      "C": "general.md, because it was likely defined first",
+      "D": "Whichever file is alphabetically last"
+    },
+    "answer": "B",
+    "explanation": "When multiple path-specific rules match, the more specific glob (the narrower, deeper pattern targeting src/payments/**/*.ts) is the more targeted match and should govern that file, just as more-specific scoping wins elsewhere in the config hierarchy.",
+    "distractors": {
+      "A": "Matching rules are applied, not discarded; the more specific one governs on conflict.",
+      "C": "Definition order is not the basis for precedence; specificity of the path match is.",
+      "D": "Alphabetical ordering is not how rule precedence is determined."
+    },
+    "tags": [
+      "path-specific-rules",
+      "glob",
+      "specificity"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-011",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "You want to keep your monolithic root CLAUDE.md from growing unwieldy. Standards for API conventions, testing, and deployment each live in their own markdown files under standards/. What is the recommended way to compose them into CLAUDE.md?",
+    "options": {
+      "A": "Convert each standards file into a separate skill and invoke them all at session start",
+      "B": "Use @import references (e.g., @import ./standards/api-conventions.md) so each package imports only relevant standards",
+      "C": "Move all standards into ~/.claude/CLAUDE.md so they load globally",
+      "D": "Copy the full text of each file into CLAUDE.md and keep them in sync manually"
+    },
+    "answer": "B",
+    "explanation": "@import lets CLAUDE.md reference external files, keeping it modular. Each package's CLAUDE.md can import only the standards relevant to its domain, avoiding a giant monolith and avoiding manual duplication.",
+    "distractors": {
+      "A": "Skills are on-demand and would not reliably load always-on standards at every session.",
+      "C": "User-level CLAUDE.md is not shared with the team and is not the modularization mechanism.",
+      "D": "Copying and manually syncing duplicates content and drifts out of date."
+    },
+    "tags": [
+      "claude-md",
+      "import",
+      "modular-config"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-012",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Claude Code for CI",
+    "difficulty": "medium",
+    "stem": "Your CI generates unit tests, but many duplicate tests that already exist or cover trivial getters/setters. What two-part change most improves generated test quality?",
+    "options": {
+      "A": "Run the generator twice and keep only tests that appear both times",
+      "B": "Lower temperature to 0 and increase max_tokens",
+      "C": "Provide the existing test files in context and document testing standards plus valuable-test criteria in CLAUDE.md",
+      "D": "Only run test generation on files with low code coverage"
+    },
+    "answer": "C",
+    "explanation": "Supplying existing test files lets the generator avoid duplicating scenarios, and documenting testing standards and what counts as a valuable test in CLAUDE.md steers it away from trivial getters/setters. Both address the underlying knowledge gap.",
+    "distractors": {
+      "A": "Running twice does not give the model knowledge of existing tests or quality criteria.",
+      "B": "Temperature and token limits do not tell the model what tests already exist or which are worth writing.",
+      "D": "Coverage targeting helps prioritize but still produces duplicates and trivial tests without the missing context."
+    },
+    "tags": [
+      "ci-cd",
+      "test-generation",
+      "claude-md"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-013",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "You want to guarantee that whenever Claude Code edits a file under src/, the formatter runs and the file is reformatted before the change is considered done, without relying on the model to remember. Which hook fits best?",
+    "options": {
+      "A": "A Stop hook that returns additionalContext reminding Claude to format",
+      "B": "A line in CLAUDE.md instructing Claude to always format after editing",
+      "C": "A PostToolUse hook that runs the formatter on the edited file after the write completes",
+      "D": "A PreToolUse hook that blocks all edits to src/"
+    },
+    "answer": "C",
+    "explanation": "PostToolUse hooks fire after a tool runs and are the right place for deterministic transformations like formatting the file that was just written. This guarantees formatting without depending on the model.",
+    "distractors": {
+      "A": "A Stop hook returning additionalContext nudges the model but is still probabilistic, not a guaranteed transform.",
+      "B": "A CLAUDE.md instruction is probabilistic; the model may forget to format.",
+      "D": "PreToolUse fires before the edit and is for blocking/validation, not for formatting a not-yet-written file."
+    },
+    "tags": [
+      "hooks",
+      "post-tool-use",
+      "transformation"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-014",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "Company policy forbids editing files under config/secrets/. Developers occasionally still ask Claude Code to touch them. What gives the strongest, deterministic guarantee that such edits are blocked before they happen?",
+    "options": {
+      "A": "A PreToolUse hook that inspects the target path and denies any Edit/Write to config/secrets/",
+      "B": "Few-shot examples in the prompt showing Claude refusing such edits",
+      "C": "A PostToolUse hook that reverts any change made under config/secrets/",
+      "D": "A bold warning in CLAUDE.md telling Claude never to edit config/secrets/"
+    },
+    "answer": "A",
+    "explanation": "PreToolUse hooks intercept a tool call before it executes and can deterministically deny it based on the target path. This blocks the edit before any change is made, which prompt-based approaches cannot guarantee.",
+    "distractors": {
+      "B": "Few-shot examples reduce but do not eliminate the failure rate; they are not deterministic.",
+      "C": "A PostToolUse revert lets the write happen first (briefly exposing secrets) and is reactive, not preventive.",
+      "D": "A CLAUDE.md warning is probabilistic and can be ignored by the model."
+    },
+    "tags": [
+      "hooks",
+      "pre-tool-use",
+      "deterministic-enforcement"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-015",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "hard",
+    "stem": "You want a workflow where, when Claude tries to end its turn, a Stop hook checks whether the test suite passed; if not, it should feed the failing test output back to Claude and let it keep working in the SAME turn, without the hook being treated as an error. In Claude Code v2.1.163+, what is the correct hook output?",
+    "options": {
+      "A": "Return a PreToolUse deny decision so the turn is blocked",
+      "B": "Return hookSpecificOutput.additionalContext containing the failing test output (within the 10,000-char cap)",
+      "C": "Write the failures to CLAUDE.md so they load next session",
+      "D": "Exit with a non-zero status code and print the failures to stderr"
+    },
+    "answer": "B",
+    "explanation": "As of v2.1.163 (June 2026), Stop and SubagentStop hooks can return hookSpecificOutput.additionalContext to feed Claude context and continue the turn WITHOUT being treated as a hook error. The additionalContext is capped at 10,000 characters.",
+    "distractors": {
+      "A": "PreToolUse deny is the wrong hook type and is about blocking tool calls, not continuing after Stop.",
+      "C": "Writing to CLAUDE.md affects future sessions, not the current turn's continuation.",
+      "D": "A non-zero exit is treated as a hook error and does not cleanly feed context back to continue the turn."
+    },
+    "tags": [
+      "hooks",
+      "stop-hook",
+      "additionalContext",
+      "2026-currency"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-016",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Developer Productivity",
+    "difficulty": "hard",
+    "stem": "You are packaging your team's set of skills as a Claude Code plugin so a colleague can use them. Using the May 2026 workflow, you run `claude plugin init mytools` and place SKILL.md files in the plugin's .claude/skills directories. What is the result for the colleague?",
+    "options": {
+      "A": "The skills auto-load as mytools@skills-dir with no marketplace or install step",
+      "B": "The skills must be published to a marketplace and installed before they are usable",
+      "C": "The skills only work if added to the colleague's user-level CLAUDE.md",
+      "D": "The colleague must copy each SKILL.md into their own ~/.claude/skills manually"
+    },
+    "answer": "A",
+    "explanation": "As of May 2026, `claude plugin init <name>` scaffolds a plugin, and skills placed in its .claude/skills directories auto-load as <name>@skills-dir with no marketplace publish or install step required.",
+    "distractors": {
+      "B": "The whole point of the May 2026 change is that no marketplace or install step is needed.",
+      "C": "CLAUDE.md is for instructions, not for registering plugin skills; auto-load handles registration.",
+      "D": "Manual copying into ~/.claude/skills is the old, friction-heavy approach this feature removes."
+    },
+    "tags": [
+      "plugins",
+      "skills-auto-load",
+      "plugin-init",
+      "2026-currency"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-017",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "hard",
+    "stem": "Your single Claude Code session writes a feature and then reviews its own diff, but it consistently rates its own code as fine and misses real bugs. What is the most effective architectural change?",
+    "options": {
+      "A": "Run the review in a separate reviewer subagent/instance with isolated context from the implementer",
+      "B": "Increase the model's temperature so the review is more varied",
+      "C": "Re-run the same session twice and merge the two reviews",
+      "D": "Tell the same session in the prompt to 'be a harsh, skeptical reviewer'"
+    },
+    "answer": "A",
+    "explanation": "A session that generated code is less effective at critically reviewing its own changes because it shares the implementer's assumptions and context. Using a separate reviewer subagent with isolated context removes that bias and catches more real issues.",
+    "distractors": {
+      "B": "Temperature changes randomness, not the structural self-review bias.",
+      "C": "Re-running the same context inherits the same blind spots both times.",
+      "D": "Prompting the same biased context to be 'harsh' does not remove the shared assumptions that cause blind spots."
+    },
+    "tags": [
+      "subagents",
+      "context-isolation",
+      "reviewer-vs-implementer",
+      "ci-cd"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-018",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Claude Code for CI",
+    "difficulty": "hard",
+    "stem": "Your automated PR review runs on every push. After a developer addresses the first round and pushes again, the second run re-flags the already-fixed issues and adds new ones, spamming the PR with duplicate comments. What is the best fix?",
+    "options": {
+      "A": "Include the prior review findings in context and instruct Claude to report only new or still-unaddressed issues",
+      "B": "Only review the files changed in the latest commit",
+      "C": "Clear all context before each run so the review starts fresh",
+      "D": "Post the full review every time and let developers ignore duplicates"
+    },
+    "answer": "A",
+    "explanation": "Incremental reviews should carry prior findings into context and instruct Claude to report only new or still-unaddressed issues. This prevents duplicate comments while still catching newly introduced problems.",
+    "distractors": {
+      "B": "Reviewing only latest-commit files misses cross-file integration issues introduced by the changes.",
+      "C": "Clearing context guarantees the same issues get re-flagged because the model has no memory of prior findings.",
+      "D": "Spamming duplicates and relying on developers to filter degrades trust in the tool."
+    },
+    "tags": [
+      "ci-cd",
+      "incremental-review",
+      "context-management"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-019",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Developer Productivity",
+    "difficulty": "hard",
+    "stem": "A shared project skill named /deploy works well for the team, but you personally want a slightly different variant that does an extra dry-run step, without changing the team's behavior or affecting teammates. What is the cleanest approach?",
+    "options": {
+      "A": "Add context: fork to the project skill so it runs differently for you",
+      "B": "Override the team skill by adding deploy to your ~/.claude/CLAUDE.md",
+      "C": "Edit the project's .claude/skills/deploy/SKILL.md and only commit it locally",
+      "D": "Create a personal variant under ~/.claude/skills/ with a different name (e.g., deploy-dryrun)"
+    },
+    "answer": "D",
+    "explanation": "Personal skill customization is done by creating a variant in user-level ~/.claude/skills/ with a different name. This is private, does not touch the shared project skill, and avoids affecting teammates.",
+    "distractors": {
+      "A": "context: fork changes context isolation, not the deploy steps, and editing the shared skill affects everyone.",
+      "B": "CLAUDE.md cannot redefine a skill's steps; it is not the skill mechanism.",
+      "C": "Editing the committed project skill risks affecting teammates and creates messy 'do not commit' state."
+    },
+    "tags": [
+      "skills",
+      "personal-vs-shared",
+      "config-scoping"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-020",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Developer Productivity",
+    "difficulty": "hard",
+    "stem": "Your team wants every member to share a GitHub MCP server when they open the repo in Claude Code, but each member's personal access token must NOT be committed. What is the correct configuration?",
+    "options": {
+      "A": "Commit the token to .mcp.json so the server works immediately on clone",
+      "B": "Add the server to each developer's user-level config and ask everyone to replicate it",
+      "C": "Add the server to project-scoped .mcp.json and reference the token via environment variable expansion (e.g., ${GITHUB_TOKEN})",
+      "D": "Add the server config to the project CLAUDE.md with the token inline"
+    },
+    "answer": "C",
+    "explanation": "Project-scoped .mcp.json is committed to version control so the server is available to everyone on clone, and ${VAR} environment-variable expansion keeps each developer's token out of the repo. Each developer sets GITHUB_TOKEN locally.",
+    "distractors": {
+      "A": "Committing the token to .mcp.json leaks a secret into version control.",
+      "B": "User-level config is not shared and requires manual replication by every member, defeating the goal.",
+      "D": "CLAUDE.md is for instructions, not MCP server configuration, and inlining the token commits a secret."
+    },
+    "tags": [
+      "mcp",
+      "mcp-json",
+      "config-scoping",
+      "secrets"
+    ],
+    "source": "original-2026"
+  }
+]

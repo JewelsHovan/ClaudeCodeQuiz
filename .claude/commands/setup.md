@@ -14,11 +14,12 @@ Check if `profile/learner.md` already exists.
    - What do you need to study most? (MCP, Agent SDK, structured output, etc.)
 4. Update `profile/learner.md` with their answers
 5. Show them the available commands:
-   - `/quiz` — Interactive quiz (adapts to your weak areas)
+   - `/quiz` — Interactive quiz (adapts to your weak areas + spaced-repetition due list)
    - `/study [topic]` — Tutoring mode (e.g., `/study mcp`)
    - `/flashcards` — Rapid-fire drill
-   - `/weak-spots` — Diagnostic assessment
+   - `/weak-spots` — Diagnostic assessment + readiness report
+   - `/mock-exam` — **Timed, interactive HTML exam** (60 Q / 120 min, scored vs 720/1000 with pass estimate)
    - `/cheat-sheet` — Quick reference
    - `/save-progress` — Save session learnings (run at end of every session!)
 
-Tell them: "Your profile will evolve as you study. Run `/save-progress` at the end of each session and your next session will be smarter about what to drill you on."
+Tell them: "Your profile evolves as you study. It tracks each concept in a **spaced-repetition** box system (miss it → it resurfaces next session; nail it repeatedly → it fades out) and keeps a **mistake log** of *why* you missed things. Run `/save-progress` at the end of each session — or after a `/mock-exam` (paste the results JSON) — and your next session targets exactly what you're weak on. When you feel ready, take a full timed `/mock-exam` to calibrate against the real 720/1000 bar."

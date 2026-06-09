@@ -1,8 +1,8 @@
 Analyze my exam readiness and identify weak spots.
 
-**FIRST**: Read `profile/learner.md` and `profile/session-log.md` to understand my history. Compare my current profile against what the diagnostic reveals — note any improvements or regressions since last assessment.
+**FIRST**: Read `profile/learner.md` and `profile/session-log.md` to understand my history. Pay attention to the **Concept Mastery & Spaced Repetition** table (which concepts are overdue / stuck in low boxes), the **Mistake Log** (recurring root causes), and **Mock Exam History**. Compare my current profile against what the diagnostic reveals — note any improvements or regressions since last assessment.
 
-Read ALL study materials in `docs/` and `quiz/` to understand the full exam scope.
+Read ALL study materials in `docs/`, `quiz/`, and the tagged bank `quiz/bank/*.json` to understand the full exam scope. You can pull diagnostic questions straight from the bank by filtering on the hardest tags.
 
 Then quiz me with 2 rapid diagnostic questions per domain (10 total), covering the hardest concepts:
 
@@ -18,5 +18,6 @@ After all 10 questions, give me a readiness report:
 - Specific topics to review with file references
 - Recommended study order for remaining time
 - Overall exam readiness assessment (Ready / Almost Ready / Need More Study)
+- If I'm "Almost Ready" or "Ready", recommend a full timed **`/mock-exam`** to get a scaled-score calibration; if "Need More Study", point me to `/study <weakest topic>` and a focused `/quiz domain N` first.
 
 **IMPORTANT**: After the assessment, automatically run the save-progress logic: update `profile/learner.md` with new confidence levels and update `profile/session-log.md` with this diagnostic session.

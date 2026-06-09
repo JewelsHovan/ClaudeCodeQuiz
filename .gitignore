@@ -4,6 +4,13 @@ profile/
 # Claude Code local settings
 .claude/settings.local.json
 
+# Generated mock-exam HTML + personal results (the generator itself IS committed)
+mock-exams/attempts/
+mock-exams/results/
+
+# Ephemeral implementation plans
+.claude-plans/
+
 # Plugin databases
 .analytics/
 .knowledge/

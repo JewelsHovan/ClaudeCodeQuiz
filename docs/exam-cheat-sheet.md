@@ -3,24 +3,44 @@
 ## Numbers to Memorize
 | Fact | Value |
 |------|-------|
-| Passing score | **720 / 1000** |
-| Scenarios per exam | **4 out of 6** (random) |
+| Questions | **60** (single-select MC: 1 correct + 3 distractors) |
+| Time limit | **120 min** (~2 min/question) |
+| Passing score | **720 / 1000** (scaled, not a percentage) |
+| Scenarios per exam | **4 out of 6** (random draw from the pool) |
+| Delivery | Online-proctored, closed-book (Skilljar) |
 | Max tools per agent for reliable selection | **4-5** |
 | Batch API cost savings | **50%** |
 | Batch API max processing time | **24 hours** |
 | Batch API max requests per batch | **10,000** |
 | Batch API result retention | **29 days** |
 
+> Blueprint is community-confirmed, not Anthropic-published. Cost/validity/prerequisites unconfirmed.
+> See `exam-research-2026.md`. The 6 scenario themes: Customer Support Resolution Agent · Code
+> Generation with Claude Code · Multi-Agent Research System · Developer Productivity · Claude Code for CI ·
+> Structured Data Extraction.
+
 ---
 
 ## Domain Weight at a Glance
-| Domain | % | Your Focus |
+| Domain | % | Focus |
 |--------|---|------------|
-| 1. Agentic Architecture | **27%** | Biggest domain — study hard |
-| 2. Tool Design & MCP | **18%** | Your weak area — deep study |
-| 3. Claude Code Config | **20%** | Your strength — review for precision |
-| 4. Prompt Eng & Output | **20%** | Structured output patterns |
-| 5. Context & Reliability | **15%** | Smallest but still important |
+| 1. Agentic Architecture & Orchestration | **27%** | Biggest domain — weight study time here |
+| 2. Tool Design & MCP Integration | **18%** | Tool descriptions, MCP errors, scoping |
+| 3. Claude Code Config & Workflows | **20%** | Commands vs skills, hooks, plugins, CI |
+| 4. Prompt Eng & Structured Output | **20%** | tool_use vs few-shot, schemas, tool_choice |
+| 5. Context & Reliability | **15%** | Escalation, degradation, stratified validation |
+
+---
+
+## 2026 Currency (don't get caught on stale facts)
+| Topic | Current state |
+|-------|---------------|
+| Flagship model | **Claude Opus 4.8** (Opus 4.7 also active; Opus 4.1 retires **Aug 5, 2026**) |
+| Claude Code plugins | `claude plugin init <name>` scaffolds a plugin; skills in `.claude/skills` **auto-load** (no marketplace/install) |
+| Stop / SubagentStop hooks | can return `hookSpecificOutput.additionalContext` (≤10k chars) to feed context **without** a hook error (v2.1.163) |
+
+> Model/tooling facts are time-sensitive — re-verify on `platform.claude.com/docs` and
+> `code.claude.com/docs/en/changelog` before sitting.
 
 ---
 

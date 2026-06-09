@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Claude Certified Architect — Foundations · Mock Exam</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --ink:#e7e9ee; --muted:#9aa3b2;
+    --line:#2a2f3a; --accent:#cc785c; --accent2:#d4a27f; --good:#46b873;
+    --bad:#e2606b; --warn:#e0b341; --pick:#2d3340;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--accent2)}
+  .wrap{max-width:920px;margin:0 auto;padding:24px 18px 80px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;margin:14px 0}
+  h1{font-size:22px;margin:0 0 4px} h2{font-size:17px;margin:0 0 10px}
+  .muted{color:var(--muted)} .small{font-size:13px}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;border:1px solid var(--line);background:var(--panel2);color:var(--muted)}
+  .badge.dom{color:var(--accent2);border-color:#3a2f2a}
+  .badge.easy{color:#7bd88f}.badge.medium{color:var(--warn)}.badge.hard{color:var(--bad)}
+  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink);padding:9px 16px}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#1a1206;font-weight:600}
+  button.primary:hover{filter:brightness(1.06)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .spread{justify-content:space-between}
+  /* sticky bar */
+  #bar{position:sticky;top:0;z-index:5;background:rgba(15,17,21,.92);backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);padding:10px 18px;display:none}
+  #bar .inner{max-width:920px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  #timer{font-variant-numeric:tabular-nums;font-weight:700;font-size:18px}
+  #timer.warn{color:var(--warn)} #timer.crit{color:var(--bad)}
+  .scenario{margin:6px 0 14px;padding:10px 14px;border-left:3px solid var(--accent);
+    background:var(--panel2);border-radius:0 10px 10px 0}
+  .opt{display:block;width:100%;text-align:left;margin:8px 0;padding:12px 14px;border-radius:10px;
+    border:1px solid var(--line);background:var(--panel2)}
+  .opt:hover{border-color:var(--accent2)}
+  .opt.sel{border-color:var(--accent);background:var(--pick)}
+  .opt .L{font-weight:700;color:var(--accent2);margin-right:8px}
+  .opt.correct{border-color:var(--good);background:#13261b}
+  .opt.wrong{border-color:var(--bad);background:#2a1518}
+  .palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:7px}
+  .pal{padding:8px 0;text-align:center;border-radius:8px;border:1px solid var(--line);background:var(--panel2);font-size:13px}
+  .pal.answered{border-color:var(--accent2);color:var(--accent2)}
+  .pal.flagged{box-shadow:inset 0 0 0 2px var(--warn)}
+  .pal.cur{outline:2px solid var(--ink)}
+  .barmeter{height:10px;background:var(--panel2);border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+  .barmeter > i{display:block;height:100%;background:var(--accent)}
+  table{width:100%;border-collapse:collapse} td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+  .pill{font-size:30px;font-weight:800} .pass{color:var(--good)} .fail{color:var(--bad)}
+  .rev{border-top:1px dashed var(--line);margin-top:14px;padding-top:12px}
+  .hide{display:none}
+  code{background:#0c0e12;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:13px}
+  .note{font-size:13px;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<div id="bar"><div class="inner">
+  <div class="row"><strong>CCA Mock</strong><span class="muted small" id="barprog"></span></div>
+  <div class="row"><span id="timer">--:--</span>
+    <button id="btnSubmit" class="primary">Submit exam</button></div>
+</div></div>
+
+<div class="wrap">
+  <!-- START -->
+  <div id="start" class="card">
+    <h1>Claude Certified Architect — Foundations</h1>
+    <div class="muted" id="startSuffix"></div>
+    <p>This is a <strong>timed mock exam</strong>. Once you start, the clock runs and
+    auto-submits at zero. Answers and explanations are hidden until you submit.</p>
+    <table>
+      <tr><td>Questions</td><td id="sCount"></td></tr>
+      <tr><td>Time limit</td><td id="sTime"></td></tr>
+      <tr><td>Pass mark</td><td id="sPass"></td></tr>
+      <tr><td>Format</td><td>Single-select multiple choice (1 correct + 3 distractors), grouped by scenario</td></tr>
+    </table>
+    <p class="note">Scaled scoring shown is a <strong>linear approximation</strong> of raw %
+      (real exam scaling differs). Blueprint is community-confirmed, not Anthropic-published —
+      see <code>docs/exam-research-2026.md</code>.</p>
+    <div class="row"><button class="primary" id="btnStart">Start exam</button>
+      <label class="row small muted"><input type="checkbox" id="optReveal"/> reveal answer after each question (practice mode, untimed feel)</label></div>
+  </div>
+
+  <!-- EXAM -->
+  <div id="exam" class="hide">
+    <div class="card">
+      <div id="scenarioBox" class="scenario hide"></div>
+      <div class="row spread small muted">
+        <span id="qmeta"></span><span id="qid" class="muted"></span>
+      </div>
+      <h2 id="stem"></h2>
+      <div id="opts"></div>
+      <div class="row spread" style="margin-top:14px">
+        <button id="btnPrev">← Prev</button>
+        <button id="btnFlag">⚑ Flag for review</button>
+        <button id="btnNext" class="primary">Next →</button>
+      </div>
+      <div id="inlineReveal" class="rev hide"></div>
+    </div>
+    <div class="card">
+      <div class="row spread"><strong>Question navigator</strong>
+        <span class="small muted">answered <span id="answeredN">0</span>/<span id="totalN">0</span> · flagged <span id="flaggedN">0</span></span></div>
+      <div class="palette" id="palette" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results" class="hide"></div>
+</div>
+
+<script>
+const META = {"count": 20, "minutes": 40, "passScaled": 720, "scaleMax": 1000, "weights": {"1": 27, "2": 18, "3": 20, "4": 20, "5": 15}, "domainNames": {"1": "Agentic Architecture & Orchestration", "2": "Tool Design & MCP Integration", "3": "Claude Code Configuration & Workflows", "4": "Prompt Engineering & Structured Output", "5": "Context Management & Reliability"}, "generated": "2026-06-08 21:20", "titleSuffix": "Full domain-weighted mock · mirrors the 27/18/20/20/15 blueprint"};
+const QUESTIONS = [{"n": 1, "id": "d1-024", "domain": 1, "domainName": "Agentic Architecture & Orchestration", "scenario": "Multi-Agent Research System", "difficulty": "hard", "stem": "Profiling your coordinator/subagent system shows it is fast but expensive: the coordinator (Opus 4.8) re-reads every subagent's full raw output, and three subagents run in parallel on every query regardless of need. You must reduce cost while protecting result quality. Which set of changes is most aligned with sound orchestration?", "options": {"A": "Increase the coordinator's context window so it can keep absorbing full raw outputs without trimming", "B": "Have subagents return concise structured results (claims with source metadata) instead of raw dumps, route dynamically so only needed subagents run, and keep Opus 4.8 for the coordinator's decomposition/synthesis reasoning", "C": "Switch the coordinator to a small model and keep passing full raw outputs, since the coordinator only aggregates", "D": "Run all subagents sequentially to lower peak cost, accepting the added latency"}, "answer": "B", "explanation": "Cost drops by trimming subagent outputs to concise structured results (preserving provenance), routing dynamically so only needed subagents run, and reserving the flagship for the reasoning that actually needs it. Quality is protected because the hard reasoning still uses Opus 4.8 and provenance is retained.", "distractors": {"A": "A bigger window lets waste persist; the fix is to reduce what flows into context, not to accommodate more of it.", "C": "Decomposition and result aggregation are demanding reasoning tasks; a weak coordinator with full raw dumps harms quality and barely saves cost.", "D": "Serializing subagents trades latency for marginal savings and ignores the real waste: running unneeded subagents and passing raw dumps."}, "tags": ["cost", "model-selection", "dynamic-routing", "context-management", "opus-4.8"]}, {"n": 2, "id": "d5-018", "domain": 5, "domainName": "Context Management & Reliability", "scenario": "Multi-Agent Research System", "difficulty": "hard", "stem": "Downstream agents in your pipeline have small context budgets. A research subagent currently returns long prose with its full reasoning chain, overflowing those budgets. How should the subagent's output be redesigned, and how should the final report render mixed content?", "options": {"A": "Return raw tool outputs unchanged and let each downstream agent trim them itself", "B": "Return the full prose and reasoning verbatim, and convert the entire final report to a single uniform format", "C": "Return structured outputs (key facts, citations, relevance scores) with required metadata, and render content types appropriately — financial data as tables, news as prose, technical findings as structured lists", "D": "Return only a one-sentence summary with no metadata, and render everything as a flat bullet list"}, "answer": "C", "explanation": "When downstream agents have limited context budgets, subagents should return compact structured data — key facts, citations, relevance scores, and required metadata (dates, source locations) — instead of verbose prose and reasoning chains. The final report should also render each content type in its natural form (tables for financial data, prose for news, structured lists for technical findings) rather than forcing one uniform format.", "distractors": {"A": "Pushing trimming downstream wastes each agent's scarce budget receiving the bloat first.", "B": "Verbatim prose overflows small budgets, and a single uniform format misrepresents different content types.", "D": "Stripping all metadata destroys provenance, and a flat bullet list is wrong for tabular financial data."}, "tags": ["structured-subagent-output", "context-budget", "output-formatting", "provenance"]}, {"n": 3, "id": "d4-016", "domain": 4, "domainName": "Prompt Engineering & Structured Output", "scenario": "Multi-Agent Research System", "difficulty": "hard", "stem": "A generation agent writes a report section, then is asked to review its own output for subtle factual errors in the same session. It rarely catches its own mistakes. Which approach most reliably surfaces these subtle issues?", "options": {"A": "Enable extended thinking on the generator so it reasons longer before finalizing", "B": "Append 'now carefully double-check your own work for errors' to the generation prompt", "C": "Raise the temperature on the review pass to encourage the model to consider alternatives", "D": "Route the output to an independent review instance that does not carry the generator's reasoning context"}, "answer": "D", "explanation": "A model retains its reasoning context from generation and is biased toward defending its own decisions. An independent review instance, lacking that context, is more effective than self-review instructions or extended thinking at catching subtle issues.", "distractors": {"A": "Extended thinking helps reasoning depth but does not overcome the generator's bias toward its own prior conclusions.", "B": "Self-review instructions still run inside the generator's reasoning context, so the same blind spots persist.", "C": "Temperature changes randomness, not the structural problem of self-review bias within one session."}, "tags": ["independent-review", "self-review-limitation"]}, {"n": 4, "id": "d2-011", "domain": 2, "domainName": "Tool Design & MCP Integration", "scenario": "Multi-Agent Research System", "difficulty": "medium", "stem": "A single research agent has 17 tools and increasingly picks the wrong one, with slow, token-heavy selection turns. Following the tool-count heuristics, what is the most effective architectural change?", "options": {"A": "Merge several tools into a few mega-tools that each take a `mode` parameter", "B": "Partition the 17 tools into specialized subagents of roughly 4-5 tools each, fronted by a coordinator that delegates", "C": "Add a few-shot example for each of the 17 tools to teach correct selection", "D": "Since the count is well under 10, simply rewrite the descriptions to be more distinct"}, "answer": "B", "explanation": "Once a tool set grows past ~15, the right move is to PARTITION tools across specialized subagents (about 4-5 tools each) with a coordinator delegating to them. Fixing descriptions is the remedy when the count is under ~10; at 17 tools, description tweaks alone will not overcome attention dilution and tool-space interference.", "distractors": {"A": "Mega-tools with a `mode` flag hide capability behind opaque parameters, harming selection clarity rather than improving it.", "C": "Adding 17 few-shot examples bloats context further and does not address the underlying scaling problem.", "D": "17 is past the partition threshold, not under 10; description rewrites help with small sets but will not resolve degradation at this scale."}, "tags": ["tool-count", "subagents", "scaling"]}, {"n": 5, "id": "d2-008", "domain": 2, "domainName": "Tool Design & MCP Integration", "scenario": "Multi-Agent Research System", "difficulty": "medium", "stem": "A document-analysis subagent's `fetch_source` tool hits a 30-second network timeout. The subagent returns `{\"status\": \"error\", \"message\": \"failed\"}` to the coordinator, which immediately re-issues the identical request and times out again. What is the core problem with this error reporting?", "options": {"A": "The error should have been a protocol error so the coordinator's framework retries automatically", "B": "The subagent should have returned an empty success result to avoid alarming the coordinator", "C": "The error lacks structured context — failure type, what was attempted, any partial results, and alternative approaches — so the coordinator cannot make an intelligent recovery decision", "D": "The coordinator should never retry; subagent failures must always escalate to a human"}, "answer": "C", "explanation": "A generic \"failed\" status hides the information the coordinator needs to recover well: the failure type (transient timeout), what was attempted, any partial results, and possible alternatives. With structured context the coordinator could, for example, back off, try an alternate source, or proceed with partial data instead of blindly retrying.", "distractors": {"A": "Subagent execution failures are tool-execution errors the model should see, not protocol errors hidden from it; framework auto-retry would not add the missing context either.", "B": "Reporting a failure as empty success suppresses the error and prevents any recovery — an explicit anti-pattern.", "D": "Retrying transient failures is legitimate; the issue is the missing context, not retrying itself, and not every failure warrants human escalation."}, "tags": ["error-propagation", "multi-agent", "structured-errors"]}, {"n": 6, "id": "d3-014", "domain": 3, "domainName": "Claude Code Configuration & Workflows", "scenario": "Code Generation with Claude Code", "difficulty": "medium", "stem": "Company policy forbids editing files under config/secrets/. Developers occasionally still ask Claude Code to touch them. What gives the strongest, deterministic guarantee that such edits are blocked before they happen?", "options": {"A": "A PreToolUse hook that inspects the target path and denies any Edit/Write to config/secrets/", "B": "Few-shot examples in the prompt showing Claude refusing such edits", "C": "A PostToolUse hook that reverts any change made under config/secrets/", "D": "A bold warning in CLAUDE.md telling Claude never to edit config/secrets/"}, "answer": "A", "explanation": "PreToolUse hooks intercept a tool call before it executes and can deterministically deny it based on the target path. This blocks the edit before any change is made, which prompt-based approaches cannot guarantee.", "distractors": {"B": "Few-shot examples reduce but do not eliminate the failure rate; they are not deterministic.", "C": "A PostToolUse revert lets the write happen first (briefly exposing secrets) and is reactive, not preventive.", "D": "A CLAUDE.md warning is probabilistic and can be ignored by the model."}, "tags": ["hooks", "pre-tool-use", "deterministic-enforcement"]}, {"n": 7, "id": "d1-016", "domain": 1, "domainName": "Agentic Architecture & Orchestration", "scenario": "Code Generation with Claude Code", "difficulty": "hard", "stem": "You are designing an automated coding assistant for a single, well-bounded task: fixing lint errors in a small repository using only Read, Edit, and a lint-runner tool. A colleague proposes a coordinator with four specialized subagents. What is the best architectural call?", "options": {"A": "Use a single agent with the three needed tools; the task is narrow and does not justify multi-agent overhead", "B": "Adopt the multi-agent design now so the system can scale later", "C": "Use multiple coordinators for redundancy in case one fails", "D": "Use a coordinator with one subagent to keep the door open for more subagents"}, "answer": "A", "explanation": "Multi-agent orchestration adds latency, cost, and coordination complexity. A narrow, single-purpose task with a small toolset is best served by one well-scoped agent.", "distractors": {"B": "Adopting multi-agent for a narrow task is premature optimization that adds overhead without benefit.", "C": "Multiple coordinators add complexity and split control; redundancy is not the concern for this task.", "D": "A coordinator wrapping a single subagent adds an indirection layer with no payoff."}, "tags": ["single-vs-multi-agent", "architecture-decision"]}, {"n": 8, "id": "d2-018", "domain": 2, "domainName": "Tool Design & MCP Integration", "scenario": "Code Generation with Claude Code", "difficulty": "hard", "stem": "Your repo has a project-scoped `github` MCP server in committed `.mcp.json`. A developer needs to temporarily point their own session at a forked, experimental GitHub MCP endpoint without changing the shared file or affecting teammates. Given the scope precedence (local > project > user), what should they do?", "options": {"A": "Add a user-scoped `github` server; user scope overrides project scope globally", "B": "Add a local-scoped `github` server entry pointing at the experimental endpoint; local precedence overrides the project entry for that developer only", "C": "Edit the committed `.mcp.json` to the experimental URL and revert before pushing", "D": "Delete the project entry from `.mcp.json` so the experimental server is the only one"}, "answer": "B", "explanation": "Local scope is private to the developer and the project, and has the highest precedence (local > project > user). Adding a local-scoped `github` entry overrides the shared project entry only for that developer, leaving the committed `.mcp.json` and teammates untouched.", "distractors": {"A": "User scope is the LOWEST precedence and is overridden by the project entry, so it would not take effect over the committed `github` server.", "C": "Editing the shared committed file risks accidentally pushing the experimental URL and affects everyone until reverted.", "D": "Deleting the project entry modifies the shared file and breaks the server for all teammates."}, "tags": ["mcp-scoping", "scope-precedence", "configuration"]}, {"n": 9, "id": "d5-005", "domain": 5, "domainName": "Context Management & Reliability", "scenario": "Code Generation with Claude Code", "difficulty": "easy", "stem": "During a long codebase-exploration session, Claude Code starts giving inconsistent answers and refers to \"typical patterns\" rather than the specific classes it identified earlier. The verbose discovery output has filled the context. What is the most appropriate first action?", "options": {"A": "Restart from scratch in a brand-new session", "B": "Ask the same questions repeatedly until answers stabilize", "C": "Run /compact to condense the filled context while continuing the same session", "D": "Raise the temperature so the model is more creative"}, "answer": "C", "explanation": "When context fills with verbose discovery output and answers degrade, /compact condenses the conversation so the session can continue with the important information retained. It directly targets the bloat causing degradation.", "distractors": {"A": "A full restart throws away all the discovered findings and wastes the prior exploration.", "B": "Re-asking does not reclaim context space and will keep producing degraded, generic answers.", "D": "Higher temperature increases variability, worsening the inconsistency."}, "tags": ["context-degradation", "compact"]}, {"n": 10, "id": "d3-007", "domain": 3, "domainName": "Claude Code Configuration & Workflows", "scenario": "General", "difficulty": "medium", "stem": "You want a custom slash command that accepts a free-form argument the user types after the command name (e.g., /triage <issue-url>) and injects it into the prompt. What is the correct mechanism?", "options": {"A": "Reference $ARGUMENTS in the command's markdown body", "B": "Add context: fork to the command frontmatter", "C": "Define a JSON schema in the command file describing the argument", "D": "Add an argument-hint frontmatter key and Claude will parse the value"}, "answer": "A", "explanation": "Custom slash commands substitute the text the user supplies into the command body via the $ARGUMENTS placeholder. This is the mechanism for passing free-form input to a command.", "distractors": {"B": "context: fork controls isolated execution context; it does not capture command arguments.", "C": "Commands do not take a JSON argument schema; $ARGUMENTS is the substitution mechanism.", "D": "argument-hint is a skill frontmatter affordance that prompts for parameters; it is not how commands receive substituted argument text."}, "tags": ["commands", "skills-vs-commands", "arguments"]}, {"n": 11, "id": "d1-006", "domain": 1, "domainName": "Agentic Architecture & Orchestration", "scenario": "Developer Productivity", "difficulty": "easy", "stem": "Yesterday you ran a long Claude Code session investigating a large service. Since then exactly three files changed. You want to keep building on the prior investigation rather than redo it. What is the best approach?", "options": {"A": "Start a fresh session and re-explore the entire codebase from scratch", "B": "Resume the named session and tell the agent which three files changed, asking for targeted re-analysis", "C": "Resume the session and let the agent rediscover the changes on its own as it works", "D": "Fork the session into two branches and compare the results"}, "answer": "B", "explanation": "When prior context is mostly valid and only a few files changed, resume the session and explicitly name the changed files so the agent does targeted re-analysis instead of full re-exploration.", "distractors": {"A": "Starting fresh discards still-valid prior work and is wasteful when only three files changed.", "C": "Letting the agent rediscover changes risks it reasoning over stale tool results without knowing they changed.", "D": "Forking is for comparing divergent approaches, not for continuing one investigation after small edits."}, "tags": ["session-management", "resume", "developer-productivity"]}, {"n": 12, "id": "d3-016", "domain": 3, "domainName": "Claude Code Configuration & Workflows", "scenario": "Developer Productivity", "difficulty": "hard", "stem": "You are packaging your team's set of skills as a Claude Code plugin so a colleague can use them. Using the May 2026 workflow, you run `claude plugin init mytools` and place SKILL.md files in the plugin's .claude/skills directories. What is the result for the colleague?", "options": {"A": "The skills auto-load as mytools@skills-dir with no marketplace or install step", "B": "The skills must be published to a marketplace and installed before they are usable", "C": "The skills only work if added to the colleague's user-level CLAUDE.md", "D": "The colleague must copy each SKILL.md into their own ~/.claude/skills manually"}, "answer": "A", "explanation": "As of May 2026, `claude plugin init <name>` scaffolds a plugin, and skills placed in its .claude/skills directories auto-load as <name>@skills-dir with no marketplace publish or install step required.", "distractors": {"B": "The whole point of the May 2026 change is that no marketplace or install step is needed.", "C": "CLAUDE.md is for instructions, not for registering plugin skills; auto-load handles registration.", "D": "Manual copying into ~/.claude/skills is the old, friction-heavy approach this feature removes."}, "tags": ["plugins", "skills-auto-load", "plugin-init", "2026-currency"]}, {"n": 13, "id": "d1-014", "domain": 1, "domainName": "Agentic Architecture & Orchestration", "scenario": "Developer Productivity", "difficulty": "medium", "stem": "An engineer asks the agent to \"add comprehensive tests to this large legacy module with no existing test suite.\" The work is open-ended: the right subtasks aren't knowable until the code is explored. Which decomposition approach fits, and what is the right first step?", "options": {"A": "Fixed prompt chaining with a predetermined per-file test-writing sequence", "B": "Immediately generate tests for every function alphabetically to maximize coverage fast", "C": "Escalate to a human because legacy code without tests cannot be handled by an agent", "D": "Dynamic adaptive decomposition: first map the module's structure, identify high-impact areas, then build a prioritized plan that adapts as dependencies surface"}, "answer": "D", "explanation": "Open-ended tasks call for dynamic adaptive decomposition: explore and map structure first, identify high-impact areas, then form a prioritized plan that adapts as dependencies are discovered.", "distractors": {"A": "Fixed chaining presupposes a known structure, which is exactly what is missing in open-ended legacy work.", "B": "Alphabetical mass generation ignores impact and dependencies and produces low-value tests.", "C": "This is well within agent capability using the right decomposition; escalation is unwarranted."}, "tags": ["task-decomposition", "dynamic-decomposition", "developer-productivity"]}, {"n": 14, "id": "d1-019", "domain": 1, "domainName": "Agentic Architecture & Orchestration", "scenario": "Developer Productivity", "difficulty": "medium", "stem": "An engineer wants to compare two refactoring strategies for the same module, each branching from the same already-completed analysis. They want each exploration to proceed independently without polluting the other's context. Which session capability fits best?", "options": {"A": "Use fork_session to create independent branches from the shared analysis baseline, one per strategy", "B": "Start two completely unrelated new sessions and re-run the analysis in each", "C": "Resume the same named session for both so they share state", "D": "Run both strategies in a single session sequentially in the same context"}, "answer": "A", "explanation": "fork_session creates independent branches from a shared baseline, ideal for exploring divergent approaches in parallel without cross-contamination.", "distractors": {"B": "Re-running the analysis twice wastes work; the point is to fork from the existing baseline.", "C": "Sharing one session intermingles the two strategies' context, which is what must be avoided.", "D": "Sequential exploration in one context lets the first strategy's reasoning contaminate the second."}, "tags": ["fork-session", "session-management", "comparison"]}, {"n": 15, "id": "d4-008", "domain": 4, "domainName": "Prompt Engineering & Structured Output", "scenario": "Structured Data Extraction", "difficulty": "medium", "stem": "Your classifier assigns each document a category from the enum [finance, legal, technical]. Documents that fit none are being force-fit into the closest category, corrupting downstream analytics. What is the best schema-level fix?", "options": {"A": "Remove the enum constraint and let category be any free-text string", "B": "Add an 'other' value to the enum plus a category_detail string field that the model fills with a free-text explanation when 'other' is chosen", "C": "Add ten more specific categories to the enum to cover every possible case", "D": "Make category nullable so unclassifiable documents return null"}, "answer": "B", "explanation": "An 'other' escape-hatch value combined with a detail field captures documents that fit no defined category without forcing a wrong choice, while preserving structured analytics on the known categories and capturing rationale for the unknowns.", "distractors": {"A": "Dropping the enum loses validation entirely and produces inconsistent free-text categories that break analytics.", "C": "Endlessly expanding the enum is unmaintainable and still cannot anticipate every novel document type.", "D": "Null erases the fact that the document WAS classifiable as 'other-but-real' and discards the explanatory detail an escape hatch would capture."}, "tags": ["enum-escape-hatch", "schema-design"]}, {"n": 16, "id": "d4-007", "domain": 4, "domainName": "Prompt Engineering & Structured Output", "scenario": "Structured Data Extraction", "difficulty": "medium", "stem": "You want the model to reason through ambiguous documents using extended thinking AND guarantee it returns structured output. You set tool_choice to 'any' and enable extended thinking, but the API rejects the request. What is the correct resolution?", "options": {"A": "Lower max_tokens so the thinking budget fits, which resolves the incompatibility", "B": "Use tool_choice 'auto' with extended thinking, since 'any' and forced tool choice are incompatible with extended thinking", "C": "Switch to forced tool_choice (type 'tool'), which is the only mode compatible with extended thinking", "D": "Keep tool_choice 'any' and disable extended thinking permanently, as the two can never coexist in any form"}, "answer": "B", "explanation": "Extended thinking is incompatible with 'any' and forced tool choice. The supported pattern is to use tool_choice 'auto' together with extended thinking, and strongly steer toward the tool via the prompt and schema design.", "distractors": {"A": "The conflict is about the tool_choice mode, not the token budget, so changing max_tokens does not resolve it.", "C": "Forced tool choice ('tool') is also incompatible with extended thinking; only 'auto' works.", "D": "You do not have to abandon extended thinking; 'auto' coexists with it, so this overstates the constraint."}, "tags": ["tool_choice", "extended-thinking", "constraints"]}, {"n": 17, "id": "d5-016", "domain": 5, "domainName": "Context Management & Reliability", "scenario": "Structured Data Extraction", "difficulty": "hard", "stem": "An extraction call fails a semantic check: the line items do not sum to the stated invoice total (the JSON is syntactically valid). You implement retry-with-error-feedback that resends the document, the failed extraction, and the specific validation error. What additional safeguard is most important?", "options": {"A": "Bound the number of retries and, when the bound is exhausted, route the item to human review with the captured error context", "B": "Switch to a larger model only after 50 consecutive failures", "C": "Allow unlimited retries until the extraction eventually validates", "D": "Disable validation so the extraction always succeeds"}, "answer": "A", "explanation": "Retry-with-error-feedback must be bounded. Some documents will never validate (e.g., the source itself is inconsistent), so unbounded retries waste cost and can loop forever. After the retry bound is hit, escalate the item to human review carrying the validation error context.", "distractors": {"B": "An arbitrary 50-failure threshold is still effectively unbounded per item and delays human handling.", "C": "Unlimited retries can loop indefinitely on inputs that can never satisfy the check, burning cost.", "D": "Disabling validation hides genuine extraction errors — the opposite of reliability."}, "tags": ["retry-feedback", "bounded-retries", "human-review"]}, {"n": 18, "id": "d4-001", "domain": 4, "domainName": "Prompt Engineering & Structured Output", "scenario": "Structured Data Extraction", "difficulty": "easy", "stem": "You define a tool with a strict JSON schema and call the model with tool_use to extract invoice data. After thousands of runs you observe zero malformed-JSON, wrong-type, or out-of-enum errors, yet some extractions still place a vendor's phone number in the email field. What guarantee does tool_use actually provide?", "options": {"A": "It eliminates semantic errors but malformed JSON can still occur under load", "B": "It only validates output after generation, so any class of error can still appear in the returned object", "C": "It guarantees both syntactically and semantically correct output as long as the schema is strict", "D": "It eliminates JSON syntax and type errors but does not prevent semantic errors like values landing in the wrong field"}, "answer": "D", "explanation": "Tool use with JSON schemas eliminates SYNTAX-class errors (malformed JSON, wrong types, missing required fields, out-of-enum values) but does NOT prevent SEMANTIC errors such as hallucinated values or data placed in the wrong field. A phone number in the email field is a semantic error.", "distractors": {"A": "This reverses the guarantee. Tool use eliminates syntax errors, not semantic ones.", "B": "Tool use constrains generation to conform to the schema, so syntax/type errors are eliminated, not merely validated after the fact.", "C": "Strict schemas cannot enforce meaning; semantic correctness (right value in right field) is never guaranteed by schema enforcement."}, "tags": ["structured-output", "tool_use", "semantic-vs-syntax"]}, {"n": 19, "id": "d3-003", "domain": 3, "domainName": "Claude Code Configuration & Workflows", "scenario": "Claude Code for CI", "difficulty": "easy", "stem": "Your CI job runs `claude \"Review this diff for security issues\"` and the build hangs until it times out. What is the correct fix?", "options": {"A": "Set a shorter session timeout in the CI configuration", "B": "Wrap the command so it pipes 'yes' into Claude Code's stdin", "C": "Add the --interactive=false flag", "D": "Add the -p (print) flag: claude -p \"Review this diff for security issues\""}, "answer": "D", "explanation": "The -p (or --print) flag runs Claude Code in non-interactive mode: it processes the prompt, writes output to stdout, and exits. Without it, Claude Code waits for interactive input and hangs in CI.", "distractors": {"A": "A shorter timeout just makes the job fail faster; it does not make Claude Code run non-interactively.", "B": "Piping 'yes' into stdin is a fragile hack that does not properly invoke non-interactive mode.", "C": "--interactive=false is not a real Claude Code flag; -p is the supported mechanism."}, "tags": ["ci-cd", "non-interactive", "print-flag", "2026-currency"]}, {"n": 20, "id": "d2-015", "domain": 2, "domainName": "Tool Design & MCP Integration", "scenario": "Customer Support Resolution Agent", "difficulty": "hard", "stem": "A reviewer argues: \"We set `readOnlyHint: true` and `destructiveHint: false` on our `cancel_subscription` tool, so the host can safely auto-approve it without user confirmation.\" Why is this reasoning flawed?", "options": {"A": "Annotations only apply to resources, so they have no bearing on tool approval at all", "B": "The flaw is only that `readOnlyHint` should have been false; with that one change, auto-approval would be safe", "C": "It is sound; annotations are authoritative and hosts should trust them for auto-approval", "D": "Annotations are untrusted hints; the host MUST NOT make security-critical decisions based solely on them and should still enforce its own controls"}, "answer": "D", "explanation": "Tool annotations are HINTS, not guarantees. The MCP spec states clients/hosts must not make security-critical decisions based solely on annotations, since a server could advertise misleading values. The host must enforce its own authorization and confirmation policies regardless of what a tool claims.", "distractors": {"A": "Annotations apply to tools (readOnly/destructive/idempotent/openWorld hints); the claim that they only apply to resources is incorrect.", "B": "Even with perfectly accurate annotations, the host still cannot delegate security-critical approval to them; correcting one value does not make sole-reliance safe.", "C": "Annotations are explicitly non-authoritative hints; trusting them for security decisions is exactly what the spec warns against."}, "tags": ["tool-annotations", "security", "hints-only"]}];
+const $ = s => document.querySelector(s);
+const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+
+let cur = 0, reveal = false, submitted = false;
+let remaining = META.minutes*60, timerId = null, startedAt = null;
+const state = QUESTIONS.map(()=>({pick:null, flag:false}));
+
+// --- start screen ---
+$('#startSuffix').textContent = META.titleSuffix || '';
+$('#sCount').textContent = META.count + ' questions';
+$('#sTime').textContent = META.minutes + ' minutes (~' + (META.minutes*60/META.count).toFixed(0) + 's/question)';
+$('#sPass').textContent = META.passScaled + ' / ' + META.scaleMax + ' (scaled)';
+$('#totalN').textContent = META.count;
+
+$('#btnStart').onclick = () => {
+  reveal = $('#optReveal').checked;
+  startedAt = new Date();
+  $('#start').classList.add('hide');
+  $('#exam').classList.remove('hide');
+  $('#bar').style.display = 'block';
+  buildPalette(); render(); tick(); timerId = setInterval(tick, 1000);
+};
+
+function tick(){
+  $('#timer').textContent = fmt(remaining);
+  const t = $('#timer');
+  t.classList.toggle('warn', remaining<=600 && remaining>120);
+  t.classList.toggle('crit', remaining<=120);
+  if(remaining<=0){ clearInterval(timerId); doSubmit(true); return; }
+  remaining--;
+}
+
+function buildPalette(){
+  const p = $('#palette'); p.innerHTML='';
+  QUESTIONS.forEach((q,i)=>{
+    const b=document.createElement('div'); b.className='pal'; b.textContent=i+1;
+    b.onclick=()=>{cur=i;render();}; p.appendChild(b);
+  });
+}
+function refreshPalette(){
+  [...$('#palette').children].forEach((b,i)=>{
+    b.classList.toggle('answered', state[i].pick!=null);
+    b.classList.toggle('flagged', state[i].flag);
+    b.classList.toggle('cur', i===cur);
+  });
+  $('#answeredN').textContent = state.filter(s=>s.pick!=null).length;
+  $('#flaggedN').textContent = state.filter(s=>s.flag).length;
+  $('#barprog').textContent = `Q${cur+1} of ${META.count} · answered ${state.filter(s=>s.pick!=null).length}`;
+}
+
+function render(){
+  const q=QUESTIONS[cur], s=state[cur];
+  const prev = cur>0 ? QUESTIONS[cur-1].scenario : null;
+  const sb=$('#scenarioBox');
+  if(q.scenario && q.scenario!=='General'){
+    sb.classList.remove('hide');
+    sb.innerHTML = `<strong>Scenario:</strong> ${q.scenario}`;
+  } else sb.classList.add('hide');
+  $('#qmeta').innerHTML = `<span class="badge dom">D${q.domain} · ${q.domainName}</span> `+
+    `<span class="badge ${q.difficulty}">${q.difficulty}</span>`;
+  $('#qid').textContent = q.id;
+  $('#stem').textContent = q.stem;
+  const o=$('#opts'); o.innerHTML='';
+  for(const L of ['A','B','C','D']){
+    const btn=document.createElement('button'); btn.className='opt'+(s.pick===L?' sel':'');
+    btn.innerHTML = `<span class="L">${L}</span>${q.options[L]}`;
+    btn.onclick=()=>{ if(submitted) return; s.pick=L; render();
+      if(reveal) showInlineReveal(); };
+    if(reveal && s.pick){
+      if(L===q.answer) btn.classList.add('correct');
+      else if(L===s.pick) btn.classList.add('wrong');
+    }
+    o.appendChild(btn);
+  }
+  $('#btnFlag').textContent = s.flag ? '⚑ Unflag' : '⚑ Flag for review';
+  $('#btnPrev').disabled = cur===0;
+  $('#btnNext').textContent = cur===META.count-1 ? 'Last →' : 'Next →';
+  if(reveal && s.pick) showInlineReveal(); else $('#inlineReveal').classList.add('hide');
+  refreshPalette();
+}
+function showInlineReveal(){
+  const q=QUESTIONS[cur], s=state[cur], box=$('#inlineReveal');
+  const ok = s.pick===q.answer;
+  box.classList.remove('hide');
+  box.innerHTML = `<div><strong class="${ok?'pass':'fail'}">${ok?'Correct':'Incorrect'}</strong> — correct answer: <strong>${q.answer}</strong></div>`+
+    `<div class="note">${q.explanation}</div>`;
+}
+
+$('#btnPrev').onclick=()=>{ if(cur>0){cur--;render();} };
+$('#btnNext').onclick=()=>{ if(cur<META.count-1){cur++;render();} else window.scrollTo(0,document.body.scrollHeight); };
+$('#btnFlag').onclick=()=>{ state[cur].flag=!state[cur].flag; render(); };
+document.addEventListener('keydown',e=>{
+  if(submitted||$('#exam').classList.contains('hide')) return;
+  if(['a','b','c','d','A','B','C','D'].includes(e.key)){ state[cur].pick=e.key.toUpperCase(); render(); if(reveal) showInlineReveal(); }
+  else if(e.key==='ArrowRight') $('#btnNext').click();
+  else if(e.key==='ArrowLeft') $('#btnPrev').click();
+  else if(e.key==='f') $('#btnFlag').click();
+});
+$('#btnSubmit').onclick=()=>doSubmit(false);
+
+function doSubmit(auto){
+  if(submitted) return;
+  const unanswered = state.filter(s=>s.pick==null).length;
+  if(!auto && unanswered>0 && !confirm(`${unanswered} question(s) unanswered. Submit anyway?`)) return;
+  submitted=true; clearInterval(timerId);
+  const elapsed = Math.round((new Date()-startedAt)/1000);
+  // score
+  let correct=0; const perDom={}; const wrong=[];
+  for(const d of Object.keys(META.weights)) perDom[d]={correct:0,total:0};
+  QUESTIONS.forEach((q,i)=>{
+    perDom[q.domain].total++;
+    if(state[i].pick===q.answer){correct++; perDom[q.domain].correct++;}
+    else wrong.push({id:q.id, domain:q.domain, your:state[i].pick, answer:q.answer, tags:q.tags});
+  });
+  const raw = correct/META.count;
+  const scaled = Math.round(raw*META.scaleMax);
+  const passed = scaled>=META.passScaled;
+  // crude pass-likelihood: logistic on margin vs 72% with sample-size penalty
+  const margin = raw - (META.passScaled/META.scaleMax);
+  let prob = 1/(1+Math.exp(-margin*100*Math.sqrt(META.count/60)));
+  prob = Math.max(0.02, Math.min(0.98, prob));
+
+  const result = {
+    type:'cca-mock-result', generated:META.generated, takenAt:new Date().toISOString(),
+    count:META.count, correct, scaledEstimate:scaled, passScaled:META.passScaled,
+    passed, rawPct:+(raw*100).toFixed(1), passLikelihood:+(prob*100).toFixed(0),
+    timeUsedSec:elapsed, timeLimitSec:META.minutes*60,
+    perDomain:Object.fromEntries(Object.entries(perDom).map(([d,v])=>[d,{...v,name:META.domainNames[d],weight:META.weights[d]}])),
+    wrong
+  };
+  renderResults(result);
+}
+
+function renderResults(r){
+  $('#exam').classList.add('hide'); $('#bar').style.display='none';
+  const R=$('#results'); R.classList.remove('hide');
+  const verdict = r.passed
+    ? `<span class="pill pass">PASS</span>`
+    : `<span class="pill fail">BELOW PASS</span>`;
+  let domRows='';
+  for(const [d,v] of Object.entries(r.perDomain)){
+    const pct = v.total? Math.round(v.correct/v.total*100):0;
+    domRows += `<tr><td>D${d} · ${v.name} <span class="muted small">(${v.weight}%)</span></td>`+
+      `<td>${v.correct}/${v.total}</td>`+
+      `<td style="width:42%"><div class="barmeter"><i style="width:${pct}%;background:${pct>=72?'var(--good)':pct>=60?'var(--warn)':'var(--bad)'}"></i></div></td>`+
+      `<td>${pct}%</td></tr>`;
+  }
+  const mm=Math.floor(r.timeUsedSec/60), ss=r.timeUsedSec%60;
+  R.innerHTML = `
+   <div class="card">
+     <div class="row spread"><h1>Results</h1>${verdict}</div>
+     <div class="row" style="gap:26px;margin:8px 0 4px">
+       <div><div class="pill ${r.passed?'pass':'fail'}">${r.scaledEstimate}</div><div class="muted small">scaled est. / ${META.scaleMax} · pass ${r.passScaled}</div></div>
+       <div><div class="pill">${r.correct}/${r.count}</div><div class="muted small">raw ${r.rawPct}%</div></div>
+       <div><div class="pill">${r.passLikelihood}%</div><div class="muted small">est. pass likelihood</div></div>
+       <div><div class="pill">${mm}m${String(ss).padStart(2,'0')}s</div><div class="muted small">time used</div></div>
+     </div>
+     <p class="note">Scaled score is a linear estimate of raw %; the real exam uses undisclosed
+       scaling, so treat this as a calibration signal, not a guarantee. Aim comfortably above
+       ${r.passScaled} (≈80%+) before sitting.</p>
+   </div>
+   <div class="card"><h2>Per-domain breakdown</h2><table>${domRows}</table>
+     <p class="note">Weakest domains are where to spend the next study block. Aim ≥72% in each.</p></div>
+   <div class="card">
+     <div class="row spread"><h2>Answer review</h2>
+       <label class="row small muted"><input type="checkbox" id="onlyWrong"/> show incorrect only</label></div>
+     <div id="reviewList"></div>
+   </div>
+   <div class="card">
+     <h2>Save your result</h2>
+     <p class="small muted">Feed this into your learner profile: run <code>/save-progress</code> and paste the JSON,
+       or keep the downloaded file.</p>
+     <div class="row"><button id="btnCopy" class="primary">Copy results JSON</button>
+       <button id="btnDl">Download results JSON</button>
+       <button id="btnRetake" onclick="location.reload()">Retake</button></div>
+   </div>`;
+  // review list
+  const list=$('#reviewList');
+  function paintReview(onlyWrong){
+    list.innerHTML='';
+    QUESTIONS.forEach((q,i)=>{
+      const s=state[i], ok=s.pick===q.answer;
+      if(onlyWrong && ok) return;
+      let opts='';
+      for(const L of ['A','B','C','D']){
+        let cls='opt'; if(L===q.answer) cls+=' correct'; else if(L===s.pick) cls+=' wrong';
+        const tag = L===q.answer?' ✓':(L===s.pick?' ✗ your answer':'');
+        opts += `<div class="${cls}"><span class="L">${L}</span>${q.options[L]}<span class="muted small">${tag}</span></div>`;
+      }
+      let dz='';
+      for(const [L,why] of Object.entries(q.distractors||{})) dz+=`<div class="note"><strong>${L}:</strong> ${why}</div>`;
+      const div=document.createElement('div'); div.className='rev';
+      div.innerHTML = `<div class="row spread small"><span><strong>Q${i+1}</strong> `+
+        `<span class="badge dom">D${q.domain}</span> <span class="badge ${q.difficulty}">${q.difficulty}</span> `+
+        `<span class="badge">${q.scenario}</span></span>`+
+        `<span class="${ok?'pass':'fail'}">${ok?'Correct':(s.pick?'Incorrect':'Skipped')}</span></div>`+
+        `<p style="margin:8px 0">${q.stem}</p>${opts}`+
+        `<div class="note" style="margin-top:8px"><strong>Why ${q.answer}:</strong> ${q.explanation}</div>${dz}`;
+      list.appendChild(div);
+    });
+  }
+  paintReview(false);
+  $('#onlyWrong').onchange = e => paintReview(e.target.checked);
+  const blob = JSON.stringify(r,null,2);
+  $('#btnCopy').onclick = ()=>{ navigator.clipboard.writeText(blob).then(()=>{$('#btnCopy').textContent='Copied ✓';}); };
+  $('#btnDl').onclick = ()=>{ const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([blob],{type:'application/json'}));
+    a.download=`cca-mock-result-${r.takenAt.slice(0,10)}.json`; a.click(); };
+  window.scrollTo(0,0);
+}
+// warn on accidental navigation away mid-exam
+window.addEventListener('beforeunload', e=>{ if(startedAt && !submitted){ e.preventDefault(); e.returnValue=''; }});
+</script>
+</body>
+</html>
