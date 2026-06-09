@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>{{TITLE}} · CCA Study Guide</title>
+<!--
+  Reusable themed shell for /learn-doc learning pages.
+  Authoring contract (see learn-docs/README.md):
+    1. Replace {{TITLE}}, {{SUBTITLE}}, {{DOMAIN}}, {{WEIGHT}}, {{READMINS}}.
+    2. Replace the <!--CONTENT--> marker with the authored body.
+    3. Build the TOC <nav> from your <section id="..."> ids (or leave the auto-TOC script to fill it).
+  Component classes available: .callout (.info/.tip/.trap/.key/.note), .card/.grid, .compare,
+    .diagram (Mermaid), .terms, .selfcheck (<details>), .pill/.badge, table, pre>code.
+  Diagrams use Mermaid via CDN (needs internet on first load). Fonts via Google Fonts CDN.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --bg2:#13161c; --panel:#171a21; --panel2:#1e222b; --ink:#e7e9ee; --muted:#9aa3b2;
+    --line:#2a2f3a; --accent:#cc785c; --accent2:#d4a27f; --good:#46b873; --bad:#e2606b; --warn:#e0b341;
+    --info:#5b9bd5; --code:#0c0e12; --radius:14px;
+  }
+  html[data-theme="light"]{
+    --bg:#faf9f7; --bg2:#f3f1ec; --panel:#ffffff; --panel2:#f5f3ef; --ink:#22252b; --muted:#6b7280;
+    --line:#e4e0d8; --code:#f5f3ef;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.7 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  code,pre{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  a{color:var(--accent2);text-decoration:none} a:hover{text-decoration:underline}
+  /* reading-progress + top bar */
+  #progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:60;transition:width .1s}
+  #top{position:fixed;top:0;left:0;right:0;height:52px;z-index:50;display:flex;align-items:center;
+    justify-content:space-between;padding:0 18px;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  #top .t{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
+  #top .actions{display:flex;gap:8px}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+    border-radius:9px;padding:6px 12px;font-size:13px} button:hover{border-color:var(--accent)}
+  /* layout */
+  .shell{max-width:1180px;margin:52px auto 0;display:grid;grid-template-columns:240px 1fr;gap:34px;padding:0 20px 90px}
+  nav.toc{position:sticky;top:72px;align-self:start;max-height:calc(100vh-90px);overflow:auto;
+    font-size:14px;border-left:1px solid var(--line);padding-left:14px}
+  nav.toc a{display:block;color:var(--muted);padding:4px 0;border-left:2px solid transparent;margin-left:-15px;padding-left:13px}
+  nav.toc a.active{color:var(--ink);border-left-color:var(--accent);font-weight:600}
+  nav.toc a.sub{padding-left:26px;font-size:13px}
+  main{min-width:0}
+  @media(max-width:880px){.shell{grid-template-columns:1fr} nav.toc{display:none}}
+  /* hero */
+  .hero{padding:30px 0 14px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .hero h1{font-size:34px;line-height:1.15;margin:10px 0 6px;font-weight:800;letter-spacing:-.02em}
+  .hero .sub{color:var(--muted);font-size:18px;margin:0}
+  .pillrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .pill,.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;font-size:12.5px;
+    padding:4px 11px;border:1px solid var(--line);background:var(--panel2);color:var(--muted)}
+  .pill.dom{color:var(--accent2);border-color:#3a2f2a;background:#1d1612}
+  .pill.weight{color:var(--ink)} .badge.easy{color:var(--good)} .badge.med{color:var(--warn)} .badge.hard{color:var(--bad)}
+  /* sections + headings */
+  section{padding:26px 0;border-bottom:1px solid var(--line)} section:last-child{border-bottom:0}
+  h2{font-size:24px;margin:0 0 14px;letter-spacing:-.01em;scroll-margin-top:70px}
+  h3{font-size:18px;margin:22px 0 8px}
+  h2 .n{color:var(--accent);font-weight:700;margin-right:10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px} li{margin:5px 0}
+  /* callouts */
+  .callout{border:1px solid var(--line);border-left-width:4px;border-radius:0 var(--radius) var(--radius) 0;
+    padding:13px 16px;margin:16px 0;background:var(--panel)}
+  .callout .h{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .callout.info{border-left-color:var(--info)} .callout.info .h{color:var(--info)}
+  .callout.tip{border-left-color:var(--good)} .callout.tip .h{color:var(--good)}
+  .callout.trap{border-left-color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,var(--panel))} .callout.trap .h{color:var(--bad)}
+  .callout.key{border-left-color:var(--accent)} .callout.key .h{color:var(--accent2)}
+  .callout.note{border-left-color:var(--muted)} .callout.note .h{color:var(--muted)}
+  /* cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:16px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .card h4{margin:0 0 6px;font-size:15px}
+  /* right-way / wrong-way compare */
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+  @media(max-width:680px){.compare{grid-template-columns:1fr}}
+  .compare>div{border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+  .compare .do{border-top:3px solid var(--good)} .compare .dont{border-top:3px solid var(--bad)}
+  .compare .lab{font-weight:700;font-size:13px;margin-bottom:6px} .compare .do .lab{color:var(--good)} .compare .dont .lab{color:var(--bad)}
+  /* diagrams */
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin:16px 0;text-align:center}
+  .diagram .cap{color:var(--muted);font-size:13px;margin-top:8px}
+  .mermaid{display:flex;justify-content:center}
+  /* key terms */
+  .terms{margin:16px 0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .terms .row{display:grid;grid-template-columns:200px 1fr;border-top:1px solid var(--line)}
+  .terms .row:first-child{border-top:0}
+  .terms .k{padding:10px 14px;background:var(--panel2);font-weight:600;font-size:14px}
+  .terms .v{padding:10px 14px}
+  @media(max-width:680px){.terms .row{grid-template-columns:1fr}}
+  /* tables */
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14.5px}
+  th,td{padding:9px 11px;border:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:var(--panel2);font-weight:600}
+  /* code */
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font-size:13.5px;line-height:1.5}
+  :not(pre)>code{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:13px}
+  /* self-check */
+  .selfcheck{border:1px solid var(--line);border-radius:var(--radius);padding:4px 16px;margin:12px 0;background:var(--panel)}
+  .selfcheck summary{cursor:pointer;font-weight:600;padding:10px 0;list-style:none}
+  .selfcheck summary::before{content:"❓ ";}
+  .selfcheck[open] summary::before{content:"✅ ";}
+  .selfcheck .a{border-top:1px dashed var(--line);padding:10px 0;color:var(--ink)}
+  .muted{color:var(--muted)} .small{font-size:13px}
+  footer{max-width:1180px;margin:0 auto;padding:30px 20px 60px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="top">
+  <div class="t">{{TITLE}}</div>
+  <div class="actions">
+    <button onclick="window.print()">⎙ Print / PDF</button>
+    <button id="themeBtn">◐ Theme</button>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="toc" id="toc"><!-- auto-filled from <section> headings --></nav>
+  <main>
+    <header class="hero">
+      <div class="pillrow">
+        <span class="pill dom">{{DOMAIN}}</span>
+        <span class="pill weight">Exam weight: {{WEIGHT}}</span>
+        <span class="pill">⏱ ~{{READMINS}} min read</span>
+      </div>
+      <h1>{{TITLE}}</h1>
+      <p class="sub">{{SUBTITLE}}</p>
+    </header>
+
+    <!--CONTENT-->
+
+  </main>
+</div>
+
+<footer>
+  Generated by <code>/learn-doc</code> · Claude Certified Architect — Foundations study env ·
+  Content is original study material, not real (NDA) exam content · Verify currency on
+  <a href="https://platform.claude.com/docs">platform.claude.com/docs</a>.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  // theme
+  const root=document.documentElement, tkey='cca-learn-theme';
+  if(localStorage.getItem(tkey)) root.dataset.theme=localStorage.getItem(tkey);
+  document.getElementById('themeBtn').onclick=()=>{
+    root.dataset.theme = root.dataset.theme==='dark'?'light':'dark';
+    localStorage.setItem(tkey,root.dataset.theme);
+    renderMermaid();
+  };
+  // mermaid
+  function mmTheme(){return root.dataset.theme==='light'?'neutral':'dark';}
+  function renderMermaid(){
+    document.querySelectorAll('.mermaid').forEach(el=>{ if(el.dataset.src) el.removeAttribute('data-processed'),el.innerHTML=el.dataset.src; });
+    mermaid.initialize({startOnLoad:false,theme:mmTheme(),themeVariables:{
+      primaryColor:'#1e222b',primaryTextColor:'#e7e9ee',primaryBorderColor:'#cc785c',
+      lineColor:'#9aa3b2',fontSize:'14px'}});
+    mermaid.run({querySelector:'.mermaid'});
+  }
+  document.querySelectorAll('.mermaid').forEach(el=>el.dataset.src=el.textContent);
+  renderMermaid();
+  // auto TOC + scroll-spy
+  const toc=document.getElementById('toc'); const secs=[...document.querySelectorAll('main section[id]')];
+  secs.forEach(s=>{ const h=s.querySelector('h2'); if(!h) return;
+    const a=document.createElement('a'); a.href='#'+s.id; a.textContent=h.textContent.replace(/^\s*[\d.]+\s*/,'');
+    a.dataset.id=s.id; toc.appendChild(a); });
+  const links=[...toc.querySelectorAll('a')];
+  const spy=new IntersectionObserver(es=>{es.forEach(e=>{ if(e.isIntersecting){
+    links.forEach(l=>l.classList.toggle('active',l.dataset.id===e.target.id)); }});},{rootMargin:'-20% 0px -70% 0px'});
+  secs.forEach(s=>spy.observe(s));
+  // progress bar
+  addEventListener('scroll',()=>{const h=document.documentElement;
+    const p=h.scrollTop/(h.scrollHeight-h.clientHeight)*100; document.getElementById('progress').style.width=p+'%';});
+</script>
+</body>
+</html>

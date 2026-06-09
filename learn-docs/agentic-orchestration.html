@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Agentic Architecture & Orchestration · CCA Study Guide</title>
+<!--
+  Reusable themed shell for /learn-doc learning pages.
+  Authoring contract (see learn-docs/README.md):
+    1. Replace Agentic Architecture & Orchestration, The 27% domain — agent loops, coordinator/subagent patterns, hooks vs prompts, and the traps that cost points., Domain 1 · Agentic Architecture, 27%, 12.
+    2. Replace the     <section id="why">
+      <h2><span class="n">01</span> Why this domain decides your result</h2>
+      <p>Agentic Architecture &amp; Orchestration is <strong>27% of the exam — the single heaviest domain</strong>.
+      Roughly one in four questions lives here, and they cluster in the <em>Customer Support Resolution Agent</em>,
+      <em>Multi-Agent Research System</em>, and <em>Developer Productivity</em> scenarios. Get comfortable here and
+      you bank the most points per hour of study.</p>
+      <div class="callout key">
+        <div class="h">🎯 The one idea behind every question</div>
+        When a requirement must hold <strong>100% of the time</strong>, reach for something <strong>deterministic</strong>
+        (a hook, a programmatic gate, the loop's <code>stop_reason</code>). When it's best-effort, a prompt instruction
+        is fine. Most distractors are the probabilistic option dressed up to look sufficient.
+      </div>
+    </section>
+
+    <section id="loop">
+      <h2><span class="n">02</span> The agentic loop</h2>
+      <p>An agent is a loop, not a script. You send a request with tools defined, then branch on the response's
+      <code>stop_reason</code> — execute tools and continue, or finish.</p>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  S([Send request + tools]) --> R{stop_reason?}
+  R -->|tool_use| X[Execute tools] --> A[Append tool_result\nas role: user] --> S
+  R -->|end_turn| D([Return final answer])
+  R -->|pause_turn| S
+      </div><div class="cap">The loop terminates on <code>end_turn</code> — not on parsing the text for "done".</div></div>
+      <div class="callout trap">
+        <div class="h">⚠️ Exam traps — loop termination</div>
+        <ul>
+          <li><strong>Parsing natural language</strong> ("I'm finished") to decide the loop is over.</li>
+          <li><strong>Arbitrary iteration caps</strong> as the <em>primary</em> stop mechanism (fine as a safety net, not as the control).</li>
+          <li><strong>Checking for assistant text</strong> as a completion signal — Claude can emit text <em>alongside</em> a tool call.</li>
+        </ul>
+        The correct control is always the structured <code>stop_reason</code>.
+      </div>
+      <div class="callout note">
+        <div class="h">Detail worth memorizing</div>
+        <code>tool_result</code> blocks are sent back with <code>role: "user"</code> and must carry the
+        <code>tool_use_id</code> that matches the original <code>tool_use</code> call.
+      </div>
+    </section>
+
+    <section id="coordinator">
+      <h2><span class="n">03</span> Coordinator &amp; subagents (hub-and-spoke)</h2>
+      <p>For multi-agent work, a <strong>coordinator</strong> decomposes the task, delegates to specialized
+      subagents, and aggregates results. Subagents never talk to each other.</p>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  C[Coordinator\ndecompose · delegate · aggregate]
+  C --> S1[Search agent]
+  C --> S2[Analysis agent]
+  C --> S3[Synthesis agent]
+  S1 -.isolated context.-> C
+  S2 -.isolated context.-> C
+  S3 -.isolated context.-> C
+      </div><div class="cap">All communication routes through the coordinator; each subagent runs in isolated context.</div></div>
+      <div class="grid">
+        <div class="card"><h4>Context isolation</h4>Subagents do <strong>not</strong> inherit the coordinator's
+          conversation history. You pass what they need explicitly in their prompt.</div>
+        <div class="card"><h4>Parallel delegation</h4>Emit <strong>multiple Task tool calls in a single
+          coordinator response</strong> to run subagents concurrently.</div>
+        <div class="card"><h4>Goals, not procedures</h4>Tell a subagent the <em>goal</em> and quality bar,
+          not step-by-step instructions — let it reason.</div>
+        <div class="card"><h4>Dynamic routing</h4>Invoke only the subagents a query needs — not always the full pipeline.</div>
+      </div>
+      <div class="callout trap">
+        <div class="h">⚠️ The two classic mistakes</div>
+        <strong>Over-narrow decomposition</strong> (splitting "AI in creative industries" into only visual-arts
+        subtasks, missing music/writing/film) and <strong>over-provisioned subagents</strong> (handing the synthesis
+        agent web-search tools → cross-role misuse, violating least privilege). Scope each subagent's tools to its role.
+      </div>
+    </section>
+
+    <section id="hooks">
+      <h2><span class="n">04</span> Hooks vs prompts — the determinism question</h2>
+      <p>This is the most-tested decision in the domain. Use the failure cost to choose.</p>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  Q{Must it hold 100% of the time?\n financial / identity / security} -->|Yes| H[Hook or programmatic gate\ndeterministic]
+  Q -->|No| P[Prompt instruction\nprobabilistic, cheaper]
+      </div><div class="cap">Prompt instructions have a non-zero failure rate — unacceptable when compliance is mandatory.</div></div>
+      <div class="compare">
+        <div class="do"><div class="lab">PreToolUse — enforce before the call</div>
+          Block refunds &gt; $500 → route to human · require customer verification before any financial op ·
+          block destructive actions without approval.</div>
+        <div class="dont"><div class="lab">PostToolUse — normalize after the call</div>
+          Convert Unix timestamps → ISO 8601 · map numeric status codes → readable strings ·
+          standardize formats across MCP tools <em>before</em> the model sees them.</div>
+      </div>
+      <div class="callout key">
+        <div class="h">🆕 2026 currency</div>
+        <code>Stop</code> / <code>SubagentStop</code> hooks can now return
+        <code>hookSpecificOutput.additionalContext</code> (≤10,000 chars) to feed Claude context and keep the turn
+        going <strong>without</strong> being flagged as a hook error (Claude Code v2.1.163).
+      </div>
+    </section>
+
+    <section id="decomposition">
+      <h2><span class="n">05</span> Task decomposition: fixed vs adaptive</h2>
+      <div class="compare">
+        <div class="do"><div class="lab">Prompt chaining (fixed sequential)</div>
+          Use when the structure is known up front. E.g. code review: per-file local analysis →
+          cross-file integration pass. Avoids attention dilution from dumping all files at once.</div>
+        <div class="dont"><div class="lab">Dynamic adaptive decomposition</div>
+          Use for open-ended work where subtasks emerge as you learn. E.g. "add tests to a legacy codebase":
+          map structure → find high-impact areas → prioritized plan → adapt.</div>
+      </div>
+      <div class="callout tip">
+        <div class="h">Multi-concern requests</div>
+        When one user message contains several asks ("fix my order <em>and</em> change my address"):
+        <strong>decompose → handle each (in parallel, shared context) → synthesize one unified reply.</strong>
+        Don't answer the first and drop the rest — a frequent distractor is "add 'address all concerns' to the prompt."
+      </div>
+    </section>
+
+    <section id="sessions">
+      <h2><span class="n">06</span> Sessions: resume vs fork</h2>
+      <table>
+        <tr><th>Situation</th><th>Move</th></tr>
+        <tr><td>Prior context mostly valid, a few files changed</td><td><strong>Resume</strong> + tell the agent <em>which</em> files changed; request targeted re-analysis</td></tr>
+        <tr><td>Prior tool results badly stale</td><td><strong>New session</strong> + a structured summary</td></tr>
+        <tr><td>Compare two approaches (e.g. two refactors)</td><td><strong><code>fork_session</code></strong> — independent branches from a shared baseline</td></tr>
+      </table>
+    </section>
+
+    <section id="scenario">
+      <h2><span class="n">07</span> Worked scenario — Multi-Agent Research System</h2>
+      <div class="callout info">
+        <div class="h">Scenario</div>
+        A coordinator delegates to search, analysis, and synthesis agents. The synthesis agent keeps needing to
+        verify a single statistic, currently round-tripping through the coordinator (+40% latency). 85% of
+        verifications are simple fact-checks.
+      </div>
+      <p><strong>Best move:</strong> give the synthesis agent a <em>scoped</em> <code>verify_fact</code> tool for the
+      simple 85%; complex verifications still route through the coordinator. This serves the common case without
+      handing it the full web-search toolset (which would violate least privilege and invite cross-role misuse).
+      Giving it <em>all</em> search tools, batching everything to the end, or pre-caching "just in case" are the
+      tempting-but-wrong options.</p>
+    </section>
+
+    <section id="selfcheck">
+      <h2><span class="n">08</span> Self-check</h2>
+      <details class="selfcheck"><summary>What signals the agentic loop should stop?</summary>
+        <div class="a">A <code>stop_reason</code> of <code>end_turn</code>. Never parse the text, count iterations as the
+        primary control, or look for assistant text content.</div></details>
+      <details class="selfcheck"><summary>A refund over $500 must always go to a human. Hook or prompt?</summary>
+        <div class="a">A <strong>PreToolUse hook</strong> — it's a financial guarantee, so it must be deterministic.
+        A prompt instruction has a non-zero failure rate.</div></details>
+      <details class="selfcheck"><summary>Your MCP tools return Unix timestamps, ISO dates, and numeric codes. Fix?</summary>
+        <div class="a">A <strong>PostToolUse hook</strong> that normalizes outputs before the model sees them —
+        deterministic and doesn't require editing every MCP server.</div></details>
+      <details class="selfcheck"><summary>Do subagents see the coordinator's conversation history?</summary>
+        <div class="a">No — isolated context. You must pass needed findings explicitly in the subagent's prompt,
+        ideally as structured data separating content from metadata.</div></details>
+      <details class="selfcheck"><summary>How do you run three subagents in parallel?</summary>
+        <div class="a">Emit <strong>multiple Task tool calls in a single coordinator response.</strong></div></details>
+    </section>
+
+    <section id="takeaways">
+      <h2><span class="n">09</span> One-screen takeaways</h2>
+      <table>
+        <tr><th>If you remember nothing else…</th></tr>
+        <tr><td>Mandatory rule → <strong>deterministic</strong> (hook/gate); best-effort → prompt.</td></tr>
+        <tr><td>Loop stops on <code>end_turn</code>, never on parsed text or iteration caps.</td></tr>
+        <tr><td>Coordinator owns all comms; subagents are isolated and least-privileged.</td></tr>
+        <tr><td>Parallel = multiple Task calls in one response.</td></tr>
+        <tr><td>PreToolUse = enforce before; PostToolUse = normalize after.</td></tr>
+        <tr><td>Multi-concern → decompose, handle each, synthesize one reply.</td></tr>
+        <tr><td>Resume (inform of changes) · new session (stale) · fork (compare).</td></tr>
+      </table>
+      <div class="callout tip"><div class="h">Next</div>
+        Drill it: <code>/quiz domain 1</code>. Calibrate: <code>/mock-exam domain 1</code>.</div>
+    </section>
+ marker with the authored body.
+    3. Build the TOC <nav> from your <section id="..."> ids (or leave the auto-TOC script to fill it).
+  Component classes available: .callout (.info/.tip/.trap/.key/.note), .card/.grid, .compare,
+    .diagram (Mermaid), .terms, .selfcheck (<details>), .pill/.badge, table, pre>code.
+  Diagrams use Mermaid via CDN (needs internet on first load). Fonts via Google Fonts CDN.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --bg2:#13161c; --panel:#171a21; --panel2:#1e222b; --ink:#e7e9ee; --muted:#9aa3b2;
+    --line:#2a2f3a; --accent:#cc785c; --accent2:#d4a27f; --good:#46b873; --bad:#e2606b; --warn:#e0b341;
+    --info:#5b9bd5; --code:#0c0e12; --radius:14px;
+  }
+  html[data-theme="light"]{
+    --bg:#faf9f7; --bg2:#f3f1ec; --panel:#ffffff; --panel2:#f5f3ef; --ink:#22252b; --muted:#6b7280;
+    --line:#e4e0d8; --code:#f5f3ef;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.7 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  code,pre{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  a{color:var(--accent2);text-decoration:none} a:hover{text-decoration:underline}
+  /* reading-progress + top bar */
+  #progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:60;transition:width .1s}
+  #top{position:fixed;top:0;left:0;right:0;height:52px;z-index:50;display:flex;align-items:center;
+    justify-content:space-between;padding:0 18px;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  #top .t{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
+  #top .actions{display:flex;gap:8px}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+    border-radius:9px;padding:6px 12px;font-size:13px} button:hover{border-color:var(--accent)}
+  /* layout */
+  .shell{max-width:1180px;margin:52px auto 0;display:grid;grid-template-columns:240px 1fr;gap:34px;padding:0 20px 90px}
+  nav.toc{position:sticky;top:72px;align-self:start;max-height:calc(100vh-90px);overflow:auto;
+    font-size:14px;border-left:1px solid var(--line);padding-left:14px}
+  nav.toc a{display:block;color:var(--muted);padding:4px 0;border-left:2px solid transparent;margin-left:-15px;padding-left:13px}
+  nav.toc a.active{color:var(--ink);border-left-color:var(--accent);font-weight:600}
+  nav.toc a.sub{padding-left:26px;font-size:13px}
+  main{min-width:0}
+  @media(max-width:880px){.shell{grid-template-columns:1fr} nav.toc{display:none}}
+  /* hero */
+  .hero{padding:30px 0 14px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .hero h1{font-size:34px;line-height:1.15;margin:10px 0 6px;font-weight:800;letter-spacing:-.02em}
+  .hero .sub{color:var(--muted);font-size:18px;margin:0}
+  .pillrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .pill,.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;font-size:12.5px;
+    padding:4px 11px;border:1px solid var(--line);background:var(--panel2);color:var(--muted)}
+  .pill.dom{color:var(--accent2);border-color:#3a2f2a;background:#1d1612}
+  .pill.weight{color:var(--ink)} .badge.easy{color:var(--good)} .badge.med{color:var(--warn)} .badge.hard{color:var(--bad)}
+  /* sections + headings */
+  section{padding:26px 0;border-bottom:1px solid var(--line)} section:last-child{border-bottom:0}
+  h2{font-size:24px;margin:0 0 14px;letter-spacing:-.01em;scroll-margin-top:70px}
+  h3{font-size:18px;margin:22px 0 8px}
+  h2 .n{color:var(--accent);font-weight:700;margin-right:10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px} li{margin:5px 0}
+  /* callouts */
+  .callout{border:1px solid var(--line);border-left-width:4px;border-radius:0 var(--radius) var(--radius) 0;
+    padding:13px 16px;margin:16px 0;background:var(--panel)}
+  .callout .h{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .callout.info{border-left-color:var(--info)} .callout.info .h{color:var(--info)}
+  .callout.tip{border-left-color:var(--good)} .callout.tip .h{color:var(--good)}
+  .callout.trap{border-left-color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,var(--panel))} .callout.trap .h{color:var(--bad)}
+  .callout.key{border-left-color:var(--accent)} .callout.key .h{color:var(--accent2)}
+  .callout.note{border-left-color:var(--muted)} .callout.note .h{color:var(--muted)}
+  /* cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:16px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .card h4{margin:0 0 6px;font-size:15px}
+  /* right-way / wrong-way compare */
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+  @media(max-width:680px){.compare{grid-template-columns:1fr}}
+  .compare>div{border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+  .compare .do{border-top:3px solid var(--good)} .compare .dont{border-top:3px solid var(--bad)}
+  .compare .lab{font-weight:700;font-size:13px;margin-bottom:6px} .compare .do .lab{color:var(--good)} .compare .dont .lab{color:var(--bad)}
+  /* diagrams */
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin:16px 0;text-align:center}
+  .diagram .cap{color:var(--muted);font-size:13px;margin-top:8px}
+  .mermaid{display:flex;justify-content:center}
+  /* key terms */
+  .terms{margin:16px 0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .terms .row{display:grid;grid-template-columns:200px 1fr;border-top:1px solid var(--line)}
+  .terms .row:first-child{border-top:0}
+  .terms .k{padding:10px 14px;background:var(--panel2);font-weight:600;font-size:14px}
+  .terms .v{padding:10px 14px}
+  @media(max-width:680px){.terms .row{grid-template-columns:1fr}}
+  /* tables */
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14.5px}
+  th,td{padding:9px 11px;border:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:var(--panel2);font-weight:600}
+  /* code */
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font-size:13.5px;line-height:1.5}
+  :not(pre)>code{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:13px}
+  /* self-check */
+  .selfcheck{border:1px solid var(--line);border-radius:var(--radius);padding:4px 16px;margin:12px 0;background:var(--panel)}
+  .selfcheck summary{cursor:pointer;font-weight:600;padding:10px 0;list-style:none}
+  .selfcheck summary::before{content:"❓ ";}
+  .selfcheck[open] summary::before{content:"✅ ";}
+  .selfcheck .a{border-top:1px dashed var(--line);padding:10px 0;color:var(--ink)}
+  .muted{color:var(--muted)} .small{font-size:13px}
+  footer{max-width:1180px;margin:0 auto;padding:30px 20px 60px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="top">
+  <div class="t">Agentic Architecture & Orchestration</div>
+  <div class="actions">
+    <button onclick="window.print()">⎙ Print / PDF</button>
+    <button id="themeBtn">◐ Theme</button>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="toc" id="toc"><!-- auto-filled from <section> headings --></nav>
+  <main>
+    <header class="hero">
+      <div class="pillrow">
+        <span class="pill dom">Domain 1 · Agentic Architecture</span>
+        <span class="pill weight">Exam weight: 27%</span>
+        <span class="pill">⏱ ~12 min read</span>
+      </div>
+      <h1>Agentic Architecture & Orchestration</h1>
+      <p class="sub">The 27% domain — agent loops, coordinator/subagent patterns, hooks vs prompts, and the traps that cost points.</p>
+    </header>
+
+        <section id="why">
+      <h2><span class="n">01</span> Why this domain decides your result</h2>
+      <p>Agentic Architecture &amp; Orchestration is <strong>27% of the exam — the single heaviest domain</strong>.
+      Roughly one in four questions lives here, and they cluster in the <em>Customer Support Resolution Agent</em>,
+      <em>Multi-Agent Research System</em>, and <em>Developer Productivity</em> scenarios. Get comfortable here and
+      you bank the most points per hour of study.</p>
+      <div class="callout key">
+        <div class="h">🎯 The one idea behind every question</div>
+        When a requirement must hold <strong>100% of the time</strong>, reach for something <strong>deterministic</strong>
+        (a hook, a programmatic gate, the loop's <code>stop_reason</code>). When it's best-effort, a prompt instruction
+        is fine. Most distractors are the probabilistic option dressed up to look sufficient.
+      </div>
+    </section>
+
+    <section id="loop">
+      <h2><span class="n">02</span> The agentic loop</h2>
+      <p>An agent is a loop, not a script. You send a request with tools defined, then branch on the response's
+      <code>stop_reason</code> — execute tools and continue, or finish.</p>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  S([Send request + tools]) --> R{stop_reason?}
+  R -->|tool_use| X[Execute tools] --> A[Append tool_result\nas role: user] --> S
+  R -->|end_turn| D([Return final answer])
+  R -->|pause_turn| S
+      </div><div class="cap">The loop terminates on <code>end_turn</code> — not on parsing the text for "done".</div></div>
+      <div class="callout trap">
+        <div class="h">⚠️ Exam traps — loop termination</div>
+        <ul>
+          <li><strong>Parsing natural language</strong> ("I'm finished") to decide the loop is over.</li>
+          <li><strong>Arbitrary iteration caps</strong> as the <em>primary</em> stop mechanism (fine as a safety net, not as the control).</li>
+          <li><strong>Checking for assistant text</strong> as a completion signal — Claude can emit text <em>alongside</em> a tool call.</li>
+        </ul>
+        The correct control is always the structured <code>stop_reason</code>.
+      </div>
+      <div class="callout note">
+        <div class="h">Detail worth memorizing</div>
+        <code>tool_result</code> blocks are sent back with <code>role: "user"</code> and must carry the
+        <code>tool_use_id</code> that matches the original <code>tool_use</code> call.
+      </div>
+    </section>
+
+    <section id="coordinator">
+      <h2><span class="n">03</span> Coordinator &amp; subagents (hub-and-spoke)</h2>
+      <p>For multi-agent work, a <strong>coordinator</strong> decomposes the task, delegates to specialized
+      subagents, and aggregates results. Subagents never talk to each other.</p>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  C[Coordinator\ndecompose · delegate · aggregate]
+  C --> S1[Search agent]
+  C --> S2[Analysis agent]
+  C --> S3[Synthesis agent]
+  S1 -.isolated context.-> C
+  S2 -.isolated context.-> C
+  S3 -.isolated context.-> C
+      </div><div class="cap">All communication routes through the coordinator; each subagent runs in isolated context.</div></div>
+      <div class="grid">
+        <div class="card"><h4>Context isolation</h4>Subagents do <strong>not</strong> inherit the coordinator's
+          conversation history. You pass what they need explicitly in their prompt.</div>
+        <div class="card"><h4>Parallel delegation</h4>Emit <strong>multiple Task tool calls in a single
+          coordinator response</strong> to run subagents concurrently.</div>
+        <div class="card"><h4>Goals, not procedures</h4>Tell a subagent the <em>goal</em> and quality bar,
+          not step-by-step instructions — let it reason.</div>
+        <div class="card"><h4>Dynamic routing</h4>Invoke only the subagents a query needs — not always the full pipeline.</div>
+      </div>
+      <div class="callout trap">
+        <div class="h">⚠️ The two classic mistakes</div>
+        <strong>Over-narrow decomposition</strong> (splitting "AI in creative industries" into only visual-arts
+        subtasks, missing music/writing/film) and <strong>over-provisioned subagents</strong> (handing the synthesis
+        agent web-search tools → cross-role misuse, violating least privilege). Scope each subagent's tools to its role.
+      </div>
+    </section>
+
+    <section id="hooks">
+      <h2><span class="n">04</span> Hooks vs prompts — the determinism question</h2>
+      <p>This is the most-tested decision in the domain. Use the failure cost to choose.</p>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  Q{Must it hold 100% of the time?\n financial / identity / security} -->|Yes| H[Hook or programmatic gate\ndeterministic]
+  Q -->|No| P[Prompt instruction\nprobabilistic, cheaper]
+      </div><div class="cap">Prompt instructions have a non-zero failure rate — unacceptable when compliance is mandatory.</div></div>
+      <div class="compare">
+        <div class="do"><div class="lab">PreToolUse — enforce before the call</div>
+          Block refunds &gt; $500 → route to human · require customer verification before any financial op ·
+          block destructive actions without approval.</div>
+        <div class="dont"><div class="lab">PostToolUse — normalize after the call</div>
+          Convert Unix timestamps → ISO 8601 · map numeric status codes → readable strings ·
+          standardize formats across MCP tools <em>before</em> the model sees them.</div>
+      </div>
+      <div class="callout key">
+        <div class="h">🆕 2026 currency</div>
+        <code>Stop</code> / <code>SubagentStop</code> hooks can now return
+        <code>hookSpecificOutput.additionalContext</code> (≤10,000 chars) to feed Claude context and keep the turn
+        going <strong>without</strong> being flagged as a hook error (Claude Code v2.1.163).
+      </div>
+    </section>
+
+    <section id="decomposition">
+      <h2><span class="n">05</span> Task decomposition: fixed vs adaptive</h2>
+      <div class="compare">
+        <div class="do"><div class="lab">Prompt chaining (fixed sequential)</div>
+          Use when the structure is known up front. E.g. code review: per-file local analysis →
+          cross-file integration pass. Avoids attention dilution from dumping all files at once.</div>
+        <div class="dont"><div class="lab">Dynamic adaptive decomposition</div>
+          Use for open-ended work where subtasks emerge as you learn. E.g. "add tests to a legacy codebase":
+          map structure → find high-impact areas → prioritized plan → adapt.</div>
+      </div>
+      <div class="callout tip">
+        <div class="h">Multi-concern requests</div>
+        When one user message contains several asks ("fix my order <em>and</em> change my address"):
+        <strong>decompose → handle each (in parallel, shared context) → synthesize one unified reply.</strong>
+        Don't answer the first and drop the rest — a frequent distractor is "add 'address all concerns' to the prompt."
+      </div>
+    </section>
+
+    <section id="sessions">
+      <h2><span class="n">06</span> Sessions: resume vs fork</h2>
+      <table>
+        <tr><th>Situation</th><th>Move</th></tr>
+        <tr><td>Prior context mostly valid, a few files changed</td><td><strong>Resume</strong> + tell the agent <em>which</em> files changed; request targeted re-analysis</td></tr>
+        <tr><td>Prior tool results badly stale</td><td><strong>New session</strong> + a structured summary</td></tr>
+        <tr><td>Compare two approaches (e.g. two refactors)</td><td><strong><code>fork_session</code></strong> — independent branches from a shared baseline</td></tr>
+      </table>
+    </section>
+
+    <section id="scenario">
+      <h2><span class="n">07</span> Worked scenario — Multi-Agent Research System</h2>
+      <div class="callout info">
+        <div class="h">Scenario</div>
+        A coordinator delegates to search, analysis, and synthesis agents. The synthesis agent keeps needing to
+        verify a single statistic, currently round-tripping through the coordinator (+40% latency). 85% of
+        verifications are simple fact-checks.
+      </div>
+      <p><strong>Best move:</strong> give the synthesis agent a <em>scoped</em> <code>verify_fact</code> tool for the
+      simple 85%; complex verifications still route through the coordinator. This serves the common case without
+      handing it the full web-search toolset (which would violate least privilege and invite cross-role misuse).
+      Giving it <em>all</em> search tools, batching everything to the end, or pre-caching "just in case" are the
+      tempting-but-wrong options.</p>
+    </section>
+
+    <section id="selfcheck">
+      <h2><span class="n">08</span> Self-check</h2>
+      <details class="selfcheck"><summary>What signals the agentic loop should stop?</summary>
+        <div class="a">A <code>stop_reason</code> of <code>end_turn</code>. Never parse the text, count iterations as the
+        primary control, or look for assistant text content.</div></details>
+      <details class="selfcheck"><summary>A refund over $500 must always go to a human. Hook or prompt?</summary>
+        <div class="a">A <strong>PreToolUse hook</strong> — it's a financial guarantee, so it must be deterministic.
+        A prompt instruction has a non-zero failure rate.</div></details>
+      <details class="selfcheck"><summary>Your MCP tools return Unix timestamps, ISO dates, and numeric codes. Fix?</summary>
+        <div class="a">A <strong>PostToolUse hook</strong> that normalizes outputs before the model sees them —
+        deterministic and doesn't require editing every MCP server.</div></details>
+      <details class="selfcheck"><summary>Do subagents see the coordinator's conversation history?</summary>
+        <div class="a">No — isolated context. You must pass needed findings explicitly in the subagent's prompt,
+        ideally as structured data separating content from metadata.</div></details>
+      <details class="selfcheck"><summary>How do you run three subagents in parallel?</summary>
+        <div class="a">Emit <strong>multiple Task tool calls in a single coordinator response.</strong></div></details>
+    </section>
+
+    <section id="takeaways">
+      <h2><span class="n">09</span> One-screen takeaways</h2>
+      <table>
+        <tr><th>If you remember nothing else…</th></tr>
+        <tr><td>Mandatory rule → <strong>deterministic</strong> (hook/gate); best-effort → prompt.</td></tr>
+        <tr><td>Loop stops on <code>end_turn</code>, never on parsed text or iteration caps.</td></tr>
+        <tr><td>Coordinator owns all comms; subagents are isolated and least-privileged.</td></tr>
+        <tr><td>Parallel = multiple Task calls in one response.</td></tr>
+        <tr><td>PreToolUse = enforce before; PostToolUse = normalize after.</td></tr>
+        <tr><td>Multi-concern → decompose, handle each, synthesize one reply.</td></tr>
+        <tr><td>Resume (inform of changes) · new session (stale) · fork (compare).</td></tr>
+      </table>
+      <div class="callout tip"><div class="h">Next</div>
+        Drill it: <code>/quiz domain 1</code>. Calibrate: <code>/mock-exam domain 1</code>.</div>
+    </section>
+
+
+  </main>
+</div>
+
+<footer>
+  Generated by <code>/learn-doc</code> · Claude Certified Architect — Foundations study env ·
+  Content is original study material, not real (NDA) exam content · Verify currency on
+  <a href="https://platform.claude.com/docs">platform.claude.com/docs</a>.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  // theme
+  const root=document.documentElement, tkey='cca-learn-theme';
+  if(localStorage.getItem(tkey)) root.dataset.theme=localStorage.getItem(tkey);
+  document.getElementById('themeBtn').onclick=()=>{
+    root.dataset.theme = root.dataset.theme==='dark'?'light':'dark';
+    localStorage.setItem(tkey,root.dataset.theme);
+    renderMermaid();
+  };
+  // mermaid
+  function mmTheme(){return root.dataset.theme==='light'?'neutral':'dark';}
+  function renderMermaid(){
+    document.querySelectorAll('.mermaid').forEach(el=>{ if(el.dataset.src) el.removeAttribute('data-processed'),el.innerHTML=el.dataset.src; });
+    mermaid.initialize({startOnLoad:false,theme:mmTheme(),themeVariables:{
+      primaryColor:'#1e222b',primaryTextColor:'#e7e9ee',primaryBorderColor:'#cc785c',
+      lineColor:'#9aa3b2',fontSize:'14px'}});
+    mermaid.run({querySelector:'.mermaid'});
+  }
+  document.querySelectorAll('.mermaid').forEach(el=>el.dataset.src=el.textContent);
+  renderMermaid();
+  // auto TOC + scroll-spy
+  const toc=document.getElementById('toc'); const secs=[...document.querySelectorAll('main section[id]')];
+  secs.forEach(s=>{ const h=s.querySelector('h2'); if(!h) return;
+    const a=document.createElement('a'); a.href='#'+s.id; a.textContent=h.textContent.replace(/^\s*[\d.]+\s*/,'');
+    a.dataset.id=s.id; toc.appendChild(a); });
+  const links=[...toc.querySelectorAll('a')];
+  const spy=new IntersectionObserver(es=>{es.forEach(e=>{ if(e.isIntersecting){
+    links.forEach(l=>l.classList.toggle('active',l.dataset.id===e.target.id)); }});},{rootMargin:'-20% 0px -70% 0px'});
+  secs.forEach(s=>spy.observe(s));
+  // progress bar
+  addEventListener('scroll',()=>{const h=document.documentElement;
+    const p=h.scrollTop/(h.scrollHeight-h.clientHeight)*100; document.getElementById('progress').style.width=p+'%';});
+</script>
+</body>
+</html>

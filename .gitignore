@@ -8,6 +8,9 @@ profile/
 mock-exams/attempts/
 mock-exams/results/
 
+# Generated learning docs (template + committed samples are kept)
+learn-docs/generated/
+
 # Ephemeral implementation plans
 .claude-plans/
 

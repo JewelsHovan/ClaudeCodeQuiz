@@ -26,8 +26,10 @@ This project is Julien's personalized study environment for the Claude Certified
 - `profile/session-log.md` — Study session history with scores and coach notes
 
 ## Commands
-`/setup` `/study [topic]` `/quiz` `/flashcards` `/weak-spots` `/mock-exam` `/cheat-sheet` `/save-progress`
+`/setup` `/study [topic]` `/quiz` `/flashcards` `/weak-spots` `/learn-doc [topic]` `/mock-exam` `/cheat-sheet` `/save-progress`
 - `/mock-exam` runs `uv run python mock-exams/generate_exam.py` → standalone timed HTML exam, then opens it.
+- `/learn-doc` fills `learn-docs/template.html` with content authored from `docs/` → a shareable HTML study guide
+  (diagrams via Mermaid, callouts, self-check). Writes to `learn-docs/generated/` (gitignored) or the committed root for samples.
 
 ## Learner Profile System
 - `profile/learner.md` — strengths, weak areas, domain confidence, **Concept Mastery & Spaced Repetition

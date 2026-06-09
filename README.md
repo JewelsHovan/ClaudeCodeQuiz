@@ -27,6 +27,7 @@ That's it. The `/setup` command creates your personal profile and walks you thro
 | `/study [topic]` | Tutoring mode — e.g., `/study mcp`, `/study hooks`, `/study batch api` |
 | `/flashcards` | Rapid-fire Q&A drill |
 | `/weak-spots` | Diagnostic: hard questions per domain + readiness report |
+| `/learn-doc [topic]` | Generate a **beautiful HTML study guide** (diagrams, exam-trap boxes, self-check) — shareable |
 | `/mock-exam` | **Timed interactive HTML exam** — 60 Q / 120 min, scored vs 720/1000 + pass estimate |
 | `/cheat-sheet` | Quick reference of key numbers, decision trees, anti-patterns |
 | `/save-progress` | **Run at end of every session** — persists what you learned |
