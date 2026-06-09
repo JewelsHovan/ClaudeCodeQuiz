@@ -21,6 +21,13 @@ It writes a standalone `.html` to `mock-exams/attempts/` (gitignored) and prints
 open mock-exams/attempts/<file>.html     # macOS  (Linux: xdg-open)
 ```
 
+## Shareable samples (committed, no install needed)
+- `sample-mock-exam.html` — **full 60-question** exam (~120 min); the real-length showcase
+- `sample-quick.html` — **20-question** taster (~40 min); faster to try end-to-end
+
+Just send the file — it's fully self-contained and opens in any browser. (Heads-up: answers are
+embedded in the page source so it can self-score offline — great for a demo, not a sealed test.)
+
 ## What it does
 - Samples `quiz/bank/*.json` by the real domain weights (27/18/20/20/15).
 - Groups questions under their scenario theme; in-page countdown timer auto-submits at 0:00.
