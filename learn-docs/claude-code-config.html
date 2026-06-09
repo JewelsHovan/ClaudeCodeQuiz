@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Claude Code Configuration & Workflows · CCA Study Guide</title>
+<!--
+  Reusable themed shell for /learn-doc learning pages.
+  Authoring contract (see learn-docs/README.md):
+    1. Replace Claude Code Configuration & Workflows, The 20% domain — CLAUDE.md hierarchy, commands vs skills, hooks, subagents, plugins, and CI workflows., Domain 3 · Claude Code Config, 20%, 12.
+    2. Replace the lone CONTENT marker (the bare HTML comment that sits below the hero) with the body.
+       NOTE: do not write that exact marker string anywhere else, or a naive find/replace injects twice.
+    3. The TOC nav fills itself from your section ids via the auto-TOC script.
+  Component classes available: .callout (.info/.tip/.trap/.key/.note), .card/.grid, .compare,
+    .diagram (Mermaid), .terms, .selfcheck (details), .pill/.badge, table, pre>code.
+  Diagrams use Mermaid via CDN (needs internet on first load); use <br/> for line breaks in node labels,
+    NOT \n. Fonts via Google Fonts CDN.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --bg2:#13161c; --panel:#171a21; --panel2:#1e222b; --ink:#e7e9ee; --muted:#9aa3b2;
+    --line:#2a2f3a; --accent:#cc785c; --accent2:#d4a27f; --good:#46b873; --bad:#e2606b; --warn:#e0b341;
+    --info:#5b9bd5; --code:#0c0e12; --radius:14px;
+  }
+  html[data-theme="light"]{
+    --bg:#faf9f7; --bg2:#f3f1ec; --panel:#ffffff; --panel2:#f5f3ef; --ink:#22252b; --muted:#6b7280;
+    --line:#e4e0d8; --code:#f5f3ef;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.7 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  code,pre{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  a{color:var(--accent2);text-decoration:none} a:hover{text-decoration:underline}
+  /* reading-progress + top bar */
+  #progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:60;transition:width .1s}
+  #top{position:fixed;top:0;left:0;right:0;height:52px;z-index:50;display:flex;align-items:center;
+    justify-content:space-between;padding:0 18px;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  #top .t{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
+  #top .actions{display:flex;gap:8px}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+    border-radius:9px;padding:6px 12px;font-size:13px} button:hover{border-color:var(--accent)}
+  /* layout */
+  .shell{max-width:1180px;margin:52px auto 0;display:grid;grid-template-columns:240px 1fr;gap:34px;padding:0 20px 90px}
+  nav.toc{position:sticky;top:72px;align-self:start;max-height:calc(100vh-90px);overflow:auto;
+    font-size:14px;border-left:1px solid var(--line);padding-left:14px}
+  nav.toc a{display:block;color:var(--muted);padding:4px 0;border-left:2px solid transparent;margin-left:-15px;padding-left:13px}
+  nav.toc a.active{color:var(--ink);border-left-color:var(--accent);font-weight:600}
+  nav.toc a.sub{padding-left:26px;font-size:13px}
+  main{min-width:0}
+  @media(max-width:880px){.shell{grid-template-columns:1fr} nav.toc{display:none}}
+  /* hero */
+  .hero{padding:30px 0 14px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .hero h1{font-size:34px;line-height:1.15;margin:10px 0 6px;font-weight:800;letter-spacing:-.02em}
+  .hero .sub{color:var(--muted);font-size:18px;margin:0}
+  .pillrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .pill,.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;font-size:12.5px;
+    padding:4px 11px;border:1px solid var(--line);background:var(--panel2);color:var(--muted)}
+  .pill.dom{color:var(--accent2);border-color:#3a2f2a;background:#1d1612}
+  .pill.weight{color:var(--ink)} .badge.easy{color:var(--good)} .badge.med{color:var(--warn)} .badge.hard{color:var(--bad)}
+  /* sections + headings */
+  section{padding:26px 0;border-bottom:1px solid var(--line)} section:last-child{border-bottom:0}
+  h2{font-size:24px;margin:0 0 14px;letter-spacing:-.01em;scroll-margin-top:70px}
+  h3{font-size:18px;margin:22px 0 8px}
+  h2 .n{color:var(--accent);font-weight:700;margin-right:10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px} li{margin:5px 0}
+  /* callouts */
+  .callout{border:1px solid var(--line);border-left-width:4px;border-radius:0 var(--radius) var(--radius) 0;
+    padding:13px 16px;margin:16px 0;background:var(--panel)}
+  .callout .h{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .callout.info{border-left-color:var(--info)} .callout.info .h{color:var(--info)}
+  .callout.tip{border-left-color:var(--good)} .callout.tip .h{color:var(--good)}
+  .callout.trap{border-left-color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,var(--panel))} .callout.trap .h{color:var(--bad)}
+  .callout.key{border-left-color:var(--accent)} .callout.key .h{color:var(--accent2)}
+  .callout.note{border-left-color:var(--muted)} .callout.note .h{color:var(--muted)}
+  /* cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:16px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .card h4{margin:0 0 6px;font-size:15px}
+  /* right-way / wrong-way compare */
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+  @media(max-width:680px){.compare{grid-template-columns:1fr}}
+  .compare>div{border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+  .compare .do{border-top:3px solid var(--good)} .compare .dont{border-top:3px solid var(--bad)}
+  .compare .lab{font-weight:700;font-size:13px;margin-bottom:6px} .compare .do .lab{color:var(--good)} .compare .dont .lab{color:var(--bad)}
+  /* diagrams */
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin:16px 0;text-align:center}
+  .diagram .cap{color:var(--muted);font-size:13px;margin-top:8px}
+  .mermaid{display:flex;justify-content:center}
+  /* key terms */
+  .terms{margin:16px 0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .terms .row{display:grid;grid-template-columns:200px 1fr;border-top:1px solid var(--line)}
+  .terms .row:first-child{border-top:0}
+  .terms .k{padding:10px 14px;background:var(--panel2);font-weight:600;font-size:14px}
+  .terms .v{padding:10px 14px}
+  @media(max-width:680px){.terms .row{grid-template-columns:1fr}}
+  /* tables */
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14.5px}
+  th,td{padding:9px 11px;border:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:var(--panel2);font-weight:600}
+  /* code */
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font-size:13.5px;line-height:1.5}
+  :not(pre)>code{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:13px}
+  /* self-check */
+  .selfcheck{border:1px solid var(--line);border-radius:var(--radius);padding:4px 16px;margin:12px 0;background:var(--panel)}
+  .selfcheck summary{cursor:pointer;font-weight:600;padding:10px 0;list-style:none}
+  .selfcheck summary::before{content:"❓ ";}
+  .selfcheck[open] summary::before{content:"✅ ";}
+  .selfcheck .a{border-top:1px dashed var(--line);padding:10px 0;color:var(--ink)}
+  .muted{color:var(--muted)} .small{font-size:13px}
+  footer{max-width:1180px;margin:0 auto;padding:30px 20px 60px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="top">
+  <div class="t">Claude Code Configuration & Workflows</div>
+  <div class="actions">
+    <button onclick="window.print()">⎙ Print / PDF</button>
+    <button id="themeBtn">◐ Theme</button>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="toc" id="toc"><!-- auto-filled from <section> headings --></nav>
+  <main>
+    <header class="hero">
+      <div class="pillrow">
+        <span class="pill dom">Domain 3 · Claude Code Config</span>
+        <span class="pill weight">Exam weight: 20%</span>
+        <span class="pill">⏱ ~12 min read</span>
+      </div>
+      <h1>Claude Code Configuration & Workflows</h1>
+      <p class="sub">The 20% domain — CLAUDE.md hierarchy, commands vs skills, hooks, subagents, plugins, and CI workflows.</p>
+    </header>
+
+        <section id="why">
+      <h2><span class="n">01</span> Why this domain pays off</h2>
+      <p>Claude Code Configuration &amp; Workflows is <strong>20% of the exam</strong> — and it is the most
+      <em>mechanical</em> domain. The questions reward people who know exactly which artifact does what:
+      where config lives, what is shared vs personal, and which mechanism is <strong>deterministic</strong> vs
+      <strong>probabilistic</strong>. Memorize the table of "right tool for the job" and the points fall out.</p>
+      <div class="callout key">
+        <div class="h">🎯 The two questions behind every item</div>
+        <ol>
+          <li><strong>Shared or personal?</strong> Anything committed to the repo (project <code>CLAUDE.md</code>,
+            <code>.claude/rules/</code>, <code>.claude/skills/</code>, <code>.mcp.json</code>) is shared with the team.
+            <code>~/.claude/</code> is personal and never version-controlled.</li>
+          <li><strong>Always-on or on-demand?</strong> <code>CLAUDE.md</code> is always loaded; skills and commands are
+            invoked on demand; path-specific rules load only when a matching file is touched.</li>
+        </ol>
+        Most distractors put the right content in the wrong scope, or use a probabilistic mechanism where a
+        deterministic one (a hook, <code>allowed-tools</code>) is required.
+      </div>
+    </section>
+
+    <section id="claude-md-hierarchy">
+      <h2><span class="n">02</span> The CLAUDE.md hierarchy &amp; <code>@import</code></h2>
+      <p>Three levels stack from broadest to narrowest. All applicable levels load together; the more specific level
+      refines the broader ones.</p>
+      <div class="terms">
+        <div class="row"><div class="k">User-level</div><div class="v"><code>~/.claude/CLAUDE.md</code> — personal
+          preferences across <em>all</em> your projects. <strong>Not</strong> shared via version control.</div></div>
+        <div class="row"><div class="k">Project-level</div><div class="v">root <code>CLAUDE.md</code> or
+          <code>.claude/CLAUDE.md</code> — committed to the repo, <strong>shared with the whole team</strong>, always loaded.</div></div>
+        <div class="row"><div class="k">Directory-level</div><div class="v">a <code>CLAUDE.md</code> inside a subdirectory —
+          scoped to that directory tree. Still committed, so still shared.</div></div>
+      </div>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  U["User ~/.claude/CLAUDE.md<br/>personal · all projects · NOT shared"]
+  P["Project CLAUDE.md<br/>committed · team · always loaded"]
+  D["Directory CLAUDE.md<br/>scoped to that subtree"]
+  U --> P --> D
+  D -.more specific wins.-> P
+      </div><div class="cap">All applicable levels combine; the most specific scope refines the broader ones.</div></div>
+      <div class="callout info">
+        <div class="h">@import keeps it modular</div>
+        Reference external files with <code>@import ./standards/api-conventions.md</code> instead of growing one giant
+        monolith. Each package's <code>CLAUDE.md</code> imports only the standards relevant to its domain — no copy/paste,
+        no manual sync drift.
+      </div>
+      <div class="callout trap">
+        <div class="h">⚠️ The classic hierarchy trap</div>
+        "A new teammate clones the repo but isn't getting the conventions." The cause is almost always that the rules
+        live in someone's <code>~/.claude/CLAUDE.md</code> (personal, not shared) instead of project-level
+        <code>CLAUDE.md</code>. Conversely, <em>personal</em> preferences (commit style, verbosity) belong in
+        <code>~/.claude/CLAUDE.md</code> so they don't leak to the team. Use <code>/memory</code> to see which files are
+        actually loaded when behavior is inconsistent across sessions.
+      </div>
+    </section>
+
+    <section id="rules-vs-directory">
+      <h2><span class="n">03</span> Path-specific rules vs directory CLAUDE.md</h2>
+      <p>Both scope instructions, but they answer different questions. The deciding factor is <em>how the relevant files
+      are arranged</em>: clustered in one tree, or scattered by type across the codebase.</p>
+      <div class="compare">
+        <div class="do"><div class="lab">Directory CLAUDE.md — contained in a tree</div>
+          Conventions live inside <strong>one directory subtree</strong> (e.g. all Terraform under
+          <code>infrastructure/</code>). Drop a <code>CLAUDE.md</code> in that folder.</div>
+        <div class="dont"><div class="lab">.claude/rules/ + glob — spread by type</div>
+          Conventions apply to files of a <strong>type wherever they live</strong> (e.g. test files sitting next to
+          their source throughout the repo). Use a rule file with a <code>paths</code> glob.</div>
+      </div>
+      <p>A path-specific rule is a markdown file under <code>.claude/rules/</code> with a <code>paths</code> glob in its
+      frontmatter. It loads <strong>only when you edit a matching file</strong> — cutting irrelevant context and tokens.</p>
+      <pre><code>---
+paths:
+  - "**/*.test.tsx"
+  - "**/*.test.ts"
+---
+# Test Conventions
+- Use React Testing Library, not Enzyme
+- Test behavior, not implementation</code></pre>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  Q{Files clustered in<br/>ONE directory tree?}
+  Q -->|Yes| C["Directory CLAUDE.md<br/>in that folder"]
+  Q -->|No · spread by type| R[".claude/rules/ file<br/>with paths glob"]
+  R --> L["Loads only when a<br/>matching file is edited"]
+      </div><div class="cap">Choose by file arrangement: contained tree vs scattered-by-type.</div></div>
+      <h3>Glob specificity on conflict</h3>
+      <p>When two rule globs match the same file, the <strong>more specific (narrower, deeper) glob wins</strong> — just
+      like specificity decides everywhere else in the config hierarchy. Order of definition and alphabetical order are
+      irrelevant.</p>
+      <table>
+        <tr><th>File edited</th><th>Matching globs</th><th>Governs</th></tr>
+        <tr><td><code>src/payments/charge.ts</code></td>
+          <td><code>src/**/*</code> vs <code>src/payments/**/*.ts</code></td>
+          <td><strong><code>src/payments/**/*.ts</code></strong> (more specific)</td></tr>
+      </table>
+      <div class="callout trap">
+        <div class="h">⚠️ Trap</div>
+        Conflicting rules are <strong>not</strong> both discarded, and precedence is <strong>not</strong> by definition
+        order or alphabetical position. The narrower glob match governs.
+      </div>
+    </section>
+
+    <section id="commands-vs-skills">
+      <h2><span class="n">04</span> Commands vs skills — the most-confused topic</h2>
+      <p>This is the section to over-prepare. Commands and skills look similar (both live under <code>.claude/</code>,
+      both are markdown) but their argument mechanisms and lifecycle are <strong>not interchangeable</strong>, and the
+      exam loves to swap one's features onto the other.</p>
+      <table>
+        <tr><th></th><th>Custom slash command</th><th>Skill</th></tr>
+        <tr><td>Lives in</td><td><code>.claude/commands/</code> (project) or <code>~/.claude/commands/</code> (personal)</td>
+          <td><code>.claude/skills/&lt;name&gt;/SKILL.md</code> (project) or <code>~/.claude/skills/</code> (personal)</td></tr>
+        <tr><td>Takes free-form args via</td><td><strong><code>$ARGUMENTS</code></strong> substituted into the body</td>
+          <td>frontmatter <code>argument-hint</code> (prompts for a parameter)</td></tr>
+        <tr><td>Context isolation</td><td>runs inline in the conversation</td>
+          <td><code>context: fork</code> runs it in an isolated sub-agent</td></tr>
+        <tr><td>Tool restriction</td><td>—</td><td><code>allowed-tools</code> limits which tools it may call</td></tr>
+        <tr><td>Best for</td><td>quick, reusable prompt templates with user input</td>
+          <td>task-specific workflows, especially verbose or tool-restricted ones</td></tr>
+      </table>
+      <div class="callout key">
+        <div class="h">🎯 Memorize the ownership of each keyword</div>
+        <strong><code>$ARGUMENTS</code> belongs to COMMANDS.</strong> <code>argument-hint</code>,
+        <code>context: fork</code>, and <code>allowed-tools</code> are <strong>SKILL frontmatter</strong>. If an answer
+        attaches <code>$ARGUMENTS</code> to a skill, or claims <code>context: fork</code> captures a command's
+        arguments, it is wrong.
+      </div>
+      <h3>Skill frontmatter you must know</h3>
+      <pre><code>---
+argument-hint: "target directory"   # prompts for a required parameter
+context: fork                        # isolate verbose output from the main convo
+allowed-tools:                       # deterministic tool restriction
+  - Read
+  - Grep
+  - Glob
+---
+# Codebase Analyzer
+...verbose exploratory instructions...</code></pre>
+      <div class="grid">
+        <div class="card"><h4><code>context: fork</code></h4>Runs in an isolated sub-agent so hundreds of lines of
+          exploratory output never pollute the main conversation — only a summary returns. Use for codebase analysis,
+          brainstorming.</div>
+        <div class="card"><h4><code>allowed-tools</code></h4>Makes write/edit tools <strong>unavailable</strong>. To
+          guarantee a skill is read-only, restrict the toolset — don't just write "do not modify files" in prose
+          (probabilistic).</div>
+        <div class="card"><h4><code>argument-hint</code></h4>Prompts the developer for a required parameter when the
+          skill is invoked without one. It does <strong>not</strong> restrict tools or isolate context.</div>
+        <div class="card"><h4>Skill vs CLAUDE.md</h4>Skills are on-demand for task workflows; <code>CLAUDE.md</code> is
+          always-loaded universal standards. Don't put always-on conventions in a skill (applied inconsistently).</div>
+      </div>
+      <div class="callout trap">
+        <div class="h">⚠️ Personal variant of a shared skill</div>
+        Want a private tweak to the team's <code>/deploy</code> skill without affecting teammates? Create a
+        <strong>differently-named variant</strong> under <code>~/.claude/skills/</code> (e.g. <code>deploy-dryrun</code>).
+        Do <em>not</em> edit the committed project skill (affects everyone) and don't try to redefine a skill via
+        <code>CLAUDE.md</code> (that's not the skill mechanism).
+      </div>
+    </section>
+
+    <section id="hooks">
+      <h2><span class="n">05</span> Hooks — deterministic enforcement &amp; transformation</h2>
+      <p>Hooks are how you get a <strong>100%-of-the-time guarantee</strong> that the model alone cannot give. Pick the
+      hook by <em>when</em> you need to act relative to the tool call or turn boundary.</p>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  M[Model wants to act] --> Pre{PreToolUse}
+  Pre -->|deny| Block["Blocked before<br/>anything happens"]
+  Pre -->|allow| Tool[Tool executes]
+  Tool --> Post[PostToolUse]
+  Post --> T["Transform / normalize<br/>the result or file"]
+  T --> Turn{Model ends turn?}
+  Turn --> Stop[Stop / SubagentStop]
+  Stop -->|additionalContext| M
+      </div><div class="cap">PreToolUse gates before; PostToolUse transforms after; Stop can re-inject context to continue.</div></div>
+      <div class="compare">
+        <div class="do"><div class="lab">PreToolUse — block BEFORE it happens</div>
+          Inspect the target path and <strong>deny</strong> any Edit/Write to <code>config/secrets/</code>. Preventive
+          and deterministic — the change never occurs. The strongest guarantee for "this must never happen."</div>
+        <div class="dont"><div class="lab">PostToolUse — transform AFTER it happens</div>
+          Run the formatter on the file that was just written. Right place for deterministic transformations on a
+          completed action. A PostToolUse <em>revert</em> is reactive (the write already happened) — weaker than blocking.</div>
+      </div>
+      <table>
+        <tr><th>Hook</th><th>Fires</th><th>Use it for</th></tr>
+        <tr><td><code>PreToolUse</code></td><td>before a tool call</td><td>block / validate (path denylists, approval gates)</td></tr>
+        <tr><td><code>PostToolUse</code></td><td>after a tool call</td><td>transform / normalize (format, convert timestamps)</td></tr>
+        <tr><td><code>Stop</code> / <code>SubagentStop</code></td><td>when a turn / subagent turn would end</td><td>verify-and-continue (re-inject context, e.g. failing tests)</td></tr>
+      </table>
+      <div class="callout trap">
+        <div class="h">⚠️ Probabilistic where deterministic is required</div>
+        A <code>CLAUDE.md</code> warning, few-shot examples, or a Stop-hook nudge all <em>reduce</em> but never
+        <em>eliminate</em> a failure rate. When a requirement is mandatory (security, secrets, compliance), the answer is
+        a hook (PreToolUse to block, PostToolUse to transform) or <code>allowed-tools</code> — never prose.
+      </div>
+    </section>
+
+    <section id="subagents">
+      <h2><span class="n">06</span> Subagents &amp; context isolation</h2>
+      <p>A session that <em>wrote</em> code is biased when asked to <em>review</em> its own diff — it shares the
+      implementer's assumptions and blind spots, so it rates its own work as fine and misses real bugs.</p>
+      <div class="callout key">
+        <div class="h">🎯 Separate the reviewer from the implementer</div>
+        The fix is architectural, not a prompt tweak: run the review in a <strong>separate reviewer subagent / instance
+        with context isolated from the implementer</strong>. Telling the same biased session to "be a harsh reviewer,"
+        raising temperature, or re-running the same context twice all inherit the same blind spots.
+      </div>
+      <p>This is also why CI review should use an <strong>independent instance</strong> from the one that generated the
+      code, and why an <em>explore</em> subagent is used to isolate verbose discovery output and return only a summary —
+      preserving the main context window.</p>
+    </section>
+
+    <section id="plugins">
+      <h2><span class="n">07</span> Plugins &amp; 2026 currency</h2>
+      <p>Plugins package a team's skills, commands, and hooks so a colleague can adopt them. The 2026 workflow removed
+      the old marketplace/install friction.</p>
+      <div class="callout key">
+        <div class="h">🆕 2026 currency</div>
+        <ul>
+          <li><strong>Plugin scaffolding (May 2026):</strong> <code>claude plugin init &lt;name&gt;</code> scaffolds a
+            plugin, and <code>SKILL.md</code> files placed in its <code>.claude/skills</code> directories
+            <strong>auto-load</strong> as <code>&lt;name&gt;@skills-dir</code> — <em>no</em> marketplace publish and
+            <em>no</em> install step required. Manual copying into <code>~/.claude/skills</code> is the old approach this
+            replaces.</li>
+          <li><strong>Stop/SubagentStop additionalContext (v2.1.163):</strong> these hooks can now return
+            <code>hookSpecificOutput.additionalContext</code> (≤<strong>10,000 chars</strong>) to feed Claude context and
+            keep the turn going <strong>without</strong> the hook being treated as an error. Example: a Stop hook checks
+            whether tests passed and, if not, re-injects the failing output so Claude keeps fixing in the same turn — a
+            non-zero exit, by contrast, is treated as a hook error.</li>
+          <li><strong>Current model:</strong> reference <strong>Opus 4.8</strong> as the current flagship where a model
+            is named.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="ci-cd">
+      <h2><span class="n">08</span> CI/CD: non-interactive mode &amp; test generation</h2>
+      <p>In CI there is no human at a prompt, so Claude Code must run headless.</p>
+      <pre><code># Non-interactive: process prompt, write to stdout, exit
+claude -p "Review this diff for security issues"
+
+# Machine-parseable findings for automated PR comments
+claude -p "Review this PR" --output-format json --json-schema schema.json</code></pre>
+      <div class="callout trap">
+        <div class="h">⚠️ The build that hangs forever</div>
+        A CI job running <code>claude "..."</code> without <code>-p</code> waits for interactive input and hangs until
+        timeout. The fix is the <strong><code>-p</code> / <code>--print</code> flag</strong> — not a shorter timeout, not
+        piping <code>yes</code> into stdin, and there is no <code>--interactive=false</code> flag.
+      </div>
+      <div class="grid">
+        <div class="card"><h4>Better test generation</h4>Provide the <strong>existing test files</strong> in context (so
+          it avoids duplicates) and document testing standards + what counts as a <em>valuable</em> test in
+          <code>CLAUDE.md</code> (so it skips trivial getters/setters).</div>
+        <div class="card"><h4>Incremental reviews</h4>Carry <strong>prior findings</strong> into context and instruct
+          Claude to report only <em>new or still-unaddressed</em> issues — otherwise re-runs spam duplicate comments.</div>
+        <div class="card"><h4>Independent reviewer</h4>Don't let the generating session review its own code; use a fresh
+          instance with isolated context.</div>
+        <div class="card"><h4>Shared MCP, private tokens</h4>Put the server in project-scoped <code>.mcp.json</code>
+          (committed) and reference secrets via env expansion like <code>${GITHUB_TOKEN}</code> — never commit the token.</div>
+      </div>
+    </section>
+
+    <section id="traps">
+      <h2><span class="n">09</span> Exam traps cheat-sheet</h2>
+      <table>
+        <tr><th>Tempting wrong answer</th><th>Why it's wrong</th></tr>
+        <tr><td>Personal prefs in project <code>CLAUDE.md</code></td><td>Leaks to the whole team; personal goes in <code>~/.claude/</code>.</td></tr>
+        <tr><td>Shared conventions in <code>~/.claude/CLAUDE.md</code></td><td>Not version-controlled; teammates never get them.</td></tr>
+        <tr><td><code>$ARGUMENTS</code> on a skill</td><td><code>$ARGUMENTS</code> is a <em>command</em> mechanism; skills use <code>argument-hint</code>.</td></tr>
+        <tr><td>"do not modify files" in prose to make a skill read-only</td><td>Probabilistic — restrict with <code>allowed-tools</code> instead.</td></tr>
+        <tr><td>PostToolUse to <em>block</em> a forbidden edit</td><td>The write already happened; use PreToolUse to block before.</td></tr>
+        <tr><td>CLAUDE.md warning for a mandatory security rule</td><td>Probabilistic; use a deterministic PreToolUse hook.</td></tr>
+        <tr><td>Conflicting rule globs both ignored / ordered alphabetically</td><td>Most specific glob wins.</td></tr>
+        <tr><td>Running <code>claude</code> in CI without <code>-p</code></td><td>Hangs on interactive input; add <code>-p</code>.</td></tr>
+        <tr><td>Skills need a marketplace + install</td><td>As of May 2026, <code>plugin init</code> skills auto-load, no install.</td></tr>
+        <tr><td>Same session reviews its own code</td><td>Inherits implementer bias; use an isolated reviewer subagent.</td></tr>
+      </table>
+    </section>
+
+    <section id="scenario">
+      <h2><span class="n">10</span> Worked scenario — Monorepo config (Code Generation with Claude Code)</h2>
+      <div class="callout info">
+        <div class="h">Scenario</div>
+        A repo has Terraform under <code>infrastructure/</code>, React components under <code>web/</code>, and Python
+        services under <code>services/</code>. Test files live <em>next to</em> the source they cover, across all three
+        trees. You want testing conventions to apply to every test file regardless of location, while each language tree
+        keeps its own conventions.
+      </div>
+      <p><strong>Best move:</strong> two complementary mechanisms.</p>
+      <ul>
+        <li><strong>Directory <code>CLAUDE.md</code></strong> in each language tree — those conventions are contained
+          within a single subtree.</li>
+        <li><strong><code>.claude/rules/</code></strong> with a glob like <code>"**/*.test.*"</code> for the testing
+          conventions — they apply to files <em>by type, spread across</em> the codebase, and load only when a test file
+          is touched.</li>
+      </ul>
+      <p>A single giant root <code>CLAUDE.md</code> loads everything for every file (wasted context, mixed concerns); a
+      manually-invoked skill is unreliable for always-on conventions; a root <em>directory</em> <code>CLAUDE.md</code>
+      can't selectively target test files by type.</p>
+    </section>
+
+    <section id="selfcheck">
+      <h2><span class="n">11</span> Self-check</h2>
+      <details class="selfcheck"><summary>A teammate clones the repo but isn't getting the team's coding conventions. Most likely cause?</summary>
+        <div class="a">The conventions live in someone's personal <code>~/.claude/CLAUDE.md</code> (not version-controlled)
+        instead of project-level <code>CLAUDE.md</code>. Use <code>/memory</code> to confirm which files load.</div></details>
+      <details class="selfcheck"><summary>You need a command that takes a free-form arg like <code>/triage &lt;url&gt;</code>. Which mechanism?</summary>
+        <div class="a"><code>$ARGUMENTS</code> in the command's markdown body. That is a <strong>command</strong>
+        feature — <code>argument-hint</code> and <code>context: fork</code> are skill frontmatter, not this.</div></details>
+      <details class="selfcheck"><summary>A skill must never write files. How do you guarantee it?</summary>
+        <div class="a">Set <code>allowed-tools</code> to a read-only set (Read, Grep, Glob) so write/edit tools are
+        unavailable. Prose like "don't modify files" is probabilistic. <code>context: fork</code> isolates context but
+        doesn't prevent writes.</div></details>
+      <details class="selfcheck"><summary>Edits to <code>config/secrets/</code> must be impossible. Pre- or PostToolUse?</summary>
+        <div class="a">A <strong>PreToolUse</strong> hook that inspects the path and denies the Edit/Write before it
+        happens. PostToolUse would let the write occur first (reactive); CLAUDE.md is probabilistic.</div></details>
+      <details class="selfcheck"><summary>Two rule globs match the same file. Which wins?</summary>
+        <div class="a">The <strong>more specific (narrower/deeper) glob</strong>. Not definition order, not alphabetical.</div></details>
+      <details class="selfcheck"><summary>You ran <code>plugin init mytools</code> and dropped SKILL.md files in its <code>.claude/skills</code>. What does a colleague have to do?</summary>
+        <div class="a">Nothing extra — as of May 2026 those skills <strong>auto-load</strong> as
+        <code>mytools@skills-dir</code> with no marketplace publish or install step.</div></details>
+    </section>
+
+    <section id="takeaways">
+      <h2><span class="n">12</span> One-screen takeaways</h2>
+      <table>
+        <tr><th>If you remember nothing else…</th></tr>
+        <tr><td>Shared = committed (project <code>CLAUDE.md</code>, rules, skills, <code>.mcp.json</code>); personal = <code>~/.claude/</code>.</td></tr>
+        <tr><td><code>CLAUDE.md</code> always-loaded; skills/commands on-demand; rules load on matching file edits.</td></tr>
+        <tr><td><code>$ARGUMENTS</code> → commands. <code>argument-hint</code> / <code>context: fork</code> / <code>allowed-tools</code> → skills.</td></tr>
+        <tr><td>Directory <code>CLAUDE.md</code> = contained tree; <code>.claude/rules/</code> + glob = spread by type. Specific glob wins.</td></tr>
+        <tr><td>PreToolUse blocks before · PostToolUse transforms after · Stop can re-inject <code>additionalContext</code> (≤10k).</td></tr>
+        <tr><td>Reviewer ≠ implementer — isolate context to kill self-review bias.</td></tr>
+        <tr><td>CI runs headless with <code>-p</code>; feed existing tests + CLAUDE.md criteria for better generation.</td></tr>
+        <tr><td><code>plugin init</code> skills auto-load (no marketplace). Current model: Opus 4.8.</td></tr>
+      </table>
+      <div class="callout tip"><div class="h">Next</div>
+        Drill it: <code>/quiz domain 3</code>. Calibrate: <code>/mock-exam domain 3</code>.</div>
+    </section>
+
+
+  </main>
+</div>
+
+<footer>
+  Generated by <code>/learn-doc</code> · Claude Certified Architect — Foundations study env ·
+  Content is original study material, not real (NDA) exam content · Verify currency on
+  <a href="https://platform.claude.com/docs">platform.claude.com/docs</a>.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  // theme
+  const root=document.documentElement, tkey='cca-learn-theme';
+  if(localStorage.getItem(tkey)) root.dataset.theme=localStorage.getItem(tkey);
+  document.getElementById('themeBtn').onclick=()=>{
+    root.dataset.theme = root.dataset.theme==='dark'?'light':'dark';
+    localStorage.setItem(tkey,root.dataset.theme);
+    renderMermaid();
+  };
+  // mermaid
+  function mmTheme(){return root.dataset.theme==='light'?'neutral':'dark';}
+  function renderMermaid(){
+    document.querySelectorAll('.mermaid').forEach(el=>{ if(el.dataset.src) el.removeAttribute('data-processed'),el.innerHTML=el.dataset.src; });
+    mermaid.initialize({startOnLoad:false,theme:mmTheme(),themeVariables:{
+      primaryColor:'#1e222b',primaryTextColor:'#e7e9ee',primaryBorderColor:'#cc785c',
+      lineColor:'#9aa3b2',fontSize:'14px'}});
+    mermaid.run({querySelector:'.mermaid'});
+  }
+  document.querySelectorAll('.mermaid').forEach(el=>el.dataset.src=el.textContent);
+  renderMermaid();
+  // auto TOC + scroll-spy
+  const toc=document.getElementById('toc'); const secs=[...document.querySelectorAll('main section[id]')];
+  secs.forEach(s=>{ const h=s.querySelector('h2'); if(!h) return;
+    const a=document.createElement('a'); a.href='#'+s.id; a.textContent=h.textContent.replace(/^\s*[\d.]+\s*/,'');
+    a.dataset.id=s.id; toc.appendChild(a); });
+  const links=[...toc.querySelectorAll('a')];
+  const spy=new IntersectionObserver(es=>{es.forEach(e=>{ if(e.isIntersecting){
+    links.forEach(l=>l.classList.toggle('active',l.dataset.id===e.target.id)); }});},{rootMargin:'-20% 0px -70% 0px'});
+  secs.forEach(s=>spy.observe(s));
+  // progress bar
+  addEventListener('scroll',()=>{const h=document.documentElement;
+    const p=h.scrollTop/(h.scrollHeight-h.clientHeight)*100; document.getElementById('progress').style.width=p+'%';});
+</script>
+</body>
+</html>

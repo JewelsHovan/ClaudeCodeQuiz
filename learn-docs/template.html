@@ -8,11 +8,13 @@
   Reusable themed shell for /learn-doc learning pages.
   Authoring contract (see learn-docs/README.md):
     1. Replace {{TITLE}}, {{SUBTITLE}}, {{DOMAIN}}, {{WEIGHT}}, {{READMINS}}.
-    2. Replace the <!--CONTENT--> marker with the authored body.
-    3. Build the TOC <nav> from your <section id="..."> ids (or leave the auto-TOC script to fill it).
+    2. Replace the lone CONTENT marker (the bare HTML comment that sits below the hero) with the body.
+       NOTE: do not write that exact marker string anywhere else, or a naive find/replace injects twice.
+    3. The TOC nav fills itself from your section ids via the auto-TOC script.
   Component classes available: .callout (.info/.tip/.trap/.key/.note), .card/.grid, .compare,
-    .diagram (Mermaid), .terms, .selfcheck (<details>), .pill/.badge, table, pre>code.
-  Diagrams use Mermaid via CDN (needs internet on first load). Fonts via Google Fonts CDN.
+    .diagram (Mermaid), .terms, .selfcheck (details), .pill/.badge, table, pre>code.
+  Diagrams use Mermaid via CDN (needs internet on first load); use <br/> for line breaks in node labels,
+    NOT \n. Fonts via Google Fonts CDN.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">

@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Context Management & Reliability · CCA Study Guide</title>
+<!--
+  Reusable themed shell for /learn-doc learning pages.
+  Authoring contract (see learn-docs/README.md):
+    1. Replace Context Management & Reliability, The 15% domain — context-window tactics, graceful degradation, escalation triggers, and validation., Domain 5 · Context & Reliability, 15%, 10.
+    2. Replace the lone CONTENT marker (the bare HTML comment that sits below the hero) with the body.
+       NOTE: do not write that exact marker string anywhere else, or a naive find/replace injects twice.
+    3. The TOC nav fills itself from your section ids via the auto-TOC script.
+  Component classes available: .callout (.info/.tip/.trap/.key/.note), .card/.grid, .compare,
+    .diagram (Mermaid), .terms, .selfcheck (details), .pill/.badge, table, pre>code.
+  Diagrams use Mermaid via CDN (needs internet on first load); use <br/> for line breaks in node labels,
+    NOT \n. Fonts via Google Fonts CDN.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --bg2:#13161c; --panel:#171a21; --panel2:#1e222b; --ink:#e7e9ee; --muted:#9aa3b2;
+    --line:#2a2f3a; --accent:#cc785c; --accent2:#d4a27f; --good:#46b873; --bad:#e2606b; --warn:#e0b341;
+    --info:#5b9bd5; --code:#0c0e12; --radius:14px;
+  }
+  html[data-theme="light"]{
+    --bg:#faf9f7; --bg2:#f3f1ec; --panel:#ffffff; --panel2:#f5f3ef; --ink:#22252b; --muted:#6b7280;
+    --line:#e4e0d8; --code:#f5f3ef;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.7 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  code,pre{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  a{color:var(--accent2);text-decoration:none} a:hover{text-decoration:underline}
+  /* reading-progress + top bar */
+  #progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:60;transition:width .1s}
+  #top{position:fixed;top:0;left:0;right:0;height:52px;z-index:50;display:flex;align-items:center;
+    justify-content:space-between;padding:0 18px;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  #top .t{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
+  #top .actions{display:flex;gap:8px}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+    border-radius:9px;padding:6px 12px;font-size:13px} button:hover{border-color:var(--accent)}
+  /* layout */
+  .shell{max-width:1180px;margin:52px auto 0;display:grid;grid-template-columns:240px 1fr;gap:34px;padding:0 20px 90px}
+  nav.toc{position:sticky;top:72px;align-self:start;max-height:calc(100vh-90px);overflow:auto;
+    font-size:14px;border-left:1px solid var(--line);padding-left:14px}
+  nav.toc a{display:block;color:var(--muted);padding:4px 0;border-left:2px solid transparent;margin-left:-15px;padding-left:13px}
+  nav.toc a.active{color:var(--ink);border-left-color:var(--accent);font-weight:600}
+  nav.toc a.sub{padding-left:26px;font-size:13px}
+  main{min-width:0}
+  @media(max-width:880px){.shell{grid-template-columns:1fr} nav.toc{display:none}}
+  /* hero */
+  .hero{padding:30px 0 14px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .hero h1{font-size:34px;line-height:1.15;margin:10px 0 6px;font-weight:800;letter-spacing:-.02em}
+  .hero .sub{color:var(--muted);font-size:18px;margin:0}
+  .pillrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .pill,.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;font-size:12.5px;
+    padding:4px 11px;border:1px solid var(--line);background:var(--panel2);color:var(--muted)}
+  .pill.dom{color:var(--accent2);border-color:#3a2f2a;background:#1d1612}
+  .pill.weight{color:var(--ink)} .badge.easy{color:var(--good)} .badge.med{color:var(--warn)} .badge.hard{color:var(--bad)}
+  /* sections + headings */
+  section{padding:26px 0;border-bottom:1px solid var(--line)} section:last-child{border-bottom:0}
+  h2{font-size:24px;margin:0 0 14px;letter-spacing:-.01em;scroll-margin-top:70px}
+  h3{font-size:18px;margin:22px 0 8px}
+  h2 .n{color:var(--accent);font-weight:700;margin-right:10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px} li{margin:5px 0}
+  /* callouts */
+  .callout{border:1px solid var(--line);border-left-width:4px;border-radius:0 var(--radius) var(--radius) 0;
+    padding:13px 16px;margin:16px 0;background:var(--panel)}
+  .callout .h{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .callout.info{border-left-color:var(--info)} .callout.info .h{color:var(--info)}
+  .callout.tip{border-left-color:var(--good)} .callout.tip .h{color:var(--good)}
+  .callout.trap{border-left-color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,var(--panel))} .callout.trap .h{color:var(--bad)}
+  .callout.key{border-left-color:var(--accent)} .callout.key .h{color:var(--accent2)}
+  .callout.note{border-left-color:var(--muted)} .callout.note .h{color:var(--muted)}
+  /* cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:16px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .card h4{margin:0 0 6px;font-size:15px}
+  /* right-way / wrong-way compare */
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+  @media(max-width:680px){.compare{grid-template-columns:1fr}}
+  .compare>div{border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+  .compare .do{border-top:3px solid var(--good)} .compare .dont{border-top:3px solid var(--bad)}
+  .compare .lab{font-weight:700;font-size:13px;margin-bottom:6px} .compare .do .lab{color:var(--good)} .compare .dont .lab{color:var(--bad)}
+  /* diagrams */
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin:16px 0;text-align:center}
+  .diagram .cap{color:var(--muted);font-size:13px;margin-top:8px}
+  .mermaid{display:flex;justify-content:center}
+  /* key terms */
+  .terms{margin:16px 0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .terms .row{display:grid;grid-template-columns:200px 1fr;border-top:1px solid var(--line)}
+  .terms .row:first-child{border-top:0}
+  .terms .k{padding:10px 14px;background:var(--panel2);font-weight:600;font-size:14px}
+  .terms .v{padding:10px 14px}
+  @media(max-width:680px){.terms .row{grid-template-columns:1fr}}
+  /* tables */
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14.5px}
+  th,td{padding:9px 11px;border:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:var(--panel2);font-weight:600}
+  /* code */
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font-size:13.5px;line-height:1.5}
+  :not(pre)>code{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:13px}
+  /* self-check */
+  .selfcheck{border:1px solid var(--line);border-radius:var(--radius);padding:4px 16px;margin:12px 0;background:var(--panel)}
+  .selfcheck summary{cursor:pointer;font-weight:600;padding:10px 0;list-style:none}
+  .selfcheck summary::before{content:"❓ ";}
+  .selfcheck[open] summary::before{content:"✅ ";}
+  .selfcheck .a{border-top:1px dashed var(--line);padding:10px 0;color:var(--ink)}
+  .muted{color:var(--muted)} .small{font-size:13px}
+  footer{max-width:1180px;margin:0 auto;padding:30px 20px 60px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="top">
+  <div class="t">Context Management & Reliability</div>
+  <div class="actions">
+    <button onclick="window.print()">⎙ Print / PDF</button>
+    <button id="themeBtn">◐ Theme</button>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="toc" id="toc"><!-- auto-filled from <section> headings --></nav>
+  <main>
+    <header class="hero">
+      <div class="pillrow">
+        <span class="pill dom">Domain 5 · Context & Reliability</span>
+        <span class="pill weight">Exam weight: 15%</span>
+        <span class="pill">⏱ ~10 min read</span>
+      </div>
+      <h1>Context Management & Reliability</h1>
+      <p class="sub">The 15% domain — context-window tactics, graceful degradation, escalation triggers, and validation.</p>
+    </header>
+
+        <section id="why">
+      <h2><span class="n">01</span> Why this domain matters</h2>
+      <p>Context Management &amp; Reliability is <strong>15% of the exam</strong> — the smallest domain by weight, but
+      it concentrates the questions that separate a pass from a fail. These are the "everything technically worked,
+      but the system was still wrong" scenarios: a summary that quietly dropped the order total, a synthesis agent that
+      skipped the middle subagent, an extraction pipeline that looked 97% accurate while one document type failed
+      silently.</p>
+      <div class="callout key">
+        <div class="h">🎯 The one idea behind every question</div>
+        Reliability is about <strong>not destroying information you can't recover</strong> — precise facts,
+        source attribution, partial successes, and segment-level failures. When a distractor "simplifies" by
+        compressing, guessing, averaging, or terminating, it is almost always wrong. The right answer
+        <strong>preserves, annotates, or escalates</strong> instead.
+      </div>
+      <p>Questions cluster in the <em>Customer Support Resolution Agent</em>, <em>Multi-Agent Research System</em>,
+      <em>Code Generation with Claude Code</em>, and <em>Structured Data Extraction</em> scenarios.</p>
+    </section>
+
+    <section id="context-window">
+      <h2><span class="n">02</span> Managing the context window</h2>
+      <p>Long conversations and big explorations fill the context window. The failure mode is not just running out of
+      space — it is <em>which</em> information gets lost first. Three named risks show up repeatedly.</p>
+
+      <h3>Case facts: keep transactional data out of the summary</h3>
+      <p>Progressive summarization is great at condensing prose and terrible at preserving precise values. Over many
+      turns, "<code>$1,249.00</code>, ordered 2026-03-14, RMA #88231" degrades into "a recent high-value order" — and
+      the agent then quotes wrong figures.</p>
+      <div class="callout key">
+        <div class="h">🔑 Case facts block</div>
+        Extract transactional facts (amounts, dates, order/RMA numbers, statuses) into a persistent
+        <strong>case facts block</strong> that travels with each prompt <strong>outside</strong> the summarized history.
+        The values are stored verbatim, so summarization can never compress them away.
+      </div>
+      <div class="compare">
+        <div class="dont"><div class="lab">Tempting but wrong</div>
+          "Disable summarization, always pass full raw history" (overflows the window) · "Instruct the model to never
+          summarize numbers" (probabilistic, degrades over turns) · "Raise <code>max_tokens</code>" (affects output
+          length, not what gets dropped).</div>
+        <div class="do"><div class="lab">Correct</div>
+          A structured facts block, outside the part of context that gets compressed. The goal is to keep the facts
+          that matter — not all the raw text.</div>
+      </div>
+
+      <h3>"Lost in the middle"</h3>
+      <p>Models reliably attend to the <strong>beginning and end</strong> of a long input but may skip content in the
+      middle. A synthesis agent fed one long concatenation of five subagents' findings will often capture the first and
+      last and omit the middle three.</p>
+      <div class="grid">
+        <div class="card"><h4>Key findings up front</h4>Put a key-findings summary at the <strong>beginning</strong> of
+          the aggregated input so the salient conclusions are in a high-attention position.</div>
+        <div class="card"><h4>Explicit section headers</h4>Give each detailed block an explicit header so middle content
+          is addressable rather than buried.</div>
+        <div class="card"><h4>Not a temperature knob</h4>Temperature controls output randomness, not attention across a
+          long input. Reversing the order just moves the neglected content to a new middle.</div>
+      </div>
+
+      <h3>Trim verbose tool outputs <em>before</em> they bloat context</h3>
+      <p>An order-lookup tool that returns 40+ fields when only 5 matter wastes ~35 fields of context on every call.
+      Across a long conversation those payloads accumulate and crowd out everything else.</p>
+      <div class="callout tip">
+        <div class="h">Trim at the boundary</div>
+        Strip tool output down to the fields the task needs <strong>before</strong> it enters the conversation context.
+        A bigger context window only delays the problem and adds cost; the waste per call remains.
+      </div>
+
+      <h3>Context degradation in long sessions</h3>
+      <p>In extended sessions, models start giving inconsistent answers and referencing "typical patterns" instead of
+      the specific classes they discovered earlier. Four tools fight this:</p>
+      <ul>
+        <li><strong>Scratchpad files</strong> — persist key findings to disk so they survive context boundaries.</li>
+        <li><strong>Subagent delegation</strong> — spawn focused subagents ("trace the refund flow") while the main
+          agent coordinates, keeping each context small.</li>
+        <li><strong>Phase summaries</strong> — summarize one exploration phase's findings <em>before</em> starting the
+          next, and inject that summary into the new phase's initial context.</li>
+        <li><code>/compact</code> — when verbose discovery output has filled the context and answers degrade, compact
+          the conversation and <em>continue the same session</em> rather than restarting from scratch.</li>
+      </ul>
+      <div class="callout trap">
+        <div class="h">⚠️ Trap — the "just restart" / "just enlarge" reflex</div>
+        Restarting from scratch discards all the discovered findings. A larger window still fills and still degrades.
+        Re-asking the same questions reclaims no space. The fix targets the <em>bloat</em>: compact, externalize, delegate.
+      </div>
+    </section>
+
+    <section id="graceful-degradation">
+      <h2><span class="n">03</span> Reliability &amp; graceful degradation</h2>
+      <p>In multi-agent systems the dangerous failures are the <em>quiet</em> ones. A subagent that returns an empty
+      result marked "success" makes the coordinator treat incomplete data as complete — and synthesis is silently
+      corrupted.</p>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  F[Subagent hits a failure] --> T{Transient?<br/>timeout / rate limit}
+  T -->|Yes| L[Attempt local recovery<br/>bounded retry]
+  L -->|Recovered| OK([Return results])
+  L -->|Still failing| P
+  T -->|No| P[Propagate STRUCTURED error<br/>type · attempted · partial · alternatives]
+  P --> C{Coordinator}
+  C --> G[Continue with partial results<br/>annotate coverage gaps]
+  C -.never.-> X[Terminate whole workflow]
+      </div><div class="cap">Graceful degradation: one source failing should never terminate the whole report. Continue, and annotate the gap.</div></div>
+
+      <h3>Structured error context, not generic statuses</h3>
+      <p>A propagated error like <code>{"status":"error","message":"search unavailable"}</code> tells the coordinator
+      nothing, so it blindly retries the same timing-out query. A propagated error must carry:</p>
+      <div class="grid">
+        <div class="card"><h4>Failure type</h4>Transient, validation, permission, or business — so the coordinator can
+          decide whether a retry even makes sense.</div>
+        <div class="card"><h4>What was attempted</h4>The query and parameters, so the coordinator doesn't repeat the
+          identical failing call.</div>
+        <div class="card"><h4>Partial results</h4>Whatever succeeded before the failure (e.g. 3 of 5 documents) — never
+          discard it.</div>
+        <div class="card"><h4>Potential alternatives</h4>Other approaches the coordinator could try instead.</div>
+      </div>
+
+      <h3>Access failure vs valid empty result</h3>
+      <p>These must stay <strong>distinguishable</strong>. A timeout or service-down is an <em>access failure</em> —
+      unresolved, may warrant a retry. A successful query that found zero matches is a <em>valid empty result</em> —
+      correct data, no error, no retry. Conflating them either wastes retries on genuine zero-result answers or
+      silently drops real failures.</p>
+
+      <div class="compare">
+        <div class="dont"><div class="lab">Anti-patterns</div>
+          Empty-result-as-success (silent suppression) · terminating the workflow on a single failure · unbounded
+          retries · backfilling a gap with the model's general knowledge to "look complete."</div>
+        <div class="do"><div class="lab">Graceful degradation</div>
+          Local recovery for transient faults first · propagate only what you can't resolve, with full context ·
+          continue with partial results · annotate which findings are well-supported vs which subtopics have gaps.</div>
+      </div>
+    </section>
+
+    <section id="escalation">
+      <h2><span class="n">04</span> Escalation triggers</h2>
+      <p>This is the most-confused area in the domain, and it hinges on one distinction: <strong>explicit request vs
+      implicit frustration</strong>. They look similar in a transcript and call for opposite actions.</p>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  M[Customer message] --> E{Explicit<br/>I want a human?}
+  E -->|Yes| ESC([Escalate NOW<br/>no investigation first])
+  E -->|No| FR{Just frustrated<br/>but issue is resolvable?}
+  FR -->|Yes| RES[Acknowledge · attempt resolution]
+  RES --> RP{Reiterates wanting<br/>a human?}
+  RP -->|Yes| ESC
+  RP -->|No| DONE([Resolve and close])
+  FR -->|No, policy gap / cannot progress| ESC
+      </div><div class="cap">Explicit request → escalate immediately. Implicit frustration → offer resolution first, escalate only if they reiterate.</div></div>
+
+      <table>
+        <tr><th>Signal</th><th>Correct action</th></tr>
+        <tr><td><strong>Explicit</strong> "I want a human, now"</td><td>Escalate <strong>immediately</strong> — no investigation, no interrogating <em>why</em> first</td></tr>
+        <tr><td><strong>Implicit</strong> frustration, resolvable issue</td><td>Acknowledge, <strong>attempt resolution</strong>, escalate only if they reiterate the preference for a human</td></tr>
+        <tr><td>Policy exception / gap (e.g. competitor price match when policy covers own-site only)</td><td>Escalate — outside the agent's authority</td></tr>
+        <tr><td>Cannot make meaningful progress</td><td>Escalate</td></tr>
+        <tr><td>Merely "complex" but resolvable</td><td><strong>Do not</strong> escalate on complexity alone</td></tr>
+      </table>
+
+      <div class="callout trap">
+        <div class="h">⚠️ Trap — multiple customer matches</div>
+        When a lookup returns several accounts for "John Smith," <strong>ask for an additional identifier</strong>
+        (email, order number, account ID). Do <em>not</em> guess by heuristic — "most recent activity," IP geolocation,
+        or acting on all three in parallel all risk touching the wrong person's account.
+      </div>
+
+      <div class="callout trap">
+        <div class="h">⚠️ Trap — self-reported confidence as a routing signal</div>
+        Auto-escalating "when the model's confidence score drops below a threshold" is an anti-pattern: LLM
+        self-reported confidence is <strong>poorly calibrated</strong> — models are often confidently wrong on exactly
+        the hard cases that should escalate. Prefer an <strong>independent review/verification instance</strong> over
+        the model grading itself. Sentiment/frustration also does <em>not</em> correlate with case complexity.
+      </div>
+    </section>
+
+    <section id="validation">
+      <h2><span class="n">05</span> Validation &amp; confidence</h2>
+      <p>Before you reduce human review or trust an automated pipeline, the question is always: <em>could a good
+      average be hiding a bad segment?</em></p>
+
+      <h3>Aggregate metrics mask segment-level failures</h3>
+      <p>"97% overall accuracy" can hide a document type or a field that performs far worse. Acting on the aggregate
+      alone is the trap.</p>
+      <div class="callout key">
+        <div class="h">🔑 Stratified validation</div>
+        Before reducing human review, validate accuracy <strong>stratified by document type AND field</strong>, using a
+        labeled set. Use stratified random sampling of high-confidence extractions to measure the real error rate and
+        detect novel error patterns — confirming performance is acceptable across <em>all</em> segments, not just on average.
+      </div>
+
+      <h3>Field-level confidence — calibrated, not self-graded</h3>
+      <ul>
+        <li>Have the model emit confidence <strong>per field</strong>, then <strong>calibrate thresholds against a
+          labeled validation set</strong> — don't trust raw self-reported numbers.</li>
+        <li>Route low-confidence extractions to human review.</li>
+        <li>Analyze accuracy by document type <em>and</em> by field.</li>
+      </ul>
+
+      <h3>Bounded retry-with-error-feedback</h3>
+      <p>When an extraction fails a semantic check (e.g. line items don't sum to the invoice total), resending the
+      document plus the specific validation error is a strong recovery move — but it <strong>must be bounded</strong>.
+      Some documents can never validate (the source itself is inconsistent), so unbounded retries loop forever and burn
+      cost.</p>
+      <div class="compare">
+        <div class="do"><div class="lab">Correct</div>
+          Bound the retries. When the bound is exhausted, <strong>route to human review carrying the captured error
+          context</strong>.</div>
+        <div class="dont"><div class="lab">Wrong</div>
+          Unlimited retries "until it validates" · an arbitrary 50-failure cap (still effectively unbounded per item) ·
+          disabling validation so extraction "always succeeds" (hides real errors).</div>
+      </div>
+    </section>
+
+    <section id="provenance">
+      <h2><span class="n">06</span> Provenance &amp; structured subagent output</h2>
+      <p>Source attribution is lost during summarization when findings are compressed without preserving the
+      claim-to-source link. A report that states "battery storage costs fell 76% over the last decade" with no source
+      is unverifiable.</p>
+      <div class="callout key">
+        <div class="h">🔑 Claim-source mappings</div>
+        Require subagents to output structured mappings — <strong>source URL/document, relevant excerpt, and
+        publication/collection date</strong> — that are preserved through synthesis. Re-searching to re-attach a source
+        after the fact is unreliable; a bulk bibliography doesn't map specific claims to specific sources.
+      </div>
+      <div class="grid">
+        <div class="card"><h4>Conflicting sources</h4>Report <strong>both</strong> values with their attribution and
+          annotate the conflict — don't silently pick one, drop both, or average them. Let the coordinator/reader reconcile.</div>
+        <div class="card"><h4>Temporal data</h4>Carry dates so a difference like "45% (2022)" vs "52% (2024)" isn't
+          misread as a <em>contradiction</em>.</div>
+        <div class="card"><h4>Structured output for tight budgets</h4>When downstream agents have small context budgets,
+          return key facts, citations, and relevance scores with metadata — not verbose prose and reasoning chains.</div>
+        <div class="card"><h4>Render by content type</h4>Financial data → tables, news → prose, technical findings →
+          structured lists. Don't force everything into one uniform format.</div>
+      </div>
+      <div class="callout note">
+        <div class="h">Report structure</div>
+        A reliable synthesis explicitly distinguishes <strong>well-established</strong> findings, <strong>contested</strong>
+        findings, and findings with <strong>gaps due to unavailable sources</strong>.
+      </div>
+    </section>
+
+    <section id="sessions">
+      <h2><span class="n">07</span> Sessions: resume vs new vs fork</h2>
+      <p>Picking the right session move preserves valid work without reasoning over stale data.</p>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  Q{State of prior context?} -->|Mostly valid,<br/>a few files changed| R[Resume with --resume<br/>tell agent WHICH files changed<br/>targeted re-analysis]
+  Q -->|Badly stale tool results| N[New session<br/>+ structured summary]
+  Q -->|Compare two approaches| K[Fork the session<br/>independent branches]
+      </div><div class="cap">Resume preserves valid work; the catch is telling the agent what changed so it doesn't reuse stale cached results.</div></div>
+      <table>
+        <tr><th>Situation</th><th>Move</th></tr>
+        <tr><td>Prior context mostly valid; a few files changed overnight</td><td><strong>Resume</strong> with <code>--resume</code> and explicitly name the changed files for targeted re-analysis</td></tr>
+        <tr><td>Resume but say nothing about the changes</td><td>Wrong — the agent may keep using stale cached tool results and never notice</td></tr>
+        <tr><td>Prior tool results extensively stale</td><td><strong>New session</strong> + a structured summary</td></tr>
+        <tr><td>Compare two refactor approaches</td><td><strong>Fork</strong> — independent branches from a shared baseline</td></tr>
+      </table>
+    </section>
+
+    <section id="traps">
+      <h2><span class="n">08</span> Exam traps at a glance</h2>
+      <div class="callout trap">
+        <div class="h">⚠️ The distractors that cost points</div>
+        <ul>
+          <li><strong>Bigger window / higher max_tokens</strong> as a fix for context bloat or lost data — delays the
+            problem, doesn't solve it.</li>
+          <li><strong>Empty-result-as-success</strong> — silent suppression; the coordinator can't tell failure from data.</li>
+          <li><strong>Terminate the whole workflow</strong> on one subtopic failing — discards valid work; degrade gracefully.</li>
+          <li><strong>Guess the customer by heuristic</strong> on multiple matches — ask for an identifier.</li>
+          <li><strong>Route on self-reported confidence</strong> — poorly calibrated; use independent review.</li>
+          <li><strong>Trust the aggregate metric</strong> — stratify by document type and field first.</li>
+          <li><strong>Average / silently pick</strong> conflicting source values — annotate both with dates.</li>
+          <li><strong>Unbounded retries</strong> — bound them, then escalate to human with the error context.</li>
+          <li><strong>Escalate immediately on frustration</strong> OR <strong>resolve-first on an explicit human
+            request</strong> — the two halves are swapped.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="scenario">
+      <h2><span class="n">09</span> Worked scenario — Customer Support Resolution Agent</h2>
+      <div class="callout info">
+        <div class="h">Scenario</div>
+        A support agent handles long multi-turn chats. A customer references a $1,249.00 order and an RMA number early
+        on. Twenty turns later the running summary has condensed those into "a recent high-value order," the order
+        lookup returns 40+ fields per call, and the customer ends a message with "honestly, just get me a person."
+      </div>
+      <p><strong>Walk it through:</strong></p>
+      <ol>
+        <li><strong>Precise facts:</strong> the amount and RMA were lost to summarization. Fix with a
+          <em>case facts block</em> outside the summary — not by disabling summarization or raising
+          <code>max_tokens</code>.</li>
+        <li><strong>Tool bloat:</strong> trim the order lookup to the 5 relevant fields <em>at the tool boundary</em>
+          before payloads accumulate.</li>
+        <li><strong>The closing line</strong> is an <em>explicit</em> request for a human → escalate immediately. No
+          investigation first, no asking why. (If the customer had merely been frustrated while the issue was
+          resolvable, you'd attempt resolution first and escalate only on reiteration.)</li>
+      </ol>
+      <p>If two accounts had matched the customer's name, the agent would ask for an identifier rather than guess — and
+      it would never route the escalation decision off a self-reported confidence score.</p>
+    </section>
+
+    <section id="selfcheck">
+      <h2><span class="n">10</span> Self-check</h2>
+      <details class="selfcheck"><summary>The running summary keeps dropping the order total and RMA number. Best fix?</summary>
+        <div class="a">A <strong>case facts block</strong> holding amounts, dates, and identifiers verbatim, included in
+        each prompt <em>outside</em> the summarized history. Not "disable summarization" or "raise max_tokens."</div></details>
+      <details class="selfcheck"><summary>Customer's first message: "I want a human, now." The request is easy to resolve. Action?</summary>
+        <div class="a">Escalate <strong>immediately</strong> — an explicit human request is a hard trigger. Resolution-first
+        is only for <em>implicit</em> frustration on a resolvable issue.</div></details>
+      <details class="selfcheck"><summary>A subagent fails on 2 of 5 documents and returns empty results marked "success." Why is that wrong?</summary>
+        <div class="a">Silent suppression — the coordinator can't tell 2 failed and 3 succeeded, so synthesis treats
+        incomplete data as complete. Return structured error context plus the 3 partial results; continue and annotate the gap.</div></details>
+      <details class="selfcheck"><summary>97% overall extraction accuracy — safe to turn off human review?</summary>
+        <div class="a">No. The aggregate can mask a failing document type or field. Validate <strong>stratified by document
+        type AND field</strong> first; reduce review only where each segment is acceptable.</div></details>
+      <details class="selfcheck"><summary>Two sources report 45% (2022) and 52% (2024). How should synthesis present this?</summary>
+        <div class="a">Report <strong>both</strong> with source attribution and dates, annotating the conflict. Don't
+        average, don't silently pick the higher/newer one — the dates may explain the difference and the reader reconciles.</div></details>
+      <details class="selfcheck"><summary>You explored a codebase yesterday; 3 files changed overnight. Continue how?</summary>
+        <div class="a"><strong>Resume</strong> with <code>--resume</code> and explicitly tell the agent which 3 files
+        changed for targeted re-analysis — preserving valid work while avoiding stale cached results.</div></details>
+    </section>
+
+    <section id="takeaways">
+      <h2><span class="n">11</span> One-screen takeaways</h2>
+      <table>
+        <tr><th>If you remember nothing else…</th></tr>
+        <tr><td>Precise facts → <strong>case facts block</strong> outside the summary.</td></tr>
+        <tr><td>Long input → key findings up front + explicit section headers (beat "lost in the middle").</td></tr>
+        <tr><td>Trim verbose tool output <strong>at the boundary</strong>; <code>/compact</code> beats restarting.</td></tr>
+        <tr><td>Partial failure → continue + annotate gaps; <strong>never</strong> terminate on one failure or fake success.</td></tr>
+        <tr><td>Explicit human request → escalate now. Implicit frustration → resolve first.</td></tr>
+        <tr><td>Multiple matches → ask for an identifier, don't guess.</td></tr>
+        <tr><td>Self-reported confidence is poorly calibrated → use independent review.</td></tr>
+        <tr><td>Stratify validation by type &amp; field before cutting human review.</td></tr>
+        <tr><td>Preserve claim → source → date; annotate conflicts; bound retries then escalate.</td></tr>
+        <tr><td>Resume (inform of changes) · new session (stale) · fork (compare).</td></tr>
+      </table>
+      <div class="callout tip"><div class="h">Next</div>
+        Drill it: <code>/quiz domain 5</code>. Calibrate: <code>/mock-exam domain 5</code>.</div>
+    </section>
+
+
+  </main>
+</div>
+
+<footer>
+  Generated by <code>/learn-doc</code> · Claude Certified Architect — Foundations study env ·
+  Content is original study material, not real (NDA) exam content · Verify currency on
+  <a href="https://platform.claude.com/docs">platform.claude.com/docs</a>.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  // theme
+  const root=document.documentElement, tkey='cca-learn-theme';
+  if(localStorage.getItem(tkey)) root.dataset.theme=localStorage.getItem(tkey);
+  document.getElementById('themeBtn').onclick=()=>{
+    root.dataset.theme = root.dataset.theme==='dark'?'light':'dark';
+    localStorage.setItem(tkey,root.dataset.theme);
+    renderMermaid();
+  };
+  // mermaid
+  function mmTheme(){return root.dataset.theme==='light'?'neutral':'dark';}
+  function renderMermaid(){
+    document.querySelectorAll('.mermaid').forEach(el=>{ if(el.dataset.src) el.removeAttribute('data-processed'),el.innerHTML=el.dataset.src; });
+    mermaid.initialize({startOnLoad:false,theme:mmTheme(),themeVariables:{
+      primaryColor:'#1e222b',primaryTextColor:'#e7e9ee',primaryBorderColor:'#cc785c',
+      lineColor:'#9aa3b2',fontSize:'14px'}});
+    mermaid.run({querySelector:'.mermaid'});
+  }
+  document.querySelectorAll('.mermaid').forEach(el=>el.dataset.src=el.textContent);
+  renderMermaid();
+  // auto TOC + scroll-spy
+  const toc=document.getElementById('toc'); const secs=[...document.querySelectorAll('main section[id]')];
+  secs.forEach(s=>{ const h=s.querySelector('h2'); if(!h) return;
+    const a=document.createElement('a'); a.href='#'+s.id; a.textContent=h.textContent.replace(/^\s*[\d.]+\s*/,'');
+    a.dataset.id=s.id; toc.appendChild(a); });
+  const links=[...toc.querySelectorAll('a')];
+  const spy=new IntersectionObserver(es=>{es.forEach(e=>{ if(e.isIntersecting){
+    links.forEach(l=>l.classList.toggle('active',l.dataset.id===e.target.id)); }});},{rootMargin:'-20% 0px -70% 0px'});
+  secs.forEach(s=>spy.observe(s));
+  // progress bar
+  addEventListener('scroll',()=>{const h=document.documentElement;
+    const p=h.scrollTop/(h.scrollHeight-h.clientHeight)*100; document.getElementById('progress').style.width=p+'%';});
+</script>
+</body>
+</html>

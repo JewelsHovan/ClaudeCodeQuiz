@@ -19,10 +19,16 @@ in `template.html`, and writes a standalone page — then opens it. If your `pro
 topic is a weak spot, it leans the guide into that confusion.
 
 ## What's here
+- `index.html` — a **study hub** landing page linking all five guides + the practice exams. Open this first / share this.
 - `template.html` — the reusable themed shell (dark/light, sticky TOC, reading-progress, Mermaid, print-to-PDF).
   Authoring contract + component classes are documented at the top of the file.
-- `agentic-orchestration.html` — a **finished sample** (Domain 1) you can open or share right now.
-- `generated/` — where `/learn-doc` writes by default (gitignored, so it won't clutter the repo).
+- **Finished guides for all 5 domains** (open or share any of them):
+  - `agentic-orchestration.html` — Domain 1 · Agentic Architecture & Orchestration (27%)
+  - `claude-code-config.html` — Domain 3 · Claude Code Configuration & Workflows (20%)
+  - `prompt-engineering.html` — Domain 4 · Prompt Engineering & Structured Output (20%)
+  - `tool-design-mcp.html` — Domain 2 · Tool Design & MCP Integration (18%)
+  - `context-reliability.html` — Domain 5 · Context Management & Reliability (15%)
+- `generated/` — where `/learn-doc` writes new guides by default (gitignored, so it won't clutter the repo).
   Say "sample" / "share" and it saves to the committed root instead.
 
 ## Sharing

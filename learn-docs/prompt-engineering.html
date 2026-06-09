@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Prompt Engineering & Structured Output · CCA Study Guide</title>
+<!--
+  Reusable themed shell for /learn-doc learning pages.
+  Authoring contract (see learn-docs/README.md):
+    1. Replace Prompt Engineering & Structured Output, The 20% domain — tool_use vs few-shot, tool_choice modes, extraction schemas, and the Batch API., Domain 4 · Prompt Engineering, 20%, 11.
+    2. Replace the lone CONTENT marker (the bare HTML comment that sits below the hero) with the body.
+       NOTE: do not write that exact marker string anywhere else, or a naive find/replace injects twice.
+    3. The TOC nav fills itself from your section ids via the auto-TOC script.
+  Component classes available: .callout (.info/.tip/.trap/.key/.note), .card/.grid, .compare,
+    .diagram (Mermaid), .terms, .selfcheck (details), .pill/.badge, table, pre>code.
+  Diagrams use Mermaid via CDN (needs internet on first load); use <br/> for line breaks in node labels,
+    NOT \n. Fonts via Google Fonts CDN.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --bg2:#13161c; --panel:#171a21; --panel2:#1e222b; --ink:#e7e9ee; --muted:#9aa3b2;
+    --line:#2a2f3a; --accent:#cc785c; --accent2:#d4a27f; --good:#46b873; --bad:#e2606b; --warn:#e0b341;
+    --info:#5b9bd5; --code:#0c0e12; --radius:14px;
+  }
+  html[data-theme="light"]{
+    --bg:#faf9f7; --bg2:#f3f1ec; --panel:#ffffff; --panel2:#f5f3ef; --ink:#22252b; --muted:#6b7280;
+    --line:#e4e0d8; --code:#f5f3ef;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.7 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  code,pre{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  a{color:var(--accent2);text-decoration:none} a:hover{text-decoration:underline}
+  /* reading-progress + top bar */
+  #progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:60;transition:width .1s}
+  #top{position:fixed;top:0;left:0;right:0;height:52px;z-index:50;display:flex;align-items:center;
+    justify-content:space-between;padding:0 18px;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  #top .t{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
+  #top .actions{display:flex;gap:8px}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+    border-radius:9px;padding:6px 12px;font-size:13px} button:hover{border-color:var(--accent)}
+  /* layout */
+  .shell{max-width:1180px;margin:52px auto 0;display:grid;grid-template-columns:240px 1fr;gap:34px;padding:0 20px 90px}
+  nav.toc{position:sticky;top:72px;align-self:start;max-height:calc(100vh-90px);overflow:auto;
+    font-size:14px;border-left:1px solid var(--line);padding-left:14px}
+  nav.toc a{display:block;color:var(--muted);padding:4px 0;border-left:2px solid transparent;margin-left:-15px;padding-left:13px}
+  nav.toc a.active{color:var(--ink);border-left-color:var(--accent);font-weight:600}
+  nav.toc a.sub{padding-left:26px;font-size:13px}
+  main{min-width:0}
+  @media(max-width:880px){.shell{grid-template-columns:1fr} nav.toc{display:none}}
+  /* hero */
+  .hero{padding:30px 0 14px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .hero h1{font-size:34px;line-height:1.15;margin:10px 0 6px;font-weight:800;letter-spacing:-.02em}
+  .hero .sub{color:var(--muted);font-size:18px;margin:0}
+  .pillrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .pill,.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;font-size:12.5px;
+    padding:4px 11px;border:1px solid var(--line);background:var(--panel2);color:var(--muted)}
+  .pill.dom{color:var(--accent2);border-color:#3a2f2a;background:#1d1612}
+  .pill.weight{color:var(--ink)} .badge.easy{color:var(--good)} .badge.med{color:var(--warn)} .badge.hard{color:var(--bad)}
+  /* sections + headings */
+  section{padding:26px 0;border-bottom:1px solid var(--line)} section:last-child{border-bottom:0}
+  h2{font-size:24px;margin:0 0 14px;letter-spacing:-.01em;scroll-margin-top:70px}
+  h3{font-size:18px;margin:22px 0 8px}
+  h2 .n{color:var(--accent);font-weight:700;margin-right:10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px} li{margin:5px 0}
+  /* callouts */
+  .callout{border:1px solid var(--line);border-left-width:4px;border-radius:0 var(--radius) var(--radius) 0;
+    padding:13px 16px;margin:16px 0;background:var(--panel)}
+  .callout .h{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .callout.info{border-left-color:var(--info)} .callout.info .h{color:var(--info)}
+  .callout.tip{border-left-color:var(--good)} .callout.tip .h{color:var(--good)}
+  .callout.trap{border-left-color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,var(--panel))} .callout.trap .h{color:var(--bad)}
+  .callout.key{border-left-color:var(--accent)} .callout.key .h{color:var(--accent2)}
+  .callout.note{border-left-color:var(--muted)} .callout.note .h{color:var(--muted)}
+  /* cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:16px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .card h4{margin:0 0 6px;font-size:15px}
+  /* right-way / wrong-way compare */
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+  @media(max-width:680px){.compare{grid-template-columns:1fr}}
+  .compare>div{border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+  .compare .do{border-top:3px solid var(--good)} .compare .dont{border-top:3px solid var(--bad)}
+  .compare .lab{font-weight:700;font-size:13px;margin-bottom:6px} .compare .do .lab{color:var(--good)} .compare .dont .lab{color:var(--bad)}
+  /* diagrams */
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin:16px 0;text-align:center}
+  .diagram .cap{color:var(--muted);font-size:13px;margin-top:8px}
+  .mermaid{display:flex;justify-content:center}
+  /* key terms */
+  .terms{margin:16px 0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .terms .row{display:grid;grid-template-columns:200px 1fr;border-top:1px solid var(--line)}
+  .terms .row:first-child{border-top:0}
+  .terms .k{padding:10px 14px;background:var(--panel2);font-weight:600;font-size:14px}
+  .terms .v{padding:10px 14px}
+  @media(max-width:680px){.terms .row{grid-template-columns:1fr}}
+  /* tables */
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14.5px}
+  th,td{padding:9px 11px;border:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:var(--panel2);font-weight:600}
+  /* code */
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font-size:13.5px;line-height:1.5}
+  :not(pre)>code{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:13px}
+  /* self-check */
+  .selfcheck{border:1px solid var(--line);border-radius:var(--radius);padding:4px 16px;margin:12px 0;background:var(--panel)}
+  .selfcheck summary{cursor:pointer;font-weight:600;padding:10px 0;list-style:none}
+  .selfcheck summary::before{content:"❓ ";}
+  .selfcheck[open] summary::before{content:"✅ ";}
+  .selfcheck .a{border-top:1px dashed var(--line);padding:10px 0;color:var(--ink)}
+  .muted{color:var(--muted)} .small{font-size:13px}
+  footer{max-width:1180px;margin:0 auto;padding:30px 20px 60px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="top">
+  <div class="t">Prompt Engineering & Structured Output</div>
+  <div class="actions">
+    <button onclick="window.print()">⎙ Print / PDF</button>
+    <button id="themeBtn">◐ Theme</button>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="toc" id="toc"><!-- auto-filled from <section> headings --></nav>
+  <main>
+    <header class="hero">
+      <div class="pillrow">
+        <span class="pill dom">Domain 4 · Prompt Engineering</span>
+        <span class="pill weight">Exam weight: 20%</span>
+        <span class="pill">⏱ ~11 min read</span>
+      </div>
+      <h1>Prompt Engineering & Structured Output</h1>
+      <p class="sub">The 20% domain — tool_use vs few-shot, tool_choice modes, extraction schemas, and the Batch API.</p>
+    </header>
+
+        <section id="why">
+      <h2><span class="n">01</span> Why this domain matters</h2>
+      <p>Prompt Engineering &amp; Structured Output is <strong>20% of the exam</strong>. Almost every question lives
+      in the <em>Structured Data Extraction</em> scenario, with a few in <em>Code Generation</em> and
+      <em>Customer Support</em>. The questions reward one habit: knowing exactly <strong>which mechanism gives a
+      guarantee</strong> and which only nudges. The distractors are almost always a probabilistic technique dressed
+      up to look like a hard guarantee.</p>
+      <div class="callout key">
+        <div class="h">🎯 The one idea behind every question</div>
+        <strong>Constraints beat instructions.</strong> A JSON schema via <code>tool_use</code> <em>guarantees</em>
+        valid structure; a nullable field <em>removes the pressure</em> to fabricate; explicit categorical criteria
+        <em>define a decision boundary</em>. Prose instructions ("be conservative", "don't invent values", "return
+        JSON") are probabilistic — and they are the wrong answer whenever a structural fix exists.
+      </div>
+      <div class="callout note">
+        <div class="h">The mental model</div>
+        Two error classes run through this whole domain: <strong>syntax errors</strong> (malformed JSON, wrong type,
+        out-of-enum, missing required field) and <strong>semantic errors</strong> (right shape, wrong meaning).
+        <code>tool_use</code> eliminates the first class entirely. The second class is what every other technique
+        on this page is fighting.
+      </div>
+    </section>
+
+    <section id="tool-use-vs-fewshot">
+      <h2><span class="n">02</span> tool_use vs few-shot — guarantee vs nudge</h2>
+      <p>This is the single most confused pair in the domain, and the exam tests it directly. They solve
+      <em>different</em> problems and the difference is the strength of the promise.</p>
+      <div class="compare">
+        <div class="do"><div class="lab">tool_use + JSON schema → GUARANTEES structure</div>
+          Generation is constrained to conform to the schema. Malformed JSON, wrong types, missing required fields,
+          and out-of-enum values become <strong>impossible</strong>. Use it whenever you need machine-parseable
+          output you can rely on programmatically.</div>
+        <div class="dont"><div class="lab">Few-shot examples → only NUDGE format</div>
+          Examples raise the probability the model matches a format, but nothing enforces it — the model can still
+          deviate on a novel document. Few-shot shines for <strong>ambiguous judgment</strong> and <strong>varied
+          structures</strong>, not for hard structural guarantees.</div>
+      </div>
+      <div class="callout trap">
+        <div class="h">⚠️ Exam trap — the false equivalence</div>
+        "Add a few examples of the JSON you want" is the classic <em>wrong</em> answer when the requirement is
+        guaranteed schema conformance. Few-shot makes valid output <em>more likely</em>; only <code>tool_use</code>
+        makes invalid structure <em>impossible</em>. If the stem says "must always return valid structured output",
+        reach for <code>tool_use</code>, not examples.
+      </div>
+      <div class="grid">
+        <div class="card"><h4>Use tool_use when…</h4>You need reliable machine-parseable JSON, a fixed schema,
+          enums, required/optional fields enforced at generation time.</div>
+        <div class="card"><h4>Use few-shot when…</h4>Format is inconsistent <em>despite</em> detailed instructions,
+          or judgment calls are ambiguous (escalate vs self-serve), or document structures vary (inline citations
+          vs bibliographies).</div>
+        <div class="card"><h4>Few-shot best practice</h4>2–4 targeted examples. Show the <strong>reasoning for why</strong>
+          one choice beat the alternative — that teaches the decision boundary, not just the answer.</div>
+        <div class="card"><h4>They compose</h4>You can do both: <code>tool_use</code> for the shape, few-shot inside
+          the prompt to steer judgment within that shape.</div>
+      </div>
+      <div class="callout info">
+        <div class="h">Worth memorizing</div>
+        Few-shot <strong>generalizes</strong> to novel patterns — it's not mere pattern-matching of the cases you
+        showed. That's why 2–4 examples covering distinct citation styles fixes inconsistent extraction across
+        unseen variants.
+      </div>
+    </section>
+
+    <section id="tool-choice">
+      <h2><span class="n">03</span> tool_choice modes — auto / any / tool / none</h2>
+      <p><code>tool_choice</code> controls <em>whether and which</em> tool the model calls. Pick by what you need to
+      guarantee.</p>
+      <table>
+        <tr><th>Mode</th><th>JSON</th><th>Behavior</th><th>Use when</th></tr>
+        <tr><td><code>auto</code> (default)</td><td><code>{"type":"auto"}</code></td><td>Model may return text OR call a tool</td><td>General use; model decides if a tool is needed</td></tr>
+        <tr><td><code>any</code></td><td><code>{"type":"any"}</code></td><td>MUST call a tool, model picks which</td><td>Multiple schemas, document type unknown, structured output required</td></tr>
+        <tr><td>Forced</td><td><code>{"type":"tool","name":"extract_invoice"}</code></td><td>MUST call that specific tool</td><td>Exactly one schema applies; guarantee a specific extraction runs</td></tr>
+        <tr><td><code>none</code></td><td><code>{"type":"none"}</code></td><td>No tools may be called</td><td>Disable tool calling entirely</td></tr>
+      </table>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  Q{Need structured output<br/>every time?} -->|No| AU[auto<br/>model may answer in text]
+  Q -->|Yes| K{How many schemas<br/>could apply?}
+  K -->|One known schema| F["forced<br/>type: tool, name: ..."]
+  K -->|Several, type unknown| AN[any<br/>model picks the tool]
+  Q -->|Disable tools| NO[none]
+      </div><div class="cap">Pick the mode by what must be guaranteed: a tool call at all, and if so, which one.</div></div>
+      <div class="callout trap">
+        <div class="h">⚠️ Exam trap — extended thinking incompatibility</div>
+        Extended thinking is <strong>incompatible with <code>any</code> and forced (<code>tool</code>)</strong>
+        tool_choice. If you need extended reasoning AND structured output, the supported pattern is
+        <code>tool_choice: auto</code> plus extended thinking, then steer hard toward the tool via prompt and schema
+        design. Lowering <code>max_tokens</code> does <em>not</em> resolve it — it's the mode, not the budget.
+      </div>
+      <div class="callout note">
+        <div class="h">auto's catch</div>
+        Under <code>auto</code> the model can answer in free text and skip the tool — so it does <strong>not</strong>
+        guarantee structured output. When the stem says "always return the tool call", <code>auto</code> is wrong.
+      </div>
+    </section>
+
+    <section id="schema-design">
+      <h2><span class="n">04</span> Schema design — nullable, enums, criteria</h2>
+      <p>Once <code>tool_use</code> guarantees the shape, schema <em>design</em> is your main lever against semantic
+      errors and hallucination.</p>
+
+      <h3>Nullable &amp; required: the #1 hallucination driver</h3>
+      <p>Requiring a non-nullable field when the data is <strong>sometimes absent</strong> is the single biggest
+      cause of fabrication in extraction pipelines. A required string slot <em>must</em> be filled, so the model
+      invents a plausible value. The fix is structural, not prose.</p>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  D{Is this field ALWAYS<br/>present in the source?} -->|Yes| R[required<br/>type: string]
+  D -->|Sometimes absent| N["nullable + optional<br/>type: string, null<br/>remove from required[]"]
+  N --> NoFab[Model returns null<br/>instead of fabricating]
+      </div><div class="cap">Only require fields that are always present. Absent-sometimes → nullable, never required.</div></div>
+      <div class="compare">
+        <div class="dont"><div class="lab">Drives fabrication</div>
+          <code>governing_law</code> marked <code>required</code> when 40% of contracts have no such clause →
+          the model invents jurisdictions. Adding "never invent a value" to the prompt does <em>not</em> fix it;
+          the slot still demands a string.</div>
+        <div class="do"><div class="lab">Removes the pressure</div>
+          <code>"governing_law": {"type": ["string","null"]}</code> and drop it from <code>required</code>.
+          Now the model can answer <code>null</code> honestly when the clause is absent.</div>
+      </div>
+      <pre><code>{
+  "properties": {
+    "invoice_number":  {"type": "string"},               // always present  → required
+    "purchase_order":  {"type": ["string","null"]},       // sometimes absent → nullable + optional
+    "governing_law":   {"type": ["string","null"],
+                        "description": "Governing-law jurisdiction, or null if no clause exists"}
+  },
+  "required": ["invoice_number"]
+}</code></pre>
+
+      <h3>Enum + "other" escape hatch + detail field</h3>
+      <p>A closed enum forces unclassifiable documents into the nearest category, corrupting analytics. Don't drop
+      the enum (you lose validation) and don't endlessly grow it (unmaintainable). Add an <code>other</code> value
+      plus a free-text detail field captured only when <code>other</code> is chosen.</p>
+      <pre><code>{
+  "category": {
+    "type": "string",
+    "enum": ["finance", "legal", "technical", "other"]
+  },
+  "category_detail": {
+    "type": ["string","null"],
+    "description": "Required when category is 'other'. Free-text explanation of the real category."
+  }
+}</code></pre>
+      <div class="callout note">
+        <div class="h">Why not nullable here?</div>
+        Making <code>category</code> nullable erases the fact that the document <em>was</em> classifiable as
+        "other-but-real" and discards the explanatory detail. The escape hatch keeps clean analytics on known
+        categories <em>and</em> captures the rationale for the rest.
+      </div>
+
+      <h3>Explicit categorical criteria vs vague instructions</h3>
+      <p>For classification and review, vague guidance ("be conservative", "only high-confidence findings") does
+      <strong>not</strong> improve precision. Concrete categorical criteria — what to report vs what to skip — give
+      the model a usable decision boundary and cut false positives.</p>
+      <div class="compare">
+        <div class="dont"><div class="lab">Vague → noisy</div>
+          "Be EXTREMELY conservative and only flag critical issues." No boundary; behavior barely changes; style
+          nitpicks keep leaking through.</div>
+        <div class="do"><div class="lab">Explicit → precise</div>
+          "Report bugs and security flaws. Skip intentional local style and minor formatting. Severity = critical
+          when …, with a concrete code example per level." A real decision boundary.</div>
+      </div>
+      <div class="callout trap">
+        <div class="h">⚠️ Trust is cross-category</div>
+        A high false-positive rate in <em>one</em> category undermines trust in <strong>all</strong> categories.
+        The fix: temporarily <strong>disable</strong> the noisy category to restore trust, then redefine it with
+        explicit criteria + concrete examples before re-enabling — not "dampen every category" or "ask devs to
+        ignore it".
+      </div>
+
+      <h3>Self-correction fields</h3>
+      <p>Bake validation into the schema. Extract <code>stated_total</code> <em>and</em> <code>calculated_total</code>
+      as separate fields plus a <code>conflict_detected</code> boolean so the extraction <strong>surfaces</strong>
+      inconsistent source data for review instead of silently picking one number.</p>
+    </section>
+
+    <section id="error-handling">
+      <h2><span class="n">05</span> Error handling — syntax vs semantic</h2>
+      <p>The whole repair strategy hinges on which error class you're facing.</p>
+      <div class="diagram"><div class="mermaid">
+flowchart TD
+  G[tool_use generates output] --> SX[Syntax errors:<br/>malformed JSON, wrong type,<br/>out-of-enum, missing required]
+  SX --> ELIM[Eliminated by tool_use<br/>cannot occur]
+  G --> SE{Semantic error?<br/>line items != total,<br/>value in wrong field}
+  SE -->|Recoverable| RF[Retry with error feedback:<br/>doc + failed output + exact error]
+  RF --> FIX[Model self-corrects]
+  SE -->|Data simply absent| NO[Retry cannot help —<br/>allow null, route to human]
+      </div><div class="cap">tool_use kills syntax errors. Semantic errors need retry-with-feedback — unless the data isn't there.</div></div>
+      <div class="callout key">
+        <div class="h">Retry-with-error-feedback pattern</div>
+        <ol>
+          <li>Extract with <code>tool_use</code>.</li>
+          <li>Validate against schema <em>and</em> business rules (e.g. line items must sum to total).</li>
+          <li>On failure, send a follow-up with the <strong>original document + the failed extraction + the
+          specific validation error</strong>.</li>
+          <li>The model self-corrects from concrete feedback.</li>
+        </ol>
+      </div>
+      <div class="callout trap">
+        <div class="h">⚠️ When retries can't work</div>
+        Retry fixes <strong>format and placement</strong> errors. It cannot conjure data that is genuinely
+        <strong>absent</strong> from the source — if a tax ID isn't in the document, every retry returns
+        <code>null</code>. Stronger wording, lower temperature, and re-sending the identical request all fail here.
+        The right move: allow <code>null</code> and route to manual handling. Note also: re-sending an <em>identical</em>
+        request gives the model no new signal and reproduces the mistake.
+      </div>
+    </section>
+
+    <section id="batch-api">
+      <h2><span class="n">06</span> Batch API — latency-tolerant only</h2>
+      <p>The Message Batches API trades latency for cost on bulk, non-interactive work.</p>
+      <div class="grid">
+        <div class="card"><h4>50% savings</h4>Half price on input <em>and</em> output tokens.</div>
+        <div class="card"><h4>≤ 24h SLA</h4>Processing completes within 24 hours — <strong>no</strong> latency guarantee.</div>
+        <div class="card"><h4>10,000 max</h4>Up to 10k requests per batch.</div>
+        <div class="card"><h4>29-day retention</h4>Results retrievable for 29 days.</div>
+      </div>
+      <div class="compare">
+        <div class="do"><div class="lab">Use Batches</div>
+          Overnight report generation · bulk document extraction · weekly tech-debt audits · content-moderation
+          queues — anything latency-tolerant and non-blocking.</div>
+        <div class="dont"><div class="lab">Do NOT use Batches</div>
+          Blocking pre-merge CI/CD gates · user-facing interactive features · real-time chat · anything needing
+          multi-turn tool-call loops.</div>
+      </div>
+      <div class="callout trap">
+        <div class="h">⚠️ Batch gotchas the exam loves</div>
+        <ul>
+          <li>Results are <strong>NOT returned in order</strong> — correlate with the <code>custom_id</code> you
+          assigned each request. Never rely on array index.</li>
+          <li>On partial failure, resubmit <strong>only the failed <code>custom_id</code>s</strong>, not the whole batch.</li>
+          <li>No <strong>multi-turn</strong> tool-call loops within a batch request (single-turn tool use is fine).</li>
+          <li>A blocking, latency-sensitive workload behind a 24h SLA is always the wrong fit, even with 50% savings.</li>
+        </ul>
+      </div>
+      <pre><code>{
+  "requests": [
+    {
+      "custom_id": "doc-001",          // YOU assign this; use it to correlate results
+      "params": {
+        "model": "claude-opus-4-5",
+        "max_tokens": 1024,
+        "messages": [{"role": "user", "content": "..."}]
+      }
+    }
+  ]
+}</code></pre>
+      <div class="callout tip">
+        <div class="h">Before you batch 10k</div>
+        Refine the prompt on a small sample first, then run the full volume. Chunk any documents that exceed context
+        limits.
+      </div>
+    </section>
+
+    <section id="prompt-structure">
+      <h2><span class="n">07</span> Prompt structure techniques</h2>
+      <div class="terms">
+        <div class="row"><div class="k">System prompt / role</div><div class="v">Put the persona, standing rules, and
+          high-level task in the system prompt ("You are an invoice-extraction service…"). Sets behavior for the
+          whole turn.</div></div>
+        <div class="row"><div class="k">XML tags</div><div class="v">Wrap distinct blocks in
+          <code>&lt;rules&gt;</code>, <code>&lt;documents&gt;</code>, <code>&lt;example&gt;</code> so the model never
+          confuses reference data for rules. The fix for "the model mixes up which block is which" in a long prompt.</div></div>
+        <div class="row"><div class="k">Prefilling</div><div class="v">Seed the start of the assistant turn (e.g. an
+          opening <code>{</code>) to force generation to continue from that point — eliminates conversational
+          preamble and controls the response start.</div></div>
+        <div class="row"><div class="k">Few-shot</div><div class="v">2–4 examples to nudge format and teach judgment
+          (see §02). Demonstrations beat ever-longer prose.</div></div>
+      </div>
+      <div class="callout note">
+        <div class="h">Prefilling vs tool_use</div>
+        Prefilling an opening brace controls <em>where the response starts</em> but does not guarantee valid JSON.
+        When you can use <code>tool_use</code>, that's the stronger structured-output guarantee. Among
+        text-generation techniques, prefilling is the one that deterministically removes preamble.
+      </div>
+      <div class="callout info">
+        <div class="h">XML over alternatives</div>
+        For a long prompt with role + rules + reference docs + an example, distinct XML tags beat concatenating into
+        one paragraph (causes the confusion), forcing everything into nested JSON (awkward), or dumping it all into
+        the system prompt (doesn't delineate the internal sections).
+      </div>
+    </section>
+
+    <section id="traps">
+      <h2><span class="n">08</span> Exam traps at a glance</h2>
+      <table>
+        <tr><th>The tempting wrong answer</th><th>Why it's wrong / the right move</th></tr>
+        <tr><td>"Add examples of the JSON" to guarantee schema</td><td>Few-shot only nudges. Use <code>tool_use</code> for a guarantee.</td></tr>
+        <tr><td>"Never invent a value" prompt for a required field</td><td>The slot still demands a string. Make it <strong>nullable + optional</strong>.</td></tr>
+        <tr><td>Lower temperature to stop guessing</td><td>A required field must still be filled at temp 0. Structural fix needed.</td></tr>
+        <tr><td><code>any</code>/forced tool_choice + extended thinking</td><td>Incompatible. Use <code>auto</code> + extended thinking and steer via prompt.</td></tr>
+        <tr><td><code>auto</code> when output must always be structured</td><td><code>auto</code> can return text. Use forced (one schema) or <code>any</code> (many).</td></tr>
+        <tr><td>Drop the enum / endlessly grow it</td><td>Add <code>other</code> + a detail field as an escape hatch.</td></tr>
+        <tr><td>Re-send identical request on semantic failure</td><td>No new signal. Send the doc + failed output + exact error.</td></tr>
+        <tr><td>Retry harder to extract absent data</td><td>Can't extract what isn't there. Allow null, route to human.</td></tr>
+        <tr><td>Batch API for a blocking pre-merge gate</td><td>24h SLA blocks devs. Batches are latency-tolerant only.</td></tr>
+        <tr><td>Match batch results by index / output text</td><td>Results are unordered. Correlate by <code>custom_id</code>.</td></tr>
+        <tr><td>"Double-check your own work" for subtle errors</td><td>Self-review keeps the generator's bias. Use an independent review instance.</td></tr>
+      </table>
+    </section>
+
+    <section id="scenario">
+      <h2><span class="n">09</span> Worked scenario — Structured Data Extraction</h2>
+      <div class="callout info">
+        <div class="h">Scenario</div>
+        You extract invoice data with a <code>tool_use</code> tool and a strict schema. After thousands of runs you
+        see <strong>zero</strong> malformed-JSON / wrong-type / out-of-enum errors — yet some runs put a phone number
+        in the email field, and ~40% of invoices have no purchase order, where the model fabricates one. A separate
+        check finds line items that don't sum to the stated total.
+      </div>
+      <p><strong>Diagnosis &amp; moves:</strong></p>
+      <ul>
+        <li><strong>Phone-in-email</strong> is a <em>semantic</em> error — <code>tool_use</code> guarantees shape,
+        not meaning. The schema can't fix it; route via validation + retry-with-feedback if detectable.</li>
+        <li><strong>Fabricated PO</strong> is the nullable-field problem: <code>purchase_order</code> is sometimes
+        absent, so it must be <strong>nullable + optional</strong>, never required. That removes the fabrication
+        pressure (prompt instructions and temperature won't).</li>
+        <li><strong>Totals mismatch</strong> is a semantic/business-rule failure: extract <code>stated_total</code>
+        and <code>calculated_total</code> + a <code>conflict_detected</code> flag, then
+        <strong>retry-with-error-feedback</strong> sending the doc, the failed extraction, and the exact error.</li>
+      </ul>
+      <p>The tempting-but-wrong options: "tighten the schema" (can't catch semantics), "add a strict instruction"
+      (probabilistic), "lower temperature" (a required slot still must be filled), and "re-send the same request"
+      (no new signal).</p>
+    </section>
+
+    <section id="selfcheck">
+      <h2><span class="n">10</span> Self-check</h2>
+      <details class="selfcheck"><summary>You must ALWAYS get valid structured output. tool_use or few-shot?</summary>
+        <div class="a"><strong>tool_use</strong> with a JSON schema — it <em>guarantees</em> the structure. Few-shot
+        only raises the probability of a format and can still deviate.</div></details>
+      <details class="selfcheck"><summary>40% of contracts have no governing-law clause and the model fabricates one. Fix?</summary>
+        <div class="a">Make <code>governing_law</code> <strong>nullable</strong> (<code>["string","null"]</code>) and
+        remove it from <code>required</code>. Don't rely on a "never invent" instruction or lower temperature — the
+        required slot still forces a value.</div></details>
+      <details class="selfcheck"><summary>Many schemas, unknown document type, must always return structure. Which tool_choice?</summary>
+        <div class="a"><code>any</code> — forces a tool call while letting the model pick the right schema. Forced
+        (<code>tool</code>) would lock one schema; <code>auto</code> could return free text.</div></details>
+      <details class="selfcheck"><summary>You need extended thinking AND guaranteed structured output. The API rejects any. What now?</summary>
+        <div class="a">Use <code>tool_choice: auto</code> with extended thinking — <code>any</code> and forced are
+        incompatible with extended thinking — and steer hard toward the tool via prompt and schema design.</div></details>
+      <details class="selfcheck"><summary>Line items don't sum to the stated total, but JSON is valid. Error class? Handling?</summary>
+        <div class="a">A <strong>semantic</strong> error (<code>tool_use</code> can't prevent it). Use
+        <strong>retry-with-error-feedback</strong>: re-send the document, the failed extraction, and the specific
+        validation error so the model self-corrects.</div></details>
+      <details class="selfcheck"><summary>8,000 archived transcripts, reviewed next morning, want lower cost. Which API?</summary>
+        <div class="a">The <strong>Message Batches API</strong> — 50% savings on input and output tokens with a
+        ≤24-hour SLA. Latency-tolerant overnight work is its ideal use case. Correlate results by
+        <code>custom_id</code>.</div></details>
+    </section>
+
+    <section id="takeaways">
+      <h2><span class="n">11</span> One-screen takeaways</h2>
+      <table>
+        <tr><th>If you remember nothing else…</th></tr>
+        <tr><td><code>tool_use</code> GUARANTEES schema (kills syntax errors); few-shot only NUDGES format.</td></tr>
+        <tr><td>Sometimes-absent data → <strong>nullable + optional</strong>, never required (fabrication driver).</td></tr>
+        <tr><td>Enum gaps → add <code>other</code> + a detail field, don't drop or grow the enum.</td></tr>
+        <tr><td>Vague instructions don't cut false positives — explicit categorical criteria do.</td></tr>
+        <tr><td>tool_choice: <code>auto</code> may text; <code>any</code> = pick a tool; forced = that tool; <code>none</code> = off.</td></tr>
+        <tr><td>Extended thinking is incompatible with <code>any</code>/forced — use <code>auto</code>.</td></tr>
+        <tr><td>Semantic errors → retry-with-feedback; absent data → allow null + human.</td></tr>
+        <tr><td>Batch API: 50% off · ≤24h · 10k max · 29-day retention · latency-tolerant only · correlate by <code>custom_id</code>.</td></tr>
+        <tr><td>XML tags separate blocks; prefilling controls the response start; system prompt sets the role.</td></tr>
+      </table>
+      <div class="callout tip"><div class="h">Next</div>
+        Drill it: <code>/quiz domain 4</code>. Calibrate: <code>/mock-exam domain 4</code>.</div>
+    </section>
+
+
+  </main>
+</div>
+
+<footer>
+  Generated by <code>/learn-doc</code> · Claude Certified Architect — Foundations study env ·
+  Content is original study material, not real (NDA) exam content · Verify currency on
+  <a href="https://platform.claude.com/docs">platform.claude.com/docs</a>.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  // theme
+  const root=document.documentElement, tkey='cca-learn-theme';
+  if(localStorage.getItem(tkey)) root.dataset.theme=localStorage.getItem(tkey);
+  document.getElementById('themeBtn').onclick=()=>{
+    root.dataset.theme = root.dataset.theme==='dark'?'light':'dark';
+    localStorage.setItem(tkey,root.dataset.theme);
+    renderMermaid();
+  };
+  // mermaid
+  function mmTheme(){return root.dataset.theme==='light'?'neutral':'dark';}
+  function renderMermaid(){
+    document.querySelectorAll('.mermaid').forEach(el=>{ if(el.dataset.src) el.removeAttribute('data-processed'),el.innerHTML=el.dataset.src; });
+    mermaid.initialize({startOnLoad:false,theme:mmTheme(),themeVariables:{
+      primaryColor:'#1e222b',primaryTextColor:'#e7e9ee',primaryBorderColor:'#cc785c',
+      lineColor:'#9aa3b2',fontSize:'14px'}});
+    mermaid.run({querySelector:'.mermaid'});
+  }
+  document.querySelectorAll('.mermaid').forEach(el=>el.dataset.src=el.textContent);
+  renderMermaid();
+  // auto TOC + scroll-spy
+  const toc=document.getElementById('toc'); const secs=[...document.querySelectorAll('main section[id]')];
+  secs.forEach(s=>{ const h=s.querySelector('h2'); if(!h) return;
+    const a=document.createElement('a'); a.href='#'+s.id; a.textContent=h.textContent.replace(/^\s*[\d.]+\s*/,'');
+    a.dataset.id=s.id; toc.appendChild(a); });
+  const links=[...toc.querySelectorAll('a')];
+  const spy=new IntersectionObserver(es=>{es.forEach(e=>{ if(e.isIntersecting){
+    links.forEach(l=>l.classList.toggle('active',l.dataset.id===e.target.id)); }});},{rootMargin:'-20% 0px -70% 0px'});
+  secs.forEach(s=>spy.observe(s));
+  // progress bar
+  addEventListener('scroll',()=>{const h=document.documentElement;
+    const p=h.scrollTop/(h.scrollHeight-h.clientHeight)*100; document.getElementById('progress').style.width=p+'%';});
+</script>
+</body>
+</html>

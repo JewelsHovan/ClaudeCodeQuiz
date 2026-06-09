@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Claude Certified Architect — Foundations · Study Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--panel2:#1e222b;--ink:#e7e9ee;--muted:#9aa3b2;--line:#2a2f3a;
+    --accent:#cc785c;--accent2:#d4a27f;--good:#46b873;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:980px;margin:0 auto;padding:48px 22px 90px}
+  .eyebrow{color:var(--accent2);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:13px}
+  h1{font-size:38px;line-height:1.12;margin:8px 0 8px;font-weight:800;letter-spacing:-.02em}
+  .lede{color:var(--muted);font-size:18px;max-width:680px}
+  .facts{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 6px}
+  .fact{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:5px 13px;font-size:13px;color:var(--muted)}
+  .fact b{color:var(--ink)}
+  h2{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:38px 0 12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;transition:.15s}
+  .card:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .card .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .dom{font-size:12px;color:var(--accent2);font-weight:600}
+  .w{font-size:12px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+  .card h3{margin:0 0 6px;font-size:18px}
+  .card p{margin:0;color:var(--muted);font-size:14px}
+  .bar{height:5px;border-radius:999px;background:var(--panel2);margin-top:14px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--accent)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:640px){.row2{grid-template-columns:1fr}}
+  .alt{background:linear-gradient(180deg,var(--panel),var(--panel2));border-color:#3a2f2a}
+  .note{color:var(--muted);font-size:13px;margin-top:34px;border-top:1px solid var(--line);padding-top:16px}
+  code{background:#0c0e12;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Anthropic Certification</div>
+  <h1>Claude Certified Architect — Foundations</h1>
+  <p class="lede">A study hub: visual guides for all five exam domains, plus timed practice exams.
+    Built with Claude Code.</p>
+  <div class="facts">
+    <span class="fact"><b>60</b> questions</span>
+    <span class="fact"><b>120</b> min</span>
+    <span class="fact">pass <b>720/1000</b></span>
+    <span class="fact"><b>4 of 6</b> scenarios</span>
+    <span class="fact">flagship <b>Opus 4.8</b></span>
+  </div>
+
+  <h2>Domain guides</h2>
+  <div class="grid">
+    <a class="card" href="agentic-orchestration.html">
+      <div class="top"><span class="dom">Domain 1</span><span class="w">27%</span></div>
+      <h3>Agentic Architecture &amp; Orchestration</h3>
+      <p>Agent loops, coordinator/subagent patterns, hooks vs prompts.</p>
+      <div class="bar"><i style="width:27%"></i></div>
+    </a>
+    <a class="card" href="claude-code-config.html">
+      <div class="top"><span class="dom">Domain 3</span><span class="w">20%</span></div>
+      <h3>Claude Code Configuration &amp; Workflows</h3>
+      <p>CLAUDE.md hierarchy, commands vs skills, hooks, plugins, CI.</p>
+      <div class="bar"><i style="width:20%"></i></div>
+    </a>
+    <a class="card" href="prompt-engineering.html">
+      <div class="top"><span class="dom">Domain 4</span><span class="w">20%</span></div>
+      <h3>Prompt Engineering &amp; Structured Output</h3>
+      <p>tool_use vs few-shot, tool_choice, extraction schemas, Batch API.</p>
+      <div class="bar"><i style="width:20%"></i></div>
+    </a>
+    <a class="card" href="tool-design-mcp.html">
+      <div class="top"><span class="dom">Domain 2</span><span class="w">18%</span></div>
+      <h3>Tool Design &amp; MCP Integration</h3>
+      <p>Tool descriptions, resources vs tools, MCP errors, server scoping.</p>
+      <div class="bar"><i style="width:18%"></i></div>
+    </a>
+    <a class="card" href="context-reliability.html">
+      <div class="top"><span class="dom">Domain 5</span><span class="w">15%</span></div>
+      <h3>Context Management &amp; Reliability</h3>
+      <p>Context-window tactics, graceful degradation, escalation, validation.</p>
+      <div class="bar"><i style="width:15%"></i></div>
+    </a>
+  </div>
+
+  <h2>Practice exams</h2>
+  <div class="row2">
+    <a class="card alt" href="../mock-exams/sample-mock-exam.html">
+      <div class="top"><span class="dom">Full mock</span><span class="w">60 Q · 120 min</span></div>
+      <h3>Timed mock exam</h3>
+      <p>Real-length, domain-weighted, auto-scored vs 720/1000 with a per-domain breakdown.</p>
+    </a>
+    <a class="card alt" href="../mock-exams/sample-quick.html">
+      <div class="top"><span class="dom">Quick</span><span class="w">20 Q · ~40 min</span></div>
+      <h3>Quick taster</h3>
+      <p>A faster sitting to get a feel for the format and check a few weak spots.</p>
+    </a>
+  </div>
+
+  <p class="note">Original study material — not real (NDA) exam content. The blueprint is community-confirmed,
+    not Anthropic-published; cost/validity/prerequisites are unconfirmed. Verify currency on
+    <code>platform.claude.com/docs</code> before sitting. Generated from the
+    <a href="https://github.com/JewelsHovan/ClaudeCodeQuiz" style="color:var(--accent2)">ClaudeCodeQuiz</a> repo.</p>
+</div>
+</body>
+</html>
