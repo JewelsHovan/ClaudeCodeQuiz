@@ -32,6 +32,7 @@ import glob
 import json
 import os
 import random
+import re
 import sys
 
 # Exam blueprint (see docs/exam-research-2026.md) -----------------------------
@@ -79,6 +80,42 @@ def allocate(count: int, domains: list[int]) -> dict[int, int]:
     return alloc
 
 
+def _stem_tokens(s: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9]+", s.lower()))
+
+
+def _near_duplicate(q: dict, chosen: list[dict], thr: float = 0.6) -> bool:
+    """True if q's stem overlaps an already-chosen stem above the Jaccard threshold."""
+    tq = _stem_tokens(q["stem"])
+    if not tq:
+        return False
+    for c in chosen:
+        tc = _stem_tokens(c["stem"])
+        if tc and len(tq & tc) / len(tq | tc) >= thr:
+            return True
+    return False
+
+
+def _take(pool: list[dict], n: int, chosen: list[dict]) -> list[dict]:
+    """Greedily take up to n from pool, skipping near-duplicates of `chosen` + already taken.
+    Sampling is already without-replacement (unique ids); this also blocks semantic twins.
+    If skipping would leave us short, relax and backfill from the skipped items."""
+    out: list[dict] = []
+    skipped: list[dict] = []
+    for q in pool:
+        if len(out) >= n:
+            break
+        if _near_duplicate(q, chosen + out):
+            skipped.append(q)
+        else:
+            out.append(q)
+    i = 0
+    while len(out) < n and i < len(skipped):
+        out.append(skipped[i])
+        i += 1
+    return out
+
+
 def sample(questions: list[dict], count: int, domain: int | None,
            rng: random.Random) -> list[dict]:
     by_dom: dict[int, list[dict]] = {}
@@ -90,7 +127,7 @@ def sample(questions: list[dict], count: int, domain: int | None,
         if not pool:
             sys.exit(f"No questions for domain {domain}.")
         rng.shuffle(pool)
-        return pool[:count]
+        return _take(pool, count, [])
 
     domains = sorted(by_dom)
     alloc = allocate(count, domains)
@@ -100,14 +137,15 @@ def sample(questions: list[dict], count: int, domain: int | None,
         pool = by_dom[d][:]
         rng.shuffle(pool)
         take = alloc[d]
-        picked.extend(pool[:take])
-        shortfall += max(0, take - len(pool))
+        chosen = _take(pool, take, picked)        # skip semantic twins across the whole exam
+        picked.extend(chosen)
+        shortfall += max(0, take - len(chosen))
     # backfill if any domain was short on questions
     if shortfall:
         chosen_ids = {q["id"] for q in picked}
         leftovers = [q for q in questions if q["id"] not in chosen_ids]
         rng.shuffle(leftovers)
-        picked.extend(leftovers[:shortfall])
+        picked.extend(_take(leftovers, shortfall, picked))
 
     # Group by scenario theme (mirrors the real exam's scenario structure),
     # but keep the group order shuffled so two attempts differ.
