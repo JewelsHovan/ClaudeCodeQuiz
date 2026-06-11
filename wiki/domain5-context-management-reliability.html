@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Domain 5 · Context Management &amp; Reliability (15%) · CCA Foundations Wiki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--panel2:#1e222b;--ink:#e7e9ee;--muted:#9aa3b2;
+  --line:#2a2f3a;--accent:#cc785c;--accent2:#d4a27f;--good:#46b873;--code:#0c0e12}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* layout */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:290px;min-width:290px;background:var(--panel);border-right:1px solid var(--line);
+  position:sticky;top:0;height:100vh;overflow-y:auto;padding:18px 0 30px}
+.content{flex:1;min-width:0;padding:40px 52px 100px;max-width:880px;margin:0 auto}
+@media(max-width:860px){
+  .shell{flex-direction:column}
+  .sidebar{position:static;width:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+  .content{padding:26px 18px 70px}
+}
+
+/* sidebar */
+.brand{display:block;padding:4px 18px 12px;color:var(--ink)}
+.brand b{font-size:15px}
+.brand span{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.search{margin:4px 14px 10px}
+.search input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  color:var(--ink);padding:7px 11px;font:13.5px Inter,sans-serif;outline:none}
+.search input:focus{border-color:var(--accent)}
+.nav-section{padding:10px 18px 4px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted)}
+.nav-link{display:block;padding:6px 18px;font-size:13.5px;color:var(--muted);
+  border-left:3px solid transparent}
+.nav-link:hover{color:var(--ink);background:var(--panel2);text-decoration:none}
+.nav-link.active{color:var(--accent2);border-left-color:var(--accent);background:var(--panel2)}
+.nav-link.hidden{display:none}
+.toc{margin:2px 0 6px;border-left:1px solid var(--line);margin-left:21px}
+.toc a{display:block;padding:3px 14px;font-size:12.5px;color:var(--muted)}
+.toc a:hover{color:var(--ink);text-decoration:none}
+
+/* article */
+.crumb{font-size:12.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.crumb a{color:var(--accent2)}
+article h1{font-size:32px;line-height:1.15;font-weight:800;letter-spacing:-.02em;margin:6px 0 18px}
+article h2{font-size:22px;font-weight:700;margin:36px 0 12px;padding-top:14px;border-top:1px solid var(--line)}
+article h3{font-size:17px;font-weight:700;margin:26px 0 8px;color:var(--accent2)}
+article h4{font-size:15px;margin:20px 0 6px}
+article p{margin:10px 0}
+article ul,article ol{padding-left:24px;margin:10px 0}
+article li{margin:4px 0}
+article blockquote{margin:14px 0;padding:10px 16px;border-left:3px solid var(--accent);
+  background:var(--panel);border-radius:0 10px 10px 0;color:var(--muted)}
+article blockquote p{margin:4px 0}
+article hr{border:none;border-top:1px solid var(--line);margin:28px 0}
+article code{background:var(--code);border:1px solid var(--line);border-radius:5px;
+  padding:1px 5px;font-size:13.5px;font-family:"SF Mono",Menlo,Monaco,monospace}
+article pre{background:var(--code);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;overflow-x:auto;font-size:13.5px;line-height:1.55}
+article pre code{background:none;border:none;padding:0}
+article table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}
+article th{background:var(--panel2);text-align:left;color:var(--accent2)}
+article th,article td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+article tr:nth-child(even) td{background:var(--panel)}
+article strong{color:var(--ink)}
+
+/* prev / next */
+.pager{display:flex;gap:14px;margin-top:54px}
+.pager a{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;transition:.15s}
+.pager a:hover{border-color:var(--accent);text-decoration:none;transform:translateY(-2px)}
+.pager .dir{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.pager .t{display:block;color:var(--ink);font-weight:600;font-size:14.5px;margin-top:3px}
+.pager .next{text-align:right}
+.foot{color:var(--muted);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);padding-top:14px}
+
+/* index page */
+.hero h1{font-size:36px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
+.eyebrow{color:var(--accent2);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:13px}
+.lede{color:var(--muted);font-size:17px;max-width:640px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:15px;margin-top:14px}
+.card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:15px;
+  padding:18px;transition:.15s;color:var(--ink)}
+.card:hover{border-color:var(--accent);transform:translateY(-2px);text-decoration:none}
+.card h3{margin:0 0 6px;font-size:16.5px}
+.card p{margin:0;color:var(--muted);font-size:13.5px}
+.sect{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:34px 0 4px}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<a class="brand" href="index.html"><b>CCA Foundations Wiki</b><span>Claude Certified Architect</span></a>
+<div class="search"><input id="navfilter" type="search" placeholder="Filter pages &amp; topics…"></div>
+<div class="nav-section">Start Here</div>
+<a class="nav-link" href="exam-cheat-sheet.html" data-kw="Numbers to Memorize Domain Weight at a Glance 2026 Currency (don&#x27;t get caught on stale facts) Decision Trees stop_reason Quick Reference tool_choice Quick Reference Error Categories MCP Server Scopes CLAUDE.md Hierarchy Skills Frontmatter Commands Scoping Anti-Patterns to Remember Key Patterns to Remember CI/CD Integration">Exam Cheat Sheet</a>
+<a class="nav-link" href="tips-from-passers.html" data-kw="1. Snapshot — the confirmed blueprint 2. What people who passed say 3. Time management 4. Common gotchas / traps 5. A study plan (keyed to this repo) 6. Canonical resources (primary first) 7. Caveats (read before you book)">Tips from Passers</a>
+<a class="nav-link" href="exam-research-2026.html" data-kw="TL;DR — what changed since this env was built (March 2026) Confirmed exam blueprint Domains &amp;amp; weights (CONFIRMED — match this env exactly) Content currency (study to 2026 reality) Practice questions &amp;amp; sample material Out-of-scope topics (per the paullarionov guide — don&#x27;t burn study time here) Tips from people who passed Canonical study resources (primary first) Caveats &amp;amp; open questions Sources (selected)">Exam Research (2026)</a>
+<div class="nav-section">Domain Guides</div>
+<a class="nav-link" href="domain1-agentic-architecture-orchestration.html" data-kw="Task 1.1: The Agentic Loop Lifecycle Task 1.2: Multi-Agent Coordinator-Subagent Patterns Task 1.3: Subagent Invocation and Context Passing Task 1.4: Multi-Step Workflows with Enforcement Task 1.5: Agent SDK Hooks Task 1.6: Task Decomposition Strategies Task 1.7: Session State, Resumption, and Forking Key Exam Scenarios for Domain 1">Domain 1 · Agentic Architecture &amp; Orchestration (27%)</a>
+<a class="nav-link" href="domain2-tool-design-mcp-integration.html" data-kw="MCP Architecture Overview Task 2.1: Design Effective Tool Interfaces Task 2.2: Structured Error Responses Task 2.3: Tool Distribution Across Agents Task 2.4: MCP Server Configuration in Claude Code Task 2.5: Built-in Tools">Domain 2 · Tool Design &amp; MCP Integration (18%)</a>
+<a class="nav-link" href="domain3-claude-code-config-workflows.html" data-kw="Task 3.1: CLAUDE.md Configuration Hierarchy Task 3.2: Custom Slash Commands and Skills Task 3.3: Path-Specific Rules Task 3.4: Plan Mode vs Direct Execution Task 3.5: Iterative Refinement Techniques Task 3.6: CI/CD Integration">Domain 3 · Claude Code Configuration &amp; Workflows (20%)</a>
+<a class="nav-link" href="domain4-prompt-engineering-structured-output.html" data-kw="Task 4.1: Design Prompts with Explicit Criteria Task 4.2: Few-Shot Prompting Task 4.3: Structured Output via tool_use Task 4.4: Validation, Retry, and Feedback Loops Task 4.5: Batch Processing (Message Batches API) Task 4.6: Multi-Instance and Multi-Pass Review">Domain 4 · Prompt Engineering &amp; Structured Output (20%)</a>
+<a class="nav-link active" href="domain5-context-management-reliability.html" data-kw="Task 5.1: Manage Conversation Context Task 5.2: Escalation and Ambiguity Resolution Task 5.3: Error Propagation in Multi-Agent Systems Task 5.4: Large Codebase Exploration Task 5.5: Human Review Workflows Task 5.6: Information Provenance">Domain 5 · Context Management &amp; Reliability (15%)</a>
+<div class="toc">
+<a href="#task-51-manage-conversation-context">Task 5.1: Manage Conversation Context</a>
+<a href="#task-52-escalation-and-ambiguity-resolution">Task 5.2: Escalation and Ambiguity Resolution</a>
+<a href="#task-53-error-propagation-in-multi-agent-systems">Task 5.3: Error Propagation in Multi-Agent Systems</a>
+<a href="#task-54-large-codebase-exploration">Task 5.4: Large Codebase Exploration</a>
+<a href="#task-55-human-review-workflows">Task 5.5: Human Review Workflows</a>
+<a href="#task-56-information-provenance">Task 5.6: Information Provenance</a>
+</div>
+<div class="nav-section">Deep Dives</div>
+<a class="nav-link" href="mcp-deep-dive.html" data-kw="1. The Mental Model 2. Architecture in 60 Seconds 3. Transport: When to Use What 4. Tool Definitions — What the Exam Tests 5. The Two-Layer Error System (HIGH YIELD) 6. Server Configuration in Claude Code (HIGH YIELD) 7. Resources — The Other Half 8. Tool Distribution (Cross-Cuts with Domain 1) 9. Community vs Custom MCP Servers 10. Exam Traps for MCP">MCP Deep Dive</a>
+<a class="nav-link" href="agent-sdk-deep-dive.html" data-kw="1. SDK Architecture 2. The Agentic Loop — Correct Implementation 3. Multi-Agent — Subagent Configuration 4. Hooks — Complete Reference 5. Session Management 6. Full ClaudeAgentOptions Reference 7. Exam Traps for Agent SDK">Agent SDK Deep Dive</a>
+</aside>
+<main class="content">
+<div class="crumb"><a href="index.html">Wiki</a> / Domain 5 · Context Management &amp; Reliability (15%)</div><article><h1 id="domain-5-context-management-reliability-15">Domain 5: Context Management &amp; Reliability (15%)</h1>
+<h2 id="task-51-manage-conversation-context">Task 5.1: Manage Conversation Context</h2>
+<h3 id="key-risks">Key Risks</h3>
+<ul>
+<li><strong>Progressive summarization</strong>: Condensing numbers, dates, percentages into vague summaries loses critical data</li>
+<li><strong>"Lost in the middle" effect</strong>: Models reliably process beginning and end of long inputs, may omit findings from middle sections</li>
+<li><strong>Tool result bloat</strong>: Tool outputs accumulate tokens (e.g., 40+ fields per order lookup when only 5 matter)</li>
+<li><strong>Conversation history</strong>: Must pass complete history in subsequent API requests for coherence</li>
+</ul>
+<h3 id="solutions">Solutions</h3>
+<p><strong>Case Facts Block</strong>
+Extract transactional facts (amounts, dates, order numbers, statuses) into a persistent "case facts" block included in each prompt, OUTSIDE summarized history.</p>
+<p><strong>Trim Verbose Tool Outputs</strong>
+Keep only relevant fields before they accumulate in context (e.g., only return-relevant fields from order lookups).</p>
+<p><strong>Position-Aware Ordering</strong>
+Place key findings summaries at BEGINNING of aggregated inputs. Use explicit section headers for detailed results. This mitigates "lost in the middle."</p>
+<p><strong>Structured Subagent Outputs</strong>
+- Require metadata (dates, source locations, methodological context)
+- Return structured data (key facts, citations, relevance scores) instead of verbose content and reasoning chains
+- Especially important when downstream agents have limited context budgets</p>
+<hr />
+<h2 id="task-52-escalation-and-ambiguity-resolution">Task 5.2: Escalation and Ambiguity Resolution</h2>
+<h3 id="when-to-escalate">When to Escalate</h3>
+<ul>
+<li>Customer explicitly requests a human → <strong>escalate immediately</strong>, no investigation first</li>
+<li>Policy exceptions/gaps (e.g., competitor price matching when policy only covers own-site)</li>
+<li>Inability to make meaningful progress</li>
+<li>NOT just "complex cases" — some complex cases are still resolvable</li>
+</ul>
+<h3 id="when-not-to-escalate">When NOT to Escalate</h3>
+<ul>
+<li>Straightforward issues within agent's capability (even if customer is frustrated)</li>
+<li>Offer resolution first, escalate only if customer reiterates preference for human</li>
+</ul>
+<h3 id="unreliable-escalation-signals">Unreliable Escalation Signals</h3>
+<ul>
+<li><strong>Self-reported confidence scores</strong>: LLMs are poorly calibrated (confidently wrong on hard cases)</li>
+<li><strong>Sentiment analysis</strong>: Frustration doesn't correlate with case complexity</li>
+</ul>
+<h3 id="multiple-matches">Multiple Matches</h3>
+<p>When tool results return multiple customer matches → ask for additional identifiers, DON'T select based on heuristics.</p>
+<hr />
+<h2 id="task-53-error-propagation-in-multi-agent-systems">Task 5.3: Error Propagation in Multi-Agent Systems</h2>
+<h3 id="anti-patterns">Anti-Patterns</h3>
+<ul>
+<li>Silently suppressing errors (returning empty results as success)</li>
+<li>Terminating entire workflow on single failure</li>
+<li>Generic error statuses ("search unavailable") that hide context</li>
+</ul>
+<h3 id="correct-pattern-structured-error-context">Correct Pattern: Structured Error Context</h3>
+<p>Return to coordinator:
+- <strong>Failure type</strong> (transient, validation, permission, business)
+- <strong>What was attempted</strong> (the query, parameters)
+- <strong>Partial results</strong> (what succeeded before failure)
+- <strong>Potential alternatives</strong> (other approaches to try)</p>
+<h3 id="access-failures-vs-valid-empty-results">Access Failures vs Valid Empty Results</h3>
+<ul>
+<li><strong>Access failure</strong>: Timeout, service down → needs retry decision</li>
+<li><strong>Valid empty result</strong>: Successful query, no matches → no error, just empty data</li>
+<li>These MUST be distinguishable in error reporting</li>
+</ul>
+<h3 id="local-recovery-first">Local Recovery First</h3>
+<p>Subagents should:
+1. Attempt local recovery for transient failures
+2. Only propagate errors they cannot resolve
+3. Include what was attempted and partial results when propagating</p>
+<h3 id="coverage-annotations">Coverage Annotations</h3>
+<p>Synthesis output should annotate which findings are well-supported vs which topic areas have gaps due to unavailable sources.</p>
+<hr />
+<h2 id="task-54-large-codebase-exploration">Task 5.4: Large Codebase Exploration</h2>
+<h3 id="context-degradation">Context Degradation</h3>
+<p>In extended sessions, models start:
+- Giving inconsistent answers
+- Referencing "typical patterns" instead of specific classes discovered earlier</p>
+<h3 id="solutions_1">Solutions</h3>
+<p><strong>Scratchpad Files</strong>
+Persist key findings across context boundaries. Reference them for subsequent questions.</p>
+<p><strong>Subagent Delegation</strong>
+Spawn subagents for specific questions ("find all test files", "trace refund flow dependencies") while main agent coordinates.</p>
+<p><strong>Phase Summaries</strong>
+Summarize key findings from one exploration phase BEFORE spawning subagents for the next phase. Inject summaries into initial context.</p>
+<p><strong>Crash Recovery</strong>
+- Each agent exports state to a known location (structured manifests)
+- Coordinator loads manifest on resume and injects into agent prompts</p>
+<p><strong><code>/compact</code></strong>
+Use during extended exploration sessions when context fills with verbose discovery output.</p>
+<hr />
+<h2 id="task-55-human-review-workflows">Task 5.5: Human Review Workflows</h2>
+<h3 id="aggregate-metrics-are-deceptive">Aggregate Metrics Are Deceptive</h3>
+<p>97% overall accuracy may mask poor performance on specific document types or fields.</p>
+<h3 id="stratified-random-sampling">Stratified Random Sampling</h3>
+<p>Sample high-confidence extractions to:
+- Measure actual error rates
+- Detect novel error patterns
+- Validate before automating</p>
+<h3 id="field-level-confidence-scores">Field-Level Confidence Scores</h3>
+<ul>
+<li>Have model output confidence per field</li>
+<li>Calibrate thresholds using labeled validation sets</li>
+<li>Route low-confidence extractions to human review</li>
+<li>Analyze accuracy by document type AND by field</li>
+</ul>
+<h3 id="before-reducing-human-review">Before Reducing Human Review</h3>
+<p>Validate accuracy by document type and field segment to verify consistent performance across ALL segments.</p>
+<hr />
+<h2 id="task-56-information-provenance">Task 5.6: Information Provenance</h2>
+<h3 id="the-problem">The Problem</h3>
+<p>Source attribution is lost during summarization when findings are compressed without preserving claim-source mappings.</p>
+<h3 id="solutions_2">Solutions</h3>
+<p><strong>Claim-Source Mappings</strong>
+Require subagents to output structured mappings:
+- Source URLs / document names
+- Relevant excerpts
+- Publication or data collection dates</p>
+<p><strong>Conflicting Sources</strong>
+- Annotate conflicts with source attribution rather than arbitrarily selecting one value
+- Complete analysis with conflicting values included and explicitly annotated
+- Let coordinator decide how to reconcile</p>
+<p><strong>Temporal Data</strong>
+Require publication/collection dates to prevent temporal differences from being misinterpreted as contradictions.</p>
+<p><strong>Output Formatting</strong>
+Render different content types appropriately:
+- Financial data → tables
+- News → prose
+- Technical findings → structured lists
+Don't convert everything to a uniform format.</p>
+<p><strong>Report Structure</strong>
+Explicitly distinguish:
+- Well-established findings
+- Contested findings
+- Findings with gaps due to unavailable sources</p></article><div class="pager">
+<a href="domain4-prompt-engineering-structured-output.html"><span class="dir">← Previous</span><span class="t">Domain 4 · Prompt Engineering &amp; Structured Output (20%)</span></a>
+<a class="next" href="mcp-deep-dive.html"><span class="dir">Next →</span><span class="t">MCP Deep Dive</span></a>
+</div><p class="foot">Generated from <code>docs/</code> by <code>wiki/build_wiki.py</code> — edit the markdown, not this file. Original study material, not real (NDA) exam content.</p>
+</main>
+</div>
+<script>
+const inp=document.getElementById('navfilter');
+if(inp){inp.addEventListener('input',()=>{const q=inp.value.toLowerCase();
+  document.querySelectorAll('.nav-link').forEach(a=>{
+    a.classList.toggle('hidden',q&&!(a.textContent+' '+(a.dataset.kw||'')).toLowerCase().includes(q));});
+  document.querySelectorAll('.nav-section').forEach(s=>{
+    let el=s.nextElementSibling,vis=false;
+    while(el&&!el.classList.contains('nav-section')){
+      if(el.classList.contains('nav-link')&&!el.classList.contains('hidden'))vis=true;
+      el=el.nextElementSibling;}
+    s.style.display=q&&!vis?'none':'';});});}
+</script>
+</body>
+</html>

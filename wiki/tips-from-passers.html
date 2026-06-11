@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Tips from Passers · CCA Foundations Wiki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--panel2:#1e222b;--ink:#e7e9ee;--muted:#9aa3b2;
+  --line:#2a2f3a;--accent:#cc785c;--accent2:#d4a27f;--good:#46b873;--code:#0c0e12}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* layout */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:290px;min-width:290px;background:var(--panel);border-right:1px solid var(--line);
+  position:sticky;top:0;height:100vh;overflow-y:auto;padding:18px 0 30px}
+.content{flex:1;min-width:0;padding:40px 52px 100px;max-width:880px;margin:0 auto}
+@media(max-width:860px){
+  .shell{flex-direction:column}
+  .sidebar{position:static;width:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+  .content{padding:26px 18px 70px}
+}
+
+/* sidebar */
+.brand{display:block;padding:4px 18px 12px;color:var(--ink)}
+.brand b{font-size:15px}
+.brand span{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.search{margin:4px 14px 10px}
+.search input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  color:var(--ink);padding:7px 11px;font:13.5px Inter,sans-serif;outline:none}
+.search input:focus{border-color:var(--accent)}
+.nav-section{padding:10px 18px 4px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted)}
+.nav-link{display:block;padding:6px 18px;font-size:13.5px;color:var(--muted);
+  border-left:3px solid transparent}
+.nav-link:hover{color:var(--ink);background:var(--panel2);text-decoration:none}
+.nav-link.active{color:var(--accent2);border-left-color:var(--accent);background:var(--panel2)}
+.nav-link.hidden{display:none}
+.toc{margin:2px 0 6px;border-left:1px solid var(--line);margin-left:21px}
+.toc a{display:block;padding:3px 14px;font-size:12.5px;color:var(--muted)}
+.toc a:hover{color:var(--ink);text-decoration:none}
+
+/* article */
+.crumb{font-size:12.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.crumb a{color:var(--accent2)}
+article h1{font-size:32px;line-height:1.15;font-weight:800;letter-spacing:-.02em;margin:6px 0 18px}
+article h2{font-size:22px;font-weight:700;margin:36px 0 12px;padding-top:14px;border-top:1px solid var(--line)}
+article h3{font-size:17px;font-weight:700;margin:26px 0 8px;color:var(--accent2)}
+article h4{font-size:15px;margin:20px 0 6px}
+article p{margin:10px 0}
+article ul,article ol{padding-left:24px;margin:10px 0}
+article li{margin:4px 0}
+article blockquote{margin:14px 0;padding:10px 16px;border-left:3px solid var(--accent);
+  background:var(--panel);border-radius:0 10px 10px 0;color:var(--muted)}
+article blockquote p{margin:4px 0}
+article hr{border:none;border-top:1px solid var(--line);margin:28px 0}
+article code{background:var(--code);border:1px solid var(--line);border-radius:5px;
+  padding:1px 5px;font-size:13.5px;font-family:"SF Mono",Menlo,Monaco,monospace}
+article pre{background:var(--code);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;overflow-x:auto;font-size:13.5px;line-height:1.55}
+article pre code{background:none;border:none;padding:0}
+article table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}
+article th{background:var(--panel2);text-align:left;color:var(--accent2)}
+article th,article td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+article tr:nth-child(even) td{background:var(--panel)}
+article strong{color:var(--ink)}
+
+/* prev / next */
+.pager{display:flex;gap:14px;margin-top:54px}
+.pager a{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;transition:.15s}
+.pager a:hover{border-color:var(--accent);text-decoration:none;transform:translateY(-2px)}
+.pager .dir{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.pager .t{display:block;color:var(--ink);font-weight:600;font-size:14.5px;margin-top:3px}
+.pager .next{text-align:right}
+.foot{color:var(--muted);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);padding-top:14px}
+
+/* index page */
+.hero h1{font-size:36px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
+.eyebrow{color:var(--accent2);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:13px}
+.lede{color:var(--muted);font-size:17px;max-width:640px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:15px;margin-top:14px}
+.card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:15px;
+  padding:18px;transition:.15s;color:var(--ink)}
+.card:hover{border-color:var(--accent);transform:translateY(-2px);text-decoration:none}
+.card h3{margin:0 0 6px;font-size:16.5px}
+.card p{margin:0;color:var(--muted);font-size:13.5px}
+.sect{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:34px 0 4px}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<a class="brand" href="index.html"><b>CCA Foundations Wiki</b><span>Claude Certified Architect</span></a>
+<div class="search"><input id="navfilter" type="search" placeholder="Filter pages &amp; topics…"></div>
+<div class="nav-section">Start Here</div>
+<a class="nav-link" href="exam-cheat-sheet.html" data-kw="Numbers to Memorize Domain Weight at a Glance 2026 Currency (don&#x27;t get caught on stale facts) Decision Trees stop_reason Quick Reference tool_choice Quick Reference Error Categories MCP Server Scopes CLAUDE.md Hierarchy Skills Frontmatter Commands Scoping Anti-Patterns to Remember Key Patterns to Remember CI/CD Integration">Exam Cheat Sheet</a>
+<a class="nav-link active" href="tips-from-passers.html" data-kw="1. Snapshot — the confirmed blueprint 2. What people who passed say 3. Time management 4. Common gotchas / traps 5. A study plan (keyed to this repo) 6. Canonical resources (primary first) 7. Caveats (read before you book)">Tips from Passers</a>
+<div class="toc">
+<a href="#1-snapshot-the-confirmed-blueprint">1. Snapshot — the confirmed blueprint</a>
+<a href="#2-what-people-who-passed-say">2. What people who passed say</a>
+<a href="#3-time-management">3. Time management</a>
+<a href="#4-common-gotchas-traps">4. Common gotchas / traps</a>
+<a href="#5-a-study-plan-keyed-to-this-repo">5. A study plan (keyed to this repo)</a>
+<a href="#6-canonical-resources-primary-first">6. Canonical resources (primary first)</a>
+<a href="#7-caveats-read-before-you-book">7. Caveats (read before you book)</a>
+</div>
+<a class="nav-link" href="exam-research-2026.html" data-kw="TL;DR — what changed since this env was built (March 2026) Confirmed exam blueprint Domains &amp;amp; weights (CONFIRMED — match this env exactly) Content currency (study to 2026 reality) Practice questions &amp;amp; sample material Out-of-scope topics (per the paullarionov guide — don&#x27;t burn study time here) Tips from people who passed Canonical study resources (primary first) Caveats &amp;amp; open questions Sources (selected)">Exam Research (2026)</a>
+<div class="nav-section">Domain Guides</div>
+<a class="nav-link" href="domain1-agentic-architecture-orchestration.html" data-kw="Task 1.1: The Agentic Loop Lifecycle Task 1.2: Multi-Agent Coordinator-Subagent Patterns Task 1.3: Subagent Invocation and Context Passing Task 1.4: Multi-Step Workflows with Enforcement Task 1.5: Agent SDK Hooks Task 1.6: Task Decomposition Strategies Task 1.7: Session State, Resumption, and Forking Key Exam Scenarios for Domain 1">Domain 1 · Agentic Architecture &amp; Orchestration (27%)</a>
+<a class="nav-link" href="domain2-tool-design-mcp-integration.html" data-kw="MCP Architecture Overview Task 2.1: Design Effective Tool Interfaces Task 2.2: Structured Error Responses Task 2.3: Tool Distribution Across Agents Task 2.4: MCP Server Configuration in Claude Code Task 2.5: Built-in Tools">Domain 2 · Tool Design &amp; MCP Integration (18%)</a>
+<a class="nav-link" href="domain3-claude-code-config-workflows.html" data-kw="Task 3.1: CLAUDE.md Configuration Hierarchy Task 3.2: Custom Slash Commands and Skills Task 3.3: Path-Specific Rules Task 3.4: Plan Mode vs Direct Execution Task 3.5: Iterative Refinement Techniques Task 3.6: CI/CD Integration">Domain 3 · Claude Code Configuration &amp; Workflows (20%)</a>
+<a class="nav-link" href="domain4-prompt-engineering-structured-output.html" data-kw="Task 4.1: Design Prompts with Explicit Criteria Task 4.2: Few-Shot Prompting Task 4.3: Structured Output via tool_use Task 4.4: Validation, Retry, and Feedback Loops Task 4.5: Batch Processing (Message Batches API) Task 4.6: Multi-Instance and Multi-Pass Review">Domain 4 · Prompt Engineering &amp; Structured Output (20%)</a>
+<a class="nav-link" href="domain5-context-management-reliability.html" data-kw="Task 5.1: Manage Conversation Context Task 5.2: Escalation and Ambiguity Resolution Task 5.3: Error Propagation in Multi-Agent Systems Task 5.4: Large Codebase Exploration Task 5.5: Human Review Workflows Task 5.6: Information Provenance">Domain 5 · Context Management &amp; Reliability (15%)</a>
+<div class="nav-section">Deep Dives</div>
+<a class="nav-link" href="mcp-deep-dive.html" data-kw="1. The Mental Model 2. Architecture in 60 Seconds 3. Transport: When to Use What 4. Tool Definitions — What the Exam Tests 5. The Two-Layer Error System (HIGH YIELD) 6. Server Configuration in Claude Code (HIGH YIELD) 7. Resources — The Other Half 8. Tool Distribution (Cross-Cuts with Domain 1) 9. Community vs Custom MCP Servers 10. Exam Traps for MCP">MCP Deep Dive</a>
+<a class="nav-link" href="agent-sdk-deep-dive.html" data-kw="1. SDK Architecture 2. The Agentic Loop — Correct Implementation 3. Multi-Agent — Subagent Configuration 4. Hooks — Complete Reference 5. Session Management 6. Full ClaudeAgentOptions Reference 7. Exam Traps for Agent SDK">Agent SDK Deep Dive</a>
+</aside>
+<main class="content">
+<div class="crumb"><a href="index.html">Wiki</a> / Tips from Passers</div><article><h1 id="tips-from-passers-how-to-pass-the-claude-certified-architect-foundations">Tips From Passers — How to Pass the Claude Certified Architect (Foundations)</h1>
+<blockquote>
+<p>Practical "how to pass" guide distilled from research on people who took the exam, plus a
+concrete, repo-keyed study plan. Grounded in <code>docs/exam-research-2026.md</code> (compiled 2026-06-08).
+Read that report for citations and confidence levels. <strong>Public first-hand passer accounts are
+limited</strong> — much of "what passers say" below rests on one verified account (Kishor Kukreja,
+893/1000) plus strong cross-source consensus. Re-verify currency before you sit.</p>
+</blockquote>
+<hr />
+<h2 id="1-snapshot-the-confirmed-blueprint">1. Snapshot — the confirmed blueprint</h2>
+<table>
+<thead>
+<tr>
+<th>Fact</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Questions</td>
+<td><strong>60</strong>, single-select multiple choice (1 correct + 3 distractors)</td>
+</tr>
+<tr>
+<td>Time</td>
+<td><strong>120 minutes</strong> (~<strong>2 min/question</strong>)</td>
+</tr>
+<tr>
+<td>Passing score</td>
+<td><strong>720 / 1000</strong> — scaled score, <em>not</em> a percentage</td>
+</tr>
+<tr>
+<td>Structure</td>
+<td>Questions wrapped in <strong>4 scenarios drawn at random from a pool of 6</strong></td>
+</tr>
+<tr>
+<td>Delivery</td>
+<td>Online-proctored, <strong>closed-book</strong>, via Skilljar</td>
+</tr>
+<tr>
+<td>Launched</td>
+<td>March 12, 2026</td>
+</tr>
+<tr>
+<td>Cost / validity / prerequisites</td>
+<td><strong>Unconfirmed</strong> — see Caveats (§7)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Domain weights (study-time priority follows the weights):</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Domain</th>
+<th>Weight</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Agentic Architecture &amp; Orchestration</td>
+<td><strong>27%</strong></td>
+<td>Heaviest — study first, study hard</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Claude Code Configuration &amp; Workflows</td>
+<td><strong>20%</strong></td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Prompt Engineering &amp; Structured Output</td>
+<td><strong>20%</strong></td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Tool Design &amp; MCP Integration</td>
+<td><strong>18%</strong></td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Context Management &amp; Reliability</td>
+<td><strong>15%</strong></td>
+<td>Smallest, still ~9 questions</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>~720/1000 scaled ≈ you cannot afford to punt a whole domain. Even the 15% domain is roughly
+9 questions — enough to fail you if you skip it.</p>
+</blockquote>
+<hr />
+<h2 id="2-what-people-who-passed-say">2. What people who passed say</h2>
+<p>Distilled, actionable takeaways. Where a point comes from the one verified first-hand account,
+it's attributed to <strong>Kishor Kukreja (893/1000)</strong>; the rest is cross-source consensus.</p>
+<ul>
+<li><strong>Trust the published weights — they hold on the real exam.</strong> Kukreja's first-hand account
+  confirms exam emphasis tracks the 27/20/20/18/15 blueprint. So <strong>front-load Agentic
+  Architecture (27%)</strong>; it's the single biggest lever on your score.</li>
+<li><strong>Prepare for all 6 scenario themes — you can't predict your 4.</strong> You get a random 4-of-6:
+  <em>Customer Support Resolution Agent, Code Generation with Claude Code, Multi-Agent Research
+  System, Developer Productivity, Claude Code for CI, Structured Data Extraction.</em> A theme you
+  skipped could be one of your four. Drill every theme to baseline.</li>
+<li><strong>Expect "best answer among plausible options," not trick recall.</strong> Several options will be
+  <em>reasonable</em>; one is <em>best practice</em> for the stated constraints. The skill is ranking good vs.
+  better, not spotting an obviously wrong answer.</li>
+<li><strong>Read the scenario constraints, not just the question.</strong> The deciding detail is usually in the
+  scenario framing: "must never violate policy," "results aren't blocking," "data is sometimes
+  absent." The right answer changes with the constraint.</li>
+<li><strong>Know the commonly-confused distinctions cold.</strong> These are where the suboptimal distractors
+  live:
+  | You'll be tested on telling apart… | The discriminator |
+  |---|---|
+  | <strong>Slash commands vs. Skills</strong> | Commands = user-invoked prompt shortcuts; Skills = model-invoked capabilities (frontmatter: <code>context: fork</code>, <code>allowed-tools</code>) |
+  | <strong><code>tool_use</code> vs. few-shot examples</strong> | <code>tool_use</code> = structured, machine-parseable, deterministic schema; few-shot = probabilistic shaping of free text |
+  | <strong>Explicit vs. implicit escalation</strong> | Explicit = defined rules/prerequisite gates; implicit = sentiment/confidence guesses (an anti-pattern) |
+  | <strong>MCP Resources vs. Tools</strong> | Resource = model READS data (static/semi-static); Tool = model PERFORMS an action (side effects) |</li>
+<li><strong>It's closed-book.</strong> No docs, no this cheat sheet during the exam. Internalize the numbers and
+  decision trees in <code>docs/exam-cheat-sheet.md</code> until they're reflexes.</li>
+<li><strong>Honesty check:</strong> beyond Kukreja, public write-ups are thin. Treat secondhand "tips" blogs as
+  directional, not gospel — the blueprint and the verified passer are the solid ground.</li>
+</ul>
+<hr />
+<h2 id="3-time-management">3. Time management</h2>
+<p>You have <strong>120 minutes for 60 questions = ~2 minutes each.</strong> That's comfortable <em>if</em> you don't
+stall.</p>
+<ul>
+<li><strong>Budget per scenario, not just per question.</strong> 4 scenarios × ~15 questions ≈ <strong>~30 min per
+  scenario</strong>. Glance at the clock at each scenario boundary; if you've burned 35+ min on one,
+  speed up.</li>
+<li><strong>Flag and return.</strong> If a question isn't obvious in ~90 seconds, pick your best guess, flag it,
+  and move on. Unanswered questions score zero — never leave a flag unanswered at the end. Bank
+  the easy points first, then spend leftover time on flags.</li>
+<li><strong>Don't overthink the scenario framing.</strong> The narrative ("the team is frustrated…") is dressing.
+  Extract the <em>constraint</em> (determinism required? non-blocking? least privilege?) and answer to
+  that. Don't invent requirements the scenario didn't state.</li>
+<li><strong>First instinct on best-practice questions.</strong> When you've studied the pattern, your first read
+  is usually right. Re-reading invites talking yourself into a plausible distractor.</li>
+<li><strong>Reserve the last ~10 minutes</strong> to clear flags and confirm nothing is blank.</li>
+</ul>
+<hr />
+<h2 id="4-common-gotchas-traps">4. Common gotchas / traps</h2>
+<p>The exam is built on <strong>reasonable-but-suboptimal distractors.</strong> Internalize these patterns and
+most traps collapse:</p>
+<ul>
+<li><strong>Deterministic over probabilistic when determinism is required.</strong> If the scenario says a rule
+  must <em>never</em> be violated (financial, identity, security, compliance), the answer is a
+  <strong>deterministic mechanism — hooks, prerequisite gates, structured output / <code>tool_use</code> schema —
+  not</strong> "add an instruction to the system prompt" or "give a few-shot example." Prompt
+  instructions are probabilistic; they're the trap option here.</li>
+<li>Inverse trap: if there's <em>no</em> hard guarantee needed, the heavyweight hook is over-engineering —
+    a prompt instruction is the better (lower-effort) answer.</li>
+<li><strong>Least privilege.</strong> Prefer the option that grants the <strong>narrowest</strong> tool access / scope /
+  permission that still does the job. "Give the agent admin / all tools" is almost always the
+  distractor. (Also: 4–5 tools max for reliable selection; 18+ degrades it.)</li>
+<li><strong>Nullable fields for extraction.</strong> For structured data extraction, <strong>make fields that may be
+  absent nullable / optional.</strong> Requiring a non-nullable field when data is sometimes missing
+  <em>drives hallucination</em> — the model invents a value. That's a classic wrong answer dressed up as
+  "strict schema = good."</li>
+<li><strong>Graceful degradation over hard-fail.</strong> In multi-agent / pipeline scenarios, prefer <strong>isolate
+  the failure and continue</strong> (partial results, retry-with-feedback, fallback) over <strong>terminate the
+  whole workflow on one subagent's failure.</strong> Silently swallowing errors (empty result = success)
+  is <em>also</em> wrong — degrade gracefully <em>and</em> surface the error.</li>
+<li><strong>Explicit escalation over inferred signals.</strong> Escalate on <strong>defined rules / prerequisite
+  checks</strong>, not <strong>self-reported confidence</strong> or <strong>sentiment analysis</strong> (poorly calibrated, don't
+  correlate with complexity).</li>
+<li><strong>Provenance &amp; position.</strong> Prefer structured claim→source mappings over "the model will cite
+  sources"; put key info at the <strong>beginning</strong> of context, not buried in the middle.</li>
+</ul>
+<blockquote>
+<p>Pattern to memorize: when two options both "work," pick the one that is <strong>deterministic,
+least-privilege, fails gracefully, and matches the scenario's stated constraint.</strong></p>
+</blockquote>
+<hr />
+<h2 id="5-a-study-plan-keyed-to-this-repo">5. A study plan (keyed to this repo)</h2>
+<p>Weighted by domain importance. Repo resources: <code>docs/domainN-*.md</code>, the deep-dives
+(<code>mcp-deep-dive.md</code>, <code>agent-sdk-deep-dive.md</code>), <code>docs/exam-cheat-sheet.md</code>, the quiz banks
+(<code>quiz/practice-questions.md</code>, <code>quiz/scenario-questions.md</code>, <code>quiz/flashcards.md</code>,
+<code>quiz/bank/*.json</code>), and the slash commands <code>/study</code>, <code>/quiz</code>, <code>/weak-spots</code>, <code>/flashcards</code>,
+<code>/cheat-sheet</code>, <code>/save-progress</code>.</p>
+<h3 id="ordering-by-weight-spend-study-time-roughly-in-proportion">Ordering by weight (spend study time roughly in proportion)</h3>
+<table>
+<thead>
+<tr>
+<th>Order</th>
+<th>Focus</th>
+<th>Repo resource</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Agentic Architecture (27%)</strong></td>
+<td><code>docs/domain1-*.md</code> + <code>agent-sdk-deep-dive.md</code></td>
+<td>Biggest domain; orchestration, loops, escalation, multi-agent</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Claude Code Config (20%)</strong></td>
+<td><code>docs/domain3-*.md</code></td>
+<td>Commands vs skills, hooks, CLAUDE.md hierarchy, CI (<code>-p</code>)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Prompt Eng &amp; Structured Output (20%)</strong></td>
+<td><code>docs/domain4-*.md</code></td>
+<td><code>tool_use</code>, nullable schemas, position-aware prompting</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Tool Design &amp; MCP (18%)</strong></td>
+<td><code>docs/domain2-*.md</code> + <code>mcp-deep-dive.md</code></td>
+<td>Resources vs tools, scopes, least privilege, community vs custom</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Context &amp; Reliability (15%)</strong></td>
+<td><code>docs/domain5-*.md</code></td>
+<td>Compaction, scratchpads, error categories, graceful degradation</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Note: this repo's <em>file numbering</em> (domain2 = MCP, domain3 = Claude Code) differs from the
+blueprint <em>weight</em> order above — the weights are what matter; file names are just labels.</p>
+</blockquote>
+<h3 id="weekly-rhythm-suggested-23-weeks-out">Weekly rhythm (suggested ~2–3 weeks out)</h3>
+<ol>
+<li><strong>Read the domain doc</strong>, then <strong>drill its quiz bank</strong> (<code>/quiz</code> filtered to that domain, or the
+   <code>quiz/bank/domainN.json</code> items).</li>
+<li><strong>Run <code>/weak-spots</code></strong> after each domain to see where you're leaking points; loop back.</li>
+<li><strong><code>/flashcards</code></strong> daily for the numbers and distinctions (closed-book = these must be reflex).</li>
+<li><strong><code>/study</code></strong> for guided, profile-aware sessions; <strong><code>/save-progress</code></strong> at the end of every
+   session so the profile tracks your trend.</li>
+</ol>
+<h3 id="calibrate-with-a-timed-full-length-run">Calibrate with a timed full-length run</h3>
+<p>Take a <strong>timed, 60-question, 4-scenario mock under real conditions</strong> — 120-minute clock, no docs
+open. Use <code>/quiz</code> in a full-length, scenario-mixed mode (a <code>/mock-exam</code> mode if your env exposes
+one; otherwise chain <code>quiz/scenario-questions.md</code> + <code>quiz/practice-questions.md</code> to ~60 items and
+set a timer). Score it against 720/1000-equivalent, then send the misses to <code>/weak-spots</code>. Do this
+at least once mid-study and once in the final week.</p>
+<h3 id="final-week">Final week</h3>
+<ul>
+<li>One <strong>full timed mock</strong>; review <em>every</em> miss until you can explain why the right answer beats the
+  distractor.</li>
+<li><strong><code>/weak-spots</code></strong> → spend the week's remaining time only on red domains.</li>
+<li>Re-read <code>docs/exam-cheat-sheet.md</code> decision trees daily; they encode the trap logic in §4.</li>
+<li>Confirm you can recite the <strong>6 scenario themes</strong> and the <strong>4 commonly-confused distinctions</strong>
+  cold.</li>
+</ul>
+<h3 id="day-before">Day before</h3>
+<ul>
+<li>Light review only — flashcards + cheat-sheet skim. No cramming new material.</li>
+<li><strong>Re-verify currency</strong> (model lineup, Claude Code features — see Caveats).</li>
+<li>Confirm <strong>Skilljar logistics</strong>: working webcam/mic, quiet room, ID ready, stable connection,
+  proctoring requirements met. Closed-book means clear your desk.</li>
+<li>Sleep. ~2 min/question rewards a calm, rested read of each scenario.</li>
+</ul>
+<hr />
+<h2 id="6-canonical-resources-primary-first">6. Canonical resources (primary first)</h2>
+<p>From <code>docs/exam-research-2026.md</code>:</p>
+<ul>
+<li><strong>Anthropic docs (primary):</strong></li>
+<li><code>platform.claude.com/docs</code> — Claude Developer Platform, prompt engineering, models,
+    model-deprecations.</li>
+<li><code>code.claude.com/docs</code> — Claude Code config, plugins, hooks, changelog (moves weekly).</li>
+<li><strong>Agent SDK docs</strong> and the <strong>Model Context Protocol spec</strong>.</li>
+<li><strong>Anthropic learning:</strong> <code>anthropic.com/learn</code> (courses + certificates). <em>Note:</em>
+  <code>anthropic.com/academy</code> 404s — the live page is <code>/learn</code>.</li>
+<li><strong>Official exam guide (gated):</strong>
+  <code>anthropic.skilljar.com/claude-certified-architect-foundations-access-request</code>.</li>
+<li><strong>Community study guide:</strong> <code>github.com/daronyondem/claude-architect-exam-guide</code> — strongest
+  community guide, explicitly <strong>NDA-clean</strong> ("no exam questions included, paraphrased, or
+  hinted"); teaches 11 knowledge areas mapping onto the 5 domains.</li>
+<li><strong>Verified passer write-up:</strong> Kishor Kukreja's Medium post (893/1000) — confirms the blueprint
+  and weight emphasis.</li>
+</ul>
+<blockquote>
+<p>⚠️ Real exam questions are under NDA. This repo's <code>quiz/</code> items are <strong>original, exam-accurate
+practice</strong> matched to the blueprint — never reproductions. Never assume any practice item is an
+actual exam question.</p>
+</blockquote>
+<hr />
+<h2 id="7-caveats-read-before-you-book">7. Caveats (read before you book)</h2>
+<ul>
+<li><strong>No public Anthropic blueprint exists.</strong> The weights and format are established by strong
+  cross-source consensus + one hosted copy of the gated official PDF — authoritative-by-consensus,
+  not a citable Anthropic URL.</li>
+<li><strong>Cost is UNCONFIRMED.</strong> "$99" and "free for first 5,000 partners" were both <em>refuted</em>. Do not
+  assume a price — check Skilljar at registration.</li>
+<li><strong>Validity period UNCONFIRMED.</strong> "2 years" was <em>refuted</em>. Don't assume how long the cert lasts.</li>
+<li><strong>Prerequisites UNCONFIRMED.</strong> "6 months production experience" was <em>refuted</em>; whether any
+  prerequisite exists at all is unknown.</li>
+<li><strong>Content currency is time-sensitive.</strong> As of mid-2026: <strong>Claude Opus 4.8</strong> is flagship; <strong>Opus
+  4.1 retires August 5, 2026</strong> (migrate to 4.8). Claude Code's changelog moves weekly. <strong>Re-verify
+  the model lineup and current Claude Code features before each sitting</strong> via the primary docs in
+  §6.</li>
+</ul></article><div class="pager">
+<a href="exam-cheat-sheet.html"><span class="dir">← Previous</span><span class="t">Exam Cheat Sheet</span></a>
+<a class="next" href="exam-research-2026.html"><span class="dir">Next →</span><span class="t">Exam Research (2026)</span></a>
+</div><p class="foot">Generated from <code>docs/</code> by <code>wiki/build_wiki.py</code> — edit the markdown, not this file. Original study material, not real (NDA) exam content.</p>
+</main>
+</div>
+<script>
+const inp=document.getElementById('navfilter');
+if(inp){inp.addEventListener('input',()=>{const q=inp.value.toLowerCase();
+  document.querySelectorAll('.nav-link').forEach(a=>{
+    a.classList.toggle('hidden',q&&!(a.textContent+' '+(a.dataset.kw||'')).toLowerCase().includes(q));});
+  document.querySelectorAll('.nav-section').forEach(s=>{
+    let el=s.nextElementSibling,vis=false;
+    while(el&&!el.classList.contains('nav-section')){
+      if(el.classList.contains('nav-link')&&!el.classList.contains('hidden'))vis=true;
+      el=el.nextElementSibling;}
+    s.style.display=q&&!vis?'none':'';});});}
+</script>
+</body>
+</html>

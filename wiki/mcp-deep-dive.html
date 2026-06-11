@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MCP Deep Dive · CCA Foundations Wiki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--panel2:#1e222b;--ink:#e7e9ee;--muted:#9aa3b2;
+  --line:#2a2f3a;--accent:#cc785c;--accent2:#d4a27f;--good:#46b873;--code:#0c0e12}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* layout */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:290px;min-width:290px;background:var(--panel);border-right:1px solid var(--line);
+  position:sticky;top:0;height:100vh;overflow-y:auto;padding:18px 0 30px}
+.content{flex:1;min-width:0;padding:40px 52px 100px;max-width:880px;margin:0 auto}
+@media(max-width:860px){
+  .shell{flex-direction:column}
+  .sidebar{position:static;width:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+  .content{padding:26px 18px 70px}
+}
+
+/* sidebar */
+.brand{display:block;padding:4px 18px 12px;color:var(--ink)}
+.brand b{font-size:15px}
+.brand span{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.search{margin:4px 14px 10px}
+.search input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  color:var(--ink);padding:7px 11px;font:13.5px Inter,sans-serif;outline:none}
+.search input:focus{border-color:var(--accent)}
+.nav-section{padding:10px 18px 4px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted)}
+.nav-link{display:block;padding:6px 18px;font-size:13.5px;color:var(--muted);
+  border-left:3px solid transparent}
+.nav-link:hover{color:var(--ink);background:var(--panel2);text-decoration:none}
+.nav-link.active{color:var(--accent2);border-left-color:var(--accent);background:var(--panel2)}
+.nav-link.hidden{display:none}
+.toc{margin:2px 0 6px;border-left:1px solid var(--line);margin-left:21px}
+.toc a{display:block;padding:3px 14px;font-size:12.5px;color:var(--muted)}
+.toc a:hover{color:var(--ink);text-decoration:none}
+
+/* article */
+.crumb{font-size:12.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.crumb a{color:var(--accent2)}
+article h1{font-size:32px;line-height:1.15;font-weight:800;letter-spacing:-.02em;margin:6px 0 18px}
+article h2{font-size:22px;font-weight:700;margin:36px 0 12px;padding-top:14px;border-top:1px solid var(--line)}
+article h3{font-size:17px;font-weight:700;margin:26px 0 8px;color:var(--accent2)}
+article h4{font-size:15px;margin:20px 0 6px}
+article p{margin:10px 0}
+article ul,article ol{padding-left:24px;margin:10px 0}
+article li{margin:4px 0}
+article blockquote{margin:14px 0;padding:10px 16px;border-left:3px solid var(--accent);
+  background:var(--panel);border-radius:0 10px 10px 0;color:var(--muted)}
+article blockquote p{margin:4px 0}
+article hr{border:none;border-top:1px solid var(--line);margin:28px 0}
+article code{background:var(--code);border:1px solid var(--line);border-radius:5px;
+  padding:1px 5px;font-size:13.5px;font-family:"SF Mono",Menlo,Monaco,monospace}
+article pre{background:var(--code);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;overflow-x:auto;font-size:13.5px;line-height:1.55}
+article pre code{background:none;border:none;padding:0}
+article table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}
+article th{background:var(--panel2);text-align:left;color:var(--accent2)}
+article th,article td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+article tr:nth-child(even) td{background:var(--panel)}
+article strong{color:var(--ink)}
+
+/* prev / next */
+.pager{display:flex;gap:14px;margin-top:54px}
+.pager a{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;transition:.15s}
+.pager a:hover{border-color:var(--accent);text-decoration:none;transform:translateY(-2px)}
+.pager .dir{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.pager .t{display:block;color:var(--ink);font-weight:600;font-size:14.5px;margin-top:3px}
+.pager .next{text-align:right}
+.foot{color:var(--muted);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);padding-top:14px}
+
+/* index page */
+.hero h1{font-size:36px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
+.eyebrow{color:var(--accent2);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:13px}
+.lede{color:var(--muted);font-size:17px;max-width:640px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:15px;margin-top:14px}
+.card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:15px;
+  padding:18px;transition:.15s;color:var(--ink)}
+.card:hover{border-color:var(--accent);transform:translateY(-2px);text-decoration:none}
+.card h3{margin:0 0 6px;font-size:16.5px}
+.card p{margin:0;color:var(--muted);font-size:13.5px}
+.sect{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:34px 0 4px}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<a class="brand" href="index.html"><b>CCA Foundations Wiki</b><span>Claude Certified Architect</span></a>
+<div class="search"><input id="navfilter" type="search" placeholder="Filter pages &amp; topics…"></div>
+<div class="nav-section">Start Here</div>
+<a class="nav-link" href="exam-cheat-sheet.html" data-kw="Numbers to Memorize Domain Weight at a Glance 2026 Currency (don&#x27;t get caught on stale facts) Decision Trees stop_reason Quick Reference tool_choice Quick Reference Error Categories MCP Server Scopes CLAUDE.md Hierarchy Skills Frontmatter Commands Scoping Anti-Patterns to Remember Key Patterns to Remember CI/CD Integration">Exam Cheat Sheet</a>
+<a class="nav-link" href="tips-from-passers.html" data-kw="1. Snapshot — the confirmed blueprint 2. What people who passed say 3. Time management 4. Common gotchas / traps 5. A study plan (keyed to this repo) 6. Canonical resources (primary first) 7. Caveats (read before you book)">Tips from Passers</a>
+<a class="nav-link" href="exam-research-2026.html" data-kw="TL;DR — what changed since this env was built (March 2026) Confirmed exam blueprint Domains &amp;amp; weights (CONFIRMED — match this env exactly) Content currency (study to 2026 reality) Practice questions &amp;amp; sample material Out-of-scope topics (per the paullarionov guide — don&#x27;t burn study time here) Tips from people who passed Canonical study resources (primary first) Caveats &amp;amp; open questions Sources (selected)">Exam Research (2026)</a>
+<div class="nav-section">Domain Guides</div>
+<a class="nav-link" href="domain1-agentic-architecture-orchestration.html" data-kw="Task 1.1: The Agentic Loop Lifecycle Task 1.2: Multi-Agent Coordinator-Subagent Patterns Task 1.3: Subagent Invocation and Context Passing Task 1.4: Multi-Step Workflows with Enforcement Task 1.5: Agent SDK Hooks Task 1.6: Task Decomposition Strategies Task 1.7: Session State, Resumption, and Forking Key Exam Scenarios for Domain 1">Domain 1 · Agentic Architecture &amp; Orchestration (27%)</a>
+<a class="nav-link" href="domain2-tool-design-mcp-integration.html" data-kw="MCP Architecture Overview Task 2.1: Design Effective Tool Interfaces Task 2.2: Structured Error Responses Task 2.3: Tool Distribution Across Agents Task 2.4: MCP Server Configuration in Claude Code Task 2.5: Built-in Tools">Domain 2 · Tool Design &amp; MCP Integration (18%)</a>
+<a class="nav-link" href="domain3-claude-code-config-workflows.html" data-kw="Task 3.1: CLAUDE.md Configuration Hierarchy Task 3.2: Custom Slash Commands and Skills Task 3.3: Path-Specific Rules Task 3.4: Plan Mode vs Direct Execution Task 3.5: Iterative Refinement Techniques Task 3.6: CI/CD Integration">Domain 3 · Claude Code Configuration &amp; Workflows (20%)</a>
+<a class="nav-link" href="domain4-prompt-engineering-structured-output.html" data-kw="Task 4.1: Design Prompts with Explicit Criteria Task 4.2: Few-Shot Prompting Task 4.3: Structured Output via tool_use Task 4.4: Validation, Retry, and Feedback Loops Task 4.5: Batch Processing (Message Batches API) Task 4.6: Multi-Instance and Multi-Pass Review">Domain 4 · Prompt Engineering &amp; Structured Output (20%)</a>
+<a class="nav-link" href="domain5-context-management-reliability.html" data-kw="Task 5.1: Manage Conversation Context Task 5.2: Escalation and Ambiguity Resolution Task 5.3: Error Propagation in Multi-Agent Systems Task 5.4: Large Codebase Exploration Task 5.5: Human Review Workflows Task 5.6: Information Provenance">Domain 5 · Context Management &amp; Reliability (15%)</a>
+<div class="nav-section">Deep Dives</div>
+<a class="nav-link active" href="mcp-deep-dive.html" data-kw="1. The Mental Model 2. Architecture in 60 Seconds 3. Transport: When to Use What 4. Tool Definitions — What the Exam Tests 5. The Two-Layer Error System (HIGH YIELD) 6. Server Configuration in Claude Code (HIGH YIELD) 7. Resources — The Other Half 8. Tool Distribution (Cross-Cuts with Domain 1) 9. Community vs Custom MCP Servers 10. Exam Traps for MCP">MCP Deep Dive</a>
+<div class="toc">
+<a href="#1-the-mental-model">1. The Mental Model</a>
+<a href="#2-architecture-in-60-seconds">2. Architecture in 60 Seconds</a>
+<a href="#3-transport-when-to-use-what">3. Transport: When to Use What</a>
+<a href="#4-tool-definitions-what-the-exam-tests">4. Tool Definitions — What the Exam Tests</a>
+<a href="#5-the-two-layer-error-system-high-yield">5. The Two-Layer Error System (HIGH YIELD)</a>
+<a href="#6-server-configuration-in-claude-code-high-yield">6. Server Configuration in Claude Code (HIGH YIELD)</a>
+<a href="#7-resources-the-other-half">7. Resources — The Other Half</a>
+<a href="#8-tool-distribution-cross-cuts-with-domain-1">8. Tool Distribution (Cross-Cuts with Domain 1)</a>
+<a href="#9-community-vs-custom-mcp-servers">9. Community vs Custom MCP Servers</a>
+<a href="#10-exam-traps-for-mcp">10. Exam Traps for MCP</a>
+</div>
+<a class="nav-link" href="agent-sdk-deep-dive.html" data-kw="1. SDK Architecture 2. The Agentic Loop — Correct Implementation 3. Multi-Agent — Subagent Configuration 4. Hooks — Complete Reference 5. Session Management 6. Full ClaudeAgentOptions Reference 7. Exam Traps for Agent SDK">Agent SDK Deep Dive</a>
+</aside>
+<main class="content">
+<div class="crumb"><a href="index.html">Wiki</a> / MCP Deep Dive</div><article><h1 id="mcp-deep-dive-your-focus-area">MCP Deep Dive — Your Focus Area</h1>
+<p>This is your targeted study material for MCP. The exam tests MCP across Domain 2 (18%) and it appears in scenarios 1, 3, 4, and 6.</p>
+<hr />
+<h2 id="1-the-mental-model">1. The Mental Model</h2>
+<p><strong>MCP = a standard way to give Claude access to external data and actions.</strong></p>
+<p>Think of it as USB-C for AI tools — a universal connector protocol. Instead of building custom integrations for every data source, you plug in MCP servers.</p>
+<h3 id="the-control-model-exam-critical">The Control Model (EXAM CRITICAL)</h3>
+<pre><code>Resources = APPLICATION-controlled (read-only data for the model to reason from)
+Tools     = MODEL-controlled (actions the model decides to invoke)
+</code></pre>
+<p>If you get one thing from MCP, it's this distinction.</p>
+<hr />
+<h2 id="2-architecture-in-60-seconds">2. Architecture in 60 Seconds</h2>
+<pre><code>Host (Claude Code)
+  └── Client 1 ←→ Server A (GitHub - stdio subprocess)
+  └── Client 2 ←→ Server B (Database - HTTP)
+  └── Client 3 ←→ Server C (Custom API - HTTP)
+</code></pre>
+<ul>
+<li><strong>Host</strong>: Your app (Claude Code). Manages everything.</li>
+<li><strong>Client</strong>: 1:1 with each server. Handles protocol negotiation.</li>
+<li><strong>Server</strong>: Provides tools/resources. Isolated — can't see other servers.</li>
+</ul>
+<p><strong>Key</strong>: Servers are isolated from each other. A server cannot see the conversation or other servers' tools. The Host enforces security boundaries.</p>
+<hr />
+<h2 id="3-transport-when-to-use-what">3. Transport: When to Use What</h2>
+<table>
+<thead>
+<tr>
+<th>Transport</th>
+<th>When</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>stdio</strong></td>
+<td>Local tools, CLI tools, direct system access</td>
+<td>Server = subprocess, reads stdin, writes stdout</td>
+</tr>
+<tr>
+<td><strong>Streamable HTTP</strong></td>
+<td>Remote/network servers, multi-user</td>
+<td>Single endpoint, POST + GET, supports SSE</td>
+</tr>
+<tr>
+<td>~~Legacy SSE~~</td>
+<td><strong>NEVER for new code</strong></td>
+<td>Deprecated since 2025-11-25 spec</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-tool-definitions-what-the-exam-tests">4. Tool Definitions — What the Exam Tests</h2>
+<h3 id="structure">Structure</h3>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;search_github_issues&quot;,
+  &quot;description&quot;: &quot;Search GitHub issues by query string. Returns issue titles, numbers, and labels. Use when the user asks to find issues, bugs, or feature requests. NOT for PR reviews — use review_pull_request instead.&quot;,
+  &quot;inputSchema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;query&quot;: { &quot;type&quot;: &quot;string&quot;, &quot;description&quot;: &quot;Search query&quot; },
+      &quot;repo&quot;: { &quot;type&quot;: &quot;string&quot;, &quot;description&quot;: &quot;owner/repo format&quot; },
+      &quot;state&quot;: { &quot;type&quot;: &quot;string&quot;, &quot;enum&quot;: [&quot;open&quot;, &quot;closed&quot;, &quot;all&quot;], &quot;default&quot;: &quot;open&quot; }
+    },
+    &quot;required&quot;: [&quot;query&quot;, &quot;repo&quot;]
+  }
+}
+</code></pre>
+<h3 id="description-best-practices-high-yield">Description Best Practices (High-Yield)</h3>
+<ol>
+<li><strong>Be specific</strong>: "Search GitHub issues by query" not just "Search"</li>
+<li><strong>Explain when to use AND when NOT to use</strong>: "Use for X. NOT for Y — use Z instead."</li>
+<li><strong>Include input formats</strong>: "repo should be in owner/repo format"</li>
+<li><strong>Differentiate from similar tools</strong>: If you have <code>analyze_content</code> and <code>analyze_document</code>, rename one to <code>extract_web_results</code></li>
+</ol>
+<h3 id="tool-annotations">Tool Annotations</h3>
+<table>
+<thead>
+<tr>
+<th>Annotation</th>
+<th>Default</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>readOnlyHint</code></td>
+<td><strong>false</strong></td>
+<td></td>
+</tr>
+<tr>
+<td><code>destructiveHint</code></td>
+<td><strong>true</strong></td>
+<td>Defaults assume worst case!</td>
+</tr>
+<tr>
+<td><code>idempotentHint</code></td>
+<td><strong>false</strong></td>
+<td></td>
+</tr>
+<tr>
+<td><code>openWorldHint</code></td>
+<td><strong>true</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>The defaults are "assume dangerous" — this is counterintuitive and testable.</p>
+<hr />
+<h2 id="5-the-two-layer-error-system-high-yield">5. The Two-Layer Error System (HIGH YIELD)</h2>
+<p>This is probably the most exam-tested MCP concept.</p>
+<h3 id="layer-1-protocol-errors">Layer 1: Protocol Errors</h3>
+<pre><code class="language-json">{
+  &quot;jsonrpc&quot;: &quot;2.0&quot;, &quot;id&quot;: 3,
+  &quot;error&quot;: { &quot;code&quot;: -32602, &quot;message&quot;: &quot;Unknown tool&quot; }
+}
+</code></pre>
+<ul>
+<li>For: unknown tools, invalid arguments, server crashes</li>
+<li>The model CANNOT see these</li>
+<li>Standard JSON-RPC error codes</li>
+</ul>
+<h3 id="layer-2-tool-execution-errors">Layer 2: Tool Execution Errors</h3>
+<pre><code class="language-json">{
+  &quot;jsonrpc&quot;: &quot;2.0&quot;, &quot;id&quot;: 4,
+  &quot;result&quot;: {
+    &quot;content&quot;: [{ &quot;type&quot;: &quot;text&quot;, &quot;text&quot;: &quot;Database timeout. Retry in 60s or try cached_results.&quot; }],
+    &quot;isError&quot;: true
+  }
+}
+</code></pre>
+<ul>
+<li>For: business logic failures, API errors, permission issues</li>
+<li>The model CAN see these and reason about recovery</li>
+<li>Go in <code>result</code> with <code>isError: true</code>, NOT in the <code>error</code> field</li>
+</ul>
+<h3 id="structured-error-metadata">Structured Error Metadata</h3>
+<pre><code class="language-json">{
+  &quot;isError&quot;: true,
+  &quot;errorCategory&quot;: &quot;transient&quot;,    // transient | validation | permission
+  &quot;isRetryable&quot;: true,
+  &quot;content&quot;: [{
+    &quot;type&quot;: &quot;text&quot;,
+    &quot;text&quot;: &quot;Connection timeout. Retry in 60s.&quot;
+  }]
+}
+</code></pre>
+<p><strong>Error category cheat sheet:</strong>
+- <code>transient</code> → retryable (timeout, rate limit, temp unavailability)
+- <code>validation</code> → NOT retryable (bad input, need different input)
+- <code>permission</code> → NOT retryable (access denied, need different credentials)</p>
+<h3 id="what-not-to-do">What NOT to Do</h3>
+<ul>
+<li>Generic "Operation failed" — prevents recovery decisions</li>
+<li>Uniform error responses — model can't distinguish retry-worthy from permanent</li>
+<li>Return empty results as success for failures — suppresses error handling</li>
+<li>Return <code>isRetryable: true</code> for business rule violations</li>
+</ul>
+<hr />
+<h2 id="6-server-configuration-in-claude-code-high-yield">6. Server Configuration in Claude Code (HIGH YIELD)</h2>
+<h3 id="mcpjson-project-scope-git-tracked">.mcp.json (Project Scope — Git Tracked)</h3>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;github&quot;: {
+      &quot;type&quot;: &quot;http&quot;,
+      &quot;url&quot;: &quot;https://api.githubcopilot.com/mcp/&quot;
+    },
+    &quot;my-db&quot;: {
+      &quot;command&quot;: &quot;npx&quot;,
+      &quot;args&quot;: [&quot;-y&quot;, &quot;@bytebase/dbhub&quot;, &quot;--dsn&quot;, &quot;${DB_CONNECTION_STRING}&quot;],
+      &quot;env&quot;: { &quot;TIMEOUT&quot;: &quot;30000&quot; }
+    },
+    &quot;custom-api&quot;: {
+      &quot;type&quot;: &quot;http&quot;,
+      &quot;url&quot;: &quot;${API_URL:-https://default.example.com}/mcp&quot;,
+      &quot;headers&quot;: {
+        &quot;Authorization&quot;: &quot;Bearer ${API_KEY}&quot;
+      }
+    }
+  }
+}
+</code></pre>
+<h3 id="environment-variable-syntax">Environment Variable Syntax</h3>
+<pre><code>${VAR}           → expands to value, FAILS if unset
+${VAR:-default}  → uses default if VAR is unset
+</code></pre>
+<p>Works in: <code>command</code>, <code>args</code>, <code>env</code>, <code>url</code>, <code>headers</code></p>
+<h3 id="scope-system">Scope System</h3>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Location</th>
+<th>Shared?</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project</code></td>
+<td><code>.mcp.json</code></td>
+<td>Yes (git)</td>
+<td>Team servers</td>
+</tr>
+<tr>
+<td><code>local</code> (default)</td>
+<td><code>~/.claude.json</code> (project-scoped)</td>
+<td>No</td>
+<td>Personal/sensitive</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td><code>~/.claude.json</code> (global)</td>
+<td>No</td>
+<td>Personal, all projects</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Precedence</strong>: local &gt; project &gt; user</p>
+<h3 id="cli">CLI</h3>
+<pre><code class="language-bash">claude mcp add --transport http --scope project github https://api.githubcopilot.com/mcp/
+claude mcp add --transport stdio --env API_KEY=xxx myserver -- npx -y my-mcp-server
+claude mcp list
+claude mcp get github
+claude mcp remove github
+</code></pre>
+<hr />
+<h2 id="7-resources-the-other-half">7. Resources — The Other Half</h2>
+<h3 id="when-to-use-resources">When to Use Resources</h3>
+<ul>
+<li><strong>Content catalogs</strong>: Product SKUs, return policies, company handbooks</li>
+<li><strong>Documentation hierarchies</strong>: API docs, schema references</li>
+<li><strong>Database schemas</strong>: Expose schema as resource, query capability as tool</li>
+<li><strong>Reducing tool calls</strong>: Give agent visibility into available data without exploratory calls</li>
+</ul>
+<h3 id="resource-structure">Resource Structure</h3>
+<pre><code class="language-json">{
+  &quot;uri&quot;: &quot;file:///project/schema.sql&quot;,
+  &quot;name&quot;: &quot;Database Schema&quot;,
+  &quot;mimeType&quot;: &quot;text/plain&quot;,
+  &quot;annotations&quot;: {
+    &quot;audience&quot;: [&quot;assistant&quot;],
+    &quot;priority&quot;: 0.8
+  }
+}
+</code></pre>
+<h3 id="resources-vs-tools-decision">Resources vs Tools Decision</h3>
+<pre><code>Q: Does the model need this to REASON from? (read-only reference data)
+   → RESOURCE
+
+Q: Does the model need to DO something? (execute, create, modify)
+   → TOOL
+</code></pre>
+<hr />
+<h2 id="8-tool-distribution-cross-cuts-with-domain-1">8. Tool Distribution (Cross-Cuts with Domain 1)</h2>
+<h3 id="the-rule">The Rule</h3>
+<p><strong>4-5 tools per agent maximum for reliable selection.</strong></p>
+<p>18 tools → degraded accuracy, 3+ second decisions, ~23k tokens wasted
+3 tools (pre-filtered) → correct in 392ms, ~800 tokens, doubled accuracy</p>
+<h3 id="the-pattern">The Pattern</h3>
+<pre><code>Coordinator:    [delegate_search, delegate_analysis, delegate_synthesis]
+Search Agent:   [web_search, fetch_url, search_papers]
+Analysis Agent: [extract_data, summarize_doc, verify_claim]
+Synthesis Agent:[compile_report, verify_fact]  ← scoped cross-role tool
+</code></pre>
+<h3 id="scoped-cross-role-tools">Scoped Cross-Role Tools</h3>
+<p>Instead of giving synthesis agent all web search tools, give it a scoped <code>verify_fact</code> tool for the 85% common case (simple lookups). Route complex verifications through coordinator.</p>
+<hr />
+<h2 id="9-community-vs-custom-mcp-servers">9. Community vs Custom MCP Servers</h2>
+<h3 id="use-community-when">Use Community When</h3>
+<ul>
+<li>Standard platform integration (GitHub, Jira, Slack, PostgreSQL, Stripe)</li>
+<li>Your needs match the common case</li>
+<li>Speed to deployment matters</li>
+</ul>
+<h3 id="build-custom-when">Build Custom When</h3>
+<ul>
+<li>Proprietary internal systems</li>
+<li>Regulated industries (healthcare, finance)</li>
+<li>Custom business logic, audit requirements</li>
+<li>Security requires in-house control</li>
+</ul>
+<h3 id="always">Always</h3>
+<ul>
+<li>Code-review community servers before production use</li>
+<li>Be aware of prompt injection risk with servers that fetch untrusted content</li>
+</ul>
+<hr />
+<h2 id="10-exam-traps-for-mcp">10. Exam Traps for MCP</h2>
+<ol>
+<li><strong>"isError goes in the error field"</strong> — NO. <code>isError: true</code> goes in the <code>result</code>. Protocol errors go in <code>error</code>.</li>
+<li><strong>"Community MCP server vs custom"</strong> — Community first for standard integrations. Custom for niche/regulated.</li>
+<li><strong>"MCP resources are like tools"</strong> — NO. Resources = app-controlled read data. Tools = model-controlled actions.</li>
+<li><strong>"Add more tools for more capability"</strong> — NO. More tools = worse selection. Partition into subagents.</li>
+<li><strong>"Environment variables are insecure in .mcp.json"</strong> — NO. <code>${VAR}</code> expansion means secrets aren't committed.</li>
+<li><strong>"Put server config in CLAUDE.md"</strong> — NO. Server config goes in <code>.mcp.json</code> or <code>~/.claude.json</code>.</li>
+</ol></article><div class="pager">
+<a href="domain5-context-management-reliability.html"><span class="dir">← Previous</span><span class="t">Domain 5 · Context Management &amp; Reliability (15%)</span></a>
+<a class="next" href="agent-sdk-deep-dive.html"><span class="dir">Next →</span><span class="t">Agent SDK Deep Dive</span></a>
+</div><p class="foot">Generated from <code>docs/</code> by <code>wiki/build_wiki.py</code> — edit the markdown, not this file. Original study material, not real (NDA) exam content.</p>
+</main>
+</div>
+<script>
+const inp=document.getElementById('navfilter');
+if(inp){inp.addEventListener('input',()=>{const q=inp.value.toLowerCase();
+  document.querySelectorAll('.nav-link').forEach(a=>{
+    a.classList.toggle('hidden',q&&!(a.textContent+' '+(a.dataset.kw||'')).toLowerCase().includes(q));});
+  document.querySelectorAll('.nav-section').forEach(s=>{
+    let el=s.nextElementSibling,vis=false;
+    while(el&&!el.classList.contains('nav-section')){
+      if(el.classList.contains('nav-link')&&!el.classList.contains('hidden'))vis=true;
+      el=el.nextElementSibling;}
+    s.style.display=q&&!vis?'none':'';});});}
+</script>
+</body>
+</html>

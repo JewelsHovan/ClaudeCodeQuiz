@@ -16,6 +16,7 @@
 | Model currency (was Opus 4.x early-2026) | 🔄 **Opus 4.8 now flagship** | Cheat sheet + docs updated |
 | Claude Code features | 🔄 **New: `plugin init`, Stop hook `additionalContext`** | Domain 3 + Agent SDK docs noted |
 | Cost / validity / prerequisites | ❌ **Unconfirmed (claims refuted)** | Deliberately NOT stated as fact |
+| Scenario pool size (6 → 8?) | ⚠️ **Single-source update (2026-06-10)** | paullarionov repo reports **4-of-8**; themes 7–8 added below |
 
 ## Confirmed exam blueprint
 
@@ -27,16 +28,22 @@
 - **Delivery:** Online-proctored, **closed-book**, via Anthropic's Skilljar platform
 - **Confidence:** High (≈10 independent sources + one verified passer + a hosted copy of the gated official PDF)
 
-### The 6 official scenario themes (pool — you get 4 at random)
+### The scenario theme pool (you get 4 at random)
 1. **Customer Support Resolution Agent**
 2. **Code Generation with Claude Code**
 3. **Multi-Agent Research System**
 4. **Developer Productivity**
 5. **Claude Code for CI**
 6. **Structured Data Extraction**
+7. **Conversational AI Architecture Patterns** ⚠️ — multi-turn context management, instruction
+   persistence across turns, memory strategies, safe tool execution, ambiguous/conflicting input
+8. **Agentic AI Tools** ⚠️ — candidate-reported on real sittings; no content documented anywhere yet
 
-> Study implication: prepare for all 6; you can't predict which 4 you'll see. The env's
-> scenario bank is organized around these themes.
+> ⚠️ Themes 7–8 come from a **single community source** (paullarionov/claude-certified-architect,
+> checked 2026-06-10), which states the draw is **4 of 8** — vs the 4-of-6 our earlier
+> multi-source pass confirmed. Theme 7 is substantiated there with 16 practice questions;
+> theme 8 is candidate-reported with no content. Possible pool expansion after launch.
+> Study implication: prepare for all themes; theme 7 overlaps heavily with Domains 1 & 5.
 
 ## Domains & weights (CONFIRMED — match this env exactly)
 
@@ -77,6 +84,12 @@
 > the blueprint, not reproductions of real items.
 
 - **No official Anthropic public sample questions** were found outside the gated Skilljar portal.
+- **paullarionov/claude-certified-architect** (GitHub, added 2026-06-10) — 3,400-line study guide
+  "based on the official exam guide", translated into 10 languages, with **88 practice questions**
+  (12 worked examples + 76-question practice test w/ interactive HTML version), 4 practical
+  exercises, an out-of-scope topic list, and the official Skilljar access-request link.
+  Its 88 questions have been **imported into this repo's `quiz/bank/`**
+  (`"source": "paullarionov/claude-certified-architect"`), deduplicated against our originals.
 - **daronyondem/claude-architect-exam-guide** (GitHub) — strongest community study guide;
   explicitly NDA-clean ("No exam questions are included, paraphrased, or hinted at"); teaches
   11 interconnected knowledge areas that map onto the 5 domains.
@@ -90,6 +103,15 @@ API fundamentals/output control · tool interface design · error handling in ag
 structured data extraction · conversation context management · system prompt engineering · MCP ·
 agentic patterns/multi-agent · customer service workflows · Claude Code & Agent SDK ·
 evaluation/batch processing.
+
+## Out-of-scope topics (per the paullarionov guide — don't burn study time here)
+
+Fine-tuning/custom training · API auth, billing, account management · language/framework
+implementation details · deploying/hosting MCP servers (infra, networking, containers) · Claude's
+internal architecture/training/weights · Constitutional AI, RLHF, safety-training methodology ·
+embeddings & vector DBs · computer use · vision/image analysis · streaming/SSE · rate limits,
+quotas, cost math · OAuth/key rotation · cloud-provider-specific config · benchmarks/model
+comparisons · prompt-caching internals (know it exists, nothing more) · tokenization specifics.
 
 ## Tips from people who passed
 
@@ -107,6 +129,9 @@ evaluation/batch processing.
   Note: `anthropic.com/academy` returns 404; the live page is `/learn`.
 - **Official exam guide:** gated at
   `anthropic.skilljar.com/claude-certified-architect-foundations-access-request`.
+- **Free Anthropic Academy courses most relevant to the blueprint** (full 13-course list in the
+  paullarionov README): *Building with the Claude API*, *Claude Code in Action*, *Intro to MCP*,
+  *MCP: Advanced Topics*, *Introduction to Agent Skills* — all at `anthropic.skilljar.com`.
 
 ## Caveats & open questions
 
@@ -114,7 +139,8 @@ evaluation/batch processing.
   consensus + one hosted copy of the Confidential exam-guide PDF. Treat percentages as
   authoritative-by-consensus.
 - **Cost UNRESOLVED** — "$99" and "free for first 5,000 partners" both **refuted (0-3)**. Do not
-  state a price.
+  state a price. (The paullarionov README re-asserts both figures plus "restricted to Anthropic
+  Partner Network members" as of 2026-06 — still a single community source, still not Anthropic.)
 - **Validity period UNRESOLVED** — "2 years" **refuted**.
 - **Prerequisites UNRESOLVED** — "6 months production experience" **refuted**; whether any
   prerequisite exists is unknown.
@@ -126,6 +152,7 @@ evaluation/batch processing.
 - https://dev.to/aws-builders/the-claude-certified-architect-exam-5-domains-6-scenarios-and-everything-you-need-to-know-4le3
 - https://medium.com/@kishorkukreja/i-passed-anthropics-claude-certified-architect-foundations-exam-with-a-score-of-893-1000-2206c27efd6c
 - https://github.com/daronyondem/claude-architect-exam-guide
+- https://github.com/paullarionov/claude-certified-architect
 - https://platform.claude.com/docs/en/about-claude/model-deprecations
 - https://code.claude.com/docs/en/plugins
 - https://code.claude.com/docs/en/changelog

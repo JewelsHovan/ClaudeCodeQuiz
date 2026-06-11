@@ -483,5 +483,301 @@
       "provenance"
     ],
     "source": "original-2026"
+  },
+  {
+    "id": "d5-019",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "Your support agent resolves only 55% of issues against a target of 80%. Analysis shows miscalibration in both directions: it escalates simple cases a human should not need to see, yet attempts to handle complex policy exceptions autonomously. How do you improve its escalation calibration?",
+    "options": {
+      "A": "Add explicit escalation criteria to the prompt, with few-shot examples showing which cases to escalate and which to handle autonomously",
+      "B": "Have the model self-rate its confidence (1-10) on each case and escalate automatically below a threshold",
+      "C": "Train a separate classifier on historical ticket data to make the escalation decision",
+      "D": "Run sentiment analysis on customer messages and escalate when negative sentiment is detected"
+    },
+    "answer": "A",
+    "explanation": "The root cause of two-directional miscalibration is unclear decision boundaries: the agent does not know what it should and should not handle. Explicit escalation criteria paired with few-shot examples teach the boundary directly, fixing both over-escalation of simple cases and over-confidence on complex policy exceptions.",
+    "distractors": {
+      "B": "LLM self-rated confidence is poorly calibrated — the model can be confidently wrong on exactly the hard cases that should escalate, so it is an unreliable routing signal.",
+      "C": "A separately trained classifier is overengineering when the problem is simply that the decision boundary has never been clearly communicated to the agent.",
+      "D": "Sentiment measures the customer's mood, not case complexity; an angry customer can have a trivial issue and a calm one a complex policy exception."
+    },
+    "tags": [
+      "escalation",
+      "confidence-calibration",
+      "explicit-criteria"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d5-020",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "easy",
+    "stem": "Your document-analysis subagent encounters a corrupted PDF file that it cannot parse. When designing the system's error handling, what is the most effective way to handle this failure?",
+    "options": {
+      "A": "Return an error with context to the coordinator agent, allowing it to decide how to proceed",
+      "B": "Silently skip the corrupted document and continue processing the remaining files to avoid interrupting the workflow",
+      "C": "Automatically retry parsing the document three times with exponential backoff before reporting a failure",
+      "D": "Throw an exception that terminates the entire research workflow"
+    },
+    "answer": "A",
+    "explanation": "Returning an error with context to the coordinator lets it make an informed decision — skip the file, try an alternative parsing method, or notify the user — while maintaining full visibility into the failure.",
+    "distractors": {
+      "B": "Silently skipping hides the failure from the coordinator, so the final output appears complete when a source document was never analyzed.",
+      "C": "File corruption is deterministic, not transient; retrying with backoff wastes time on a failure that will never resolve itself.",
+      "D": "One unparseable file should not kill the entire workflow and discard all other valid progress."
+    },
+    "tags": [
+      "error-propagation",
+      "multi-agent",
+      "reliability"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d5-021",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "hard",
+    "stem": "After calling `get_customer` and `lookup_order`, your support agent has all available system data but still faces uncertainty. Which situation is the most justified trigger for calling `escalate_to_human`?",
+    "options": {
+      "A": "A customer wants to cancel an order that shipped yesterday and arrives tomorrow; the agent should escalate because the customer might change their mind after receiving the package.",
+      "B": "A customer claims they never received an order, but tracking shows it was delivered and signed for at their address three days ago; the agent should escalate because presenting contradictory evidence could harm the customer relationship.",
+      "C": "A customer requests competitor price matching; your policies allow price adjustments for price drops on your own site within 14 days but say nothing about competitor prices, so the agent should escalate for policy interpretation.",
+      "D": "A customer message contains both a billing question and a product return; the agent should escalate so a human can coordinate both issues in one interaction."
+    },
+    "answer": "C",
+    "explanation": "Competitor price matching is a genuine policy gap: the documented rules cover price drops on the company's own site but are silent on competitor prices. An agent must never invent or extend policy on its own — interpreting or extending the rules is exactly the kind of judgment that requires human escalation.",
+    "distractors": {
+      "A": "Cancelling a shipped order is a standard operational case the agent can handle under existing policy; speculating about whether the customer might later change their mind is not an escalation criterion.",
+      "B": "Tracking data directly contradicts the claim, and presenting documented evidence is within the agent's capability; discomfort with a conversation is not a policy gap requiring human judgment.",
+      "D": "Handling multiple issues in one interaction is exactly what a capable agent should do via decomposition; a multi-part request alone does not justify escalation."
+    },
+    "tags": [
+      "escalation",
+      "policy-gap",
+      "judgment"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d5-022",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Conversational AI Architecture Patterns",
+    "difficulty": "easy",
+    "stem": "Over several turns discussing investment strategy, a user stated \"I have a very low risk tolerance\" and later \"I want to maximize my returns.\" They now ask: \"What should I invest in?\" Which approach best ensures the recommendation aligns with the user's actual priority?",
+    "options": {
+      "A": "Surface the contradiction between the two stated preferences and ask the user to clarify which matters more.",
+      "B": "Provide two separate recommendations, one for each stated preference.",
+      "C": "Proceed using the most recently stated preference as the governing one.",
+      "D": "Recommend a balanced portfolio without addressing the conflict."
+    },
+    "answer": "A",
+    "explanation": "Low risk tolerance and maximizing returns are fundamentally incompatible goals. When a user's stated preferences directly contradict each other, surfacing the conflict and asking for clarification is the only approach guaranteed to align with their true intent — every alternative substitutes an assumption that may be wrong.",
+    "distractors": {
+      "B": "Two parallel recommendations dodge the decision and push the unresolved contradiction back onto the user without even explaining that the goals conflict.",
+      "C": "Recency is an arbitrary tiebreaker — the user never retracted the earlier risk constraint, so the latest statement is not evidence of their actual priority.",
+      "D": "A balanced portfolio silently substitutes the assistant's compromise for the user's unknown priority and hides the fact that a conflict exists at all."
+    },
+    "tags": [
+      "ambiguity-resolution",
+      "conflict-detection"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d5-023",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Conversational AI Architecture Patterns",
+    "difficulty": "easy",
+    "stem": "In your playlist assistant, users refine their preferences over multiple conversation turns. Two messages after a user said \"I love jazz,\" Claude asks \"What genres do you enjoy?\" What is the most likely cause?",
+    "options": {
+      "A": "Claude requires a vector database connection to maintain conversation memory, and none is configured.",
+      "B": "The model's context window has been exceeded, so earlier turns were dropped.",
+      "C": "The Claude API requires a `session_id` parameter to link requests, which your application is not sending.",
+      "D": "Your application is not including the prior conversation turns in the `messages` array of each API request."
+    },
+    "answer": "D",
+    "explanation": "The Claude API is stateless — it has no server-side memory of previous calls. Every request must carry the full conversation history in the `messages` array; if the application sends only the latest message, Claude has no knowledge of anything said earlier, including \"I love jazz.\"",
+    "distractors": {
+      "A": "Claude has no vector-database dependency; conversation memory is simply whatever the caller includes in the request.",
+      "B": "A two-message exchange is nowhere near any context-window limit, so truncation cannot explain the loss.",
+      "C": "The Messages API has no `session_id` parameter; maintaining conversation state is entirely the application's responsibility."
+    },
+    "tags": [
+      "stateless-api",
+      "conversation-history",
+      "context-management"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d5-024",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Conversational AI Architecture Patterns",
+    "difficulty": "medium",
+    "stem": "After a 40-minute cooking-assistant session, the conversation reaches 78,000 tokens. The history includes the user's allergies, recipe scaling calculations, clarified cooking terms, and general discussion. You must reduce token usage while preserving important information. Which approach best balances preservation with token reduction?",
+    "options": {
+      "A": "Summarize the entire conversation history into a single condensed narrative.",
+      "B": "Keep only the most recent 20,000 tokens and drop everything earlier.",
+      "C": "Extract critical structured data (allergies, quantities, preferences) into a compact block, summarize the general discussion, and keep recent exchanges verbatim.",
+      "D": "Store the full conversation externally and retrieve relevant parts via semantic search on each turn."
+    },
+    "answer": "C",
+    "explanation": "The hybrid approach preserves the highest-value information at the lowest token cost: safety-critical precise facts like allergies and quantities are extracted into a compact structured block (immune to summarization's precision loss), low-value general discussion is compressed, and recent exchanges stay verbatim for conversational coherence.",
+    "distractors": {
+      "A": "Whole-history summarization compresses safety-critical precise facts like allergies into lossy prose — exactly the data that must survive exactly.",
+      "B": "A pure recency window silently discards the allergy and recipe-scaling information stated early in the session.",
+      "D": "External storage with per-turn semantic retrieval is architectural overkill for a single session, and retrieval can miss critical facts that are not semantically similar to the current query."
+    },
+    "tags": [
+      "context-management",
+      "case-facts",
+      "summarization"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d5-025",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Conversational AI Architecture Patterns",
+    "difficulty": "easy",
+    "stem": "Users of your conversational assistant report that latency increases and costs rise as conversations exceed 50 turns. What is the primary cause?",
+    "options": {
+      "A": "The entire conversation history is sent with each API request, so input tokens grow with every turn.",
+      "B": "The model generates progressively longer responses as conversations continue.",
+      "C": "Database operations slow down as the stored conversation history grows.",
+      "D": "The model builds an internal user profile that requires more processing as it grows."
+    },
+    "answer": "A",
+    "explanation": "Claude's API is stateless — each request must include the complete conversation history in the `messages` array. As the conversation grows, every request carries more input tokens, which directly increases both processing latency and per-request cost.",
+    "distractors": {
+      "B": "Response length is governed by the request and content, not by conversation age; output growth is not inherent to long conversations.",
+      "C": "Database latency in your application is independent of model API latency and would not explain rising API token costs.",
+      "D": "The API is stateless; the model maintains no internal profile or state between calls."
+    },
+    "tags": [
+      "stateless-api",
+      "latency",
+      "cost",
+      "context-management"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d5-026",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Conversational AI Architecture Patterns",
+    "difficulty": "medium",
+    "stem": "Your book-club assistant has accumulated 85,000 tokens of conversation history over three months of weekly sessions. When a user asks \"What did we conclude about the theme of isolation?\", the assistant gives generic answers instead of referencing the previous discussions. What is the most effective approach?",
+    "options": {
+      "A": "Apply rolling-window truncation so only the most recent sessions stay in context.",
+      "B": "Use progressive summarization that captures the key conclusions from each session.",
+      "C": "Index the conversation history with semantic embeddings and retrieve the relevant past exchanges when a question references earlier discussion.",
+      "D": "Add structured XML tags marking discussion conclusions throughout the history."
+    },
+    "answer": "C",
+    "explanation": "Semantic retrieval over the archived history is the only approach that scales to months of discussion while still surfacing the specific past exchanges a question refers to. The relevant conclusion about \"isolation\" can be found and injected on demand, preserving the specificity that generic answers lack.",
+    "distractors": {
+      "A": "Truncation discards exactly the months-old discussions the user is asking about.",
+      "B": "Progressive summarization compresses specific conclusions into abstractions — the generic-answer problem would persist in a different form.",
+      "D": "Tagging conclusions requires restructuring all past content and still does not solve how to fit or locate 85,000 tokens of history at question time."
+    },
+    "tags": [
+      "semantic-retrieval",
+      "long-term-memory",
+      "context-management"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d5-027",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Conversational AI Architecture Patterns",
+    "difficulty": "medium",
+    "stem": "During QA testing, Claude follows your system-prompt guidelines for the first 10-15 turns of a conversation, but later responses begin to deviate. The conversation is still well within token limits. What is the best solution?",
+    "options": {
+      "A": "Move the behavioral guidelines out of the system prompt and into the first user message.",
+      "B": "Automatically start a new conversation after 20 turns.",
+      "C": "Insert user-role messages that reinforce the guidelines at natural conversation breakpoints.",
+      "D": "Use post-response validation that detects non-compliant responses and regenerates them."
+    },
+    "answer": "C",
+    "explanation": "Periodic reinforcement directly counters instruction drift: as conversation history accumulates and dilutes the system prompt's influence, re-injecting the guidelines at natural breakpoints re-establishes the constraints while preserving the conversation. It is preventive, cheap, and keeps context intact.",
+    "distractors": {
+      "A": "A first user message carries less persistent authority than the system prompt and drifts into the middle of the context just as quickly.",
+      "B": "Resetting the conversation destroys accumulated context and degrades the user experience to fix a problem that in-place reminders solve.",
+      "D": "Regeneration is corrective rather than preventive, adds latency and cost on every violation, and itself requires a reliable compliance detector."
+    },
+    "tags": [
+      "instruction-drift",
+      "context-degradation",
+      "prompt-engineering"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d5-028",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Conversational AI Architecture Patterns",
+    "difficulty": "medium",
+    "stem": "Users of your event-planning assistant frequently send requests like \"Book a venue for the party.\" The assistant responds with four or more clarifying questions, and 35% of users abandon the conversation. What approach best improves the clarification-versus-friction trade-off?",
+    "options": {
+      "A": "Proceed using hidden default values for the unspecified details.",
+      "B": "Ask all the clarifying questions at once in a single compound message.",
+      "C": "State reasonable assumptions explicitly, proceed with them, and invite the user to correct any that are wrong.",
+      "D": "Replace the conversation with a structured intake form that collects all details up front."
+    },
+    "answer": "C",
+    "explanation": "Stating assumptions explicitly and proceeding gives the user an immediately useful response — removing the friction that drives abandonment — while keeping them informed and in control: any wrong assumption is visible and trivially correctable.",
+    "distractors": {
+      "A": "Hidden defaults produce results the user cannot sanity-check — they never learn what was assumed, so errors surface late and erode trust.",
+      "B": "A wall of questions still demands the full upfront effort that is driving abandonment, just compressed into one message.",
+      "D": "A form adds even more upfront friction than the questions did, working directly against the abandonment problem."
+    },
+    "tags": [
+      "ambiguity-resolution",
+      "stated-assumptions"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d5-029",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Conversational AI Architecture Patterns",
+    "difficulty": "hard",
+    "stem": "Your assistant uses a contractor-persona system prompt. Early turns follow the persona rules, but by turn 7 the assistant is giving generic advice. The whole conversation is only about 2,500 tokens. What is the most likely cause?",
+    "options": {
+      "A": "System prompts only establish initial behavior and stop applying after the first few turns.",
+      "B": "The model's attention mechanism weakens over long contexts as turns accumulate.",
+      "C": "Accumulated assistant responses in the history increasingly dilute the system prompt's influence, as the model pattern-matches to its own prior outputs.",
+      "D": "The system prompt is only sent on the first API call and is absent from later requests."
+    },
+    "answer": "C",
+    "explanation": "As assistant responses accumulate, the proportion of context reflecting the system prompt's constraints shrinks relative to the model's own generated content. The model increasingly pattern-matches to its prior outputs — if those drifted slightly generic, the drift compounds — which explains persona decay even at a short 2,500 tokens.",
+    "distractors": {
+      "A": "System prompts apply for the whole conversation on every request; there is no built-in expiry after early turns.",
+      "B": "Attention-related degradation is a long-context phenomenon; it does not explain drift at only 2,500 tokens.",
+      "D": "In a correctly built integration the system prompt is included in every API call, and a genuinely missing prompt would cause an abrupt behavior change, not gradual drift."
+    },
+    "tags": [
+      "instruction-drift",
+      "context-degradation",
+      "system-prompt"
+    ],
+    "source": "paullarionov/claude-certified-architect"
   }
 ]

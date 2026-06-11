@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Agent SDK Deep Dive · CCA Foundations Wiki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--panel2:#1e222b;--ink:#e7e9ee;--muted:#9aa3b2;
+  --line:#2a2f3a;--accent:#cc785c;--accent2:#d4a27f;--good:#46b873;--code:#0c0e12}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* layout */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:290px;min-width:290px;background:var(--panel);border-right:1px solid var(--line);
+  position:sticky;top:0;height:100vh;overflow-y:auto;padding:18px 0 30px}
+.content{flex:1;min-width:0;padding:40px 52px 100px;max-width:880px;margin:0 auto}
+@media(max-width:860px){
+  .shell{flex-direction:column}
+  .sidebar{position:static;width:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+  .content{padding:26px 18px 70px}
+}
+
+/* sidebar */
+.brand{display:block;padding:4px 18px 12px;color:var(--ink)}
+.brand b{font-size:15px}
+.brand span{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.search{margin:4px 14px 10px}
+.search input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  color:var(--ink);padding:7px 11px;font:13.5px Inter,sans-serif;outline:none}
+.search input:focus{border-color:var(--accent)}
+.nav-section{padding:10px 18px 4px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted)}
+.nav-link{display:block;padding:6px 18px;font-size:13.5px;color:var(--muted);
+  border-left:3px solid transparent}
+.nav-link:hover{color:var(--ink);background:var(--panel2);text-decoration:none}
+.nav-link.active{color:var(--accent2);border-left-color:var(--accent);background:var(--panel2)}
+.nav-link.hidden{display:none}
+.toc{margin:2px 0 6px;border-left:1px solid var(--line);margin-left:21px}
+.toc a{display:block;padding:3px 14px;font-size:12.5px;color:var(--muted)}
+.toc a:hover{color:var(--ink);text-decoration:none}
+
+/* article */
+.crumb{font-size:12.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.crumb a{color:var(--accent2)}
+article h1{font-size:32px;line-height:1.15;font-weight:800;letter-spacing:-.02em;margin:6px 0 18px}
+article h2{font-size:22px;font-weight:700;margin:36px 0 12px;padding-top:14px;border-top:1px solid var(--line)}
+article h3{font-size:17px;font-weight:700;margin:26px 0 8px;color:var(--accent2)}
+article h4{font-size:15px;margin:20px 0 6px}
+article p{margin:10px 0}
+article ul,article ol{padding-left:24px;margin:10px 0}
+article li{margin:4px 0}
+article blockquote{margin:14px 0;padding:10px 16px;border-left:3px solid var(--accent);
+  background:var(--panel);border-radius:0 10px 10px 0;color:var(--muted)}
+article blockquote p{margin:4px 0}
+article hr{border:none;border-top:1px solid var(--line);margin:28px 0}
+article code{background:var(--code);border:1px solid var(--line);border-radius:5px;
+  padding:1px 5px;font-size:13.5px;font-family:"SF Mono",Menlo,Monaco,monospace}
+article pre{background:var(--code);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;overflow-x:auto;font-size:13.5px;line-height:1.55}
+article pre code{background:none;border:none;padding:0}
+article table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}
+article th{background:var(--panel2);text-align:left;color:var(--accent2)}
+article th,article td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+article tr:nth-child(even) td{background:var(--panel)}
+article strong{color:var(--ink)}
+
+/* prev / next */
+.pager{display:flex;gap:14px;margin-top:54px}
+.pager a{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;transition:.15s}
+.pager a:hover{border-color:var(--accent);text-decoration:none;transform:translateY(-2px)}
+.pager .dir{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.pager .t{display:block;color:var(--ink);font-weight:600;font-size:14.5px;margin-top:3px}
+.pager .next{text-align:right}
+.foot{color:var(--muted);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);padding-top:14px}
+
+/* index page */
+.hero h1{font-size:36px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
+.eyebrow{color:var(--accent2);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:13px}
+.lede{color:var(--muted);font-size:17px;max-width:640px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:15px;margin-top:14px}
+.card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:15px;
+  padding:18px;transition:.15s;color:var(--ink)}
+.card:hover{border-color:var(--accent);transform:translateY(-2px);text-decoration:none}
+.card h3{margin:0 0 6px;font-size:16.5px}
+.card p{margin:0;color:var(--muted);font-size:13.5px}
+.sect{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:34px 0 4px}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<a class="brand" href="index.html"><b>CCA Foundations Wiki</b><span>Claude Certified Architect</span></a>
+<div class="search"><input id="navfilter" type="search" placeholder="Filter pages &amp; topics…"></div>
+<div class="nav-section">Start Here</div>
+<a class="nav-link" href="exam-cheat-sheet.html" data-kw="Numbers to Memorize Domain Weight at a Glance 2026 Currency (don&#x27;t get caught on stale facts) Decision Trees stop_reason Quick Reference tool_choice Quick Reference Error Categories MCP Server Scopes CLAUDE.md Hierarchy Skills Frontmatter Commands Scoping Anti-Patterns to Remember Key Patterns to Remember CI/CD Integration">Exam Cheat Sheet</a>
+<a class="nav-link" href="tips-from-passers.html" data-kw="1. Snapshot — the confirmed blueprint 2. What people who passed say 3. Time management 4. Common gotchas / traps 5. A study plan (keyed to this repo) 6. Canonical resources (primary first) 7. Caveats (read before you book)">Tips from Passers</a>
+<a class="nav-link" href="exam-research-2026.html" data-kw="TL;DR — what changed since this env was built (March 2026) Confirmed exam blueprint Domains &amp;amp; weights (CONFIRMED — match this env exactly) Content currency (study to 2026 reality) Practice questions &amp;amp; sample material Out-of-scope topics (per the paullarionov guide — don&#x27;t burn study time here) Tips from people who passed Canonical study resources (primary first) Caveats &amp;amp; open questions Sources (selected)">Exam Research (2026)</a>
+<div class="nav-section">Domain Guides</div>
+<a class="nav-link" href="domain1-agentic-architecture-orchestration.html" data-kw="Task 1.1: The Agentic Loop Lifecycle Task 1.2: Multi-Agent Coordinator-Subagent Patterns Task 1.3: Subagent Invocation and Context Passing Task 1.4: Multi-Step Workflows with Enforcement Task 1.5: Agent SDK Hooks Task 1.6: Task Decomposition Strategies Task 1.7: Session State, Resumption, and Forking Key Exam Scenarios for Domain 1">Domain 1 · Agentic Architecture &amp; Orchestration (27%)</a>
+<a class="nav-link" href="domain2-tool-design-mcp-integration.html" data-kw="MCP Architecture Overview Task 2.1: Design Effective Tool Interfaces Task 2.2: Structured Error Responses Task 2.3: Tool Distribution Across Agents Task 2.4: MCP Server Configuration in Claude Code Task 2.5: Built-in Tools">Domain 2 · Tool Design &amp; MCP Integration (18%)</a>
+<a class="nav-link" href="domain3-claude-code-config-workflows.html" data-kw="Task 3.1: CLAUDE.md Configuration Hierarchy Task 3.2: Custom Slash Commands and Skills Task 3.3: Path-Specific Rules Task 3.4: Plan Mode vs Direct Execution Task 3.5: Iterative Refinement Techniques Task 3.6: CI/CD Integration">Domain 3 · Claude Code Configuration &amp; Workflows (20%)</a>
+<a class="nav-link" href="domain4-prompt-engineering-structured-output.html" data-kw="Task 4.1: Design Prompts with Explicit Criteria Task 4.2: Few-Shot Prompting Task 4.3: Structured Output via tool_use Task 4.4: Validation, Retry, and Feedback Loops Task 4.5: Batch Processing (Message Batches API) Task 4.6: Multi-Instance and Multi-Pass Review">Domain 4 · Prompt Engineering &amp; Structured Output (20%)</a>
+<a class="nav-link" href="domain5-context-management-reliability.html" data-kw="Task 5.1: Manage Conversation Context Task 5.2: Escalation and Ambiguity Resolution Task 5.3: Error Propagation in Multi-Agent Systems Task 5.4: Large Codebase Exploration Task 5.5: Human Review Workflows Task 5.6: Information Provenance">Domain 5 · Context Management &amp; Reliability (15%)</a>
+<div class="nav-section">Deep Dives</div>
+<a class="nav-link" href="mcp-deep-dive.html" data-kw="1. The Mental Model 2. Architecture in 60 Seconds 3. Transport: When to Use What 4. Tool Definitions — What the Exam Tests 5. The Two-Layer Error System (HIGH YIELD) 6. Server Configuration in Claude Code (HIGH YIELD) 7. Resources — The Other Half 8. Tool Distribution (Cross-Cuts with Domain 1) 9. Community vs Custom MCP Servers 10. Exam Traps for MCP">MCP Deep Dive</a>
+<a class="nav-link active" href="agent-sdk-deep-dive.html" data-kw="1. SDK Architecture 2. The Agentic Loop — Correct Implementation 3. Multi-Agent — Subagent Configuration 4. Hooks — Complete Reference 5. Session Management 6. Full ClaudeAgentOptions Reference 7. Exam Traps for Agent SDK">Agent SDK Deep Dive</a>
+<div class="toc">
+<a href="#1-sdk-architecture">1. SDK Architecture</a>
+<a href="#2-the-agentic-loop-correct-implementation">2. The Agentic Loop — Correct Implementation</a>
+<a href="#3-multi-agent-subagent-configuration">3. Multi-Agent — Subagent Configuration</a>
+<a href="#4-hooks-complete-reference">4. Hooks — Complete Reference</a>
+<a href="#5-session-management">5. Session Management</a>
+<a href="#6-full-claudeagentoptions-reference">6. Full ClaudeAgentOptions Reference</a>
+<a href="#7-exam-traps-for-agent-sdk">7. Exam Traps for Agent SDK</a>
+</div>
+</aside>
+<main class="content">
+<div class="crumb"><a href="index.html">Wiki</a> / Agent SDK Deep Dive</div><article><h1 id="agent-sdk-deep-dive-code-level-reference">Agent SDK Deep Dive — Code-Level Reference</h1>
+<p>The exam tests practical SDK knowledge. This doc covers the code patterns you need to know.</p>
+<hr />
+<h2 id="1-sdk-architecture">1. SDK Architecture</h2>
+<p>The Claude Agent SDK wraps the Claude CLI binary as a subprocess — it is NOT a raw Anthropic API client.</p>
+<pre><code>User Code → query() / ClaudeSDKClient → SubprocessCLITransport → Claude CLI → Anthropic API
+</code></pre>
+<hr />
+<h2 id="2-the-agentic-loop-correct-implementation">2. The Agentic Loop — Correct Implementation</h2>
+<h3 id="message-types">Message Types</h3>
+<table>
+<thead>
+<tr>
+<th>Message Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SystemMessage</code></td>
+<td>Session metadata at loop start</td>
+</tr>
+<tr>
+<td><code>AssistantMessage</code></td>
+<td>Claude's text + tool call requests</td>
+</tr>
+<tr>
+<td><code>ResultMessage</code></td>
+<td>Loop complete — carries stop_reason, session_id, cost</td>
+</tr>
+</tbody>
+</table>
+<h3 id="correct-loop-pattern">Correct Loop Pattern</h3>
+<pre><code class="language-python">import anyio
+from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, ResultMessage, TextBlock, ToolUseBlock
+
+async def main():
+    options = ClaudeAgentOptions(
+        system_prompt=&quot;You are a helpful coding assistant&quot;,
+        allowed_tools=[&quot;Read&quot;, &quot;Write&quot;, &quot;Bash&quot;],
+        permission_mode=&quot;acceptEdits&quot;,
+        max_turns=10,
+        max_budget_usd=2.0,
+    )
+
+    async for message in query(prompt=&quot;Create a hello.py file&quot;, options=options):
+        if isinstance(message, AssistantMessage):
+            for block in message.content:
+                if isinstance(block, TextBlock):
+                    print(f&quot;Claude: {block.text}&quot;)
+                elif isinstance(block, ToolUseBlock):
+                    print(f&quot;Tool call: {block.name}&quot;)
+        elif isinstance(message, ResultMessage):
+            print(f&quot;Done. stop_reason={message.stop_reason}&quot;)
+            print(f&quot;Cost: ${message.total_cost_usd:.4f}&quot;)
+            # ResultMessage IS the termination signal — stop here
+
+anyio.run(main)
+</code></pre>
+<h3 id="resultmessage-stop_reason-values">ResultMessage stop_reason Values</h3>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Meaning</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>end_turn</code></td>
+<td>Model finished normally</td>
+<td>Stop — happy path</td>
+</tr>
+<tr>
+<td><code>max_tokens</code></td>
+<td>Hit output token limit</td>
+<td>Handle truncation or retry</td>
+</tr>
+<tr>
+<td><code>refusal</code></td>
+<td>Model declined the request</td>
+<td>Handle gracefully</td>
+</tr>
+<tr>
+<td><code>pause_turn</code></td>
+<td>Server loop hit iteration limit (default 10)</td>
+<td>Re-submit to continue</td>
+</tr>
+</tbody>
+</table>
+<h3 id="handling-pause_turn">Handling pause_turn</h3>
+<pre><code class="language-python">elif isinstance(message, ResultMessage):
+    if message.stop_reason == &quot;pause_turn&quot;:
+        # Re-submit to continue from where Claude left off
+        await client.query(&quot;&quot;)  # Empty query resumes
+    else:
+        break  # Actual termination
+</code></pre>
+<h3 id="the-three-anti-patterns-memorize">The Three Anti-Patterns (MEMORIZE)</h3>
+<p><strong>1. Parsing natural language for termination:</strong></p>
+<pre><code class="language-python"># WRONG
+if &quot;task complete&quot; in block.text.lower():
+    break
+</code></pre>
+<p><strong>2. Arbitrary iteration caps:</strong></p>
+<pre><code class="language-python"># WRONG — why 5? What if task needs 6?
+for i in range(5):
+    await client.query(prompt)
+</code></pre>
+<p>Use <code>max_turns</code> in <code>ClaudeAgentOptions</code> instead — it counts tool-use turns semantically.</p>
+<p><strong>3. Checking assistant text as completion:</strong></p>
+<pre><code class="language-python"># WRONG
+if message.content[-1].text.endswith(&quot;Done!&quot;):
+    break
+</code></pre>
+<p><strong>Correct termination signals</strong>: <code>ResultMessage</code> (SDK level) or hooks returning <code>continue_: False</code>.</p>
+<hr />
+<h2 id="3-multi-agent-subagent-configuration">3. Multi-Agent — Subagent Configuration</h2>
+<h3 id="agentdefinition">AgentDefinition</h3>
+<pre><code class="language-python">from claude_agent_sdk import ClaudeAgentOptions, AgentDefinition
+
+options = ClaudeAgentOptions(
+    model=&quot;claude-sonnet-4-5&quot;,
+    agents={
+        &quot;research-agent&quot;: AgentDefinition(
+            description=&quot;Searches and summarizes information from docs and web.&quot;,
+            prompt=&quot;You are a research specialist. Provide citation-backed summaries.&quot;,
+            tools=[&quot;Read&quot;, &quot;Glob&quot;, &quot;Grep&quot;],
+            model=&quot;sonnet&quot;,
+        ),
+        &quot;coding-agent&quot;: AgentDefinition(
+            description=&quot;Writes and refactors Python code following project conventions.&quot;,
+            prompt=&quot;You are a senior Python engineer. Write clean, typed, tested code.&quot;,
+            tools=[&quot;Read&quot;, &quot;Write&quot;, &quot;Edit&quot;, &quot;Bash&quot;],
+            model=&quot;opus&quot;,
+        ),
+    }
+)
+</code></pre>
+<h3 id="custom-subagent-files-claudeagents-directory">Custom Subagent Files (<code>.claude/agents/</code> directory)</h3>
+<pre><code class="language-yaml">---
+name: code-reviewer
+description: Reviews code for quality, bugs, and security vulnerabilities.
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task          # Required if this subagent needs to spawn its own subagents
+model: opus
+---
+You are an expert code reviewer specializing in security and correctness.
+Review the provided code changes and identify issues with specific line references.
+</code></pre>
+<h3 id="key-rules">Key Rules</h3>
+<ul>
+<li><code>"Task"</code> must be in <code>allowed-tools</code> for any agent that spawns subagents</li>
+<li>Subagents have ISOLATED context — fresh conversation, no inherited history</li>
+<li>Only the subagent's final response returns to the coordinator as a tool result</li>
+<li>Multiple Task calls in single response = parallel execution (up to 10 concurrent)</li>
+</ul>
+<h3 id="context-passing-pattern">Context Passing Pattern</h3>
+<pre><code class="language-python"># Coordinator builds rich prompt with all needed context
+subagent_prompt = f&quot;&quot;&quot;
+PR Title: {pr_title}
+PR Description: {pr_description}
+Files changed: {files_changed}
+
+Diff:
+{diff_text}
+
+Review for security vulnerabilities. Return JSON with:
+{{&quot;severity&quot;: &quot;critical|high|medium|low&quot;, &quot;issues&quot;: [...]}}
+&quot;&quot;&quot;
+</code></pre>
+<hr />
+<h2 id="4-hooks-complete-reference">4. Hooks — Complete Reference</h2>
+<h3 id="all-hook-events">All Hook Events</h3>
+<table>
+<thead>
+<tr>
+<th>Hook Event</th>
+<th>Fires When</th>
+<th>Primary Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PreToolUse</code></td>
+<td>Before tool executes</td>
+<td>Block, modify input, enforce compliance</td>
+</tr>
+<tr>
+<td><code>PostToolUse</code></td>
+<td>After tool succeeds</td>
+<td>Normalize output, log, inject context</td>
+</tr>
+<tr>
+<td><code>PostToolUseFailure</code></td>
+<td>After tool fails</td>
+<td>Error handling, retry logic</td>
+</tr>
+<tr>
+<td><code>UserPromptSubmit</code></td>
+<td>User submits prompt</td>
+<td>Input validation, context injection</td>
+</tr>
+<tr>
+<td><code>Stop</code></td>
+<td>Agent stops</td>
+<td>Cleanup, state persistence</td>
+</tr>
+<tr>
+<td><code>SubagentStart</code></td>
+<td>Subagent spawns</td>
+<td>Additional context injection</td>
+</tr>
+<tr>
+<td><code>SubagentStop</code></td>
+<td>Subagent completes</td>
+<td>Track results, aggregate outputs</td>
+</tr>
+<tr>
+<td><code>PreCompact</code></td>
+<td>Before context compaction</td>
+<td>Control compaction behavior</td>
+</tr>
+</tbody>
+</table>
+<h3 id="hook-callback-signature">Hook Callback Signature</h3>
+<pre><code class="language-python">async def my_hook(
+    input_data: HookInput,       # tool_name, tool_input, session_id, etc.
+    tool_use_id: str | None,     # Present for tool-related hooks
+    context: HookContext,        # Future abort signal support
+) -&gt; HookJSONOutput:
+    ...
+</code></pre>
+<h3 id="hook-output-control-fields">Hook Output Control Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>continue_</code></td>
+<td>bool</td>
+<td><code>True</code> = proceed; <code>False</code> = halt</td>
+</tr>
+<tr>
+<td><code>stopReason</code></td>
+<td>str</td>
+<td>Message when halting</td>
+</tr>
+<tr>
+<td><code>decision</code></td>
+<td>"block"</td>
+<td>Alternative block signal (PreToolUse)</td>
+</tr>
+<tr>
+<td><code>reason</code></td>
+<td>str</td>
+<td>Feedback injected back to Claude</td>
+</tr>
+<tr>
+<td><code>systemMessage</code></td>
+<td>str</td>
+<td>Warning shown to user</td>
+</tr>
+<tr>
+<td><code>hookSpecificOutput</code></td>
+<td>dict</td>
+<td>Event-specific controls</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Python note</strong>: Use <code>continue_</code> (trailing underscore) in Python. SDK converts to <code>continue</code> for CLI.</p>
+<h3 id="example-pretooluse-block-refunds-over-500">Example: PreToolUse — Block Refunds Over $500</h3>
+<pre><code class="language-python">async def enforce_refund_limit(input_data, tool_use_id, context):
+    tool_name = input_data.get(&quot;tool_name&quot;, &quot;&quot;)
+    tool_input = input_data.get(&quot;tool_input&quot;, {})
+
+    if tool_name == &quot;process_refund&quot;:
+        amount = float(tool_input.get(&quot;amount&quot;, 0))
+        if amount &gt; 500:
+            return {
+                &quot;continue_&quot;: False,
+                &quot;stopReason&quot;: f&quot;Refund of ${amount} exceeds $500 limit&quot;,
+                &quot;reason&quot;: &quot;Refunds over $500 require human manager approval.&quot;,
+                &quot;hookSpecificOutput&quot;: {
+                    &quot;hookEventName&quot;: &quot;PreToolUse&quot;,
+                    &quot;permissionDecision&quot;: &quot;deny&quot;,
+                },
+            }
+
+    return {
+        &quot;hookSpecificOutput&quot;: {
+            &quot;hookEventName&quot;: &quot;PreToolUse&quot;,
+            &quot;permissionDecision&quot;: &quot;allow&quot;,
+        }
+    }
+</code></pre>
+<h3 id="example-posttooluse-data-normalization">Example: PostToolUse — Data Normalization</h3>
+<pre><code class="language-python">async def normalize_customer_data(input_data, tool_use_id, context):
+    tool_response = input_data.get(&quot;tool_response&quot;, {})
+
+    if isinstance(tool_response, dict):
+        normalized = {
+            **tool_response,
+            &quot;email&quot;: tool_response.get(&quot;email&quot;, &quot;&quot;).strip().lower(),
+            &quot;phone&quot;: tool_response.get(&quot;phone&quot;, &quot;&quot;).replace(&quot;-&quot;, &quot;&quot;),
+        }
+        return {
+            &quot;continue_&quot;: True,
+            &quot;hookSpecificOutput&quot;: {
+                &quot;hookEventName&quot;: &quot;PostToolUse&quot;,
+                &quot;updatedMCPToolOutput&quot;: normalized,  # Replaces raw output seen by Claude
+            }
+        }
+
+    return {&quot;continue_&quot;: True}
+</code></pre>
+<h3 id="example-subagentstart-dynamic-context-injection">Example: SubagentStart — Dynamic Context Injection</h3>
+<pre><code class="language-python">async def inject_security_context(input_data, tool_use_id, context):
+    agent_type = input_data.get(&quot;agent_type&quot;, &quot;&quot;)
+    if agent_type == &quot;security-reviewer&quot;:
+        return {
+            &quot;continue_&quot;: True,
+            &quot;hookSpecificOutput&quot;: {
+                &quot;hookEventName&quot;: &quot;SubagentStart&quot;,
+                &quot;additionalContext&quot;: &quot;Security policy: block all eval(); flag all network calls&quot;,
+            }
+        }
+    return {&quot;continue_&quot;: True}
+</code></pre>
+<h3 id="registering-hooks">Registering Hooks</h3>
+<pre><code class="language-python">from claude_agent_sdk import ClaudeAgentOptions, HookMatcher
+
+options = ClaudeAgentOptions(
+    hooks={
+        &quot;PreToolUse&quot;: [
+            HookMatcher(matcher=&quot;process_refund&quot;, hooks=[enforce_refund_limit]),
+            HookMatcher(matcher=&quot;Bash&quot;, hooks=[validate_bash_commands]),
+        ],
+        &quot;PostToolUse&quot;: [
+            HookMatcher(matcher=None, hooks=[log_all_tools]),     # None = all tools
+            HookMatcher(matcher=&quot;fetch_customer&quot;, hooks=[normalize_data]),
+        ],
+        &quot;SubagentStart&quot;: [
+            HookMatcher(matcher=None, hooks=[inject_security_context]),
+        ],
+    }
+)
+</code></pre>
+<hr />
+<h2 id="5-session-management">5. Session Management</h2>
+<h3 id="three-session-continuation-modes">Three Session Continuation Modes</h3>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Config</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Resume by ID</strong></td>
+<td><code>resume="session-abc-123"</code></td>
+<td>Continue specific session</td>
+</tr>
+<tr>
+<td><strong>Continue latest</strong></td>
+<td><code>continue_conversation=True</code></td>
+<td>Resume most recent session</td>
+</tr>
+<tr>
+<td><strong>Fork</strong></td>
+<td><code>resume="id" + fork_session=True</code></td>
+<td>Branch from session (new ID, same history)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="resume-a-session">Resume a Session</h3>
+<pre><code class="language-python">options = ClaudeAgentOptions(resume=&quot;session-abc-123&quot;)
+async for message in query(&quot;Continue where we left off.&quot;, options=options):
+    ...  # Claude has FULL context from previous session
+</code></pre>
+<h3 id="fork-a-session">Fork a Session</h3>
+<pre><code class="language-python">fork_options = ClaudeAgentOptions(
+    resume=&quot;session-abc-123&quot;,
+    fork_session=True,  # New ID assigned; history copied; both independent
+)
+async for message in query(&quot;Try a different approach.&quot;, options=fork_options):
+    if isinstance(message, ResultMessage):
+        forked_id = message.session_id  # Different from original
+</code></pre>
+<h3 id="session-id-retrieval">Session ID Retrieval</h3>
+<pre><code class="language-python">async for message in query(&quot;Start a project plan.&quot;):
+    if isinstance(message, ResultMessage):
+        session_id = message.session_id  # Available on every ResultMessage
+</code></pre>
+<hr />
+<h2 id="6-full-claudeagentoptions-reference">6. Full ClaudeAgentOptions Reference</h2>
+<pre><code class="language-python">ClaudeAgentOptions(
+    # Model
+    model=&quot;claude-sonnet-4-5&quot;,
+    fallback_model=&quot;claude-haiku-4&quot;,
+
+    # System prompt
+    system_prompt=&quot;You are a production assistant.&quot;,
+    # OR: system_prompt={&quot;append&quot;: &quot;Additional instructions&quot;}
+
+    # Tools
+    allowed_tools=[&quot;Read&quot;, &quot;Write&quot;, &quot;Bash&quot;, &quot;Task&quot;],
+    disallowed_tools=[&quot;WebSearch&quot;],
+
+    # Subagents
+    agents={&quot;name&quot;: AgentDefinition(...)},
+
+    # Hooks
+    hooks={&quot;PreToolUse&quot;: [...], &quot;PostToolUse&quot;: [...]},
+
+    # Sessions
+    resume=&quot;session-id&quot;,
+    fork_session=True,
+    continue_conversation=False,
+
+    # Limits
+    max_turns=20,
+    max_budget_usd=5.0,
+
+    # Output
+    output_format={&quot;type&quot;: &quot;object&quot;, &quot;properties&quot;: {...}},
+
+    # Permissions
+    permission_mode=&quot;acceptEdits&quot;,  # &quot;default&quot;|&quot;acceptEdits&quot;|&quot;plan&quot;|&quot;bypassPermissions&quot;
+
+    # Advanced
+    thinking={&quot;enabled&quot;: True, &quot;budget_tokens&quot;: 5000},
+    effort=&quot;high&quot;,  # &quot;low&quot;|&quot;medium&quot;|&quot;high&quot;|&quot;max&quot;
+    mcp_servers={&quot;server&quot;: config},
+    cwd=&quot;/path/to/working/dir&quot;,
+    env={&quot;MY_VAR&quot;: &quot;value&quot;},
+)
+</code></pre>
+<hr />
+<h2 id="7-exam-traps-for-agent-sdk">7. Exam Traps for Agent SDK</h2>
+<ol>
+<li><strong>"Check stop_reason text in the response"</strong> — NO. Use <code>ResultMessage</code> as the termination signal.</li>
+<li><strong>"Subagents inherit coordinator context"</strong> — NO. Context is isolated. Must explicitly inject.</li>
+<li><strong>"PostToolUse hook blocks tool execution"</strong> — NO. PostToolUse fires AFTER execution. Use PreToolUse to block.</li>
+<li><strong>"Use iteration counts to stop the loop"</strong> — NO. Use <code>max_turns</code> in options (semantic), not arbitrary <code>for i in range(N)</code>.</li>
+<li><strong>"Prompt instructions guarantee compliance"</strong> — NO. Hooks are deterministic; prompts are probabilistic.</li>
+<li><strong>"Any agent can spawn subagents"</strong> — NO. <code>"Task"</code> must be in <code>allowed-tools</code>.</li>
+</ol></article><div class="pager">
+<a href="mcp-deep-dive.html"><span class="dir">← Previous</span><span class="t">MCP Deep Dive</span></a>
+</div><p class="foot">Generated from <code>docs/</code> by <code>wiki/build_wiki.py</code> — edit the markdown, not this file. Original study material, not real (NDA) exam content.</p>
+</main>
+</div>
+<script>
+const inp=document.getElementById('navfilter');
+if(inp){inp.addEventListener('input',()=>{const q=inp.value.toLowerCase();
+  document.querySelectorAll('.nav-link').forEach(a=>{
+    a.classList.toggle('hidden',q&&!(a.textContent+' '+(a.dataset.kw||'')).toLowerCase().includes(q));});
+  document.querySelectorAll('.nav-section').forEach(s=>{
+    let el=s.nextElementSibling,vis=false;
+    while(el&&!el.classList.contains('nav-section')){
+      if(el.classList.contains('nav-link')&&!el.classList.contains('hidden'))vis=true;
+      el=el.nextElementSibling;}
+    s.style.display=q&&!vis?'none':'';});});}
+</script>
+</body>
+</html>

@@ -530,5 +530,250 @@
       "prompt-structure"
     ],
     "source": "original-2026"
+  },
+  {
+    "id": "d4-021",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Claude Code for CI",
+    "difficulty": "hard",
+    "stem": "Your code review component is iterative: Claude analyzes the changed file, then may request related files (imports, base classes, tests) via tool calls to understand context before giving final feedback. Your application defines a tool that lets Claude request file contents; Claude calls the tool, gets results, and continues analysis. You are evaluating the Message Batches API to reduce cost. What is the primary technical limitation when considering batch processing for this workflow?",
+    "options": {
+      "A": "Batch processing does not include correlation IDs to map outputs back to input requests",
+      "B": "The asynchronous fire-and-forget model cannot execute tools mid-request and return the results for Claude to continue its analysis",
+      "C": "The Batch API does not support tool definitions in request parameters",
+      "D": "The batch processing latency of up to 24 hours is too slow for pull-request feedback, although the workflow would otherwise function"
+    },
+    "answer": "B",
+    "explanation": "The Batch API is fire-and-forget: each request runs to completion asynchronously with no mechanism to intercept a tool call mid-request, execute the tool in your application, and return results for Claude to continue. That is fundamentally incompatible with iterative multi-turn tool-calling workflows, which require multiple tool request/response rounds within a single logical interaction.",
+    "distractors": {
+      "A": "Batch requests do support correlation — each request carries a `custom_id` that is returned with its result.",
+      "C": "Tool definitions are supported in batch request parameters; single-turn tool use works, it is the multi-turn loop that cannot run.",
+      "D": "The latency concern is real but secondary, and the premise is wrong: the iterative tool-calling workflow would not function at all under the asynchronous model, regardless of latency."
+    },
+    "tags": [
+      "batch-api",
+      "tool-use",
+      "multi-turn-limitation"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d4-022",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Claude Code for CI",
+    "difficulty": "medium",
+    "stem": "Your CI/CD system runs three Claude-based analyses: (1) fast style checks on every PR that block merging until completion, (2) comprehensive weekly security audits of the entire codebase, and (3) nightly test-case generation for recently changed modules. The Message Batches API offers 50% savings but processing can take up to 24 hours. You want to optimize API cost while maintaining an acceptable developer experience. Which combination correctly matches each task to an API approach?",
+    "options": {
+      "A": "Use the Message Batches API for all three tasks to maximize 50% savings, configuring the pipeline to poll for batch completion.",
+      "B": "Use synchronous calls for PR style checks; use the Message Batches API for weekly security audits and nightly test generation.",
+      "C": "Use synchronous calls for all three tasks for consistent response times, relying on prompt caching to reduce costs across workloads.",
+      "D": "Use synchronous calls for PR style checks and nightly test generation; use the Message Batches API only for weekly security audits."
+    },
+    "answer": "B",
+    "explanation": "PR style checks block developers and require immediate responses, so they must stay synchronous. Weekly security audits and nightly test generation are scheduled tasks with flexible deadlines that can tolerate the Batch API's up-to-24-hour processing window, capturing the 50% discount on both non-blocking workloads.",
+    "distractors": {
+      "A": "Batching the PR style checks would make developers wait up to 24 hours to merge, destroying the developer experience for a blocking workflow.",
+      "C": "Keeping everything synchronous forfeits the 50% batch discount on the two scheduled workloads; prompt caching reduces input-token cost but does not approach the savings available for latency-tolerant jobs.",
+      "D": "Nightly test generation is also a scheduled, non-blocking job whose results are consumed later, so it is a valid batch candidate; excluding it leaves savings on the table for no latency benefit."
+    },
+    "tags": [
+      "batch-api",
+      "cost-optimization",
+      "ci-cd",
+      "latency"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d4-023",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Claude Code for CI",
+    "difficulty": "hard",
+    "stem": "Your automated code review averages 15 findings per pull request, and developers report a 40% false-positive rate. The bottleneck is investigation time: developers must click into each finding to read Claude's rationale before deciding whether to fix or dismiss it. Your CLAUDE.md already contains comprehensive rules for acceptable patterns, and stakeholders rejected any approach that filters findings before developers see them. What change best addresses investigation time?",
+    "options": {
+      "A": "Require Claude to include its rationale and a confidence estimate directly in each finding as it is posted.",
+      "B": "Add a post-processor that analyzes finding patterns and automatically suppresses those matching historical false-positive signatures.",
+      "C": "Categorize findings as \"blocking issues\" vs \"suggestions,\" with different review requirements for each level.",
+      "D": "Configure Claude to show only high-confidence findings, filtering uncertain flags before developers see them."
+    },
+    "answer": "A",
+    "explanation": "Surfacing the rationale and confidence directly in each finding attacks the actual bottleneck—per-finding investigation time—by letting developers triage at a glance instead of clicking into each one. It also satisfies the stakeholder constraint, because every finding remains visible.",
+    "distractors": {
+      "B": "Automatic suppression is filtering by another name, which stakeholders explicitly rejected, and signature matching risks hiding genuinely new issues.",
+      "C": "A blocking/suggestion split changes prioritization but developers must still open each finding to judge it; investigation time per finding is unchanged.",
+      "D": "Showing only high-confidence findings directly violates the no-filtering constraint stakeholders imposed."
+    },
+    "tags": [
+      "output-formatting",
+      "confidence-calibration",
+      "code-review",
+      "constraints"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d4-024",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "You asked Claude Code to implement a function that transforms API responses into an internal normalized format. After two iterations, the output structure still doesn't match expectations—some fields are nested differently and timestamps are formatted incorrectly. You described the requirements in prose, but Claude interprets them differently each time. Which approach is most effective for the next iteration?",
+    "options": {
+      "A": "Write a JSON schema describing the expected output structure and validate Claude's output against it after each iteration.",
+      "B": "Provide 2–3 concrete input-output examples showing the expected transformation for representative API responses.",
+      "C": "Rewrite the requirements with more technical precision, specifying exact field mappings, nesting rules, and timestamp format strings.",
+      "D": "Ask Claude to explain its current understanding of the requirements to identify where the interpretations diverge."
+    },
+    "answer": "B",
+    "explanation": "Concrete input-output examples remove the ambiguity inherent in prose descriptions by showing Claude the exact expected transformation result. This directly addresses the root cause—misinterpretation of textual requirements—by providing unambiguous patterns for field nesting and timestamp formatting.",
+    "distractors": {
+      "A": "Schema validation catches structural mismatches after the fact but does not communicate the expected transformation up front, so iterations continue; it also cannot express timestamp formatting semantics as clearly as a worked example.",
+      "C": "More precise prose is still prose—the same channel that already failed twice; exhaustively specifying every mapping rule is laborious and still leaves room for interpretation.",
+      "D": "Eliciting Claude's understanding is a useful diagnostic but only locates the divergence; it does not by itself provide the unambiguous specification examples deliver."
+    },
+    "tags": [
+      "few-shot",
+      "transformation",
+      "ambiguity-resolution"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d4-025",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "Your support agent handles single-issue requests with 94% accuracy (e.g., \"I need a refund for order #1234\"). But when customers include multiple issues in one message (e.g., \"I need a refund for order #1234 and also want to update the shipping address for order #5678\"), tool selection accuracy drops to 58%—the agent usually solves only one issue or mixes parameters across requests. What approach most effectively improves reliability for multi-issue requests?",
+    "options": {
+      "A": "Implement a preprocessing layer that uses a separate model call to decompose multi-issue messages into separate requests, handle each independently, and merge the results.",
+      "B": "Combine related tools into fewer, more universal tools.",
+      "C": "Add few-shot examples to the prompt demonstrating correct reasoning and tool sequencing for multi-issue requests.",
+      "D": "Implement response validation that detects incomplete answers and automatically reprompts the agent to resolve the missed issues."
+    },
+    "answer": "C",
+    "explanation": "The agent already performs well on single issues, so the capability exists—what it lacks is a demonstrated pattern for decomposing multi-issue messages, sequencing the tools, and keeping each issue's parameters separated. Few-shot examples showing exactly that reasoning are the most direct, lowest-complexity fix.",
+    "distractors": {
+      "A": "A decompose-and-merge preprocessing pipeline adds a model call, latency, and failure modes (cross-issue context like shared customer identity is lost when requests are handled independently) before trying the simpler prompting fix.",
+      "B": "Merging tools into universal ones does not address multi-issue decomposition and tends to degrade selection accuracy by blurring tool purposes.",
+      "D": "Detect-and-reprompt validation patches incompleteness after the fact but does not fix parameter mixing, and it adds retry loops instead of teaching the correct first-pass behavior."
+    },
+    "tags": [
+      "few-shot",
+      "multi-concern",
+      "tool-selection",
+      "reasoning-examples"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d4-026",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "hard",
+    "stem": "Production metrics show that for complex billing disputes and multi-order returns, customer satisfaction is 15% lower than for simple cases even when the resolution is technically correct. Root-cause analysis shows the agent gives accurate solutions but inconsistently explains its rationale — sometimes omitting relevant policy details, sometimes timeline information or next steps — and the specific gaps vary case by case. You want to improve solution quality without adding human oversight. Which approach is most effective?",
+    "options": {
+      "A": "Add a self-critique stage in which the agent evaluates its draft response for completeness — confirming it resolves the customer's issue, includes the relevant policy context, and anticipates likely follow-up questions — before sending.",
+      "B": "Add a confirmation stage in which the agent asks \"Does this fully resolve your issue?\" before closing, allowing customers to request additional information if needed.",
+      "C": "Upgrade the model from Haiku to Sonnet for complex cases, routing based on a defined complexity metric.",
+      "D": "Add few-shot examples to the system prompt showing complete explanations for five common complex case types, demonstrating how to include policy context, timelines, and next steps."
+    },
+    "answer": "A",
+    "explanation": "A self-critique stage (the evaluator-optimizer pattern) directly targets inconsistent explanation completeness: the agent assesses its own draft against concrete criteria — policy context, timelines, next steps — before presenting it. Because the check is applied per-response against the criteria, it catches whatever case-specific gap appears, without human oversight.",
+    "distractors": {
+      "B": "Asking the customer to flag gaps shifts the quality burden onto them and only surfaces problems after a deficient response has already hurt satisfaction.",
+      "C": "A model upgrade addresses raw capability, but the agent's solutions are already technically correct — the failure is explanation completeness, which a bigger model does not systematically fix.",
+      "D": "Few-shot examples cover five anticipated case types, but the stem states the gaps vary case by case; static examples cannot anticipate every piece of context a specific case requires."
+    },
+    "tags": [
+      "self-critique",
+      "iterative-refinement",
+      "explicit-criteria"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d4-027",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "Your agent sometimes chooses `get_customer` when `lookup_order` would be more appropriate, especially for ambiguous queries like \"I need help with my recent purchase.\" You decide to add few-shot examples to the system prompt to improve tool selection. Which way of constructing the examples most effectively addresses the problem?",
+    "options": {
+      "A": "Add explicit \"use when\" and \"don't use when\" guidance to each tool description covering the ambiguous cases.",
+      "B": "Add examples grouped by tool — all `get_customer` scenarios together, then all `lookup_order` scenarios.",
+      "C": "Add 4-6 examples targeted specifically at ambiguous scenarios, each including the rationale for why one tool was chosen over the plausible alternative.",
+      "D": "Add 10-15 examples of clear, unambiguous requests demonstrating the correct tool choice for typical scenarios for each tool."
+    },
+    "answer": "C",
+    "explanation": "Few-shot examples are most effective when they target the exact failure mode: ambiguous queries. Showing 4-6 borderline cases with explicit rationale — why `lookup_order` beat `get_customer` for this phrasing — teaches the model the comparative decision process it needs at the edges, which generic examples or declarative rules do not convey.",
+    "distractors": {
+      "A": "Use-when/don't-use-when guidance belongs in tool descriptions and is not the few-shot intervention chosen here; rules also do not demonstrate the comparative reasoning the model needs for genuinely ambiguous queries.",
+      "B": "Grouping examples by tool shows what each tool does in isolation but never demonstrates how to choose between them when a query could plausibly fit either.",
+      "D": "Many examples of clear-cut requests rehearse cases the model already handles correctly; the failures occur on ambiguous queries, which these examples never address."
+    },
+    "tags": [
+      "few-shot",
+      "tool-selection",
+      "reasoning-examples"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d4-028",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Conversational AI Architecture Patterns",
+    "difficulty": "easy",
+    "stem": "Your assistant must maintain an enthusiastic tone, explain its reasoning, and ask clarifying questions throughout every conversation. Where should these behavioral guidelines be defined?",
+    "options": {
+      "A": "Prepended to each user message before it is sent to the API.",
+      "B": "In the system prompt for the conversation.",
+      "C": "In the first assistant message, having the assistant state its own behavior rules.",
+      "D": "In environment variables read by your application at startup."
+    },
+    "answer": "B",
+    "explanation": "The system prompt is the mechanism designed for persistent behavioral constraints: it is sent with every request, carries instruction-level authority, and applies for the entire conversation — exactly what standing guidelines like tone and clarifying-question behavior require.",
+    "distractors": {
+      "A": "Re-prepending guidelines to every user message wastes tokens and clutters the conversation; the system prompt already persists across the session.",
+      "C": "The model treats its own prior messages as conversation content rather than binding instructions, and can freely deviate from them.",
+      "D": "Environment variables configure your application; the model never sees them, so they have no effect on its behavior."
+    },
+    "tags": [
+      "system-prompt",
+      "prompt-structure"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d4-029",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Conversational AI Architecture Patterns",
+    "difficulty": "easy",
+    "stem": "Users report that your assistant's responses repeatedly open with filler like \"Certainly!\" and \"I'd be happy to help!\" What is the most effective approach to eliminate these openings?",
+    "options": {
+      "A": "Prefill the assistant turn with a partial message that begins a direct response, so generation continues from it.",
+      "B": "Lower the temperature setting to reduce variation in response openings.",
+      "C": "Post-process responses to strip greeting phrases before they are displayed.",
+      "D": "Add system-prompt instructions telling the model to avoid those phrases."
+    },
+    "answer": "A",
+    "explanation": "Prefilling the assistant's response with the start of a direct answer prevents greeting patterns at the generation level: the model continues from the prefilled text rather than getting the chance to produce an opening phrase at all. It is deterministic where instructions are merely probabilistic.",
+    "distractors": {
+      "B": "Temperature controls sampling randomness; lowering it can make the repetitive greeting more consistent, not less.",
+      "C": "Stripping text after generation is fragile — phrasing variants slip through, and removal can break sentence flow.",
+      "D": "Instructions help but remain probabilistic; the model can still produce paraphrased variants of the banned openers."
+    },
+    "tags": [
+      "prefilling",
+      "output-formatting",
+      "prompt-engineering"
+    ],
+    "source": "paullarionov/claude-certified-architect"
   }
 ]

@@ -653,5 +653,170 @@
       "opus-4.8"
     ],
     "source": "original-2026"
+  },
+  {
+    "id": "d1-025",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "easy",
+    "stem": "In your coordinator-based research system, the web-search and document-analysis subagents have both completed their tasks and returned results to the coordinator. What is the next step for producing an integrated research report?",
+    "options": {
+      "A": "Each subagent sends its results directly to the report-writing agent, bypassing the coordinator",
+      "B": "The document-analysis agent requests the web-search results and merges them internally",
+      "C": "The coordinator passes both result sets to the synthesis agent for unified integration",
+      "D": "The coordinator concatenates the raw outputs from both agents and returns that as the final report"
+    },
+    "answer": "C",
+    "explanation": "In a coordinator-subagent architecture, the coordinator owns the flow of information between subagents. Forwarding both result sets to the synthesis agent for centralized integration preserves the coordinator's control and produces a high-quality, unified merge.",
+    "distractors": {
+      "A": "Direct subagent-to-subagent transfer bypasses the coordinator's control over delegation and aggregation, breaking the hub-and-spoke design.",
+      "B": "Peer-to-peer merging inside the document-analysis agent crosses role boundaries; integration is the synthesis agent's specialization.",
+      "D": "Raw concatenation skips the synthesis step entirely, producing an unintegrated dump rather than a coherent report."
+    },
+    "tags": [
+      "coordinator",
+      "hub-and-spoke",
+      "synthesis"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d1-026",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "A colleague proposes that the document-analysis agent should send its results directly to the synthesis agent, bypassing the coordinator. What is the main advantage of keeping the coordinator as the central hub for all communication between subagents?",
+    "options": {
+      "A": "The coordinator can observe all interactions, handle errors uniformly, and decide exactly what information each subagent should receive",
+      "B": "The coordinator batches multiple requests to subagents, reducing total API calls and overall latency",
+      "C": "Routing through the coordinator enables automatic retry logic that direct inter-agent calls cannot support",
+      "D": "Subagents use isolated memory, and direct communication would require complex serialization that only the coordinator can perform"
+    },
+    "answer": "A",
+    "explanation": "The coordinator pattern's primary advantages are centralized visibility into all interactions, uniform error handling across the system, and fine-grained control over what information flows to each subagent — the defining benefits of a star-shaped (hub-and-spoke) communication topology.",
+    "distractors": {
+      "B": "Hub routing typically adds hops rather than reducing them; batching is not the architectural rationale for the pattern.",
+      "C": "Retry logic can be implemented at any layer; it is not unique to coordinator-mediated communication.",
+      "D": "Context isolation is real, but passing results between agents is just passing text/data — no special serialization capability is exclusive to the coordinator."
+    },
+    "tags": [
+      "hub-and-spoke",
+      "coordinator",
+      "multi-agent"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d1-027",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "While researching a broad topic, you observe that the web-search agent and the document-analysis agent investigate the same subtopics, leading to substantial duplication in their outputs. Token usage nearly doubles without a proportional increase in research breadth or depth. What is the most effective way to address this?",
+    "options": {
+      "A": "Let both agents finish in parallel, then have the coordinator deduplicate overlapping results before passing them to the synthesis agent",
+      "B": "Have the coordinator explicitly partition the research space before delegating, assigning each agent distinct subtopics or source types",
+      "C": "Implement a shared-state mechanism where agents log their current focus area so other agents can dynamically avoid duplication during execution",
+      "D": "Switch to sequential execution where document analysis runs only after web search completes, using the web-search results as context to avoid duplication"
+    },
+    "answer": "B",
+    "explanation": "Explicit partitioning of the research space before delegation addresses the root cause — unclear task boundaries — before any work begins. It prevents duplicated effort and wasted tokens while fully preserving parallel execution.",
+    "distractors": {
+      "A": "Post-hoc deduplication happens after the duplicate tokens have already been spent, so the cost problem remains.",
+      "C": "Shared mutable state couples the subagents, cuts against their context isolation, and adds coordination complexity during execution.",
+      "D": "Serializing the agents sacrifices parallelism and latency when an up-front partition achieves the same goal without slowing the pipeline."
+    },
+    "tags": [
+      "task-decomposition",
+      "coordinator",
+      "parallel",
+      "cost"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d1-028",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "You're adding error-handling wrappers around external API calls across a 120-file codebase. The work has three phases: (1) discover all call sites and patterns, (2) collaboratively design the error-handling approach, and (3) implement the wrappers consistently. In Phase 1, Claude generates large output listing hundreds of call sites with context, quickly filling the context window before discovery finishes. Which approach most effectively completes the task while maintaining implementation consistency?",
+    "options": {
+      "A": "Use an Explore subagent for Phase 1 to isolate the verbose discovery output and return a summary, then continue Phases 2–3 in the main conversation.",
+      "B": "Do all phases in the main conversation, periodically using `/compact` to reduce context usage while moving through the files.",
+      "C": "Switch to headless mode with `--continue`, passing explicit context summaries between batch calls to maintain continuity.",
+      "D": "Define the error-handling pattern in CLAUDE.md, then process the files in batches across multiple sessions, relying on the shared memory file for consistency."
+    },
+    "answer": "A",
+    "explanation": "An Explore subagent runs the verbose discovery in its own isolated context and returns only a concise summary to the main conversation. This preserves the main context window for the collaborative design phase and the consistent implementation phase, where retained shared context matters most.",
+    "distractors": {
+      "B": "Repeated `/compact` cycles lossily summarize mid-task, risking exactly the discovery details and design decisions that consistency depends on.",
+      "C": "Headless batch calls with hand-passed summaries sacrifice the collaborative design phase and make continuity dependent on manually crafted context handoffs.",
+      "D": "CLAUDE.md can store the agreed pattern, but splitting discovery and implementation across disconnected sessions loses call-site nuances and per-pattern decisions that a memory file cannot capture."
+    },
+    "tags": [
+      "subagent-delegation",
+      "context-isolation",
+      "context-budget"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d1-029",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "Production logs for your customer support agent show that simple requests like \"refund for order #1234\" resolve in 3-4 tool calls with 91% success, but complex requests like \"I was billed twice, my discount didn't apply, and I want to cancel\" average 12+ tool calls with only 54% success — the agent investigates issues sequentially and re-fetches redundant customer data for each one. What change most effectively improves handling of complex requests?",
+    "options": {
+      "A": "Add explicit verification checkpoints between stages, requiring the agent to record progress after resolving each issue before moving to the next.",
+      "B": "Reduce the number of tools by combining `get_customer`, `lookup_order`, and billing-related tools into a single `investigate_issue` tool.",
+      "C": "Decompose the request into separate issues, then investigate each in parallel using shared customer context before synthesizing a final resolution.",
+      "D": "Add few-shot examples to the system prompt demonstrating ideal tool-call sequences for various multi-faceted billing scenarios."
+    },
+    "answer": "C",
+    "explanation": "Decomposing the request into separate issues and investigating them in parallel with shared customer context fixes both observed problems at once: it eliminates redundant data retrieval by fetching customer context once and reusing it across issues, and it cuts total sequential tool-call loops by parallelizing the investigations before synthesizing a single resolution.",
+    "distractors": {
+      "A": "Verification checkpoints add structure but keep the investigation fully sequential and do nothing about the redundant customer-data fetches that are driving up tool-call counts.",
+      "B": "Collapsing distinct tools into one mega-tool reduces tool count but hides the structure of the work; it does not address sequential investigation and makes the combined tool harder to describe and reuse.",
+      "D": "Few-shot examples may nudge call ordering, but the core problems — sequential investigation and redundant data retrieval — are architectural, and prompt examples cannot restructure how the work is decomposed."
+    },
+    "tags": [
+      "task-decomposition",
+      "parallel",
+      "multi-concern",
+      "context-passing"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d1-030",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "Production metrics show your support agent averages 4+ API loops per resolution. Analysis reveals Claude often requests `get_customer` and `lookup_order` in separate sequential turns even when both are clearly needed at the outset. What is the most effective way to reduce the number of loops?",
+    "options": {
+      "A": "Implement speculative execution that automatically calls likely-needed tools in parallel with any requested tool and returns all results regardless of what was requested.",
+      "B": "Increase `max_tokens` to give Claude more room to plan and naturally combine its tool requests.",
+      "C": "Create composite tools like `get_customer_with_orders` that bundle common lookup combinations into single calls.",
+      "D": "Instruct Claude in the prompt to bundle related tool requests into one turn, returning all results together before the next API call."
+    },
+    "answer": "D",
+    "explanation": "Claude natively supports requesting multiple tools in a single assistant turn (parallel tool use). Prompting it to bundle related requests leverages that built-in capability and directly fixes the sequential-call pattern with minimal architectural change — each loop now retrieves everything Claude already knows it needs.",
+    "distractors": {
+      "A": "Speculatively executing tools that were never requested wastes resources, risks unintended side effects, and floods the context with results Claude did not ask for.",
+      "B": "`max_tokens` limits output length; it has no effect on whether Claude batches its tool requests within a turn.",
+      "C": "Composite tools reduce loops for one specific combination but proliferate special-case tools and do not generalize to other sequential-call patterns."
+    },
+    "tags": [
+      "agent-loop",
+      "parallel",
+      "tool-combination",
+      "latency"
+    ],
+    "source": "paullarionov/claude-certified-architect"
   }
 ]

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Domain 1 · Agentic Architecture &amp; Orchestration (27%) · CCA Foundations Wiki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--panel2:#1e222b;--ink:#e7e9ee;--muted:#9aa3b2;
+  --line:#2a2f3a;--accent:#cc785c;--accent2:#d4a27f;--good:#46b873;--code:#0c0e12}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* layout */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:290px;min-width:290px;background:var(--panel);border-right:1px solid var(--line);
+  position:sticky;top:0;height:100vh;overflow-y:auto;padding:18px 0 30px}
+.content{flex:1;min-width:0;padding:40px 52px 100px;max-width:880px;margin:0 auto}
+@media(max-width:860px){
+  .shell{flex-direction:column}
+  .sidebar{position:static;width:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+  .content{padding:26px 18px 70px}
+}
+
+/* sidebar */
+.brand{display:block;padding:4px 18px 12px;color:var(--ink)}
+.brand b{font-size:15px}
+.brand span{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.search{margin:4px 14px 10px}
+.search input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  color:var(--ink);padding:7px 11px;font:13.5px Inter,sans-serif;outline:none}
+.search input:focus{border-color:var(--accent)}
+.nav-section{padding:10px 18px 4px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted)}
+.nav-link{display:block;padding:6px 18px;font-size:13.5px;color:var(--muted);
+  border-left:3px solid transparent}
+.nav-link:hover{color:var(--ink);background:var(--panel2);text-decoration:none}
+.nav-link.active{color:var(--accent2);border-left-color:var(--accent);background:var(--panel2)}
+.nav-link.hidden{display:none}
+.toc{margin:2px 0 6px;border-left:1px solid var(--line);margin-left:21px}
+.toc a{display:block;padding:3px 14px;font-size:12.5px;color:var(--muted)}
+.toc a:hover{color:var(--ink);text-decoration:none}
+
+/* article */
+.crumb{font-size:12.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.crumb a{color:var(--accent2)}
+article h1{font-size:32px;line-height:1.15;font-weight:800;letter-spacing:-.02em;margin:6px 0 18px}
+article h2{font-size:22px;font-weight:700;margin:36px 0 12px;padding-top:14px;border-top:1px solid var(--line)}
+article h3{font-size:17px;font-weight:700;margin:26px 0 8px;color:var(--accent2)}
+article h4{font-size:15px;margin:20px 0 6px}
+article p{margin:10px 0}
+article ul,article ol{padding-left:24px;margin:10px 0}
+article li{margin:4px 0}
+article blockquote{margin:14px 0;padding:10px 16px;border-left:3px solid var(--accent);
+  background:var(--panel);border-radius:0 10px 10px 0;color:var(--muted)}
+article blockquote p{margin:4px 0}
+article hr{border:none;border-top:1px solid var(--line);margin:28px 0}
+article code{background:var(--code);border:1px solid var(--line);border-radius:5px;
+  padding:1px 5px;font-size:13.5px;font-family:"SF Mono",Menlo,Monaco,monospace}
+article pre{background:var(--code);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;overflow-x:auto;font-size:13.5px;line-height:1.55}
+article pre code{background:none;border:none;padding:0}
+article table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}
+article th{background:var(--panel2);text-align:left;color:var(--accent2)}
+article th,article td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+article tr:nth-child(even) td{background:var(--panel)}
+article strong{color:var(--ink)}
+
+/* prev / next */
+.pager{display:flex;gap:14px;margin-top:54px}
+.pager a{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;transition:.15s}
+.pager a:hover{border-color:var(--accent);text-decoration:none;transform:translateY(-2px)}
+.pager .dir{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.pager .t{display:block;color:var(--ink);font-weight:600;font-size:14.5px;margin-top:3px}
+.pager .next{text-align:right}
+.foot{color:var(--muted);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);padding-top:14px}
+
+/* index page */
+.hero h1{font-size:36px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
+.eyebrow{color:var(--accent2);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:13px}
+.lede{color:var(--muted);font-size:17px;max-width:640px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:15px;margin-top:14px}
+.card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:15px;
+  padding:18px;transition:.15s;color:var(--ink)}
+.card:hover{border-color:var(--accent);transform:translateY(-2px);text-decoration:none}
+.card h3{margin:0 0 6px;font-size:16.5px}
+.card p{margin:0;color:var(--muted);font-size:13.5px}
+.sect{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:34px 0 4px}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<a class="brand" href="index.html"><b>CCA Foundations Wiki</b><span>Claude Certified Architect</span></a>
+<div class="search"><input id="navfilter" type="search" placeholder="Filter pages &amp; topics…"></div>
+<div class="nav-section">Start Here</div>
+<a class="nav-link" href="exam-cheat-sheet.html" data-kw="Numbers to Memorize Domain Weight at a Glance 2026 Currency (don&#x27;t get caught on stale facts) Decision Trees stop_reason Quick Reference tool_choice Quick Reference Error Categories MCP Server Scopes CLAUDE.md Hierarchy Skills Frontmatter Commands Scoping Anti-Patterns to Remember Key Patterns to Remember CI/CD Integration">Exam Cheat Sheet</a>
+<a class="nav-link" href="tips-from-passers.html" data-kw="1. Snapshot — the confirmed blueprint 2. What people who passed say 3. Time management 4. Common gotchas / traps 5. A study plan (keyed to this repo) 6. Canonical resources (primary first) 7. Caveats (read before you book)">Tips from Passers</a>
+<a class="nav-link" href="exam-research-2026.html" data-kw="TL;DR — what changed since this env was built (March 2026) Confirmed exam blueprint Domains &amp;amp; weights (CONFIRMED — match this env exactly) Content currency (study to 2026 reality) Practice questions &amp;amp; sample material Out-of-scope topics (per the paullarionov guide — don&#x27;t burn study time here) Tips from people who passed Canonical study resources (primary first) Caveats &amp;amp; open questions Sources (selected)">Exam Research (2026)</a>
+<div class="nav-section">Domain Guides</div>
+<a class="nav-link active" href="domain1-agentic-architecture-orchestration.html" data-kw="Task 1.1: The Agentic Loop Lifecycle Task 1.2: Multi-Agent Coordinator-Subagent Patterns Task 1.3: Subagent Invocation and Context Passing Task 1.4: Multi-Step Workflows with Enforcement Task 1.5: Agent SDK Hooks Task 1.6: Task Decomposition Strategies Task 1.7: Session State, Resumption, and Forking Key Exam Scenarios for Domain 1">Domain 1 · Agentic Architecture &amp; Orchestration (27%)</a>
+<div class="toc">
+<a href="#task-11-the-agentic-loop-lifecycle">Task 1.1: The Agentic Loop Lifecycle</a>
+<a href="#task-12-multi-agent-coordinator-subagent-patterns">Task 1.2: Multi-Agent Coordinator-Subagent Patterns</a>
+<a href="#task-13-subagent-invocation-and-context-passing">Task 1.3: Subagent Invocation and Context Passing</a>
+<a href="#task-14-multi-step-workflows-with-enforcement">Task 1.4: Multi-Step Workflows with Enforcement</a>
+<a href="#task-15-agent-sdk-hooks">Task 1.5: Agent SDK Hooks</a>
+<a href="#task-16-task-decomposition-strategies">Task 1.6: Task Decomposition Strategies</a>
+<a href="#task-17-session-state-resumption-and-forking">Task 1.7: Session State, Resumption, and Forking</a>
+<a href="#key-exam-scenarios-for-domain-1">Key Exam Scenarios for Domain 1</a>
+</div>
+<a class="nav-link" href="domain2-tool-design-mcp-integration.html" data-kw="MCP Architecture Overview Task 2.1: Design Effective Tool Interfaces Task 2.2: Structured Error Responses Task 2.3: Tool Distribution Across Agents Task 2.4: MCP Server Configuration in Claude Code Task 2.5: Built-in Tools">Domain 2 · Tool Design &amp; MCP Integration (18%)</a>
+<a class="nav-link" href="domain3-claude-code-config-workflows.html" data-kw="Task 3.1: CLAUDE.md Configuration Hierarchy Task 3.2: Custom Slash Commands and Skills Task 3.3: Path-Specific Rules Task 3.4: Plan Mode vs Direct Execution Task 3.5: Iterative Refinement Techniques Task 3.6: CI/CD Integration">Domain 3 · Claude Code Configuration &amp; Workflows (20%)</a>
+<a class="nav-link" href="domain4-prompt-engineering-structured-output.html" data-kw="Task 4.1: Design Prompts with Explicit Criteria Task 4.2: Few-Shot Prompting Task 4.3: Structured Output via tool_use Task 4.4: Validation, Retry, and Feedback Loops Task 4.5: Batch Processing (Message Batches API) Task 4.6: Multi-Instance and Multi-Pass Review">Domain 4 · Prompt Engineering &amp; Structured Output (20%)</a>
+<a class="nav-link" href="domain5-context-management-reliability.html" data-kw="Task 5.1: Manage Conversation Context Task 5.2: Escalation and Ambiguity Resolution Task 5.3: Error Propagation in Multi-Agent Systems Task 5.4: Large Codebase Exploration Task 5.5: Human Review Workflows Task 5.6: Information Provenance">Domain 5 · Context Management &amp; Reliability (15%)</a>
+<div class="nav-section">Deep Dives</div>
+<a class="nav-link" href="mcp-deep-dive.html" data-kw="1. The Mental Model 2. Architecture in 60 Seconds 3. Transport: When to Use What 4. Tool Definitions — What the Exam Tests 5. The Two-Layer Error System (HIGH YIELD) 6. Server Configuration in Claude Code (HIGH YIELD) 7. Resources — The Other Half 8. Tool Distribution (Cross-Cuts with Domain 1) 9. Community vs Custom MCP Servers 10. Exam Traps for MCP">MCP Deep Dive</a>
+<a class="nav-link" href="agent-sdk-deep-dive.html" data-kw="1. SDK Architecture 2. The Agentic Loop — Correct Implementation 3. Multi-Agent — Subagent Configuration 4. Hooks — Complete Reference 5. Session Management 6. Full ClaudeAgentOptions Reference 7. Exam Traps for Agent SDK">Agent SDK Deep Dive</a>
+</aside>
+<main class="content">
+<div class="crumb"><a href="index.html">Wiki</a> / Domain 1 · Agentic Architecture &amp; Orchestration (27%)</div><article><h1 id="domain-1-agentic-architecture-orchestration-27">Domain 1: Agentic Architecture &amp; Orchestration (27%)</h1>
+<p><strong>This is the biggest domain — over a quarter of the exam.</strong></p>
+<hr />
+<h2 id="task-11-the-agentic-loop-lifecycle">Task 1.1: The Agentic Loop Lifecycle</h2>
+<h3 id="how-it-works">How It Works</h3>
+<pre><code>1. Send request to Claude (with tools defined)
+2. Check response stop_reason
+   ├── &quot;tool_use&quot; → Execute requested tools → Append results → Go to step 1
+   └── &quot;end_turn&quot; → Done! Return final response to user
+</code></pre>
+<h3 id="the-json-exchange">The JSON Exchange</h3>
+<p><strong>Step 1 — Initial request:</strong></p>
+<pre><code class="language-json">{
+  &quot;model&quot;: &quot;claude-opus-4-5&quot;,
+  &quot;tools&quot;: [...],
+  &quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Do X&quot;}]
+}
+</code></pre>
+<p><strong>Step 2 — Claude responds with tool call (stop_reason: "tool_use"):</strong></p>
+<pre><code class="language-json">{
+  &quot;stop_reason&quot;: &quot;tool_use&quot;,
+  &quot;content&quot;: [{
+    &quot;type&quot;: &quot;tool_use&quot;,
+    &quot;id&quot;: &quot;toolu_01xyz&quot;,
+    &quot;name&quot;: &quot;search_db&quot;,
+    &quot;input&quot;: {&quot;query&quot;: &quot;...&quot;}
+  }]
+}
+</code></pre>
+<p><strong>Step 3 — You execute the tool and send results back:</strong></p>
+<pre><code class="language-json">{
+  &quot;messages&quot;: [
+    {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Do X&quot;},
+    {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: [{&quot;type&quot;: &quot;tool_use&quot;, &quot;id&quot;: &quot;toolu_01xyz&quot;, ...}]},
+    {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: [{&quot;type&quot;: &quot;tool_result&quot;, &quot;tool_use_id&quot;: &quot;toolu_01xyz&quot;, &quot;content&quot;: &quot;results...&quot;}]}
+  ]
+}
+</code></pre>
+<p><strong>Key detail</strong>: <code>tool_result</code> messages are sent as <code>role: "user"</code> and must include <code>tool_use_id</code> matching the original tool call.</p>
+<p><strong>Step 4 — Claude either calls another tool (loop continues) or returns <code>stop_reason: "end_turn"</code> (loop ends).</strong></p>
+<h3 id="model-driven-vs-pre-configured">Model-Driven vs Pre-Configured</h3>
+<ul>
+<li><strong>Model-driven</strong> (correct): Claude reasons about which tool to call next based on context</li>
+<li><strong>Pre-configured</strong> (anti-pattern for agentic): Fixed decision trees or tool sequences</li>
+</ul>
+<h3 id="anti-patterns-memorize-these">Anti-Patterns (MEMORIZE THESE)</h3>
+<ol>
+<li><strong>Parsing natural language</strong> to determine loop termination ("I'm done", "task complete")</li>
+<li><strong>Arbitrary iteration caps</strong> as the PRIMARY stopping mechanism</li>
+<li><strong>Checking for assistant text content</strong> as a completion indicator (Claude can include text alongside tool calls)</li>
+</ol>
+<hr />
+<h2 id="task-12-multi-agent-coordinator-subagent-patterns">Task 1.2: Multi-Agent Coordinator-Subagent Patterns</h2>
+<h3 id="hub-and-spoke-architecture">Hub-and-Spoke Architecture</h3>
+<pre><code>              ┌──────────────┐
+              │  Coordinator  │
+              │               │
+              │ - Decomposes  │
+              │ - Delegates   │
+              │ - Aggregates  │
+              └───┬───┬───┬──┘
+                  │   │   │
+            ┌─────┘   │   └─────┐
+            ▼         ▼         ▼
+        ┌───────┐ ┌───────┐ ┌───────┐
+        │Search │ │Analyze│ │Synth  │
+        │Agent  │ │Agent  │ │Agent  │
+        └───────┘ └───────┘ └───────┘
+</code></pre>
+<h3 id="key-principles">Key Principles</h3>
+<ol>
+<li><strong>Coordinator manages ALL inter-subagent communication</strong> — subagents don't talk to each other</li>
+<li><strong>Subagents have isolated context</strong> — they do NOT inherit coordinator's conversation history</li>
+<li><strong>Coordinator role</strong>: task decomposition, delegation, result aggregation, deciding which subagents to invoke</li>
+<li><strong>Dynamic routing</strong>: Coordinator analyzes query requirements and selects which subagents to invoke (not always the full pipeline)</li>
+</ol>
+<h3 id="risks">Risks</h3>
+<ul>
+<li><strong>Overly narrow decomposition</strong>: Coordinator splits "AI in creative industries" into only visual arts subtasks, missing music, writing, film</li>
+<li><strong>Over-provisioned subagents</strong>: Giving synthesis agent web search tools → cross-specialization misuse</li>
+</ul>
+<h3 id="iterative-refinement-loop">Iterative Refinement Loop</h3>
+<pre><code>Coordinator evaluates synthesis output for gaps
+  → Re-delegates to search/analysis with targeted queries
+  → Re-invokes synthesis until coverage is sufficient
+</code></pre>
+<hr />
+<h2 id="task-13-subagent-invocation-and-context-passing">Task 1.3: Subagent Invocation and Context Passing</h2>
+<h3 id="task-tool-for-spawning">Task Tool for Spawning</h3>
+<ul>
+<li>The <strong>Task tool</strong> is the mechanism for spawning subagents</li>
+<li>Coordinator's <code>allowedTools</code> must include <code>"Task"</code></li>
+<li>Subagent context is explicitly provided in the prompt</li>
+</ul>
+<h3 id="context-passing-rules">Context Passing Rules</h3>
+<ol>
+<li><strong>Include complete findings from prior agents</strong> in the subagent's prompt</li>
+<li><strong>Use structured data formats</strong> separating content from metadata (source URLs, document names, page numbers)</li>
+<li><strong>Parallel execution</strong>: Emit multiple Task tool calls in a single coordinator response</li>
+<li><strong>Specify goals, not procedures</strong>: Coordinator prompts should state research goals and quality criteria, not step-by-step instructions</li>
+</ol>
+<h3 id="agentdefinition-configuration">AgentDefinition Configuration</h3>
+<p>Each subagent type has:
+- <code>description</code>: What the subagent does
+- System prompt: Detailed instructions
+- Tool restrictions: Only tools needed for its role</p>
+<h3 id="fork-based-session-management">Fork-Based Session Management</h3>
+<p><code>fork_session</code> creates independent branches from a shared analysis baseline for exploring divergent approaches (e.g., comparing two testing strategies).</p>
+<hr />
+<h2 id="task-14-multi-step-workflows-with-enforcement">Task 1.4: Multi-Step Workflows with Enforcement</h2>
+<h3 id="programmatic-vs-prompt-based">Programmatic vs Prompt-Based</h3>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Guarantee</th>
+<th>Use When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Programmatic (hooks, gates)</td>
+<td>Deterministic (100%)</td>
+<td>Financial, identity, security-critical</td>
+</tr>
+<tr>
+<td>Prompt-based</td>
+<td>Probabilistic (&lt;100%)</td>
+<td>Nice-to-have ordering, style guidance</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key principle</strong>: When deterministic compliance is required, prompt instructions alone have a non-zero failure rate.</p>
+<h3 id="programmatic-prerequisites">Programmatic Prerequisites</h3>
+<p>Block downstream tool calls until prerequisite steps complete:</p>
+<pre><code>get_customer → verified ID required → THEN lookup_order/process_refund allowed
+</code></pre>
+<h3 id="structured-handoff-protocol">Structured Handoff Protocol</h3>
+<p>When escalating to a human:
+- Customer ID
+- Root cause analysis
+- Refund amount
+- Recommended action
+- Full context (human may lack conversation transcript access)</p>
+<h3 id="multi-concern-requests">Multi-Concern Requests</h3>
+<p>When a customer has multiple issues:
+1. Decompose into distinct items
+2. Investigate each in parallel using shared context
+3. Synthesize a unified resolution</p>
+<hr />
+<h2 id="task-15-agent-sdk-hooks">Task 1.5: Agent SDK Hooks</h2>
+<h3 id="posttooluse-hooks-data-normalization">PostToolUse Hooks (Data Normalization)</h3>
+<p>Intercept tool RESULTS before the model processes them:
+- Normalize Unix timestamps → ISO 8601
+- Convert numeric status codes → human-readable strings
+- Standardize date formats across different MCP tools</p>
+<h3 id="pre-tool-call-hooks-compliance-enforcement">Pre-Tool-Call Hooks (Compliance Enforcement)</h3>
+<p>Intercept OUTGOING tool calls to enforce rules:
+- Block refunds &gt; $500 → redirect to human escalation
+- Require customer verification before financial operations
+- Block destructive operations without approval</p>
+<h3 id="hooks-vs-prompts-decision">Hooks vs Prompts Decision</h3>
+<pre><code>Must it work 100% of the time?
+├── YES → Hook (deterministic guarantee)
+└── NO → Prompt instruction (simpler, probabilistic)
+</code></pre>
+<p>Hooks provide <strong>guaranteed compliance</strong>. Prompt instructions provide <strong>best-effort compliance</strong>.</p>
+<hr />
+<h2 id="task-16-task-decomposition-strategies">Task 1.6: Task Decomposition Strategies</h2>
+<h3 id="two-main-patterns">Two Main Patterns</h3>
+<p><strong>Prompt Chaining (Fixed Sequential)</strong>
+- Predictable, multi-aspect reviews
+- Example: Analyze each file individually → cross-file integration pass
+- Use when: structure of work is known in advance</p>
+<p><strong>Dynamic Adaptive Decomposition</strong>
+- Open-ended investigation tasks
+- Generate subtasks based on what is discovered at each step
+- Use when: "add comprehensive tests to legacy codebase" — need to first map structure, identify high-impact areas, then create prioritized plan</p>
+<h3 id="code-review-decomposition">Code Review Decomposition</h3>
+<pre><code>Step 1: Per-file local analysis (consistent depth per file)
+Step 2: Cross-file integration pass (data flow, API contracts, consistency)
+</code></pre>
+<p>This avoids attention dilution from processing all files at once.</p>
+<h3 id="large-task-decomposition">Large Task Decomposition</h3>
+<pre><code>1. Map structure (explore the codebase)
+2. Identify high-impact areas
+3. Create prioritized plan
+4. Adapt as dependencies are discovered
+</code></pre>
+<hr />
+<h2 id="task-17-session-state-resumption-and-forking">Task 1.7: Session State, Resumption, and Forking</h2>
+<h3 id="named-session-resumption">Named Session Resumption</h3>
+<pre><code class="language-bash">claude --resume investigation-session-1
+</code></pre>
+<ul>
+<li>Continue a specific prior conversation by name</li>
+<li>Use when prior context is mostly valid</li>
+</ul>
+<h3 id="fork_session">fork_session</h3>
+<ul>
+<li>Creates independent branches from a shared analysis baseline</li>
+<li>Use for comparing approaches (two testing strategies, two refactoring approaches)</li>
+<li>Each fork explores independently without polluting the other</li>
+</ul>
+<h3 id="when-to-resume-vs-start-fresh">When to Resume vs Start Fresh</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Approach</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Prior context mostly valid, few files changed</td>
+<td>Resume + inform about changes</td>
+</tr>
+<tr>
+<td>Prior tool results extensively stale</td>
+<td>New session + structured summary</td>
+</tr>
+<tr>
+<td>Want to compare approaches</td>
+<td>fork_session</td>
+</tr>
+</tbody>
+</table>
+<h3 id="informing-resumed-sessions">Informing Resumed Sessions</h3>
+<p>When resuming after code changes:
+- Tell the agent specifically WHICH files changed
+- Request targeted re-analysis (not full re-exploration)
+- This is more efficient than starting from scratch</p>
+<hr />
+<h2 id="key-exam-scenarios-for-domain-1">Key Exam Scenarios for Domain 1</h2>
+<h3 id="scenario-1-customer-support-agent">Scenario 1: Customer Support Agent</h3>
+<ul>
+<li>Programmatic prerequisites (verify customer before refund)</li>
+<li>Hooks for compliance (block refunds &gt; threshold)</li>
+<li>Escalation patterns (explicit customer request → immediate)</li>
+<li>Multi-concern decomposition</li>
+</ul>
+<h3 id="scenario-3-multi-agent-research">Scenario 3: Multi-Agent Research</h3>
+<ul>
+<li>Coordinator decomposition quality (not too narrow)</li>
+<li>Parallel subagent execution (multiple Task calls in one response)</li>
+<li>Context isolation (subagents don't inherit history)</li>
+<li>Iterative refinement (coordinator checks for gaps)</li>
+</ul>
+<h3 id="scenario-4-developer-productivity">Scenario 4: Developer Productivity</h3>
+<ul>
+<li>Subagent delegation for codebase exploration</li>
+<li>Scoped tool access per subagent</li>
+<li>Session management for long investigations</li>
+</ul></article><div class="pager">
+<a href="exam-research-2026.html"><span class="dir">← Previous</span><span class="t">Exam Research (2026)</span></a>
+<a class="next" href="domain2-tool-design-mcp-integration.html"><span class="dir">Next →</span><span class="t">Domain 2 · Tool Design &amp; MCP Integration (18%)</span></a>
+</div><p class="foot">Generated from <code>docs/</code> by <code>wiki/build_wiki.py</code> — edit the markdown, not this file. Original study material, not real (NDA) exam content.</p>
+</main>
+</div>
+<script>
+const inp=document.getElementById('navfilter');
+if(inp){inp.addEventListener('input',()=>{const q=inp.value.toLowerCase();
+  document.querySelectorAll('.nav-link').forEach(a=>{
+    a.classList.toggle('hidden',q&&!(a.textContent+' '+(a.dataset.kw||'')).toLowerCase().includes(q));});
+  document.querySelectorAll('.nav-section').forEach(s=>{
+    let el=s.nextElementSibling,vis=false;
+    while(el&&!el.classList.contains('nav-section')){
+      if(el.classList.contains('nav-link')&&!el.classList.contains('hidden'))vis=true;
+      el=el.nextElementSibling;}
+    s.style.display=q&&!vis?'none':'';});});}
+</script>
+</body>
+</html>

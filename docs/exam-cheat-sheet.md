@@ -6,7 +6,7 @@
 | Questions | **60** (single-select MC: 1 correct + 3 distractors) |
 | Time limit | **120 min** (~2 min/question) |
 | Passing score | **720 / 1000** (scaled, not a percentage) |
-| Scenarios per exam | **4 out of 6** (random draw from the pool) |
+| Scenarios per exam | **4 drawn at random** from a pool of **6 confirmed** (possibly 8 — see below) |
 | Delivery | Online-proctored, closed-book (Skilljar) |
 | Max tools per agent for reliable selection | **4-5** |
 | Batch API cost savings | **50%** |
@@ -15,9 +15,10 @@
 | Batch API result retention | **29 days** |
 
 > Blueprint is community-confirmed, not Anthropic-published. Cost/validity/prerequisites unconfirmed.
-> See `exam-research-2026.md`. The 6 scenario themes: Customer Support Resolution Agent · Code
+> See `exam-research-2026.md`. The 6 confirmed scenario themes: Customer Support Resolution Agent · Code
 > Generation with Claude Code · Multi-Agent Research System · Developer Productivity · Claude Code for CI ·
-> Structured Data Extraction.
+> Structured Data Extraction. A single community source (2026-06-10) reports the pool grew to **8**, adding
+> Conversational AI Architecture Patterns + a candidate-reported "Agentic AI Tools" theme.
 
 ---
 

@@ -479,5 +479,115 @@
       "configuration"
     ],
     "source": "original-2026"
+  },
+  {
+    "id": "d2-019",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "You gave the document-analysis agent a general-purpose `fetch_url` tool so it could download documents by URL. Production logs show this agent now frequently downloads search-engine results pages to perform ad hoc web search — behavior that should be routed through the web-search agent — causing inconsistent results. Which fix is most effective?",
+    "options": {
+      "A": "Replace `fetch_url` with a `load_document` tool that validates that URLs point to document formats",
+      "B": "Remove `fetch_url` from the document-analysis agent and route all URL fetching through the coordinator to the web-search agent",
+      "C": "Implement filtering that blocks `fetch_url` calls to known search-engine domains while allowing other URLs",
+      "D": "Add instructions to the document-analysis agent's prompt that `fetch_url` should only be used to download document URLs, not to search"
+    },
+    "answer": "A",
+    "explanation": "Replacing the general-purpose tool with a document-specific `load_document` tool that validates URL targets constrains capability at the interface level. This follows the principle of least privilege: the undesired search behavior becomes impossible rather than merely discouraged, while the agent keeps the document-download capability it legitimately needs.",
+    "distractors": {
+      "B": "Removing the tool entirely takes away a capability the agent legitimately needs (downloading documents by URL), forcing extra coordinator round trips for its core workflow.",
+      "C": "A domain blocklist is brittle and incomplete — new or obscure search endpoints bypass it, so the misuse persists.",
+      "D": "Prompt instructions are probabilistic; the over-broad capability remains available, so misuse is discouraged but not prevented."
+    },
+    "tags": [
+      "least-privilege",
+      "tool-scoping",
+      "tool-design"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d2-020",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "hard",
+    "stem": "Production logs show a consistent pattern: when customers include the word \"account\" in their message (e.g., \"I want to check my account for an order I made yesterday\"), the agent calls `get_customer` first 78% of the time; when customers phrase similar requests without \"account\" (e.g., \"I want to check an order I made yesterday\"), it calls `lookup_order` first 93% of the time. Tool descriptions are clear and unambiguous. What is the most likely root cause of this discrepancy?",
+    "options": {
+      "A": "The system prompt contains keyword-sensitive instructions that steer behavior based on terms like \"account,\" creating unintended tool-selection patterns.",
+      "B": "The model's base training creates associations between \"account\" terminology and customer-related operations that override the tool descriptions.",
+      "C": "The model needs more training data on multi-concept messages and should be fine-tuned on examples containing both account and order terminology.",
+      "D": "The tool descriptions need additional negative examples specifying when NOT to use each tool, to prevent this keyword-induced confusion."
+    },
+    "answer": "A",
+    "explanation": "A split this sharp and systematic (78% vs 93%, conditioned on a single keyword) points to explicit routing logic somewhere in the prompt reacting to the word \"account\" and steering the agent toward customer-related tools. Since the tool descriptions are stated to be clear, the prompt's own instructions are the most likely source of the unintended steering.",
+    "distractors": {
+      "B": "Base-training associations produce diffuse tendencies, not the sharp, systematic keyword-conditioned split observed here; a pattern this clean indicates explicit instructions.",
+      "C": "Fine-tuning is not how tool selection is steered in this architecture, and the behavior is far too systematic to be a training-data coverage gap.",
+      "D": "Adding negative examples to descriptions treats the symptom; the stem states the descriptions are already clear, so the steering must originate elsewhere — in the system prompt."
+    },
+    "tags": [
+      "tool-selection",
+      "root-cause",
+      "diagnostics",
+      "prompt-engineering"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d2-021",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Conversational AI Architecture Patterns",
+    "difficulty": "hard",
+    "stem": "Your `remove_team_member` tool uses a `dry_run: boolean` parameter so impacts can be previewed before execution, but production monitoring shows the agent bypasses the preview step by calling with `dry_run=false` directly. You need to guarantee that every removal is preceded by a preview that the user explicitly confirms. What is the most reliable approach?",
+    "options": {
+      "A": "Add server-side validation that permits `dry_run=false` only when a `dry_run=true` call with identical parameters occurred within the past 60 seconds.",
+      "B": "Annotate the tool as requiring confirmation and configure the orchestration layer to prompt the user for approval before forwarding calls to annotated tools.",
+      "C": "Add detailed instructions and few-shot examples to the tool description requiring the agent to always call with `dry_run=true` first and wait for user confirmation before calling again.",
+      "D": "Split it into two tools: `preview_remove_member` returns the impact details plus a single-use confirmation token, and `execute_remove_member` requires that token, structurally binding execution to a prior preview."
+    },
+    "answer": "D",
+    "explanation": "The two-tool token-binding design makes it architecturally impossible to execute a removal without a prior preview: the execute tool requires a single-use token that only the preview tool can mint. The constraint is enforced in code at the tool boundary rather than depending on LLM compliance, timing heuristics, or host-side cooperation.",
+    "distractors": {
+      "A": "A 60-second timing window is a heuristic, not a guarantee — the agent can fire a preview and immediately execute without any user confirmation, and legitimate user confirmations can also take longer than 60 seconds.",
+      "B": "Annotations are advisory hints; hosts are not obligated to honor them, so this moves the guarantee outside the tool design into infrastructure you may not control.",
+      "C": "Description-level instructions depend entirely on LLM compliance — exactly the mechanism already failing in production."
+    },
+    "tags": [
+      "deterministic-enforcement",
+      "tool-gating",
+      "human-review"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d2-022",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Conversational AI Architecture Patterns",
+    "difficulty": "medium",
+    "stem": "Production monitoring shows your `search_catalog` tool fails 12% of the time: 8% are network timeouts that succeed when retried, and 4% are query syntax errors that never succeed regardless of retries. Both error types are currently returned identically, causing the agent to waste retries on unfixable errors. How should you modify the tool's error handling?",
+    "options": {
+      "A": "Add few-shot examples to the system prompt demonstrating how to distinguish network errors from syntax errors.",
+      "B": "Apply exponential-backoff retry logic uniformly to all errors.",
+      "C": "Implement automatic retry with backoff for network timeouts inside the tool itself, and return syntax errors immediately with parameter-validation details the agent can act on.",
+      "D": "Return all errors with a `retryable` boolean flag plus error-type details, and let the agent decide whether to retry."
+    },
+    "answer": "C",
+    "explanation": "Retrying transient failures is deterministic plumbing the tool can handle itself — it has definitive knowledge of the error type. Handling timeouts internally and returning syntax errors immediately with actionable validation details puts each error at the correct abstraction boundary: mechanical retries in code, semantic correction (fixing the query) with the model.",
+    "distractors": {
+      "A": "Few-shot examples ask the LLM to classify errors the tool can already distinguish deterministically; this places the logic at the wrong abstraction boundary.",
+      "B": "Uniform backoff retries syntax errors that can never succeed, adding latency and cost on the 4% slice that needs a different fix entirely.",
+      "D": "A `retryable` flag is better than undifferentiated errors but still delegates mechanical retry behavior to the agent, which may not follow it consistently; transient retries are better handled deterministically inside the tool."
+    },
+    "tags": [
+      "error-handling",
+      "structured-errors",
+      "bounded-retries",
+      "local-recovery"
+    ],
+    "source": "paullarionov/claude-certified-architect"
   }
 ]

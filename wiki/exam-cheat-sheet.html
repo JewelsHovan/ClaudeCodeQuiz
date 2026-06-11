@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Exam Cheat Sheet · CCA Foundations Wiki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--panel2:#1e222b;--ink:#e7e9ee;--muted:#9aa3b2;
+  --line:#2a2f3a;--accent:#cc785c;--accent2:#d4a27f;--good:#46b873;--code:#0c0e12}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* layout */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:290px;min-width:290px;background:var(--panel);border-right:1px solid var(--line);
+  position:sticky;top:0;height:100vh;overflow-y:auto;padding:18px 0 30px}
+.content{flex:1;min-width:0;padding:40px 52px 100px;max-width:880px;margin:0 auto}
+@media(max-width:860px){
+  .shell{flex-direction:column}
+  .sidebar{position:static;width:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+  .content{padding:26px 18px 70px}
+}
+
+/* sidebar */
+.brand{display:block;padding:4px 18px 12px;color:var(--ink)}
+.brand b{font-size:15px}
+.brand span{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.search{margin:4px 14px 10px}
+.search input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  color:var(--ink);padding:7px 11px;font:13.5px Inter,sans-serif;outline:none}
+.search input:focus{border-color:var(--accent)}
+.nav-section{padding:10px 18px 4px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted)}
+.nav-link{display:block;padding:6px 18px;font-size:13.5px;color:var(--muted);
+  border-left:3px solid transparent}
+.nav-link:hover{color:var(--ink);background:var(--panel2);text-decoration:none}
+.nav-link.active{color:var(--accent2);border-left-color:var(--accent);background:var(--panel2)}
+.nav-link.hidden{display:none}
+.toc{margin:2px 0 6px;border-left:1px solid var(--line);margin-left:21px}
+.toc a{display:block;padding:3px 14px;font-size:12.5px;color:var(--muted)}
+.toc a:hover{color:var(--ink);text-decoration:none}
+
+/* article */
+.crumb{font-size:12.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.crumb a{color:var(--accent2)}
+article h1{font-size:32px;line-height:1.15;font-weight:800;letter-spacing:-.02em;margin:6px 0 18px}
+article h2{font-size:22px;font-weight:700;margin:36px 0 12px;padding-top:14px;border-top:1px solid var(--line)}
+article h3{font-size:17px;font-weight:700;margin:26px 0 8px;color:var(--accent2)}
+article h4{font-size:15px;margin:20px 0 6px}
+article p{margin:10px 0}
+article ul,article ol{padding-left:24px;margin:10px 0}
+article li{margin:4px 0}
+article blockquote{margin:14px 0;padding:10px 16px;border-left:3px solid var(--accent);
+  background:var(--panel);border-radius:0 10px 10px 0;color:var(--muted)}
+article blockquote p{margin:4px 0}
+article hr{border:none;border-top:1px solid var(--line);margin:28px 0}
+article code{background:var(--code);border:1px solid var(--line);border-radius:5px;
+  padding:1px 5px;font-size:13.5px;font-family:"SF Mono",Menlo,Monaco,monospace}
+article pre{background:var(--code);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;overflow-x:auto;font-size:13.5px;line-height:1.55}
+article pre code{background:none;border:none;padding:0}
+article table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}
+article th{background:var(--panel2);text-align:left;color:var(--accent2)}
+article th,article td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+article tr:nth-child(even) td{background:var(--panel)}
+article strong{color:var(--ink)}
+
+/* prev / next */
+.pager{display:flex;gap:14px;margin-top:54px}
+.pager a{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;transition:.15s}
+.pager a:hover{border-color:var(--accent);text-decoration:none;transform:translateY(-2px)}
+.pager .dir{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.pager .t{display:block;color:var(--ink);font-weight:600;font-size:14.5px;margin-top:3px}
+.pager .next{text-align:right}
+.foot{color:var(--muted);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);padding-top:14px}
+
+/* index page */
+.hero h1{font-size:36px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
+.eyebrow{color:var(--accent2);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:13px}
+.lede{color:var(--muted);font-size:17px;max-width:640px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:15px;margin-top:14px}
+.card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:15px;
+  padding:18px;transition:.15s;color:var(--ink)}
+.card:hover{border-color:var(--accent);transform:translateY(-2px);text-decoration:none}
+.card h3{margin:0 0 6px;font-size:16.5px}
+.card p{margin:0;color:var(--muted);font-size:13.5px}
+.sect{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:34px 0 4px}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<a class="brand" href="index.html"><b>CCA Foundations Wiki</b><span>Claude Certified Architect</span></a>
+<div class="search"><input id="navfilter" type="search" placeholder="Filter pages &amp; topics…"></div>
+<div class="nav-section">Start Here</div>
+<a class="nav-link active" href="exam-cheat-sheet.html" data-kw="Numbers to Memorize Domain Weight at a Glance 2026 Currency (don&#x27;t get caught on stale facts) Decision Trees stop_reason Quick Reference tool_choice Quick Reference Error Categories MCP Server Scopes CLAUDE.md Hierarchy Skills Frontmatter Commands Scoping Anti-Patterns to Remember Key Patterns to Remember CI/CD Integration">Exam Cheat Sheet</a>
+<div class="toc">
+<a href="#numbers-to-memorize">Numbers to Memorize</a>
+<a href="#domain-weight-at-a-glance">Domain Weight at a Glance</a>
+<a href="#2026-currency-dont-get-caught-on-stale-facts">2026 Currency (don&#x27;t get caught on stale facts)</a>
+<a href="#decision-trees">Decision Trees</a>
+<a href="#stop_reason-quick-reference">stop_reason Quick Reference</a>
+<a href="#tool_choice-quick-reference">tool_choice Quick Reference</a>
+<a href="#error-categories">Error Categories</a>
+<a href="#mcp-server-scopes">MCP Server Scopes</a>
+<a href="#claudemd-hierarchy">CLAUDE.md Hierarchy</a>
+<a href="#skills-frontmatter">Skills Frontmatter</a>
+<a href="#commands-scoping">Commands Scoping</a>
+<a href="#anti-patterns-to-remember">Anti-Patterns to Remember</a>
+<a href="#key-patterns-to-remember">Key Patterns to Remember</a>
+<a href="#cicd-integration">CI/CD Integration</a>
+</div>
+<a class="nav-link" href="tips-from-passers.html" data-kw="1. Snapshot — the confirmed blueprint 2. What people who passed say 3. Time management 4. Common gotchas / traps 5. A study plan (keyed to this repo) 6. Canonical resources (primary first) 7. Caveats (read before you book)">Tips from Passers</a>
+<a class="nav-link" href="exam-research-2026.html" data-kw="TL;DR — what changed since this env was built (March 2026) Confirmed exam blueprint Domains &amp;amp; weights (CONFIRMED — match this env exactly) Content currency (study to 2026 reality) Practice questions &amp;amp; sample material Out-of-scope topics (per the paullarionov guide — don&#x27;t burn study time here) Tips from people who passed Canonical study resources (primary first) Caveats &amp;amp; open questions Sources (selected)">Exam Research (2026)</a>
+<div class="nav-section">Domain Guides</div>
+<a class="nav-link" href="domain1-agentic-architecture-orchestration.html" data-kw="Task 1.1: The Agentic Loop Lifecycle Task 1.2: Multi-Agent Coordinator-Subagent Patterns Task 1.3: Subagent Invocation and Context Passing Task 1.4: Multi-Step Workflows with Enforcement Task 1.5: Agent SDK Hooks Task 1.6: Task Decomposition Strategies Task 1.7: Session State, Resumption, and Forking Key Exam Scenarios for Domain 1">Domain 1 · Agentic Architecture &amp; Orchestration (27%)</a>
+<a class="nav-link" href="domain2-tool-design-mcp-integration.html" data-kw="MCP Architecture Overview Task 2.1: Design Effective Tool Interfaces Task 2.2: Structured Error Responses Task 2.3: Tool Distribution Across Agents Task 2.4: MCP Server Configuration in Claude Code Task 2.5: Built-in Tools">Domain 2 · Tool Design &amp; MCP Integration (18%)</a>
+<a class="nav-link" href="domain3-claude-code-config-workflows.html" data-kw="Task 3.1: CLAUDE.md Configuration Hierarchy Task 3.2: Custom Slash Commands and Skills Task 3.3: Path-Specific Rules Task 3.4: Plan Mode vs Direct Execution Task 3.5: Iterative Refinement Techniques Task 3.6: CI/CD Integration">Domain 3 · Claude Code Configuration &amp; Workflows (20%)</a>
+<a class="nav-link" href="domain4-prompt-engineering-structured-output.html" data-kw="Task 4.1: Design Prompts with Explicit Criteria Task 4.2: Few-Shot Prompting Task 4.3: Structured Output via tool_use Task 4.4: Validation, Retry, and Feedback Loops Task 4.5: Batch Processing (Message Batches API) Task 4.6: Multi-Instance and Multi-Pass Review">Domain 4 · Prompt Engineering &amp; Structured Output (20%)</a>
+<a class="nav-link" href="domain5-context-management-reliability.html" data-kw="Task 5.1: Manage Conversation Context Task 5.2: Escalation and Ambiguity Resolution Task 5.3: Error Propagation in Multi-Agent Systems Task 5.4: Large Codebase Exploration Task 5.5: Human Review Workflows Task 5.6: Information Provenance">Domain 5 · Context Management &amp; Reliability (15%)</a>
+<div class="nav-section">Deep Dives</div>
+<a class="nav-link" href="mcp-deep-dive.html" data-kw="1. The Mental Model 2. Architecture in 60 Seconds 3. Transport: When to Use What 4. Tool Definitions — What the Exam Tests 5. The Two-Layer Error System (HIGH YIELD) 6. Server Configuration in Claude Code (HIGH YIELD) 7. Resources — The Other Half 8. Tool Distribution (Cross-Cuts with Domain 1) 9. Community vs Custom MCP Servers 10. Exam Traps for MCP">MCP Deep Dive</a>
+<a class="nav-link" href="agent-sdk-deep-dive.html" data-kw="1. SDK Architecture 2. The Agentic Loop — Correct Implementation 3. Multi-Agent — Subagent Configuration 4. Hooks — Complete Reference 5. Session Management 6. Full ClaudeAgentOptions Reference 7. Exam Traps for Agent SDK">Agent SDK Deep Dive</a>
+</aside>
+<main class="content">
+<div class="crumb"><a href="index.html">Wiki</a> / Exam Cheat Sheet</div><article><h1 id="exam-cheat-sheet-quick-reference">Exam Cheat Sheet — Quick Reference</h1>
+<h2 id="numbers-to-memorize">Numbers to Memorize</h2>
+<table>
+<thead>
+<tr>
+<th>Fact</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Questions</td>
+<td><strong>60</strong> (single-select MC: 1 correct + 3 distractors)</td>
+</tr>
+<tr>
+<td>Time limit</td>
+<td><strong>120 min</strong> (~2 min/question)</td>
+</tr>
+<tr>
+<td>Passing score</td>
+<td><strong>720 / 1000</strong> (scaled, not a percentage)</td>
+</tr>
+<tr>
+<td>Scenarios per exam</td>
+<td><strong>4 drawn at random</strong> from a pool of <strong>6 confirmed</strong> (possibly 8 — see below)</td>
+</tr>
+<tr>
+<td>Delivery</td>
+<td>Online-proctored, closed-book (Skilljar)</td>
+</tr>
+<tr>
+<td>Max tools per agent for reliable selection</td>
+<td><strong>4-5</strong></td>
+</tr>
+<tr>
+<td>Batch API cost savings</td>
+<td><strong>50%</strong></td>
+</tr>
+<tr>
+<td>Batch API max processing time</td>
+<td><strong>24 hours</strong></td>
+</tr>
+<tr>
+<td>Batch API max requests per batch</td>
+<td><strong>10,000</strong></td>
+</tr>
+<tr>
+<td>Batch API result retention</td>
+<td><strong>29 days</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Blueprint is community-confirmed, not Anthropic-published. Cost/validity/prerequisites unconfirmed.
+See <code>exam-research-2026.md</code>. The 6 confirmed scenario themes: Customer Support Resolution Agent · Code
+Generation with Claude Code · Multi-Agent Research System · Developer Productivity · Claude Code for CI ·
+Structured Data Extraction. A single community source (2026-06-10) reports the pool grew to <strong>8</strong>, adding
+Conversational AI Architecture Patterns + a candidate-reported "Agentic AI Tools" theme.</p>
+</blockquote>
+<hr />
+<h2 id="domain-weight-at-a-glance">Domain Weight at a Glance</h2>
+<table>
+<thead>
+<tr>
+<th>Domain</th>
+<th>%</th>
+<th>Focus</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Agentic Architecture &amp; Orchestration</td>
+<td><strong>27%</strong></td>
+<td>Biggest domain — weight study time here</td>
+</tr>
+<tr>
+<td>2. Tool Design &amp; MCP Integration</td>
+<td><strong>18%</strong></td>
+<td>Tool descriptions, MCP errors, scoping</td>
+</tr>
+<tr>
+<td>3. Claude Code Config &amp; Workflows</td>
+<td><strong>20%</strong></td>
+<td>Commands vs skills, hooks, plugins, CI</td>
+</tr>
+<tr>
+<td>4. Prompt Eng &amp; Structured Output</td>
+<td><strong>20%</strong></td>
+<td>tool_use vs few-shot, schemas, tool_choice</td>
+</tr>
+<tr>
+<td>5. Context &amp; Reliability</td>
+<td><strong>15%</strong></td>
+<td>Escalation, degradation, stratified validation</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2026-currency-dont-get-caught-on-stale-facts">2026 Currency (don't get caught on stale facts)</h2>
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Current state</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Flagship model</td>
+<td><strong>Claude Opus 4.8</strong> (Opus 4.7 also active; Opus 4.1 retires <strong>Aug 5, 2026</strong>)</td>
+</tr>
+<tr>
+<td>Claude Code plugins</td>
+<td><code>claude plugin init &lt;name&gt;</code> scaffolds a plugin; skills in <code>.claude/skills</code> <strong>auto-load</strong> (no marketplace/install)</td>
+</tr>
+<tr>
+<td>Stop / SubagentStop hooks</td>
+<td>can return <code>hookSpecificOutput.additionalContext</code> (≤10k chars) to feed context <strong>without</strong> a hook error (v2.1.163)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Model/tooling facts are time-sensitive — re-verify on <code>platform.claude.com/docs</code> and
+<code>code.claude.com/docs/en/changelog</code> before sitting.</p>
+</blockquote>
+<hr />
+<h2 id="decision-trees">Decision Trees</h2>
+<h3 id="how-to-enforce-business-rules">"How to enforce business rules?"</h3>
+<pre><code>Is compliance failure acceptable? (even 1% of the time)
+├── NO → Programmatic hooks / prerequisite gates
+└── YES → Prompt instructions + few-shot examples
+</code></pre>
+<h3 id="hook-or-prompt">"Hook or prompt?"</h3>
+<pre><code>Financial/identity/security consequence?
+├── YES → Hook (deterministic guarantee)
+└── NO → Prompt instruction (probabilistic, lower effort)
+</code></pre>
+<h3 id="plan-mode-or-direct-execution">"Plan mode or direct execution?"</h3>
+<pre><code>Multiple files? Architectural decisions? Multiple valid approaches?
+├── YES to any → Plan mode
+└── NO to all → Direct execution
+</code></pre>
+<h3 id="batch-api-or-synchronous">"Batch API or synchronous?"</h3>
+<pre><code>Is the workflow blocking? (someone waiting for results)
+├── YES → Synchronous Messages API
+└── NO → Message Batches API (50% savings)
+</code></pre>
+<h3 id="mcp-resource-or-tool">"MCP Resource or Tool?"</h3>
+<pre><code>Does the model need to READ data or PERFORM an action?
+├── READ (static/semi-static data) → Resource
+└── ACTION (side effects, computation) → Tool
+</code></pre>
+<h3 id="path-specific-rules-or-directory-claudemd">"Path-specific rules or directory CLAUDE.md?"</h3>
+<pre><code>Do the files span multiple directories?
+├── YES → .claude/rules/ with glob patterns
+└── NO → Directory CLAUDE.md
+</code></pre>
+<h3 id="community-mcp-server-or-custom">"Community MCP server or custom?"</h3>
+<pre><code>Standard integration (GitHub, Jira, Slack, PostgreSQL)?
+├── YES → Community server
+└── NO → Custom server (proprietary/niche/regulated)
+</code></pre>
+<hr />
+<h2 id="stop_reason-quick-reference">stop_reason Quick Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Meaning</th>
+<th>Loop Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"tool_use"</code></td>
+<td>Model wants to call tools</td>
+<td>Execute tools → continue loop</td>
+</tr>
+<tr>
+<td><code>"end_turn"</code></td>
+<td>Model is finished</td>
+<td>Stop loop → return response</td>
+</tr>
+<tr>
+<td><code>"max_tokens"</code></td>
+<td>Hit token limit mid-response</td>
+<td>Handle truncation</td>
+</tr>
+<tr>
+<td><code>"pause_turn"</code></td>
+<td>Server-side agent loop limit</td>
+<td>Re-send to continue</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="tool_choice-quick-reference">tool_choice Quick Reference</h2>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>JSON</th>
+<th>Guarantees</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>auto</code></td>
+<td><code>{"type": "auto"}</code></td>
+<td>Nothing — model may skip tools</td>
+</tr>
+<tr>
+<td><code>any</code></td>
+<td><code>{"type": "any"}</code></td>
+<td>Must call A tool (picks which)</td>
+</tr>
+<tr>
+<td>Forced</td>
+<td><code>{"type": "tool", "name": "X"}</code></td>
+<td>Must call tool X</td>
+</tr>
+<tr>
+<td><code>none</code></td>
+<td><code>{"type": "none"}</code></td>
+<td>No tools allowed</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Trap</strong>: <code>any</code> and forced are incompatible with extended thinking.</p>
+<hr />
+<h2 id="error-categories">Error Categories</h2>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Retryable?</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>transient</code></td>
+<td>Yes</td>
+<td>Timeout, rate limit, service down</td>
+</tr>
+<tr>
+<td><code>validation</code></td>
+<td>No</td>
+<td>Bad input, missing field</td>
+</tr>
+<tr>
+<td><code>permission</code></td>
+<td>No</td>
+<td>Access denied, auth failure</td>
+</tr>
+<tr>
+<td><code>business</code></td>
+<td>No</td>
+<td>Policy violation</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="mcp-server-scopes">MCP Server Scopes</h2>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>File</th>
+<th>Shared?</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project</code></td>
+<td><code>.mcp.json</code></td>
+<td>Yes (git)</td>
+<td>Team servers</td>
+</tr>
+<tr>
+<td><code>local</code></td>
+<td><code>~/.claude.json</code> (project-scoped)</td>
+<td>No</td>
+<td>Personal/sensitive</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td><code>~/.claude.json</code> (global)</td>
+<td>No</td>
+<td>Personal across projects</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Precedence</strong>: local &gt; project &gt; user</p>
+<hr />
+<h2 id="claudemd-hierarchy">CLAUDE.md Hierarchy</h2>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Location</th>
+<th>Shared?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>User</td>
+<td><code>~/.claude/CLAUDE.md</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td>Project</td>
+<td><code>.claude/CLAUDE.md</code> or root <code>CLAUDE.md</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Directory</td>
+<td>Subdirectory <code>CLAUDE.md</code></td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Modular options</strong>: <code>@import</code> syntax, <code>.claude/rules/</code> directory</p>
+<hr />
+<h2 id="skills-frontmatter">Skills Frontmatter</h2>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>context: fork</code></td>
+<td>Isolate output from main session</td>
+</tr>
+<tr>
+<td><code>allowed-tools</code></td>
+<td>Restrict tool access</td>
+</tr>
+<tr>
+<td><code>argument-hint</code></td>
+<td>Prompt for required parameters</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="commands-scoping">Commands Scoping</h2>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Location</th>
+<th>Shared?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Project</td>
+<td><code>.claude/commands/</code></td>
+<td>Yes (version control)</td>
+</tr>
+<tr>
+<td>User</td>
+<td><code>~/.claude/commands/</code></td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="anti-patterns-to-remember">Anti-Patterns to Remember</h2>
+<ol>
+<li>Parsing natural language for loop termination</li>
+<li>Arbitrary iteration caps as PRIMARY stopping mechanism</li>
+<li>Checking for assistant text content as completion indicator</li>
+<li>Generic "Operation failed" error messages</li>
+<li>Silently suppressing errors (empty results as success)</li>
+<li>Terminating entire workflow on single subagent failure</li>
+<li>Self-reported confidence scores for escalation (poorly calibrated)</li>
+<li>Sentiment analysis for escalation (doesn't correlate with complexity)</li>
+<li>Giving agents 18+ tools (degrades selection reliability)</li>
+<li>Requiring non-nullable fields when data is sometimes absent (hallucination driver)</li>
+</ol>
+<hr />
+<h2 id="key-patterns-to-remember">Key Patterns to Remember</h2>
+<ol>
+<li>Programmatic prerequisites for critical business logic (not prompts)</li>
+<li>Structured claim-source mappings for provenance</li>
+<li>Case facts block for transactional data (outside summarized history)</li>
+<li>Position-aware ordering (key info at beginning, not middle)</li>
+<li>Per-file analysis + cross-file integration pass for large reviews</li>
+<li>Independent review instance &gt; self-review in same session</li>
+<li>Retry-with-error-feedback for extraction failures</li>
+<li>Scratchpad files for long codebase exploration sessions</li>
+<li><code>/compact</code> to reduce context in extended sessions</li>
+<li>Subagent delegation to manage context window limits</li>
+</ol>
+<hr />
+<h2 id="cicd-integration">CI/CD Integration</h2>
+<pre><code class="language-bash"># Non-interactive mode (the -p flag)
+claude -p &quot;Review this PR&quot;
+
+# Structured output for automation
+claude -p &quot;Review&quot; --output-format json --json-schema schema.json
+</code></pre>
+<ul>
+<li>Same session that generated code is LESS effective at reviewing it</li>
+<li>Include prior findings on re-runs, instruct to report only NEW issues</li>
+<li>Document testing standards in CLAUDE.md for CI-invoked Claude</li>
+</ul></article><div class="pager">
+<a class="next" href="tips-from-passers.html"><span class="dir">Next →</span><span class="t">Tips from Passers</span></a>
+</div><p class="foot">Generated from <code>docs/</code> by <code>wiki/build_wiki.py</code> — edit the markdown, not this file. Original study material, not real (NDA) exam content.</p>
+</main>
+</div>
+<script>
+const inp=document.getElementById('navfilter');
+if(inp){inp.addEventListener('input',()=>{const q=inp.value.toLowerCase();
+  document.querySelectorAll('.nav-link').forEach(a=>{
+    a.classList.toggle('hidden',q&&!(a.textContent+' '+(a.dataset.kw||'')).toLowerCase().includes(q));});
+  document.querySelectorAll('.nav-section').forEach(s=>{
+    let el=s.nextElementSibling,vis=false;
+    while(el&&!el.classList.contains('nav-section')){
+      if(el.classList.contains('nav-link')&&!el.classList.contains('hidden'))vis=true;
+      el=el.nextElementSibling;}
+    s.style.display=q&&!vis?'none':'';});});}
+</script>
+</body>
+</html>

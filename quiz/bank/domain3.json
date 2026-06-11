@@ -543,5 +543,305 @@
       "secrets"
     ],
     "source": "original-2026"
+  },
+  {
+    "id": "d3-021",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "easy",
+    "stem": "You need a custom `/review` slash command for your team's standard code-review workflow, and it must be available to every teammate who clones the repository. Where should you create the command file?",
+    "options": {
+      "A": "In `.claude/commands/` inside the project repository",
+      "B": "In `~/.claude/commands/` in each developer's home directory",
+      "C": "In the root `CLAUDE.md` file",
+      "D": "In `.claude/config.json`"
+    },
+    "answer": "A",
+    "explanation": "Project commands stored in `.claude/commands/` are version-controlled with the repository and automatically available to everyone who clones it — exactly the requirement for a shared team command.",
+    "distractors": {
+      "B": "`~/.claude/commands/` holds personal commands on one developer's machine; teammates would not get the command from a clone.",
+      "C": "CLAUDE.md carries instructions and context, not slash-command definitions.",
+      "D": "`.claude/config.json` is not a mechanism for defining slash commands."
+    },
+    "tags": [
+      "commands",
+      "config-scoping",
+      "shared-config"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d3-022",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "easy",
+    "stem": "You need to restructure a monolithic application into microservices — a change spanning dozens of files and requiring service-boundary decisions. What approach should you use in Claude Code?",
+    "options": {
+      "A": "Use planning mode first: explore the codebase, understand dependencies, and design an approach before making any edits",
+      "B": "Use direct execution and refactor incrementally, one piece at a time",
+      "C": "Use direct execution with very detailed up-front instructions describing the target architecture",
+      "D": "Start with direct execution and switch to planning mode only when the work becomes difficult"
+    },
+    "answer": "A",
+    "explanation": "Planning mode is designed exactly for large changes with multiple possible approaches and architectural decisions. Exploring the codebase and designing the decomposition before editing avoids committing to a flawed structure across dozens of files.",
+    "distractors": {
+      "B": "Incremental direct execution without an up-front design risks expensive rework when early service-boundary choices prove wrong.",
+      "C": "Detailed up-front instructions assume you already know the right structure, which is precisely what needs to be discovered through exploration.",
+      "D": "Switching to planning only after problems appear is reactive; by then poor architectural choices may already be baked into the changes."
+    },
+    "tags": [
+      "planning-mode",
+      "workflows",
+      "refactoring"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d3-023",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Claude Code for CI",
+    "difficulty": "medium",
+    "stem": "Your CI pipeline runs the Claude Code CLI in `--print` mode with CLAUDE.md providing project context for code review, and developers find the reviews substantive. However, integrating findings is painful: Claude outputs narrative paragraphs that must be manually copied into PR comments. The team wants to automatically post each finding as a separate inline PR comment at the relevant place in code, which requires structured data with file path, line number, severity level, and suggested fix. Which approach is most effective?",
+    "options": {
+      "A": "Add an \"Output Format for Review\" section to CLAUDE.md with examples of structured findings so Claude learns the expected format from project context",
+      "B": "Use the CLI flags `--output-format json` and `--json-schema` to enforce structured findings, then parse the output and post inline comments via the GitHub API",
+      "C": "Include explicit formatting instructions in the review prompt requiring each finding to follow a parseable template like `[FILE:path] [LINE:n] [SEVERITY:level] ...`",
+      "D": "Keep the narrative review format but add a second Claude pass that converts it into a structured JSON summary of findings"
+    },
+    "answer": "B",
+    "explanation": "`--output-format json` combined with `--json-schema` enforces structured output at the CLI level, guaranteeing well-formed JSON with the required fields (file path, line number, severity, suggested fix) that can be reliably parsed and posted as inline PR comments via the GitHub API. It uses built-in CLI capabilities designed specifically for structured output, rather than hoping the model formats correctly.",
+    "distractors": {
+      "A": "CLAUDE.md examples are probabilistic guidance; the model can still deviate, and any deviation breaks automated parsing.",
+      "C": "A prompt-level text template is also probabilistic and fragile — a single malformed line breaks the parser, with no enforcement mechanism behind it.",
+      "D": "A second conversion pass adds cost and latency, and the lossy narrative-to-JSON conversion can drop or distort findings."
+    },
+    "tags": [
+      "ci-cd",
+      "structured-output",
+      "output-format-json"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d3-024",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "You need to add Slack as a new notification channel. The existing codebase has clear, established patterns for email, SMS, and push channels. However, Slack's API offers fundamentally different integration approaches—incoming webhooks (simple, one-way), bot tokens (delivery confirmation and programmatic control), or Slack Apps (two-way events, requires workspace approval). Your task says \"add Slack support\" without specifying the integration method or requiring advanced features like delivery tracking. How should you approach this task in Claude Code?",
+    "options": {
+      "A": "Start in direct execution mode using incoming webhooks to match the existing one-way notification pattern.",
+      "B": "Switch to planning mode to explore the integration options and their architectural implications, then present a recommendation before implementation.",
+      "C": "Start in direct execution mode by scaffolding a Slack channel class using the existing patterns, deferring the integration-method decision until later.",
+      "D": "Start in direct execution mode using a bot-token approach to ensure delivery confirmation is possible."
+    },
+    "answer": "B",
+    "explanation": "Slack integration has multiple valid approaches with significantly different architectural implications, and the requirements are ambiguous. Planning mode lets you safely evaluate the trade-offs among webhooks, bot tokens, and Slack Apps and align on an approach before committing to implementation.",
+    "distractors": {
+      "A": "Choosing webhooks by analogy to existing channels silently forecloses delivery tracking and two-way features without ever surfacing the decision to stakeholders.",
+      "C": "Scaffolding before choosing an integration method bakes in assumptions—the class interface differs meaningfully between webhooks, bot tokens, and Slack Apps.",
+      "D": "Defaulting to bot tokens assumes a requirement (delivery confirmation) that was never stated, adding complexity that may be unnecessary."
+    },
+    "tags": [
+      "planning-mode",
+      "ambiguity-resolution",
+      "architecture-decision"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d3-025",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "Your CLAUDE.md file has grown to 400+ lines containing coding standards, testing conventions, a detailed PR review checklist, deployment instructions, and database migration procedures. You want Claude to always follow the coding standards and testing conventions, but apply the PR review, deployment, and migration guidance only when actually doing those tasks. Which restructuring approach is most effective?",
+    "options": {
+      "A": "Move all guidance into separate skill files organized by workflow type, leaving only a brief project description in CLAUDE.md.",
+      "B": "Keep everything in CLAUDE.md but use `@import` syntax to organize the content into separately maintained files by category.",
+      "C": "Split CLAUDE.md into files under `.claude/rules/` with path-bound glob patterns so each rule loads only for the relevant file types.",
+      "D": "Keep the universal standards in CLAUDE.md and create skills for the workflow-specific guidance (PR review, deployment, migrations) with trigger keywords."
+    },
+    "answer": "D",
+    "explanation": "CLAUDE.md content loads in every session, which is exactly right for coding standards and testing conventions that must always apply. Skills are invoked on demand when Claude detects relevant triggers—ideal for workflow-specific guidance like PR review, deployment, and migrations that would otherwise waste always-on context.",
+    "distractors": {
+      "A": "Moving the universal standards into skills means they no longer load automatically in every session, so coding and testing conventions would only apply when a skill happens to be invoked.",
+      "B": "`@import` improves maintainability but everything imported still loads into every session, so the workflow-specific content keeps consuming context on unrelated tasks.",
+      "C": "Path-bound rules activate by file path, but PR review, deployment, and migrations are workflows, not file types—glob patterns are the wrong activation trigger for them."
+    },
+    "tags": [
+      "claude-md",
+      "skills",
+      "skills-vs-claude-md",
+      "modular-config"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d3-026",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "easy",
+    "stem": "You're tasked with restructuring your team's monolithic application into microservices. The work impacts dozens of files and requires decisions about service boundaries and module dependencies. Which Claude Code approach should you choose?",
+    "options": {
+      "A": "Switch to planning mode to explore the codebase, understand the dependencies, and design the implementation approach before making any changes.",
+      "B": "Start in direct execution mode and switch to planning only after encountering unexpected complexity during implementation.",
+      "C": "Start in direct execution mode and make incremental changes, letting the implementation reveal natural service boundaries.",
+      "D": "Use direct execution mode with detailed upfront instructions that specify the structure of each service."
+    },
+    "answer": "A",
+    "explanation": "Planning mode is the right strategy for complex architectural restructuring like splitting a monolith: it allows safe, read-only exploration and informed decisions about service boundaries before committing to expensive changes across dozens of files.",
+    "distractors": {
+      "B": "Reactive planning after complexity bites means early changes were made without understanding dependencies, likely requiring rework of already-modified files.",
+      "C": "Letting implementation reveal boundaries inverts the process—service boundaries are exactly the kind of cross-cutting decision that must be designed before code moves.",
+      "D": "Detailed upfront instructions in execution mode assume you already know the right structure; without exploration, those instructions encode guesses about dependencies."
+    },
+    "tags": [
+      "planning-mode",
+      "architecture-decision"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d3-027",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "Your team has used Claude Code for months. Recently, three developers report that Claude follows the guidance \"always include comprehensive error handling,\" but a fourth developer who just joined says Claude does not follow it. All four work in the same repo and have up-to-date code. What is the most likely cause and fix?",
+    "options": {
+      "A": "The guidance lives in the original developers' user-level `~/.claude/CLAUDE.md` files, not in the project-level `.claude/CLAUDE.md`; move the instruction to the project-level file so all team members receive it.",
+      "B": "The new developer's `~/.claude/CLAUDE.md` contains conflicting instructions overriding the project settings; they should delete the conflicting section.",
+      "C": "Claude Code learns per-user preferences over time, so the new developer must repeat the requirement until Claude \"remembers\" it.",
+      "D": "Claude Code caches CLAUDE.md after the first read, so the original developers are using cached versions; everyone should clear the Claude Code cache."
+    },
+    "answer": "A",
+    "explanation": "If the guidance was added only to the original developers' user-level configs and never to the project-level `.claude/CLAUDE.md`, new team members will not receive it even with up-to-date code. Moving it to the project-level file—which is version-controlled and loaded for everyone—ensures all current and future members get it automatically.",
+    "distractors": {
+      "B": "Conflicting personal instructions are possible but less likely as a first hypothesis: the new developer presumably has a fresh, near-empty user config, and nothing suggests they added contradicting rules.",
+      "C": "Claude Code does not implicitly learn preferences over time; persistent guidance comes from memory files like CLAUDE.md, not gradual reinforcement.",
+      "D": "Claude Code reads memory files at session start rather than serving stale long-term caches; cache-clearing is not the documented remedy for inconsistent guidance."
+    },
+    "tags": [
+      "claude-md",
+      "config-hierarchy",
+      "shared-config",
+      "diagnostics"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d3-028",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "hard",
+    "stem": "You find that including 2–3 full endpoint implementation examples as context significantly improves consistency when generating new API endpoints. However, this context is useful only when creating new endpoints—not when debugging, reviewing code, or doing other work in the API directory. Which configuration approach is most effective?",
+    "options": {
+      "A": "Add the endpoint examples and pattern documentation to the project CLAUDE.md so they are always available.",
+      "B": "Manually reference the endpoint examples in every generation request by copying the code into the prompt.",
+      "C": "Configure path-specific rules in `.claude/rules/api/` that include the endpoint examples and activate when working in the API directory.",
+      "D": "Create a skill that references the endpoint examples and contains pattern-following instructions, invoked on demand via a slash command."
+    },
+    "answer": "D",
+    "explanation": "A skill invoked on demand loads the bulky example context only for the task that needs it—generating new endpoints—and not during debugging, review, or other API-directory work. This keeps the main context clean while preserving high-quality, pattern-consistent generation when invoked.",
+    "distractors": {
+      "A": "CLAUDE.md content loads in every session, so several full endpoint implementations would permanently consume context even for tasks that never need them.",
+      "B": "Manual copy-paste works but is error-prone and unscalable—every developer must remember to do it, and versions of the examples drift.",
+      "C": "Path-bound rules activate for ANY work in the API directory, including debugging and review where the examples are explicitly not wanted; the trigger is task type, not file path."
+    },
+    "tags": [
+      "skills",
+      "skills-vs-claude-md",
+      "context-budget",
+      "few-shot"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d3-029",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "hard",
+    "stem": "Your team created a `/migration` skill that generates database migration files, taking the migration name via `$ARGUMENTS`. In production you observe three issues: (1) developers often run the skill without arguments, causing poorly named files, (2) the skill sometimes uses database schema details from unrelated prior conversations, and (3) a developer accidentally ran destructive test cleanup because the skill had broad tool access. Which configuration approach fixes all three problems?",
+    "options": {
+      "A": "Use positional parameters `$1` and `$2` instead of `$ARGUMENTS` to enforce specific inputs, include explicit schema file references via `@` syntax for context control, and add a frontmatter description warning about destructive operations.",
+      "B": "Add `argument-hint` in the frontmatter to prompt for the required parameter, use `context: fork` to isolate execution from the main conversation, and restrict `allowed-tools` to file-write operations.",
+      "C": "Split the skill into `/migration-create` and `/migration-apply`, add validation instructions to request the migration name if missing, and use different `allowed-tools` scopes for each.",
+      "D": "Add validation instructions in SKILL.md to ensure `$ARGUMENTS` is a valid name, add prompts telling the model to ignore prior conversation context, and list prohibited operations to avoid."
+    },
+    "answer": "B",
+    "explanation": "Each problem maps to a dedicated configuration feature: `argument-hint` surfaces the expected parameter at invocation time, reducing missing-argument runs; `context: fork` isolates execution so stale schema details from prior conversation cannot leak in; and `allowed-tools` deterministically constrains the skill to safe file-writing operations, preventing destructive actions.",
+    "distractors": {
+      "A": "Positional parameters do not stop developers from omitting arguments, `@` references add context but do not exclude polluted conversation history, and a frontmatter warning is advisory—nothing deterministically blocks destructive tool use.",
+      "C": "Splitting the skill restructures the workflow but argument omission, context leakage, and tool scoping must still be solved within each new skill—the split itself fixes nothing.",
+      "D": "All three fixes here are prompt-level instructions the model may not follow; instructions to 'ignore prior context' and 'avoid prohibited operations' are probabilistic, unlike fork isolation and tool restriction."
+    },
+    "tags": [
+      "skills",
+      "allowed-tools",
+      "context-fork",
+      "arguments"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d3-030",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "easy",
+    "stem": "You want to create a custom slash command `/review` that runs your team's standard code review checklist. It should be available to every developer when they clone or update the repository. Where should you create the command file?",
+    "options": {
+      "A": "In `~/.claude/commands/` in each developer's home directory.",
+      "B": "In the project repository under `.claude/commands/`.",
+      "C": "In `.claude/config.json` as an array of commands.",
+      "D": "In the root project CLAUDE.md."
+    },
+    "answer": "B",
+    "explanation": "Custom slash commands placed under `.claude/commands/` inside the project repository are version-controlled and automatically available to every developer who clones or updates the repo—this is the intended location for shared, project-level commands.",
+    "distractors": {
+      "A": "Home-directory commands are personal: each developer would have to copy the file manually, and updates would not propagate via the repo.",
+      "C": "Slash commands are defined as Markdown files in a commands directory, not as an array inside a config JSON file.",
+      "D": "CLAUDE.md holds persistent instructions and context; it is not a mechanism for defining slash commands."
+    },
+    "tags": [
+      "commands",
+      "shared-config",
+      "personal-vs-shared"
+    ],
+    "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d3-031",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "easy",
+    "stem": "Your team's CLAUDE.md grew beyond 500 lines, mixing TypeScript conventions, testing guidance, API patterns, and deployment procedures. Developers find it hard to locate and update the right sections. What approach does Claude Code support for organizing project-level instructions into focused topical modules?",
+    "options": {
+      "A": "Define a `.claude/config.yaml` mapping file patterns to specific sections inside CLAUDE.md.",
+      "B": "Create separate Markdown files in `.claude/rules/`, each covering one topic (e.g., `testing.md`, `api-conventions.md`).",
+      "C": "Split the instructions into README.md files in relevant subdirectories that Claude automatically loads as instructions.",
+      "D": "Create multiple files named CLAUDE.md at different levels of the directory tree, each overriding its parent's instructions."
+    },
+    "answer": "B",
+    "explanation": "Claude Code supports a `.claude/rules/` directory where teams create separate Markdown files for topical guidance (e.g., `testing.md`, `api-conventions.md`), turning one unwieldy CLAUDE.md into focused, independently maintainable modules.",
+    "distractors": {
+      "A": "There is no `.claude/config.yaml` mechanism that maps file patterns to CLAUDE.md sections.",
+      "C": "README.md files are ordinary documentation; Claude Code does not automatically load them as instruction memory.",
+      "D": "Nested CLAUDE.md files add directory-scoped context but they do not override parent instructions, and scattering overrides is not the supported modularization pattern for topical organization."
+    },
+    "tags": [
+      "claude-md",
+      "modular-config",
+      "path-specific-rules"
+    ],
+    "source": "paullarionov/claude-certified-architect"
   }
 ]

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Exam Research (2026) · CCA Foundations Wiki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--panel2:#1e222b;--ink:#e7e9ee;--muted:#9aa3b2;
+  --line:#2a2f3a;--accent:#cc785c;--accent2:#d4a27f;--good:#46b873;--code:#0c0e12}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* layout */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:290px;min-width:290px;background:var(--panel);border-right:1px solid var(--line);
+  position:sticky;top:0;height:100vh;overflow-y:auto;padding:18px 0 30px}
+.content{flex:1;min-width:0;padding:40px 52px 100px;max-width:880px;margin:0 auto}
+@media(max-width:860px){
+  .shell{flex-direction:column}
+  .sidebar{position:static;width:auto;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+  .content{padding:26px 18px 70px}
+}
+
+/* sidebar */
+.brand{display:block;padding:4px 18px 12px;color:var(--ink)}
+.brand b{font-size:15px}
+.brand span{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.search{margin:4px 14px 10px}
+.search input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  color:var(--ink);padding:7px 11px;font:13.5px Inter,sans-serif;outline:none}
+.search input:focus{border-color:var(--accent)}
+.nav-section{padding:10px 18px 4px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted)}
+.nav-link{display:block;padding:6px 18px;font-size:13.5px;color:var(--muted);
+  border-left:3px solid transparent}
+.nav-link:hover{color:var(--ink);background:var(--panel2);text-decoration:none}
+.nav-link.active{color:var(--accent2);border-left-color:var(--accent);background:var(--panel2)}
+.nav-link.hidden{display:none}
+.toc{margin:2px 0 6px;border-left:1px solid var(--line);margin-left:21px}
+.toc a{display:block;padding:3px 14px;font-size:12.5px;color:var(--muted)}
+.toc a:hover{color:var(--ink);text-decoration:none}
+
+/* article */
+.crumb{font-size:12.5px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.crumb a{color:var(--accent2)}
+article h1{font-size:32px;line-height:1.15;font-weight:800;letter-spacing:-.02em;margin:6px 0 18px}
+article h2{font-size:22px;font-weight:700;margin:36px 0 12px;padding-top:14px;border-top:1px solid var(--line)}
+article h3{font-size:17px;font-weight:700;margin:26px 0 8px;color:var(--accent2)}
+article h4{font-size:15px;margin:20px 0 6px}
+article p{margin:10px 0}
+article ul,article ol{padding-left:24px;margin:10px 0}
+article li{margin:4px 0}
+article blockquote{margin:14px 0;padding:10px 16px;border-left:3px solid var(--accent);
+  background:var(--panel);border-radius:0 10px 10px 0;color:var(--muted)}
+article blockquote p{margin:4px 0}
+article hr{border:none;border-top:1px solid var(--line);margin:28px 0}
+article code{background:var(--code);border:1px solid var(--line);border-radius:5px;
+  padding:1px 5px;font-size:13.5px;font-family:"SF Mono",Menlo,Monaco,monospace}
+article pre{background:var(--code);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;overflow-x:auto;font-size:13.5px;line-height:1.55}
+article pre code{background:none;border:none;padding:0}
+article table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}
+article th{background:var(--panel2);text-align:left;color:var(--accent2)}
+article th,article td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+article tr:nth-child(even) td{background:var(--panel)}
+article strong{color:var(--ink)}
+
+/* prev / next */
+.pager{display:flex;gap:14px;margin-top:54px}
+.pager a{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;transition:.15s}
+.pager a:hover{border-color:var(--accent);text-decoration:none;transform:translateY(-2px)}
+.pager .dir{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.pager .t{display:block;color:var(--ink);font-weight:600;font-size:14.5px;margin-top:3px}
+.pager .next{text-align:right}
+.foot{color:var(--muted);font-size:12.5px;margin-top:40px;border-top:1px solid var(--line);padding-top:14px}
+
+/* index page */
+.hero h1{font-size:36px;font-weight:800;letter-spacing:-.02em;margin:8px 0}
+.eyebrow{color:var(--accent2);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:13px}
+.lede{color:var(--muted);font-size:17px;max-width:640px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:15px;margin-top:14px}
+.card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:15px;
+  padding:18px;transition:.15s;color:var(--ink)}
+.card:hover{border-color:var(--accent);transform:translateY(-2px);text-decoration:none}
+.card h3{margin:0 0 6px;font-size:16.5px}
+.card p{margin:0;color:var(--muted);font-size:13.5px}
+.sect{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:34px 0 4px}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<a class="brand" href="index.html"><b>CCA Foundations Wiki</b><span>Claude Certified Architect</span></a>
+<div class="search"><input id="navfilter" type="search" placeholder="Filter pages &amp; topics…"></div>
+<div class="nav-section">Start Here</div>
+<a class="nav-link" href="exam-cheat-sheet.html" data-kw="Numbers to Memorize Domain Weight at a Glance 2026 Currency (don&#x27;t get caught on stale facts) Decision Trees stop_reason Quick Reference tool_choice Quick Reference Error Categories MCP Server Scopes CLAUDE.md Hierarchy Skills Frontmatter Commands Scoping Anti-Patterns to Remember Key Patterns to Remember CI/CD Integration">Exam Cheat Sheet</a>
+<a class="nav-link" href="tips-from-passers.html" data-kw="1. Snapshot — the confirmed blueprint 2. What people who passed say 3. Time management 4. Common gotchas / traps 5. A study plan (keyed to this repo) 6. Canonical resources (primary first) 7. Caveats (read before you book)">Tips from Passers</a>
+<a class="nav-link active" href="exam-research-2026.html" data-kw="TL;DR — what changed since this env was built (March 2026) Confirmed exam blueprint Domains &amp;amp; weights (CONFIRMED — match this env exactly) Content currency (study to 2026 reality) Practice questions &amp;amp; sample material Out-of-scope topics (per the paullarionov guide — don&#x27;t burn study time here) Tips from people who passed Canonical study resources (primary first) Caveats &amp;amp; open questions Sources (selected)">Exam Research (2026)</a>
+<div class="toc">
+<a href="#tldr-what-changed-since-this-env-was-built-march-2026">TL;DR — what changed since this env was built (March 2026)</a>
+<a href="#confirmed-exam-blueprint">Confirmed exam blueprint</a>
+<a href="#domains-weights-confirmed-match-this-env-exactly">Domains &amp;amp; weights (CONFIRMED — match this env exactly)</a>
+<a href="#content-currency-study-to-2026-reality">Content currency (study to 2026 reality)</a>
+<a href="#practice-questions-sample-material">Practice questions &amp;amp; sample material</a>
+<a href="#out-of-scope-topics-per-the-paullarionov-guide-dont-burn-study-time-here">Out-of-scope topics (per the paullarionov guide — don&#x27;t burn study time here)</a>
+<a href="#tips-from-people-who-passed">Tips from people who passed</a>
+<a href="#canonical-study-resources-primary-first">Canonical study resources (primary first)</a>
+<a href="#caveats-open-questions">Caveats &amp;amp; open questions</a>
+<a href="#sources-selected">Sources (selected)</a>
+</div>
+<div class="nav-section">Domain Guides</div>
+<a class="nav-link" href="domain1-agentic-architecture-orchestration.html" data-kw="Task 1.1: The Agentic Loop Lifecycle Task 1.2: Multi-Agent Coordinator-Subagent Patterns Task 1.3: Subagent Invocation and Context Passing Task 1.4: Multi-Step Workflows with Enforcement Task 1.5: Agent SDK Hooks Task 1.6: Task Decomposition Strategies Task 1.7: Session State, Resumption, and Forking Key Exam Scenarios for Domain 1">Domain 1 · Agentic Architecture &amp; Orchestration (27%)</a>
+<a class="nav-link" href="domain2-tool-design-mcp-integration.html" data-kw="MCP Architecture Overview Task 2.1: Design Effective Tool Interfaces Task 2.2: Structured Error Responses Task 2.3: Tool Distribution Across Agents Task 2.4: MCP Server Configuration in Claude Code Task 2.5: Built-in Tools">Domain 2 · Tool Design &amp; MCP Integration (18%)</a>
+<a class="nav-link" href="domain3-claude-code-config-workflows.html" data-kw="Task 3.1: CLAUDE.md Configuration Hierarchy Task 3.2: Custom Slash Commands and Skills Task 3.3: Path-Specific Rules Task 3.4: Plan Mode vs Direct Execution Task 3.5: Iterative Refinement Techniques Task 3.6: CI/CD Integration">Domain 3 · Claude Code Configuration &amp; Workflows (20%)</a>
+<a class="nav-link" href="domain4-prompt-engineering-structured-output.html" data-kw="Task 4.1: Design Prompts with Explicit Criteria Task 4.2: Few-Shot Prompting Task 4.3: Structured Output via tool_use Task 4.4: Validation, Retry, and Feedback Loops Task 4.5: Batch Processing (Message Batches API) Task 4.6: Multi-Instance and Multi-Pass Review">Domain 4 · Prompt Engineering &amp; Structured Output (20%)</a>
+<a class="nav-link" href="domain5-context-management-reliability.html" data-kw="Task 5.1: Manage Conversation Context Task 5.2: Escalation and Ambiguity Resolution Task 5.3: Error Propagation in Multi-Agent Systems Task 5.4: Large Codebase Exploration Task 5.5: Human Review Workflows Task 5.6: Information Provenance">Domain 5 · Context Management &amp; Reliability (15%)</a>
+<div class="nav-section">Deep Dives</div>
+<a class="nav-link" href="mcp-deep-dive.html" data-kw="1. The Mental Model 2. Architecture in 60 Seconds 3. Transport: When to Use What 4. Tool Definitions — What the Exam Tests 5. The Two-Layer Error System (HIGH YIELD) 6. Server Configuration in Claude Code (HIGH YIELD) 7. Resources — The Other Half 8. Tool Distribution (Cross-Cuts with Domain 1) 9. Community vs Custom MCP Servers 10. Exam Traps for MCP">MCP Deep Dive</a>
+<a class="nav-link" href="agent-sdk-deep-dive.html" data-kw="1. SDK Architecture 2. The Agentic Loop — Correct Implementation 3. Multi-Agent — Subagent Configuration 4. Hooks — Complete Reference 5. Session Management 6. Full ClaudeAgentOptions Reference 7. Exam Traps for Agent SDK">Agent SDK Deep Dive</a>
+</aside>
+<main class="content">
+<div class="crumb"><a href="index.html">Wiki</a> / Exam Research (2026)</div><article><h1 id="claude-certified-architect-foundations-exam-research-mid-2026">Claude Certified Architect — Foundations: Exam Research (mid-2026)</h1>
+<blockquote>
+<p>Cited research snapshot compiled <strong>2026-06-08</strong> via a multi-source, adversarially-verified
+research pass (18 sources fetched, 71 claims extracted, 25 verified, 22 confirmed, 3 refuted).
+<strong>Read the caveats</strong> — Anthropic publishes no public blueprint; figures below are
+community-consensus + one hosted copy of the gated official guide, not a citable Anthropic URL.</p>
+</blockquote>
+<h2 id="tldr-what-changed-since-this-env-was-built-march-2026">TL;DR — what changed since this env was built (March 2026)</h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Status</th>
+<th>Action taken</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Domains &amp; weights (27/20/20/18/15)</td>
+<td>✅ <strong>Confirmed unchanged</strong></td>
+<td>None needed</td>
+</tr>
+<tr>
+<td>60 Q / 120 min / 720-1000 pass</td>
+<td>✅ <strong>Confirmed</strong></td>
+<td>None needed</td>
+</tr>
+<tr>
+<td>"60 scenario questions" framing</td>
+<td>⚠️ <strong>Imprecise</strong></td>
+<td>Reframed: MC questions wrapped in <strong>4-of-6 random scenarios</strong></td>
+</tr>
+<tr>
+<td>6 official scenario themes</td>
+<td>🆕 <strong>Newly documented</strong></td>
+<td>Quiz/mock-exam now cover all 6</td>
+</tr>
+<tr>
+<td>Model currency (was Opus 4.x early-2026)</td>
+<td>🔄 <strong>Opus 4.8 now flagship</strong></td>
+<td>Cheat sheet + docs updated</td>
+</tr>
+<tr>
+<td>Claude Code features</td>
+<td>🔄 <strong>New: <code>plugin init</code>, Stop hook <code>additionalContext</code></strong></td>
+<td>Domain 3 + Agent SDK docs noted</td>
+</tr>
+<tr>
+<td>Cost / validity / prerequisites</td>
+<td>❌ <strong>Unconfirmed (claims refuted)</strong></td>
+<td>Deliberately NOT stated as fact</td>
+</tr>
+<tr>
+<td>Scenario pool size (6 → 8?)</td>
+<td>⚠️ <strong>Single-source update (2026-06-10)</strong></td>
+<td>paullarionov repo reports <strong>4-of-8</strong>; themes 7–8 added below</td>
+</tr>
+</tbody>
+</table>
+<h2 id="confirmed-exam-blueprint">Confirmed exam blueprint</h2>
+<ul>
+<li><strong>Launched:</strong> March 12, 2026</li>
+<li><strong>Format:</strong> 60 <strong>multiple-choice</strong> questions — each has <strong>one correct response + three distractors</strong>. Single-select (multi-select claim was refuted).</li>
+<li><strong>Structure:</strong> Questions are wrapped in <strong>scenarios</strong>. A candidate is presented <strong>4 scenarios drawn at random from a pool of 6</strong>.</li>
+<li><strong>Time limit:</strong> 120 minutes (~2 min/question)</li>
+<li><strong>Passing score:</strong> <strong>720 / 1000</strong> — a <strong>scaled score, not a percentage</strong> (a verified passer scored 893/1000, a non-round number only possible on a scaled system)</li>
+<li><strong>Delivery:</strong> Online-proctored, <strong>closed-book</strong>, via Anthropic's Skilljar platform</li>
+<li><strong>Confidence:</strong> High (≈10 independent sources + one verified passer + a hosted copy of the gated official PDF)</li>
+</ul>
+<h3 id="the-scenario-theme-pool-you-get-4-at-random">The scenario theme pool (you get 4 at random)</h3>
+<ol>
+<li><strong>Customer Support Resolution Agent</strong></li>
+<li><strong>Code Generation with Claude Code</strong></li>
+<li><strong>Multi-Agent Research System</strong></li>
+<li><strong>Developer Productivity</strong></li>
+<li><strong>Claude Code for CI</strong></li>
+<li><strong>Structured Data Extraction</strong></li>
+<li><strong>Conversational AI Architecture Patterns</strong> ⚠️ — multi-turn context management, instruction
+   persistence across turns, memory strategies, safe tool execution, ambiguous/conflicting input</li>
+<li><strong>Agentic AI Tools</strong> ⚠️ — candidate-reported on real sittings; no content documented anywhere yet</li>
+</ol>
+<blockquote>
+<p>⚠️ Themes 7–8 come from a <strong>single community source</strong> (paullarionov/claude-certified-architect,
+checked 2026-06-10), which states the draw is <strong>4 of 8</strong> — vs the 4-of-6 our earlier
+multi-source pass confirmed. Theme 7 is substantiated there with 16 practice questions;
+theme 8 is candidate-reported with no content. Possible pool expansion after launch.
+Study implication: prepare for all themes; theme 7 overlaps heavily with Domains 1 &amp; 5.</p>
+</blockquote>
+<h2 id="domains-weights-confirmed-match-this-env-exactly">Domains &amp; weights (CONFIRMED — match this env exactly)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Domain</th>
+<th>Weight</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Agentic Architecture &amp; Orchestration</td>
+<td><strong>27%</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Claude Code Configuration &amp; Workflows</td>
+<td><strong>20%</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Prompt Engineering &amp; Structured Output</td>
+<td><strong>20%</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Tool Design &amp; MCP Integration</td>
+<td><strong>18%</strong></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Context Management &amp; Reliability</td>
+<td><strong>15%</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Note: this env historically ordered them 1/2/3/4/5 = AgenticArch / MCP / ClaudeCode / Prompt / Context.
+The <strong>weights are identical</strong> regardless of ordering. Study-time priority should track the
+weights: <strong>Agentic Architecture (27%) is the single heaviest domain</strong> — a verified passer
+confirmed real-exam emphasis tracks the published weights.</p>
+</blockquote>
+<h2 id="content-currency-study-to-2026-reality">Content currency (study to 2026 reality)</h2>
+<h3 id="models">Models</h3>
+<ul>
+<li><strong>Claude Opus 4.8</strong> — current flagship (launched May 28, 2026; on Claude API, Bedrock, Vertex, Foundry)</li>
+<li><strong>Claude Opus 4.7</strong> — active (April 16, 2026)</li>
+<li><strong>Claude Opus 4.1</strong> — <strong>deprecated June 5, 2026, retires August 5, 2026</strong>; migrate to Opus 4.8</li>
+<li>Source: <code>platform.claude.com/docs/en/about-claude/model-deprecations</code> (primary)</li>
+</ul>
+<h3 id="claude-code-primary-sourced-but-time-sensitive-changelog-moves-weekly">Claude Code (primary-sourced, but time-sensitive — changelog moves weekly)</h3>
+<ul>
+<li><strong>Skill/plugin auto-loading:</strong> <code>claude plugin init &lt;name&gt;</code> scaffolds a plugin; skills in
+  <code>.claude/skills</code> dirs auto-load as <code>&lt;name&gt;@skills-dir</code> with <strong>no marketplace or install step</strong> (May 2026).
+  Source: <code>code.claude.com/docs/en/plugins</code></li>
+<li><strong>Stop / SubagentStop hooks</strong> can now return <code>hookSpecificOutput.additionalContext</code> to feed
+  Claude context and keep the turn going <strong>without being labeled a hook error</strong> (v2.1.163, June 2026;
+  <code>additionalContext</code> capped at 10,000 chars). Source: <code>code.claude.com/docs/en/changelog</code></li>
+</ul>
+<h2 id="practice-questions-sample-material">Practice questions &amp; sample material</h2>
+<blockquote>
+<p>⚠️ <strong>NDA:</strong> Real exam questions are confidential. Everything below is <strong>community practice
+material</strong> — useful for drilling concepts, but never assume any item is an actual exam question.
+The questions in this repo's <code>quiz/</code> are <strong>original, exam-accurate practice</strong> written to match
+the blueprint, not reproductions of real items.</p>
+</blockquote>
+<ul>
+<li><strong>No official Anthropic public sample questions</strong> were found outside the gated Skilljar portal.</li>
+<li><strong>paullarionov/claude-certified-architect</strong> (GitHub, added 2026-06-10) — 3,400-line study guide
+  "based on the official exam guide", translated into 10 languages, with <strong>88 practice questions</strong>
+  (12 worked examples + 76-question practice test w/ interactive HTML version), 4 practical
+  exercises, an out-of-scope topic list, and the official Skilljar access-request link.
+  Its 88 questions have been <strong>imported into this repo's <code>quiz/bank/</code></strong>
+  (<code>"source": "paullarionov/claude-certified-architect"</code>), deduplicated against our originals.</li>
+<li><strong>daronyondem/claude-architect-exam-guide</strong> (GitHub) — strongest community study guide;
+  explicitly NDA-clean ("No exam questions are included, paraphrased, or hinted at"); teaches
+  11 interconnected knowledge areas that map onto the 5 domains.</li>
+<li><strong>claudecertifications.com/claude-certified-architect/practice-questions</strong> — community practice
+  bank with domain filters.</li>
+<li><strong>pub.towardsai.net</strong> — a "60-question practice exam with explanations" (community blog).</li>
+<li>Other community repos: <code>OlivierAlter/...</code>, <code>jamesbuckett/ccaf-...</code>, <code>dnacenta/claude-certified-architect</code>.</li>
+</ul>
+<h3 id="daronyondems-11-knowledge-areas-useful-cross-check-against-the-5-domains">daronyondem's 11 knowledge areas (useful cross-check against the 5 domains)</h3>
+<p>API fundamentals/output control · tool interface design · error handling in agent tools ·
+structured data extraction · conversation context management · system prompt engineering · MCP ·
+agentic patterns/multi-agent · customer service workflows · Claude Code &amp; Agent SDK ·
+evaluation/batch processing.</p>
+<h2 id="out-of-scope-topics-per-the-paullarionov-guide-dont-burn-study-time-here">Out-of-scope topics (per the paullarionov guide — don't burn study time here)</h2>
+<p>Fine-tuning/custom training · API auth, billing, account management · language/framework
+implementation details · deploying/hosting MCP servers (infra, networking, containers) · Claude's
+internal architecture/training/weights · Constitutional AI, RLHF, safety-training methodology ·
+embeddings &amp; vector DBs · computer use · vision/image analysis · streaming/SSE · rate limits,
+quotas, cost math · OAuth/key rotation · cloud-provider-specific config · benchmarks/model
+comparisons · prompt-caching internals (know it exists, nothing more) · tokenization specifics.</p>
+<h2 id="tips-from-people-who-passed">Tips from people who passed</h2>
+<ul>
+<li><strong>Kishor Kukreja</strong> (Medium) — passed <strong>893/1000</strong>; first-hand account confirms the full
+  blueprint (5 domains, 27/20/20/18/15, 720/1000) and that <strong>real emphasis tracks the published
+  weights</strong> → weight study time toward the 27% Agentic Architecture domain.</li>
+<li>See <code>docs/tips-from-passers.md</code> for the distilled, actionable tips + study plan.</li>
+</ul>
+<h2 id="canonical-study-resources-primary-first">Canonical study resources (primary first)</h2>
+<ul>
+<li><strong>Anthropic docs</strong> (primary): <code>platform.claude.com/docs</code> (Claude Developer Platform, prompt
+  engineering, models), <code>code.claude.com/docs</code> (Claude Code — config, plugins, hooks, changelog),
+  Agent SDK docs, Model Context Protocol spec.</li>
+<li><strong>Anthropic learning:</strong> <code>anthropic.com/learn</code> (courses + certificates of completion).
+  Note: <code>anthropic.com/academy</code> returns 404; the live page is <code>/learn</code>.</li>
+<li><strong>Official exam guide:</strong> gated at
+  <code>anthropic.skilljar.com/claude-certified-architect-foundations-access-request</code>.</li>
+<li><strong>Free Anthropic Academy courses most relevant to the blueprint</strong> (full 13-course list in the
+  paullarionov README): <em>Building with the Claude API</em>, <em>Claude Code in Action</em>, <em>Intro to MCP</em>,
+  <em>MCP: Advanced Topics</em>, <em>Introduction to Agent Skills</em> — all at <code>anthropic.skilljar.com</code>.</li>
+</ul>
+<h2 id="caveats-open-questions">Caveats &amp; open questions</h2>
+<ul>
+<li><strong>No public Anthropic primary source</strong> for the blueprint — established by strong cross-source
+  consensus + one hosted copy of the Confidential exam-guide PDF. Treat percentages as
+  authoritative-by-consensus.</li>
+<li><strong>Cost UNRESOLVED</strong> — "$99" and "free for first 5,000 partners" both <strong>refuted (0-3)</strong>. Do not
+  state a price. (The paullarionov README re-asserts both figures plus "restricted to Anthropic
+  Partner Network members" as of 2026-06 — still a single community source, still not Anthropic.)</li>
+<li><strong>Validity period UNRESOLVED</strong> — "2 years" <strong>refuted</strong>.</li>
+<li><strong>Prerequisites UNRESOLVED</strong> — "6 months production experience" <strong>refuted</strong>; whether any
+  prerequisite exists is unknown.</li>
+<li>Model/tooling currency claims are primary-sourced but <strong>time-sensitive</strong> (Opus 4.1 retires
+  Aug 5 2026; Claude Code changelog moves weekly). Re-verify before each exam sitting.</li>
+</ul>
+<h2 id="sources-selected">Sources (selected)</h2>
+<ul>
+<li>https://www.claudecertifiedarchitects.com/cca-exam-guide/</li>
+<li>https://dev.to/aws-builders/the-claude-certified-architect-exam-5-domains-6-scenarios-and-everything-you-need-to-know-4le3</li>
+<li>https://medium.com/@kishorkukreja/i-passed-anthropics-claude-certified-architect-foundations-exam-with-a-score-of-893-1000-2206c27efd6c</li>
+<li>https://github.com/daronyondem/claude-architect-exam-guide</li>
+<li>https://github.com/paullarionov/claude-certified-architect</li>
+<li>https://platform.claude.com/docs/en/about-claude/model-deprecations</li>
+<li>https://code.claude.com/docs/en/plugins</li>
+<li>https://code.claude.com/docs/en/changelog</li>
+<li>https://www.anthropic.com/learn</li>
+<li>https://claudecertifications.com/claude-certified-architect/practice-questions</li>
+<li>https://www.lowcode.agency/blog/how-to-become-claude-certified-architect</li>
+</ul></article><div class="pager">
+<a href="tips-from-passers.html"><span class="dir">← Previous</span><span class="t">Tips from Passers</span></a>
+<a class="next" href="domain1-agentic-architecture-orchestration.html"><span class="dir">Next →</span><span class="t">Domain 1 · Agentic Architecture &amp; Orchestration (27%)</span></a>
+</div><p class="foot">Generated from <code>docs/</code> by <code>wiki/build_wiki.py</code> — edit the markdown, not this file. Original study material, not real (NDA) exam content.</p>
+</main>
+</div>
+<script>
+const inp=document.getElementById('navfilter');
+if(inp){inp.addEventListener('input',()=>{const q=inp.value.toLowerCase();
+  document.querySelectorAll('.nav-link').forEach(a=>{
+    a.classList.toggle('hidden',q&&!(a.textContent+' '+(a.dataset.kw||'')).toLowerCase().includes(q));});
+  document.querySelectorAll('.nav-section').forEach(s=>{
+    let el=s.nextElementSibling,vis=false;
+    while(el&&!el.classList.contains('nav-section')){
+      if(el.classList.contains('nav-link')&&!el.classList.contains('hidden'))vis=true;
+      el=el.nextElementSibling;}
+    s.style.display=q&&!vis?'none':'';});});}
+</script>
+</body>
+</html>

@@ -5,6 +5,8 @@ This project is Julien's personalized study environment for the Claude Certified
 ## Project Structure
 - `docs/` — Domain-by-domain study guides and reference materials
 - `quiz/` — Practice questions, flashcards, and the structured question bank (`quiz/bank/*.json`)
+- `wiki/` — Navigable HTML rendering of `docs/` (sidebar, search filter, prev/next). Committed,
+  shareable; rebuild after editing docs: `uv run --with markdown python wiki/build_wiki.py`
 - `mock-exams/` — Timed HTML exam generator (`generate_exam.py`); `attempts/` output is gitignored
 - `profile/` — Personal learner profile (gitignored); `profile-template/` is the committed blank
 - `.claude-plans/` — Implementation plans (ephemeral, gitignored)
@@ -47,7 +49,9 @@ This project is Julien's personalized study environment for the Claude Certified
 
 ## Exam Blueprint (confirmed mid-2026 — community-sourced, see exam-research-2026.md)
 - 60 single-select multiple-choice questions · 120 minutes · **720/1000 scaled** to pass · online-proctored
-- Questions wrapped in scenarios; **4 of 6** scenario themes drawn at random per exam
+- Questions wrapped in scenarios; **4 scenario themes drawn at random per exam** from a pool of
+  **6 confirmed** (possibly **8** — themes 7 "Conversational AI Architecture Patterns" and
+  8 "Agentic AI Tools" are single-source community reports, see exam-research-2026.md)
 - Cost / validity / prerequisites are **unconfirmed** — do not state them as fact
 
 ## Exam Domains & Weights
