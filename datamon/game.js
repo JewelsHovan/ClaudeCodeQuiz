@@ -42,7 +42,7 @@ function weightedDomain() {
   for (let i = 0; i < DOMAIN_KEYS.length; i++) { r -= DOMAIN_WEIGHTS[i]; if (r < 0) return DOMAIN_KEYS[i]; }
   return DOMAIN_KEYS[0];
 }
-const MAX_HP = 100, WRONG_DMG = 25;
+const MAX_HP = 100, WRONG_DMG = 25, FLEE_CHANCE = 0.5;
 const SAVE_KEY = "datamon-save-v1";
 
 // ---------- Seeded RNG (stable NPC layout) ----------
@@ -431,6 +431,39 @@ function answerQuestion(i) {
   b.phase = "feedback";
 }
 
+function attemptRun() {
+  const b = battle;
+  if (!b || b.phase !== "question") return;   // Run is only available during the question phase
+  if (Math.random() < FLEE_CHANCE) {
+    // SUCCESS — flee to the overworld. Mirrors the advanceBattle() win-branch restore,
+    // but deliberately does NOT mark the rival defeated and does NOT call save().
+    sfx.confirm();
+    wrapCache.clear();
+    battle = null;
+    player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
+    state = "overworld"; bufferedDir = null; turnStartMs = null;
+    showToast("Got away safely!");
+  } else {
+    // FAILURE — same attack path as a wrong answer (damage + shake + hit animation).
+    sfx.wrong();
+    player.hp = Math.max(0, player.hp - WRONG_DMG);
+    b.shake = 14;
+    b.attackAt = frame;
+    b.dmgAt = frame;
+    if (player.hp <= 0) {
+      // route into the existing lose/blackout flow (advanceBattle() handles it on advance)
+      b.feedback = { correct: false };
+      b.msg = `You blacked out from imposter syndrome... "${LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)]}"`;
+      b.msgAt = frame;
+      b.phase = "lose";
+    } else {
+      // survived — stay on the same question; the hit animation self-expires (frame-delta gated)
+      b.feedback = null;
+      showToast("Couldn't escape!");
+    }
+  }
+}
+
 // ---------- Toast ----------
 function showToast(msg, ms = 2600) { toast = { msg, until: performance.now() + ms }; }
 
@@ -438,6 +471,7 @@ function showToast(msg, ms = 2600) { toast = { msg, until: performance.now() + m
 const keys = {};
 window.addEventListener("keydown", e => {
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
+  if (e.key === "Escape" && state === "battle" && battle && battle.phase === "question") e.preventDefault();
   keys[e.key] = true;
   if (state === "overworld" && player.moving && KEY_DIR[e.key]) bufferedDir = KEY_DIR[e.key];
   handleKey(e.key);
@@ -492,6 +526,7 @@ function handleKey(k) {
       if (k === "ArrowLeft" || k === "ArrowUp")    { b.sel = (b.sel + 3) % 4; sfx.select(); }
       if (["1", "2", "3", "4"].includes(k)) answerQuestion(parseInt(k) - 1);
       if (k === "Enter" || k === " ") answerQuestion(b.sel);
+      if (k === "r" || k === "R" || k === "Escape") attemptRun();
     } else if (k === "Enter" || k === " ") {
       // first press finishes the typewriter text, second advances
       if (Math.floor((frame - b.msgAt + 1) * TEXT_SPEED()) < b.msg.length) {
@@ -528,6 +563,7 @@ canvas.addEventListener("click", e => {
   } else if (state === "battle") {
     const b = battle;
     if (b.phase === "question") {
+      if (runHitTest(mx, my)) { attemptRun(); return; }
       const hit = choiceHitTest(mx, my);
       if (hit >= 0) answerQuestion(hit);
     } else handleKey("Enter");
@@ -1025,6 +1061,7 @@ function drawOverworld() {
 }
 
 // battle layout rects (for mouse hit testing)
+let RUN_RECT = [-1, -1, 0, 0];   // overworld-safe default; set each frame by layoutChoices()
 const CHOICE_RECTS = [];
 function layoutChoices() {
   CHOICE_RECTS.length = 0;
@@ -1034,6 +1071,7 @@ function layoutChoices() {
     const col = i % 2, row = Math.floor(i / 2);
     CHOICE_RECTS.push([bx + 12 + col * (cw + 12), by + 58 + row * (ch + 8), cw, ch]);
   }
+  RUN_RECT = [bx + bw - 88, by + 8, 76, 26];
   return { bx, by, bw, bh };
 }
 function choiceHitTest(mx, my) {
@@ -1042,6 +1080,10 @@ function choiceHitTest(mx, my) {
     if (mx >= x && mx <= x + w && my >= y && my <= y + h) return i;
   }
   return -1;
+}
+function runHitTest(mx, my) {
+  const [x, y, w, h] = RUN_RECT;
+  return mx >= x && mx <= x + w && my >= y && my <= y + h;
 }
 
 function drawBattle() {
@@ -1156,10 +1198,10 @@ function drawBattle() {
     const q = mon.q;
     // up to 2 lines at 14px; drop to 12px / 3 lines for extra-long questions
     let qFont = "bold 14px monospace", lh = 17, qy = by + 22;
-    let qLines = wrapTextMemo(`[${q.cat}] ${q.q}`, bw - 32, qFont);
+    let qLines = wrapTextMemo(`[${q.cat}] ${q.q}`, bw - 110, qFont);
     if (qLines.length > 2) {
       qFont = "bold 12px monospace"; lh = 15; qy = by + 18;
-      qLines = wrapTextMemo(`[${q.cat}] ${q.q}`, bw - 32, qFont);
+      qLines = wrapTextMemo(`[${q.cat}] ${q.q}`, bw - 110, qFont);
     }
     ctx.fillStyle = "#facc15"; ctx.font = qFont; ctx.textAlign = "left";
     qLines.slice(0, 3).forEach((ln, i) => ctx.fillText(ln, bx + 14, qy + i * lh));
@@ -1176,6 +1218,15 @@ function drawBattle() {
       else lines.slice(0, 2).forEach((ln, j) => ctx.fillText(ln, x + 10, y + h / 2 + (j - 0.5) * 15));
       ctx.textBaseline = "alphabetic";
     }
+    // Run (flee) button — top-right of the question box, above the choice grid
+    const [rrx, rry, rrw, rrh] = RUN_RECT;
+    ctx.fillStyle = "#7f1d1d";
+    ctx.fillRect(rrx, rry, rrw, rrh);
+    ctx.strokeStyle = "#f87171"; ctx.lineWidth = 2; ctx.strokeRect(rrx, rry, rrw, rrh);
+    ctx.fillStyle = "#fecaca"; ctx.font = "bold 13px monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("RUN (R)", rrx + rrw / 2, rry + rrh / 2);
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
   } else {
     // typewriter message reveal — wrap once per message, reveal by char count
     const shown = Math.floor((frame - b.msgAt + 1) * TEXT_SPEED());
