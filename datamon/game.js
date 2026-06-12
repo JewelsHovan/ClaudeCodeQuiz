@@ -226,7 +226,9 @@ let npcs = [];          // {slug, x, y, type, defeated}
 let defeated = new Set();
 let battle = null;
 let toast = null;       // {msg, until}
-let decks = {};         // category -> shuffled question indices not yet used
+let questionStats = {};  // "CAT:idx" -> {seen, correct, wrong, lastSeen}
+let seenCounter = 0;    // monotonic draw counter — drives lastSeen recency (no Date.now())
+let seenThisRun = {};   // category -> Set<idx> drawn this run (within-run repeat avoidance)
 let frame = 0;
 let dtF = 1;           // logical 60Hz frames this tick
 let mapCv = null;   // pre-rendered static map — built once at boot
@@ -265,14 +267,18 @@ function placeNPCs() {
 let saveCache; // undefined = not yet read; null = confirmed empty save
 function save() {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ player: player.slug, defeated: [...defeated] }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ player: player.slug, defeated: [...defeated], questionStats, seenCounter }));
   } catch (e) {}
   saveCache = undefined;
 }
 function loadSave() {
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (s && ROSTER.includes(s.player)) return s;
+    if (s && ROSTER.includes(s.player)) {
+      questionStats = (s.questionStats && typeof s.questionStats === "object") ? s.questionStats : {};
+      seenCounter = typeof s.seenCounter === "number" ? s.seenCounter : 0;
+      return s;
+    }
   } catch (e) {}
   return null;
 }
@@ -282,13 +288,45 @@ function getSave() {
 }
 
 // ---------- Questions ----------
+// Weighted spaced-repetition selection tunables.
+const STAT_FLOOR = 1, NEVER_SEEN_BONUS = 8, MISS_WEIGHT = 4, RECENCY_W = 0.5, RECENCY_CAP = 20;
+
+// Higher weight = more likely to be drawn. Never-seen and previously-missed score high;
+// recently-drawn-and-correct score near the floor. Floor guarantees nothing is starved.
+function questionWeight(cat, i) {
+  const st = questionStats[cat + ":" + i];
+  if (!st || !st.seen) return STAT_FLOOR + NEVER_SEEN_BONUS;
+  const miss = Math.max(0, (st.wrong || 0) - (st.correct || 0));
+  const recency = Math.min(RECENCY_CAP, seenCounter - (st.lastSeen || 0)); // larger = longer since drawn
+  return STAT_FLOOR + miss * MISS_WEIGHT + recency * RECENCY_W;
+}
+
 function drawQuestion(category) {
   const cat = category === "MIX" ? weightedDomain() : category;
-  if (!decks[cat] || decks[cat].length === 0) {
-    decks[cat] = shuffled(QUESTION_BANK[cat].map((_, i) => i), mulberry32(Math.floor(Math.random() * 1e9)));
+  const n = QUESTION_BANK[cat].length;
+  if (!seenThisRun[cat]) seenThisRun[cat] = new Set();
+  // Eligible pool = indices not yet drawn this run; when drained, reset (within-run repeat avoidance).
+  let pool = [];
+  for (let i = 0; i < n; i++) if (!seenThisRun[cat].has(i)) pool.push(i);
+  if (pool.length === 0) {
+    seenThisRun[cat] = new Set();
+    for (let i = 0; i < n; i++) pool.push(i);
   }
-  const idx = decks[cat].pop();
-  return { ...QUESTION_BANK[cat][idx], cat };
+  // Weighted pick from the eligible pool.
+  const weights = pool.map(i => questionWeight(cat, i));
+  let total = 0; for (const w of weights) total += w;
+  let idx = pool[pool.length - 1];
+  let r = Math.random() * total;
+  for (let k = 0; k < pool.length; k++) { r -= weights[k]; if (r < 0) { idx = pool[k]; break; } }
+  seenThisRun[cat].add(idx);
+  // Record the draw: bump seen + stamp recency. Plumb the stat key to answerQuestion via battle.curKey
+  // (battle is always non-null here — drawQuestion is only called inside an active battle) WITHOUT
+  // changing the returned shape.
+  const key = cat + ":" + idx;
+  const st = questionStats[key] || (questionStats[key] = { seen: 0, correct: 0, wrong: 0, lastSeen: 0 });
+  st.seen++; st.lastSeen = ++seenCounter;
+  if (battle) battle.curKey = key;
+  return { ...QUESTION_BANK[cat][idx], cat };   // shape unchanged (Must Not #3)
 }
 
 // ---------- Battle ----------
@@ -410,9 +448,18 @@ function advanceBattle() {
   }
 }
 
+function recordOutcome(correct) {
+  const key = battle && battle.curKey;
+  if (!key) return;
+  const st = questionStats[key] || (questionStats[key] = { seen: 0, correct: 0, wrong: 0, lastSeen: seenCounter });
+  if (correct) st.correct++; else st.wrong++;
+  save();   // persist immediately so a single answer lands in localStorage
+}
+
 function answerQuestion(i) {
   const b = battle, q = currentMon().q;
   const correct = i === q.a;
+  recordOutcome(correct);
   if (correct) {
     sfx.correct();
     b.feedback = { correct: true };
@@ -497,6 +544,9 @@ function handleKey(k) {
       localStorage.removeItem(SAVE_KEY);
       saveCache = undefined;
       defeated = new Set();
+      questionStats = {};
+      seenCounter = 0;
+      seenThisRun = {};
       showToast("Save cleared!");
     }
   } else if (state === "select") {
