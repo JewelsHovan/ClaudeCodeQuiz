@@ -881,6 +881,22 @@ function tileColor(t, x, y) {
   }
 }
 
+function blitTile(c, slug, sx, sy) {
+  if (tileStore[slug]) { c.drawImage(tileStore[slug], sx, sy, TILE, TILE); return true; }
+  return false;
+}
+function wallSlug(x, y) {
+  const isWall = (cx, cy) => (cy < 0 || cy >= MAP_H || cx < 0 || cx >= MAP_W) ? false : map[cy][cx] === "#";
+  const T = isWall(x, y - 1), B = isWall(x, y + 1), L = isWall(x - 1, y), R = isWall(x + 1, y);
+  if (!T && !B &&  L &&  R) return "wall-h";
+  if ( T &&  B && !L && !R) return "wall-v";
+  if (!T &&  B && !L &&  R) return "wall-corner-tl";
+  if (!T &&  B &&  L && !R) return "wall-corner-tr";
+  if ( T && !B && !L &&  R) return "wall-corner-bl";
+  if ( T && !B &&  L && !R) return "wall-corner-br";
+  return (L || R) ? "wall-h" : "wall-v"; // T-junctions / inner / isolated: never crash
+}
+
 function buildMapCanvas() {
   const cv = document.createElement("canvas");
   cv.width  = MAP_W * TILE;   // 1152
@@ -891,23 +907,37 @@ function buildMapCanvas() {
     for (let x = 0; x < MAP_W; x++) {
       const sx = x * TILE, sy = y * TILE;
       const t = map[y][x];
-      c.fillStyle = tileColor(t, x, y);
-      c.fillRect(sx, sy, TILE, TILE);
+      // floor variant keyed on display coords — do not shift map origin without regenerating
+      const floorSlug = 'floor-' + ['a','b','c'][(x * 31 + y * 17) % 3];
       if (t === "#") {
-        c.fillStyle = "#1e293b"; c.fillRect(sx, sy + TILE - 6, TILE, 6);
-      } else if (t === "D") {
-        c.fillStyle = "#92651a"; c.fillRect(sx + 2, sy + 8, TILE - 4, TILE - 12);
-        c.fillStyle = "#0f172a"; c.fillRect(sx + 8, sy + 11, 16, 10); // monitor
-        c.fillStyle = "#38bdf8"; c.fillRect(sx + 10, sy + 13, 12, 6); // screen
-      } else if (t === "P") {
-        c.fillStyle = "#7f4f24"; c.fillRect(sx + 10, sy + 18, 12, 10);
-        c.fillStyle = "#16a34a";
-        c.fillRect(sx + 8, sy + 6, 16, 14);
-        c.fillRect(sx + 12, sy + 2, 8, 8);
-      } else if (t === "C") {
-        c.fillStyle = "#0f172a"; c.fillRect(sx + 4, sy + 4, TILE - 8, TILE - 8);
-        c.fillStyle = "#ef4444"; c.fillRect(sx + 8, sy + 8, 6, 4);
-        c.fillStyle = "#fbbf24"; c.fillRect(sx + 8, sy + 16, 16, 6); // coffee glow
+        if (!blitTile(c, wallSlug(x, y), sx, sy)) {
+          c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE);
+          c.fillStyle = "#1e293b"; c.fillRect(sx, sy + TILE - 6, TILE, 6);
+        }
+      } else if (t === "D" || t === "P" || t === "C") {
+        // floor base FIRST (objects sit on floor; PNGs have transparent margins)
+        if (!blitTile(c, floorSlug, sx, sy)) { c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE); }
+        const objSlug = t === "D" ? "desk" : t === "P" ? "plant" : "coffee";
+        if (!blitTile(c, objSlug, sx, sy)) {
+          if (t === "D") {
+            c.fillStyle = "#92651a"; c.fillRect(sx + 2, sy + 8, TILE - 4, TILE - 12);
+            c.fillStyle = "#0f172a"; c.fillRect(sx + 8, sy + 11, 16, 10); // monitor
+            c.fillStyle = "#38bdf8"; c.fillRect(sx + 10, sy + 13, 12, 6); // screen
+          } else if (t === "P") {
+            c.fillStyle = "#7f4f24"; c.fillRect(sx + 10, sy + 18, 12, 10);
+            c.fillStyle = "#16a34a";
+            c.fillRect(sx + 8, sy + 6, 16, 14);
+            c.fillRect(sx + 12, sy + 2, 8, 8);
+          } else if (t === "C") {
+            c.fillStyle = "#0f172a"; c.fillRect(sx + 4, sy + 4, TILE - 8, TILE - 8);
+            c.fillStyle = "#ef4444"; c.fillRect(sx + 8, sy + 8, 6, 4);
+            c.fillStyle = "#fbbf24"; c.fillRect(sx + 8, sy + 16, 16, 6); // coffee glow
+          }
+        }
+      } else if (t === "~") {
+        if (!blitTile(c, "rug", sx, sy)) { c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE); }
+      } else { // floor "." and any unrecognized
+        if (!blitTile(c, floorSlug, sx, sy)) { c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE); }
       }
     }
   }
@@ -918,6 +948,7 @@ const OVERWORLD_LABELS = [["AGENT WING", 4.5, 5.6], ["MCP LAB", 13.5, 5.6], ["CO
                           ["PROMPT STUDIO", 30.5, 5.6], ["CONTEXT CORNER", 8, 13], ["THE LOUNGE", 26, 13]];
 
 function drawOverworld() {
+  if (!mapCv) return;
   const targetCamX = Math.max(0, Math.min(MAP_W - VIEW_W, player.fx - VIEW_W / 2 + 0.5));
   const targetCamY = Math.max(0, Math.min(MAP_H - VIEW_H, player.fy - VIEW_H / 2 + 0.5));
   if (camFx === null) { camFx = targetCamX; camFy = targetCamY; }       // first frame: snap, no glide-in
@@ -1262,8 +1293,10 @@ function loop(t) {
 ctx.fillStyle = "#0f172a"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 20px monospace"; ctx.textAlign = "center";
 ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
-mapCv = buildMapCanvas();
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-Promise.all([loadImages(), loadTiles()]).then(() => requestAnimationFrame(loop));
+Promise.all([loadImages(), loadTiles()]).then(() => {
+  mapCv = buildMapCanvas();
+  requestAnimationFrame(loop);
+});
