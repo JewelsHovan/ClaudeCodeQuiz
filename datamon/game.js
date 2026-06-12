@@ -118,7 +118,7 @@ function beep(freq, dur = 0.08, type = "square", vol = 0.04, when = 0) {
   } catch (e) { /* audio unavailable */ }
 }
 const sfx = {
-  move: () => {},
+  move: () => beep(180, 0.04, "square", 0.12),
   select: () => beep(880, 0.06),
   confirm: () => { beep(660, 0.07); beep(990, 0.09, "square", 0.04, 0.07); },
   correct: () => { beep(523, 0.09); beep(659, 0.09, "square", 0.04, 0.09); beep(784, 0.14, "square", 0.04, 0.18); },
@@ -231,6 +231,8 @@ let frame = 0;
 let dtF = 1;           // logical 60Hz frames this tick
 let mapCv = null;   // pre-rendered static map — built once at boot
 let battleGrad = null; // battle backdrop gradient — built once at boot
+let stepStartFx = 0, stepStartFy = 0, stepT = 1; // eased-step progress (0..1); 1 = idle
+let camFx = null, camFy = null; // lerped camera (TILE units); null = snap-to-target next frame
 const wrapCache = new Map(); // font|maxW|text -> wrapped lines
 
 // ---------- NPC placement ----------
@@ -392,12 +394,17 @@ function advanceBattle() {
     wrapCache.clear();
     battle = null;
     if (npcs.every(n => n.defeated)) { state = "victory"; sfx.victory(); }
-    else { state = "overworld"; bufferedDir = null; turnStartMs = null; }
+    else {
+      // resolve any step that was mid-slide when SPACE triggered the battle (win keeps you in place)
+      player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
+      state = "overworld"; bufferedDir = null; turnStartMs = null;
+    }
   } else if (b.phase === "lose") {
     wrapCache.clear();
     battle = null;
     player.hp = MAX_HP;
     player.x = player.fx = 18; player.y = player.fy = 16;
+    camFx = camFy = null; stepT = 1; player.moving = false;
     state = "overworld"; bufferedDir = null; turnStartMs = null;
     showToast("You respawned in the lounge with a fresh coffee. HP restored!");
   }
@@ -469,6 +476,8 @@ function handleKey(k) {
       player.slug = ROSTER[selectIdx];
       defeated = new Set();
       player.hp = MAX_HP;
+      player.x = player.fx = 18; player.y = player.fy = 16;
+      camFx = camFy = null; stepT = 1; player.moving = false;
       placeNPCs();
       save();
       state = "overworld"; bufferedDir = null; turnStartMs = null;
@@ -563,12 +572,14 @@ let bufferedDir = null;  // direction pressed mid-slide; consumed at slide end
 function updateOverworld(dt) {
   const speed = 7.5; // tiles/sec
   if (player.moving) {
-    const dx = player.x - player.fx, dy = player.y - player.fy;
-    const dist = Math.hypot(dx, dy), step = speed * dt;
-    if (dist <= step) {
+    stepT = Math.min(1, stepT + speed * dt);              // speed=7.5 → same cadence
+    const e = stepT * stepT * (3 - 2 * stepT);            // smoothstep ease-in/out
+    player.fx = stepStartFx + (player.x - stepStartFx) * e;
+    player.fy = stepStartFy + (player.y - stepStartFy) * e;
+    if (stepT >= 1) {
       player.fx = player.x; player.fy = player.y; player.moving = false;
       if (bufferedDir) consumeBuffered();
-    } else { player.fx += (dx / dist) * step; player.fy += (dy / dist) * step; }
+    }
     return;
   }
   let dir = null;
@@ -590,7 +601,11 @@ function dirHeld(dir) {
 function tryStep(dir) {
   const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[dir];
   const nx = player.x + d[0], ny = player.y + d[1];
-  if (walkable(nx, ny)) { player.x = nx; player.y = ny; player.moving = true; }
+  if (walkable(nx, ny)) {
+    stepStartFx = player.fx; stepStartFy = player.fy; stepT = 0;   // begin eased step
+    player.x = nx; player.y = ny; player.moving = true;
+    if (state === "overworld") sfx.move();
+  }
 }
 function consumeBuffered() {
   const dir = bufferedDir, wasFacing = player.dir;
@@ -899,31 +914,39 @@ function buildMapCanvas() {
   return cv;
 }
 
+const OVERWORLD_LABELS = [["AGENT WING", 4.5, 5.6], ["MCP LAB", 13.5, 5.6], ["CONFIG BAY", 22.5, 5.6],
+                          ["PROMPT STUDIO", 30.5, 5.6], ["CONTEXT CORNER", 8, 13], ["THE LOUNGE", 26, 13]];
+
 function drawOverworld() {
-  const camX = Math.max(0, Math.min(MAP_W - VIEW_W, player.fx - VIEW_W / 2 + 0.5));
-  const camY = Math.max(0, Math.min(MAP_H - VIEW_H, player.fy - VIEW_H / 2 + 0.5));
+  const targetCamX = Math.max(0, Math.min(MAP_W - VIEW_W, player.fx - VIEW_W / 2 + 0.5));
+  const targetCamY = Math.max(0, Math.min(MAP_H - VIEW_H, player.fy - VIEW_H / 2 + 0.5));
+  if (camFx === null) { camFx = targetCamX; camFy = targetCamY; }       // first frame: snap, no glide-in
+  else {
+    camFx += (targetCamX - camFx) * 0.12;
+    camFy += (targetCamY - camFy) * 0.12;
+  }
+  camFx = Math.max(0, Math.min(MAP_W - VIEW_W, camFx));                 // re-clamp to map bounds
+  camFy = Math.max(0, Math.min(MAP_H - VIEW_H, camFy));
 
   // 9-arg drawImage: source rect from the pre-rendered map, dest = full canvas.
   // Source offset -Math.round(-cam*TILE) reproduces the old per-tile
   // px((x-camX)*TILE) rounding EXACTLY (JS rounds half toward +Inf, so
   // Math.round(cam*TILE) alone would differ by 1px at exact half-pixel values).
   ctx.drawImage(mapCv,
-    -Math.round(-camX * TILE), -Math.round(-camY * TILE), CANVAS_W, CANVAS_H,
+    -Math.round(-camFx * TILE), -Math.round(-camFy * TILE), CANVAS_W, CANVAS_H,
     0, 0, CANVAS_W, CANVAS_H);
 
   // room labels
   ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
-  const labels = [["AGENT WING", 4.5, 5.6], ["MCP LAB", 13.5, 5.6], ["CONFIG BAY", 22.5, 5.6], ["PROMPT STUDIO", 30.5, 5.6],
-                  ["CONTEXT CORNER", 8, 13], ["THE LOUNGE", 26, 13]];
-  for (const [txt, lx, ly] of labels) {
-    const sx = (lx - camX) * TILE, sy = (ly - camY) * TILE;
+  for (const [txt, lx, ly] of OVERWORLD_LABELS) {
+    const sx = (lx - camFx) * TILE, sy = (ly - camFy) * TILE;
     ctx.fillStyle = "rgba(15,23,42,0.45)";
     ctx.fillText(txt, px(sx), px(sy));
   }
 
   // NPCs
   for (const n of npcs) {
-    const sx = (n.x - camX) * TILE + TILE / 2, sy = (n.y - camY) * TILE + TILE / 2;
+    const sx = (n.x - camFx) * TILE + TILE / 2, sy = (n.y - camFy) * TILE + TILE / 2;
     if (sx < -TILE || sx > CANVAS_W + TILE || sy < -TILE || sy > CANVAS_H + TILE) continue;
     drawCharacter(sx, sy, n.slug, "down", false, !n.defeated);
     if (n.defeated) {
@@ -936,7 +959,7 @@ function drawOverworld() {
   }
 
   // player
-  drawCharacter((player.fx - camX) * TILE + TILE / 2, (player.fy - camY) * TILE + TILE / 2,
+  drawCharacter((player.fx - camFx) * TILE + TILE / 2, (player.fy - camFy) * TILE + TILE / 2,
     player.slug, player.dir, true, player.moving);
 
   // HUD
@@ -1211,7 +1234,7 @@ function drawToast() {
 // ---------- Main loop ----------
 let lastT = performance.now();
 function loop(t) {
-  const dt = Math.min(0.05, (t - lastT) / 1000);
+  const dt = Math.min(0.05, (t - lastT) / 1000); // clamp caps tab-refocus dt spikes
   lastT = t;
   dtF = dt * 60;
   frame += dtF;
