@@ -130,6 +130,7 @@ const sfx = {
 // ---------- Image loading & pixelation ----------
 const headshots = {};   // slug -> HTMLImageElement (or null on error)
 const sprites = {};     // slug -> generated pixel-art trainer sprite (or null)
+const tileStore = {};   // slug -> 32px office tile HTMLImageElement (or null on error)
 const pixelCache = {};  // slug+size -> canvas
 const miniCache = {};   // slug+size -> downscaled sprite canvas
 
@@ -147,6 +148,22 @@ function loadImages() {
     loadOne(`headshots/${slug}.png`, headshots, slug),
     loadOne(`sprites/${slug}.png`, sprites, slug),
   ]));
+}
+
+// GBA-style office tiles (32px) -> tileStore, for the tile-based renderer (ticket #003).
+// loadOne already resolves with tileStore[slug] = null on any load error, so a missing
+// tiles/ dir or a 404 never throws — the game falls back silently to flat tileColor().
+const TILE_SLUGS = [
+  "floor-a", "floor-b", "floor-c",
+  "wall-h", "wall-v",
+  "wall-corner-tl", "wall-corner-tr", "wall-corner-bl", "wall-corner-br",
+  "desk", "plant", "coffee", "rug",
+];
+
+function loadTiles() {
+  return Promise.all(TILE_SLUGS.map(slug =>
+    loadOne(`tiles/${slug}.png`, tileStore, slug)
+  ));
 }
 
 // Smooth-downscaled square version of the trainer sprite for small sizes
@@ -1226,4 +1243,4 @@ mapCv = buildMapCanvas();
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-loadImages().then(() => requestAnimationFrame(loop));
+Promise.all([loadImages(), loadTiles()]).then(() => requestAnimationFrame(loop));

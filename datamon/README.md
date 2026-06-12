@@ -72,6 +72,10 @@ localStorage (per browser + port, so stick with one way of serving it).
 - `sprites/` — generated GBA-style pixel trainer sprites (transparent 256px PNGs)
 - `headshots/` — 128px teammate headshots, pixelated at runtime (sprite fallback
   + character-select portraits)
+- `tiles/` — GBA-style office tileset: 13 committed 32×32 RGBA PNGs (floor variants,
+  walls + corners, desk, plant, coffee, rug). Loaded into `tileStore` via `loadTiles()`
+  for the tile-based renderer (ticket #003). The game runs fine without them — see regen below.
+- `tools/` — `gen_tiles.py` (regenerates the tileset) and `check_tiles.py` (validates it)
 - `play.sh` — one-command launcher (serve + open browser)
 
 Adding questions: append to `QUESTION_BANK` in `questions.js` (`q`, 4 choices `c`,
@@ -87,3 +91,37 @@ correct index `a`, one-line explanation `x`). Keep `q` ≤ 150 chars, choices �
 
 The sprite-generation tooling (Gemini green-screen pipeline) lives in the
 original `ai-gen-playground` repo (`gen-sprite.sh` + `process_sprites.py`).
+
+## Tileset regen
+
+The office tileset in `tiles/` (13 × 32×32 RGBA PNGs) feeds `tileStore` for the
+tile-based renderer. Tiles are intentionally generated **deterministically** so they
+are exactly 32×32, fully transparent, free of anti-aliasing, and seamless — properties
+an image model can't reliably hit, and which matter for a pixel-art tile renderer.
+
+**Primary recipe — the committed generator (reproducible, no API, no manual slicing):**
+
+```bash
+uv run --with pillow python datamon/tools/gen_tiles.py    # (re)writes datamon/tiles/*.png
+uv run --with pillow python datamon/tools/check_tiles.py  # asserts all 13 are 32×32 RGBA
+```
+
+Edit the palette constants or the per-tile draw functions at the top of
+`datamon/tools/gen_tiles.py` to restyle. The required slugs (consumed by `loadTiles()`
+in `game.js`) are: `floor-a`, `floor-b`, `floor-c`, `wall-h`, `wall-v`,
+`wall-corner-tl/-tr/-bl/-br`, `desk`, `plant`, `coffee`, `rug`.
+
+**Alternative — hand-authored art via the `image-compass:image` skill:**
+
+If you want richer, hand-drawn tiles, generate art and slice it down to 32px yourself,
+then drop the PNGs into `datamon/tiles/` under the same slugs. Suggested prompt:
+
+> GBA-style pixel art office tiles, warm clay/terracotta walls, cream/off-white floor,
+> warm wood desk, leafy green plant, brass coffee machine, transparent background,
+> 256×256px each, no anti-aliasing, tileable seamless edges.
+
+The skill usually returns a single large image — open it in any editor, crop each tile,
+and downscale to 32×32 with **nearest-neighbor** (not bilinear) to keep crisp pixels.
+
+**Fallback safety:** if `tiles/` is missing or any PNG 404s, `loadTiles()` stores `null`
+for that slug and the game renders with flat `tileColor()` colors — no crash, no error.
