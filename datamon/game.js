@@ -753,31 +753,35 @@ function drawHPBar(x, y, w, h, frac, label) {
 }
 
 function drawCharacter(cx, cy, slug, dir, isPlayer, bob) {
+  // Base overworld size 44px; the player grows ~0.5px/win, capped +14px (→58px at 28 wins).
+  const baseSize = isPlayer ? 44 + Math.min(defeated.size * 0.5, 14) : 44;
+  const sizeScale = baseSize / 34;            // proportional factor vs. the old 34px base
+  const footY = cy + 16;                      // tile bottom (cy + TILE/2) — feet anchored here
+
   // Procedural walk cycle driven by movement progress (tile units, ~1→0 per step).
   // Idle characters (isPlayer false, or player not moving) get exactly zero offset.
   let yOff = 0, swing = 0;
   if (isPlayer && player.moving) {
-    const prog = Math.hypot(player.x - player.fx, player.y - player.fy); // ~1 at step start → 0 at arrival
-    swing = Math.sin(prog * Math.PI * 4);   // ≈2 oscillations per tile → leg swing, ±1
-    yOff  = -Math.abs(swing) * 2;           // ≤2px body lift on each footfall (negative = up)
+    const prog = Math.hypot(player.x - player.fx, player.y - player.fy);
+    swing = Math.sin(prog * Math.PI * 4);     // ±1 leg swing
+    yOff  = -Math.abs(swing) * sizeScale * 2; // body lift, scaled proportionally to size
   }
-  const mini = spriteMini(slug, 34);
+  const mini = spriteMini(slug, baseSize);
   if (mini) {
-    // full-body pixel trainer sprite, feet anchored to tile bottom
-    // horizontal sway ≤1px, vertical lift ≤2px
-    ctx.drawImage(mini, px(cx - 17 + swing), px(cy - 18 + yOff), 34, 34);
+    // full-body pixel trainer sprite, feet anchored to tile bottom, grows upward
+    ctx.drawImage(mini, px(cx - baseSize / 2 + swing * sizeScale), px(footY - baseSize + yOff), baseSize, baseSize);
     return;
   }
-  // fallback: simple body + pixelated headshot
+  // fallback: simple body + pixelated headshot (scaled to match the sprite path)
   const bodyColor = isPlayer ? "#ef4444" : "#475569";
-  const headSize = 20;
+  const headSize = 20 * sizeScale;
   ctx.fillStyle = bodyColor;
-  ctx.fillRect(px(cx - 7), px(cy + 2 + yOff), 14, 10);
+  ctx.fillRect(px(cx - 7 * sizeScale), px(footY - 14 * sizeScale + yOff), 14 * sizeScale, 10 * sizeScale);
   ctx.fillStyle = "#1e293b";
-  // legs swing in opposition ≤2px each — left leg forward when swing>0, right leg back
-  ctx.fillRect(px(cx - 6 + swing * 2), px(cy + 12 + yOff), 5, 4);
-  ctx.fillRect(px(cx + 1 - swing * 2), px(cy + 12 + yOff), 5, 4);
-  ctx.drawImage(pixelHead(slug, 16), px(cx - headSize / 2), px(cy - headSize + 4 + yOff), headSize, headSize);
+  // legs swing in opposition, scaled
+  ctx.fillRect(px(cx - 6 * sizeScale + swing * 2 * sizeScale), px(footY - 4 * sizeScale + yOff), 5 * sizeScale, 4 * sizeScale);
+  ctx.fillRect(px(cx + 1 * sizeScale - swing * 2 * sizeScale), px(footY - 4 * sizeScale + yOff), 5 * sizeScale, 4 * sizeScale);
+  ctx.drawImage(pixelHead(slug, 16), px(cx - headSize / 2), px(footY - 32 * sizeScale + yOff), headSize, headSize);
 }
 
 // Draw a trainer sprite bottom-anchored at (cx, baseY) with given height.
@@ -1077,10 +1081,10 @@ function drawOverworld() {
     drawCharacter(sx, sy, n.slug, "down", false, !n.defeated);
     if (n.defeated) {
       ctx.fillStyle = "#22c55e"; ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
-      ctx.fillText("✓", px(sx + 12), px(sy - 14));
+      ctx.fillText("✓", px(sx + 12), px(sy - 26));
     } else {
       ctx.fillStyle = TYPE_COLORS[n.type]; ctx.font = "bold 12px monospace"; ctx.textAlign = "center";
-      ctx.fillText("!", px(sx), px(sy - 18 + Math.sin(frame / 10) * 2));
+      ctx.fillText("!", px(sx), px(sy - 30 + Math.sin(frame / 10) * 2));
     }
   }
 
