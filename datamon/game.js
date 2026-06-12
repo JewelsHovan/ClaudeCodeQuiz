@@ -667,11 +667,19 @@ function drawHPBar(x, y, w, h, frac, label) {
 }
 
 function drawCharacter(cx, cy, slug, dir, isPlayer, bob) {
-  const yOff = bob ? Math.sin(frame / 12) * 1.5 : 0;
+  // Procedural walk cycle driven by movement progress (tile units, ~1→0 per step).
+  // Idle characters (isPlayer false, or player not moving) get exactly zero offset.
+  let yOff = 0, swing = 0;
+  if (isPlayer && player.moving) {
+    const prog = Math.hypot(player.x - player.fx, player.y - player.fy); // ~1 at step start → 0 at arrival
+    swing = Math.sin(prog * Math.PI * 4);   // ≈2 oscillations per tile → leg swing, ±1
+    yOff  = -Math.abs(swing) * 2;           // ≤2px body lift on each footfall (negative = up)
+  }
   const mini = spriteMini(slug, 34);
   if (mini) {
     // full-body pixel trainer sprite, feet anchored to tile bottom
-    ctx.drawImage(mini, px(cx - 17), px(cy - 18 + yOff), 34, 34);
+    // horizontal sway ≤1px, vertical lift ≤2px
+    ctx.drawImage(mini, px(cx - 17 + swing), px(cy - 18 + yOff), 34, 34);
     return;
   }
   // fallback: simple body + pixelated headshot
@@ -680,8 +688,9 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob) {
   ctx.fillStyle = bodyColor;
   ctx.fillRect(px(cx - 7), px(cy + 2 + yOff), 14, 10);
   ctx.fillStyle = "#1e293b";
-  ctx.fillRect(px(cx - 6), px(cy + 12 + yOff), 5, 4);
-  ctx.fillRect(px(cx + 1), px(cy + 12 + yOff), 5, 4);
+  // legs swing in opposition ≤2px each — left leg forward when swing>0, right leg back
+  ctx.fillRect(px(cx - 6 + swing * 2), px(cy + 12 + yOff), 5, 4);
+  ctx.fillRect(px(cx + 1 - swing * 2), px(cy + 12 + yOff), 5, 4);
   ctx.drawImage(pixelHead(slug, 16), px(cx - headSize / 2), px(cy - headSize + 4 + yOff), headSize, headSize);
 }
 
