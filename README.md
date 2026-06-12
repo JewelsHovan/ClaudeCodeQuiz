@@ -37,6 +37,19 @@ That's it. The `/setup` command creates your personal profile and walks you thro
 (in-page timer, auto-scoring, per-domain breakdown, full answer review), then feeds the result back
 into your profile via `/save-progress`.
 
+## DATAMON — study by playing 🎮
+
+A Pokemon-style pixel game where you walk around the office and battle teammates
+by answering Foundations exam questions (120-question bank, 24 per domain, every
+answer explained). Defeat all 28 rivals to become a Claude Certified Architect.
+
+```bash
+./datamon/play.sh
+```
+
+That's it — serves the game locally and opens it in your browser. No build, no
+dependencies. See [datamon/README.md](datamon/README.md) for controls and details.
+
 ## How the Adaptive System Works
 
 ```
