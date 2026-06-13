@@ -44,6 +44,16 @@ function weightedDomain() {
   return DOMAIN_KEYS[0];
 }
 const MAX_HP = 100, WRONG_DMG = 25, FLEE_CHANCE = 0.5;
+const HARD_TIMER_MS = 30000;   // Hard-mode per-question countdown (ms)
+const DIFFICULTIES = ["easy", "normal", "hard"];
+// Mon-level delta per tier (applied in startBattle); Easy is gentler, Hard is tougher.
+const TIER_LEVEL_DELTA = { easy: -2, normal: 0, hard: 2 };
+const DIFF_LABELS = { easy: "EASY", normal: "NORMAL", hard: "HARD" };
+const DIFF_BLURB = {
+  easy: "Easy questions · gentler mons · no timer",
+  normal: "All questions · standard mons · no timer",
+  hard: "Hard questions · tougher mons · 30s timer",
+};
 const SAVE_KEY = "datamon-save-v1";
 
 // ---------- Seeded RNG (stable NPC layout) ----------
@@ -246,6 +256,7 @@ let questionStats = {};  // "CAT:idx" -> {seen, correct, wrong, lastSeen}
 let seenCounter = 0;    // monotonic draw counter — drives lastSeen recency (no Date.now())
 let seenThisRun = {};   // category -> Set<idx> drawn this run (within-run repeat avoidance)
 let coffeeUses = 0;   // coffee heals remaining this run (cap 3); persisted in save
+let difficulty = "normal";   // "easy" | "normal" | "hard" — chosen at select, persisted in save
 let frame = 0;
 let dtF = 1;           // logical 60Hz frames this tick
 let mapCv = null;   // pre-rendered static map — built once at boot
@@ -285,7 +296,7 @@ function placeNPCs() {
 let saveCache; // undefined = not yet read; null = confirmed empty save
 function save() {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ player: player.slug, defeated: [...defeated], questionStats, seenCounter, coffeeUses }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ player: player.slug, defeated: [...defeated], questionStats, seenCounter, coffeeUses, difficulty }));
   } catch (e) {}
   saveCache = undefined;
 }
@@ -296,6 +307,8 @@ function loadSave() {
       questionStats = (s.questionStats && typeof s.questionStats === "object") ? s.questionStats : {};
       seenCounter = typeof s.seenCounter === "number" ? s.seenCounter : 0;
       coffeeUses = typeof s.coffeeUses === "number" ? s.coffeeUses : 0;
+      // Additive migration: old saves lack `difficulty` → default "normal".
+      difficulty = (s.difficulty === "easy" || s.difficulty === "hard") ? s.difficulty : "normal";
       return s;
     }
   } catch (e) {}
@@ -322,14 +335,24 @@ function questionWeight(cat, i) {
 
 function drawQuestion(category) {
   const cat = category === "MIX" ? weightedDomain() : category;
-  const n = QUESTION_BANK[cat].length;
+  const bank = QUESTION_BANK[cat];
+  const n = bank.length;
+  // Difficulty-allowed index set. Normal = all indices (identity no-op — keeps
+  // pre-ticket behavior byte-identical, SC-2). Easy/Hard restrict to that tier,
+  // falling back to the full category when the tier is empty here (AC fallback).
+  let allowed = [];
+  for (let i = 0; i < n; i++) allowed.push(i);
+  if (difficulty === "easy" || difficulty === "hard") {
+    const tiered = allowed.filter(i => bank[i].d === difficulty);
+    if (tiered.length > 0) allowed = tiered;   // else keep the full-category fallback
+  }
   if (!seenThisRun[cat]) seenThisRun[cat] = new Set();
-  // Eligible pool = indices not yet drawn this run; when drained, reset (within-run repeat avoidance).
-  let pool = [];
-  for (let i = 0; i < n; i++) if (!seenThisRun[cat].has(i)) pool.push(i);
+  // Eligible pool = allowed indices not yet drawn this run; when drained, reset
+  // (within-run repeat avoidance, scoped to the filtered tier).
+  let pool = allowed.filter(i => !seenThisRun[cat].has(i));
   if (pool.length === 0) {
-    seenThisRun[cat] = new Set();
-    for (let i = 0; i < n; i++) pool.push(i);
+    for (const i of allowed) seenThisRun[cat].delete(i);
+    pool = allowed.slice();
   }
   // Weighted pick from the eligible pool.
   const weights = pool.map(i => questionWeight(cat, i));
@@ -382,12 +405,13 @@ function spawnPoof(b) {
 function startBattle(npc) {
   const monPool = shuffled(MON_NAMES[npc.type === "MIX" ? weightedDomain() : npc.type],
                            mulberry32(Math.floor(Math.random() * 1e9)));
-  const level = 5 + defeated.size * 2;
+  const level = Math.max(1, 5 + defeated.size * 2 + (TIER_LEVEL_DELTA[difficulty] || 0));
   battle = {
     npc,
     mons: [0, 1].map(i => ({ name: monPool[i % monPool.length], level: level + i, q: null, alive: true })),
     idx: 0,
     phase: "intro",                 // intro | sendout | question | feedback | win | lose
+    timerMs: HARD_TIMER_MS,          // Hard-mode per-question countdown (only consumed when difficulty==="hard")
     msg: `${displayName(npc.slug)} ${BATTLE_INTROS[Math.floor(Math.random() * BATTLE_INTROS.length)]}`,
     sel: 0,
     feedback: null,
@@ -423,6 +447,7 @@ function advanceBattle() {
     currentMon().q = drawQuestion(b.npc.type);
     b.phase = "question";
     b.sel = 0;
+    b.timerMs = HARD_TIMER_MS;       // (re)start the Hard-mode countdown for the new question
   } else if (b.phase === "feedback") {
     if (b.feedback.correct) {
       currentMon().alive = false;
@@ -443,6 +468,7 @@ function advanceBattle() {
       currentMon().q = drawQuestion(b.npc.type);
       b.phase = "question";
       b.sel = 0; b.attackAt = 0; b.dmgAt = 0;
+      b.timerMs = HARD_TIMER_MS;     // (re)start the Hard-mode countdown for the next question
     }
   } else if (b.phase === "win") {
     b.npc.defeated = true;
@@ -475,6 +501,23 @@ function recordOutcome(correct) {
   save();   // persist immediately so a single answer lands in localStorage
 }
 
+// Shared wrong-answer outcome: WRONG_DMG + shake + mon attack/flash animation +
+// feedback flag + transition to the feedback phase. Used by BOTH the wrong branch
+// of answerQuestion AND the Hard-mode timeout handler so they route through the
+// EXACT same code path (Must Not #4 — timeout reuses the existing wrong-answer/
+// blackout flow; at 0 HP advanceBattle's feedback branch routes to lose).
+function applyWrongHit(b, msg) {
+  sfx.wrong();
+  player.hp = Math.max(0, player.hp - WRONG_DMG);
+  b.shake = 14;
+  b.feedback = { correct: false };
+  b.msg = msg;
+  b.attackAt = frame;
+  b.dmgAt = frame;
+  b.msgAt = frame;
+  b.phase = "feedback";
+}
+
 function answerQuestion(i) {
   const b = battle, q = currentMon().q;
   const correct = i === q.a;
@@ -484,17 +527,22 @@ function answerQuestion(i) {
     b.feedback = { correct: true };
     b.msg = `Correct! ${currentMon().name.toUpperCase()} fainted!` + (q.x ? ` (${q.x})` : "");
     b.faintAt = frame;
+    b.msgAt = frame;
+    b.phase = "feedback";
   } else {
-    sfx.wrong();
-    player.hp = Math.max(0, player.hp - WRONG_DMG);
-    b.shake = 14;
-    b.feedback = { correct: false };
-    b.msg = `Wrong! It was "${q.c[q.a]}". ${q.x || ""} ${currentMon().name.toUpperCase()} hits you for ${WRONG_DMG}!`;
-    b.attackAt = frame;
-    b.dmgAt = frame;
+    applyWrongHit(b, `Wrong! It was "${q.c[q.a]}". ${q.x || ""} ${currentMon().name.toUpperCase()} hits you for ${WRONG_DMG}!`);
   }
-  b.msgAt = frame;
-  b.phase = "feedback";
+}
+
+// Hard-mode timer expiry: same outcome as a wrong answer (records a miss, applies
+// the wrong-hit, shows a timeout message). Does NOT auto-advance — the player
+// presses ENTER through feedback exactly as with a wrong answer; at 0 HP the
+// existing advanceBattle feedback→lose branch handles blackout/respawn.
+function timeoutQuestion() {
+  const b = battle;
+  if (!b || b.phase !== "question") return;
+  recordOutcome(false);
+  applyWrongHit(b, `Time's up! It was "${currentMon().q.c[currentMon().q.a]}". ${currentMon().name.toUpperCase()} hits you for ${WRONG_DMG}!`);
 }
 
 function attemptRun() {
@@ -537,6 +585,7 @@ function showToast(msg, ms = 2600) { toast = { msg, until: performance.now() + m
 const keys = {};
 window.addEventListener("keydown", e => {
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
+  if (e.key === "Tab" && state === "select") e.preventDefault();   // Tab cycles difficulty, not focus
   if (e.key === "Escape" && state === "battle" && battle && battle.phase === "question") e.preventDefault();
   keys[e.key] = true;
   if (state === "overworld" && player.moving && KEY_DIR[e.key]) bufferedDir = KEY_DIR[e.key];
@@ -567,6 +616,7 @@ function handleKey(k) {
       seenCounter = 0;
       seenThisRun = {};
       coffeeUses = 3;
+      difficulty = "normal";
       showToast("Save cleared!");
     }
   } else if (state === "select") {
@@ -575,6 +625,7 @@ function handleKey(k) {
     if (k === "ArrowLeft")  setSelect(Math.max(0, selectIdx - 1));
     if (k === "ArrowDown")  setSelect(Math.min(ROSTER.length - 1, selectIdx + cols));
     if (k === "ArrowUp")    setSelect(Math.max(0, selectIdx - cols));
+    if (k === "Tab" || k === "d" || k === "D") cycleDifficulty(1);
     if (k === "Enter" || k === " ") {
       sfx.confirm();
       player.slug = ROSTER[selectIdx];
@@ -629,6 +680,8 @@ canvas.addEventListener("click", e => {
   const [mx, my] = canvasPos(e);
   if (state === "title") handleKey("Enter");
   else if (state === "select") {
+    const diffHit = difficultyHitTest(mx, my);
+    if (diffHit) { if (diffHit !== difficulty) { difficulty = diffHit; sfx.select(); } return; }
     const hit = selectHitTest(mx, my);
     if (hit >= 0) { setSelect(hit, true); handleKey("Enter"); }
   } else if (state === "battle") {
@@ -913,6 +966,31 @@ function setSelect(i, silent) {
   if (!silent) sfx.select();
 }
 
+// Cycle the difficulty selector on the character-select screen (dir +1 / -1).
+function cycleDifficulty(dir) {
+  const i = DIFFICULTIES.indexOf(difficulty);
+  difficulty = DIFFICULTIES[(i + dir + DIFFICULTIES.length) % DIFFICULTIES.length];
+  sfx.select();
+}
+
+// Layout rects for the 3 difficulty segments — left column, below the roster
+// grid (the right showcase panel is occupied by stat bars). Used by render +
+// mouse hit-test so both stay in sync.
+function difficultyRects() {
+  const segW = 120, gap = 12, total = segW * 3 + gap * 2;
+  const gridW = SEL.cols * SEL.cell;            // left grid span
+  const x0 = SEL.ox + (gridW - total) / 2;
+  const y = SEL.oy + Math.ceil(ROSTER.length / SEL.cols) * SEL.cell + 18;
+  return DIFFICULTIES.map((d, i) => [x0 + i * (segW + gap), y, segW, 30, d]);
+}
+
+function difficultyHitTest(mx, my) {
+  for (const [x, y, w, h, d] of difficultyRects()) {
+    if (mx >= x && mx <= x + w && my >= y && my <= y + h) return d;
+  }
+  return null;
+}
+
 function hashStr(s) {
   let h = 2166136261;
   for (const ch of s) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
@@ -1047,8 +1125,29 @@ function drawSelect() {
     ctx.fillText("PRESS ENTER", cx, PANEL.y + PANEL.h - 14);
   }
 
+  // --- difficulty selector (left column, below the roster grid) ---
+  const rects = difficultyRects();
+  const dx0 = rects[0][0], dyTop = rects[0][1];
+  ctx.fillStyle = "#94a3b8"; ctx.font = "bold 12px monospace"; ctx.textAlign = "left";
+  ctx.fillText("DIFFICULTY  (TAB / D to change)", dx0, dyTop - 8);
+  const DIFF_COLORS = { easy: "#22c55e", normal: "#facc15", hard: "#f87171" };
+  for (const [x, y, w, h, d] of rects) {
+    const active = d === difficulty;
+    ctx.fillStyle = active ? DIFF_COLORS[d] : "#1e293b";
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = active ? "#e2e8f0" : "#334155"; ctx.lineWidth = active ? 2 : 1;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = active ? "#0f172a" : "#94a3b8";
+    ctx.font = "bold 14px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(DIFF_LABELS[d], x + w / 2, y + h / 2);
+    ctx.textBaseline = "alphabetic";
+  }
+  // one-line blurb for the active tier
+  ctx.fillStyle = "#64748b"; ctx.font = "11px monospace"; ctx.textAlign = "center";
+  ctx.fillText(DIFF_BLURB[difficulty], dx0 + (rects[2][0] + rects[2][2] - dx0) / 2, dyTop + rects[0][3] + 16);
+
   ctx.fillStyle = "#64748b"; ctx.font = "13px monospace"; ctx.textAlign = "center";
-  ctx.fillText("Arrows or mouse to browse · ENTER / click to pick — everyone else becomes a rival!",
+  ctx.fillText("Arrows or mouse to browse · TAB sets difficulty · ENTER / click to pick a rival!",
     CANVAS_W / 2, CANVAS_H - 20);
 }
 
@@ -1384,6 +1483,23 @@ function drawBattle() {
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText("RUN (R)", rrx + rrw / 2, rry + rrh / 2);
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+
+    // Hard-mode countdown — rendered in the gap above the question box; Easy/Normal show nothing.
+    if (difficulty === "hard") {
+      const remMs = Math.max(0, b.timerMs);
+      const secs = Math.ceil(remMs / 1000);
+      const frac = Math.max(0, Math.min(1, remMs / HARD_TIMER_MS));
+      const low = remMs < 10000;
+      const barW = 220, barH = 12, tcx = CANVAS_W / 2, tby = by - 34;
+      const col = low ? "#f87171" : "#facc15";
+      ctx.fillStyle = col; ctx.font = "bold 16px monospace"; ctx.textAlign = "center";
+      ctx.fillText(`⏱ ${secs}s`, tcx, tby - 4);
+      // track + fill
+      ctx.fillStyle = "#0f172a"; ctx.fillRect(tcx - barW / 2, tby + 4, barW, barH);
+      ctx.fillStyle = col; ctx.fillRect(tcx - barW / 2, tby + 4, barW * frac, barH);
+      ctx.strokeStyle = "#334155"; ctx.lineWidth = 1; ctx.strokeRect(tcx - barW / 2, tby + 4, barW, barH);
+      ctx.textAlign = "left";
+    }
   } else {
     // typewriter message reveal — wrap once per message, reveal by char count
     const shown = Math.floor((frame - b.msgAt + 1) * TEXT_SPEED());
@@ -1490,6 +1606,13 @@ function loop(t) {
   if (state === "transition" && battleTransition) {
     battleTransition.t += dtF;
     if (battleTransition.t >= 46) { startBattle(battleTransition.npc); battleTransition = null; }
+  }
+  // Hard-mode question timer: counts down ONLY during the question phase (Invariant 1 —
+  // paused during feedback/typewriter/intro/sendout/win/lose). On expiry, route through
+  // the shared wrong-answer/timeout flow.
+  if (state === "battle" && battle && battle.phase === "question" && difficulty === "hard") {
+    battle.timerMs -= dt * 1000;
+    if (battle.timerMs <= 0) { battle.timerMs = 0; timeoutQuestion(); }
   }
   // HP bar drains/refills smoothly toward the real value
   player.dispHp += (player.hp - player.dispHp) * (1 - Math.pow(0.88, dtF));
