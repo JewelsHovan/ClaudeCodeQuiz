@@ -245,6 +245,7 @@ let toast = null;       // {msg, until}
 let questionStats = {};  // "CAT:idx" -> {seen, correct, wrong, lastSeen}
 let seenCounter = 0;    // monotonic draw counter — drives lastSeen recency (no Date.now())
 let seenThisRun = {};   // category -> Set<idx> drawn this run (within-run repeat avoidance)
+let coffeeUses = 0;   // coffee heals remaining this run (cap 3); persisted in save
 let frame = 0;
 let dtF = 1;           // logical 60Hz frames this tick
 let mapCv = null;   // pre-rendered static map — built once at boot
@@ -284,7 +285,7 @@ function placeNPCs() {
 let saveCache; // undefined = not yet read; null = confirmed empty save
 function save() {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ player: player.slug, defeated: [...defeated], questionStats, seenCounter }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ player: player.slug, defeated: [...defeated], questionStats, seenCounter, coffeeUses }));
   } catch (e) {}
   saveCache = undefined;
 }
@@ -294,6 +295,7 @@ function loadSave() {
     if (s && ROSTER.includes(s.player)) {
       questionStats = (s.questionStats && typeof s.questionStats === "object") ? s.questionStats : {};
       seenCounter = typeof s.seenCounter === "number" ? s.seenCounter : 0;
+      coffeeUses = typeof s.coffeeUses === "number" ? s.coffeeUses : 0;
       return s;
     }
   } catch (e) {}
@@ -564,6 +566,7 @@ function handleKey(k) {
       questionStats = {};
       seenCounter = 0;
       seenThisRun = {};
+      coffeeUses = 3;
       showToast("Save cleared!");
     }
   } else if (state === "select") {
@@ -580,6 +583,7 @@ function handleKey(k) {
       player.x = player.fx = 18; player.y = player.fy = 16;
       camFx = camFy = null; stepT = 1; player.moving = false;
       placeNPCs();
+      coffeeUses = 3;
       save();
       state = "overworld"; bufferedDir = null; turnStartMs = null;
       showToast("Beat every colleague to become a Claude Certified Architect!", 3500);
@@ -659,9 +663,15 @@ function interact() {
     return;
   }
   if (map[ty] && map[ty][tx] === "C") {
-    player.hp = MAX_HP;
-    sfx.confirm();
-    showToast("You brewed a fresh coffee. HP fully restored!");
+    if (coffeeUses > 0) {
+      coffeeUses--;
+      player.hp = MAX_HP;
+      save();   // persist immediately so a reload can't refill the machine
+      sfx.confirm();
+      showToast(`Fresh coffee — HP restored! ${coffeeUses} ${coffeeUses === 1 ? "use" : "uses"} left.`);
+    } else {
+      showToast("The machine's out of beans — no uses left!");
+    }
   }
   if (map[ty] && map[ty][tx] === "D") showToast("A standing desk. Someone left 47 Chrome tabs open.");
   if (map[ty] && map[ty][tx] === "P") showToast("An office plant. It has seen things.");
