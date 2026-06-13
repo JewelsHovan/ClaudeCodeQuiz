@@ -125,3 +125,46 @@ and downscale to 32×32 with **nearest-neighbor** (not bilinear) to keep crisp p
 
 **Fallback safety:** if `tiles/` is missing or any PNG 404s, `loadTiles()` stores `null`
 for that slug and the game renders with flat `tileColor()` colors — no crash, no error.
+
+## Character animation frames
+
+The overworld characters use a **shared generic body rig** — a single GBA-style indigo jacket /
+dark trouser figure — with each character's `pixelHead` composited on top at runtime.  This
+keeps art assets small (8 sheets instead of per-character sprite sets) while still showing
+every teammate's face.
+
+The title parade and character-select screen continue to use the per-character `spriteMini`
+art (intentional — those surfaces want the full, individual sprites).
+
+**Output layout:** 8 sprite sheets in `datamon/sprites/anim/`, each `128×44` RGBA PNG.
+Format: 4 frames × 32px wide at constant height 44px.
+
+| Sheet | Frames |
+|---|---|
+| `walk_{down,up,left,right}.png` | 4-frame walk cycle (f0 = idle/contact) |
+| `run_{down,up,left,right}.png` | 4-frame run cycle — wider stride + 1px lean |
+
+Head anchor: frame-local `y = 18` (the neckline).  The head zone `y ∈ [0, 18)` is left
+transparent so the game can composite `pixelHead(slug)` directly at the frame's top edge.
+The neckline is held at a **constant** y across all 4 frames of every sheet so the head
+never drifts vertically during animation.
+
+**Regen + validate:**
+
+```bash
+uv run --with pillow python datamon/tools/gen_anim.py    # (re)writes datamon/sprites/anim/*.png
+uv run --with pillow python datamon/tools/check_anim.py  # asserts all 8 are 128×44 RGBA
+```
+
+**Hold R (or Shift) to run.** While R is held the game selects the `run_*` sheets and
+advances the animation at 12.5 tiles/sec instead of 7.5, giving a visually distinct faster
+gait.
+
+**Graceful fallback:** if `sprites/anim/` is absent or any of the 8 sheets 404, `loadAnim()`
+stores `null` for that key (same `loadOne` null-fallback used by tiles).  `animReady()`
+detects the gap and `drawCharacter` falls back silently to the round-2 procedural walk cycle
+— no JS error, no visible glitch.
+
+**DevTools test** (procedural fallback): open the browser console, run
+`window._forceProcedural = true` then reload — `animReady()` returns `false` and the
+original procedural path runs byte-identically.

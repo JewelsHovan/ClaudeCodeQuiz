@@ -134,6 +134,8 @@ const sprites = {};     // slug -> generated pixel-art trainer sprite (or null)
 const tileStore = {};   // slug -> 32px office tile HTMLImageElement (or null on error)
 const pixelCache = {};  // slug+size -> canvas
 const miniCache = {};   // slug+size -> downscaled sprite canvas
+const animFrames = (window._animFrames = {}); // "walk_down".. -> HTMLImageElement|null ; separate from sprites/tileStore
+const ANIM_DIRS = ["down","up","left","right"], ANIM_NFRAMES = 4, ANIM_FW = 32, ANIM_FH = 44, ANIM_HEAD_ANCHOR_Y = 18, ANIM_HEAD_SRC = 20;
 
 function loadOne(src, store, slug) {
   return new Promise(resolve => {
@@ -165,6 +167,19 @@ function loadTiles() {
   return Promise.all(TILE_SLUGS.map(slug =>
     loadOne(`tiles/${slug}.png`, tileStore, slug)
   ));
+}
+
+function loadAnim() {
+  const jobs = [];
+  for (const gait of ["walk","run"]) for (const d of ANIM_DIRS)
+    jobs.push(loadOne(`sprites/anim/${gait}_${d}.png`, animFrames, `${gait}_${d}`));
+  return Promise.all(jobs);
+}
+function animReady() {
+  if (window._forceProcedural) return false;
+  for (const gait of ["walk","run"]) for (const d of ANIM_DIRS)
+    if (!window._animFrames[`${gait}_${d}`]) return false;
+  return true;
 }
 
 // Smooth-downscaled square version of the trainer sprite for small sizes
@@ -235,6 +250,7 @@ let dtF = 1;           // logical 60Hz frames this tick
 let mapCv = null;   // pre-rendered static map — built once at boot
 let battleGrad = null; // battle backdrop gradient — built once at boot
 let stepStartFx = 0, stepStartFy = 0, stepT = 1; // eased-step progress (0..1); 1 = idle
+let gaitPhase = 0; // free-running anim cycle position (tiles traveled); reset when idle
 let camFx = null, camFy = null; // lerped camera (TILE units); null = snap-to-target next frame
 const wrapCache = new Map(); // font|maxW|text -> wrapped lines
 
@@ -657,9 +673,12 @@ const KEY_DIR = { ArrowUp: "up", w: "up", ArrowDown: "down", s: "down",
 let turnStartMs = null;  // wall-clock when tap-to-turn window opened; null when closed
 let bufferedDir = null;  // direction pressed mid-slide; consumed at slide end
 function updateOverworld(dt) {
-  const speed = 7.5; // tiles/sec
+  const WALK_SPEED = 7.5, RUN_SPEED = 12.5; // tiles/sec
+  player.running = !!(keys["r"] || keys["R"] || keys["Shift"]);
   if (player.moving) {
-    stepT = Math.min(1, stepT + speed * dt);              // speed=7.5 → same cadence
+    const speed = player.running ? RUN_SPEED : WALK_SPEED;
+    stepT = Math.min(1, stepT + speed * dt);              // speed=7.5/12.5 → walk/run cadence
+    gaitPhase += speed * dt;
     const e = stepT * stepT * (3 - 2 * stepT);            // smoothstep ease-in/out
     player.fx = stepStartFx + (player.x - stepStartFx) * e;
     player.fy = stepStartFy + (player.y - stepStartFy) * e;
@@ -669,6 +688,7 @@ function updateOverworld(dt) {
     }
     return;
   }
+  gaitPhase = 0;
   let dir = null;
   if (keys["ArrowUp"] || keys["w"]) dir = "up";
   else if (keys["ArrowDown"] || keys["s"]) dir = "down";
@@ -759,6 +779,8 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove) {
   const sizeScale = baseSize / 34;            // proportional factor vs. the old 34px base
   const footY = cy + 16;                      // tile bottom (cy + TILE/2) — feet anchored here
 
+  if (animReady()) { drawCharacterFrames(cx, cy, slug, dir, isPlayer, baseSize, footY, wallAbove); return; }
+
   // Procedural walk cycle driven by movement progress (tile units, ~1→0 per step).
   // Idle characters (isPlayer false, or player not moving) get exactly zero offset.
   let yOff = 0, swing = 0;
@@ -798,6 +820,36 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove) {
     ctx.fillRect(px(cx + 1 * sizeScale - swing * 2 * sizeScale), px(footY - 4 * sizeScale + yOff), 5 * sizeScale, 4 * sizeScale);
     ctx.drawImage(pixelHead(slug, 16), px(cx - headSize / 2), px(footY - 32 * sizeScale + yOff), headSize, headSize);
   }
+
+  if (needClip) ctx.restore();
+}
+
+function drawCharacterFrames(cx, cy, slug, dir, isPlayer, baseSize, footY, wallAbove) {
+  const moving = isPlayer && player.moving;
+  const gait = (moving && player.running) ? "run" : "walk";
+  const fi = moving ? Math.floor(gaitPhase * ANIM_NFRAMES) % ANIM_NFRAMES : 0; // idle = rest frame 0
+  const safeDir = ANIM_DIRS.includes(dir) ? dir : "down";
+  const sheet = window._animFrames[`${gait}_${safeDir}`] || window._animFrames["walk_down"];
+
+  const s = baseSize / ANIM_FH;            // uniform scale (drawW/FW == drawH/FH == s)
+  const drawH = baseSize, drawW = baseSize * ANIM_FW / ANIM_FH;
+  const dx = px(cx - drawW / 2), dy = px(footY - drawH);
+
+  // clip-safe parity with #011 (clip from the body/head top)
+  let clipTop = HUD_BOTTOM + 2;
+  if (wallAbove) clipTop = Math.max(clipTop, footY - TILE);
+  const needClip = dy < clipTop;
+  if (needClip) { ctx.save(); ctx.beginPath(); ctx.rect(0, clipTop, CANVAS_W, CANVAS_H - clipTop); ctx.clip(); }
+
+  // shared generic body frame
+  ctx.drawImage(sheet, fi * ANIM_FW, 0, ANIM_FW, ANIM_FH, dx, dy, drawW, drawH);
+
+  // per-character head composited at the (constant) neckline, scaled with the body
+  const headN = Math.round(ANIM_HEAD_SRC * s);
+  ctx.drawImage(pixelHead(slug, 18), px(cx - headN / 2), px(dy), headN, headN);
+
+  if (window._debugAnchor) { ctx.strokeStyle = "#ff0000"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(dx, px(dy + ANIM_HEAD_ANCHOR_Y * s)); ctx.lineTo(dx + drawW, px(dy + ANIM_HEAD_ANCHOR_Y * s)); ctx.stroke(); }
 
   if (needClip) ctx.restore();
 }
@@ -1451,7 +1503,7 @@ ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-Promise.all([loadImages(), loadTiles()]).then(() => {
+Promise.all([loadImages(), loadTiles(), loadAnim()]).then(() => {
   mapCv = buildMapCanvas();
   requestAnimationFrame(loop);
 });
