@@ -31,6 +31,7 @@ const MAP_W = 36, MAP_H = 24;
 const VIEW_W = 25, VIEW_H = 19;          // tiles visible
 const CANVAS_W = VIEW_W * TILE;          // 800
 const CANVAS_H = VIEW_H * TILE;          // 608
+const HUD_BOTTOM = 72;                    // bottom of the top-left HUD box (8 + 64)
 const SOLID = new Set(["#", "D", "P", "C"]);
 const TYPE_COLORS = { AGENT: "#3b82f6", MCP: "#a855f7", CONFIG: "#22c55e", PROMPT: "#f97316", CONTEXT: "#06b6d4", MIX: "#f59e0b" };
 const TYPE_NAMES  = { AGENT: "Agent Wing", MCP: "MCP Lab", CONFIG: "Config Bay", PROMPT: "Prompt Studio", CONTEXT: "Context Corner", MIX: "The Lounge" };
@@ -752,7 +753,7 @@ function drawHPBar(x, y, w, h, frac, label) {
   }
 }
 
-function drawCharacter(cx, cy, slug, dir, isPlayer, bob) {
+function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove) {
   // Base overworld size 44px; the player grows ~0.5px/win, capped +14px (→58px at 28 wins).
   const baseSize = isPlayer ? 44 + Math.min(defeated.size * 0.5, 14) : 44;
   const sizeScale = baseSize / 34;            // proportional factor vs. the old 34px base
@@ -766,22 +767,39 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob) {
     swing = Math.sin(prog * Math.PI * 4);     // ±1 leg swing
     yOff  = -Math.abs(swing) * sizeScale * 2; // body lift, scaled proportionally to size
   }
+
+  // Clip-safe clamp: a tall sprite (up to 58px) grows upward past its own tile. Never
+  // let it paint into the top HUD band, and — when a solid tile sits directly above the
+  // feet — never let it paint up into that wall tile (otherwise the head clips through
+  // the wall). Clip (truncate) the overflow rather than squashing the sprite.
+  let clipTop = HUD_BOTTOM + 2;
+  if (wallAbove) clipTop = Math.max(clipTop, footY - TILE);   // stop at the character's own tile top
+  const needClip = (footY - baseSize + yOff) < clipTop;
+  if (needClip) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, clipTop, CANVAS_W, CANVAS_H - clipTop);
+    ctx.clip();
+  }
+
   const mini = spriteMini(slug, baseSize);
   if (mini) {
     // full-body pixel trainer sprite, feet anchored to tile bottom, grows upward
     ctx.drawImage(mini, px(cx - baseSize / 2 + swing * sizeScale), px(footY - baseSize + yOff), baseSize, baseSize);
-    return;
+  } else {
+    // fallback: simple body + pixelated headshot (scaled to match the sprite path)
+    const bodyColor = isPlayer ? "#ef4444" : "#475569";
+    const headSize = 20 * sizeScale;
+    ctx.fillStyle = bodyColor;
+    ctx.fillRect(px(cx - 7 * sizeScale), px(footY - 14 * sizeScale + yOff), 14 * sizeScale, 10 * sizeScale);
+    ctx.fillStyle = "#1e293b";
+    // legs swing in opposition, scaled
+    ctx.fillRect(px(cx - 6 * sizeScale + swing * 2 * sizeScale), px(footY - 4 * sizeScale + yOff), 5 * sizeScale, 4 * sizeScale);
+    ctx.fillRect(px(cx + 1 * sizeScale - swing * 2 * sizeScale), px(footY - 4 * sizeScale + yOff), 5 * sizeScale, 4 * sizeScale);
+    ctx.drawImage(pixelHead(slug, 16), px(cx - headSize / 2), px(footY - 32 * sizeScale + yOff), headSize, headSize);
   }
-  // fallback: simple body + pixelated headshot (scaled to match the sprite path)
-  const bodyColor = isPlayer ? "#ef4444" : "#475569";
-  const headSize = 20 * sizeScale;
-  ctx.fillStyle = bodyColor;
-  ctx.fillRect(px(cx - 7 * sizeScale), px(footY - 14 * sizeScale + yOff), 14 * sizeScale, 10 * sizeScale);
-  ctx.fillStyle = "#1e293b";
-  // legs swing in opposition, scaled
-  ctx.fillRect(px(cx - 6 * sizeScale + swing * 2 * sizeScale), px(footY - 4 * sizeScale + yOff), 5 * sizeScale, 4 * sizeScale);
-  ctx.fillRect(px(cx + 1 * sizeScale - swing * 2 * sizeScale), px(footY - 4 * sizeScale + yOff), 5 * sizeScale, 4 * sizeScale);
-  ctx.drawImage(pixelHead(slug, 16), px(cx - headSize / 2), px(footY - 32 * sizeScale + yOff), headSize, headSize);
+
+  if (needClip) ctx.restore();
 }
 
 // Draw a trainer sprite bottom-anchored at (cx, baseY) with given height.
@@ -1074,23 +1092,46 @@ function drawOverworld() {
     ctx.fillText(txt, px(sx), px(sy));
   }
 
-  // NPCs
+  // Painter's algorithm: collect every on-screen character (NPCs + player) into one
+  // list, sort back-to-front by feet-Y (tie-break x), and draw in that order so a
+  // character standing further south (lower on screen, closer to the viewer) always
+  // draws on top — whether that's the player or an NPC. sy carries a constant offset
+  // from feet-Y, so sorting by sy is equivalent. The comparator reads only; it never
+  // mutates any NPC/player position field.
+  const onScreen = (sx, sy) => sx >= -TILE && sx <= CANVAS_W + TILE && sy >= -TILE && sy <= CANVAS_H + TILE;
+  const isSolidTile = (tx, ty) =>
+    ty >= 0 && ty < MAP_H && tx >= 0 && tx < MAP_W && SOLID.has(map[ty][tx]);
+
+  const chars = [];
   for (const n of npcs) {
     const sx = (n.x - camFx) * TILE + TILE / 2, sy = (n.y - camFy) * TILE + TILE / 2;
-    if (sx < -TILE || sx > CANVAS_W + TILE || sy < -TILE || sy > CANVAS_H + TILE) continue;
-    drawCharacter(sx, sy, n.slug, "down", false, !n.defeated);
-    if (n.defeated) {
+    if (!onScreen(sx, sy)) continue;
+    chars.push({ sx, sy, slug: n.slug, dir: "down", isPlayer: false, bob: !n.defeated, tx: n.x, ty: n.y, npc: n });
+  }
+  {
+    const sx = (player.fx - camFx) * TILE + TILE / 2, sy = (player.fy - camFy) * TILE + TILE / 2;
+    chars.push({ sx, sy, slug: player.slug, dir: player.dir, isPlayer: true, bob: player.moving,
+                 tx: Math.round(player.fx), ty: Math.round(player.fy), npc: null });
+  }
+  chars.sort((a, b) => (a.sy - b.sy) || (a.sx - b.sx));   // back-to-front, tie-break x
+
+  for (const c of chars) {
+    drawCharacter(c.sx, c.sy, c.slug, c.dir, c.isPlayer, c.bob, isSolidTile(c.tx, c.ty - 1));
+  }
+
+  // Defeat markers in a separate pass AFTER all characters, so they always render on
+  // top regardless of the depth-sort order.
+  for (const c of chars) {
+    if (c.isPlayer) continue;
+    const { sx, sy, npc } = c;
+    if (npc.defeated) {
       ctx.fillStyle = "#22c55e"; ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
       ctx.fillText("✓", px(sx + 12), px(sy - 26));
     } else {
-      ctx.fillStyle = TYPE_COLORS[n.type]; ctx.font = "bold 12px monospace"; ctx.textAlign = "center";
+      ctx.fillStyle = TYPE_COLORS[npc.type]; ctx.font = "bold 12px monospace"; ctx.textAlign = "center";
       ctx.fillText("!", px(sx), px(sy - 30 + Math.sin(frame / 10) * 2));
     }
   }
-
-  // player
-  drawCharacter((player.fx - camFx) * TILE + TILE / 2, (player.fy - camFy) * TILE + TILE / 2,
-    player.slug, player.dir, true, player.moving);
 
   // HUD
   ctx.fillStyle = "rgba(15,23,42,0.85)";
