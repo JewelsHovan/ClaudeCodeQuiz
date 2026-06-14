@@ -301,6 +301,15 @@ function loadProps() {
     .catch(() => { propManifest = []; });
 }
 
+// Books (#027): load books.json for the in-game reader. Mirrors loadLibraryAssets() crash-safety.
+// On missing/malformed/network error: loadedBooks stays [] — never rejects boot Promise.all.
+function loadBooks() {
+  return fetch("library/books.json")
+    .then(r => (r.ok ? r.json() : []))
+    .then(data => { if (Array.isArray(data)) loadedBooks = data; })
+    .catch(() => { loadedBooks = []; });
+}
+
 // Library assets (#026): mirrored exactly from loadProps() for crash-safety.
 // On file:// protocol or any network error: libManifest = [], libStore stays empty,
 // buildLibraryMapCanvas() degrades to drawn-box fallbacks — never rejects the boot Promise.all.
@@ -400,6 +409,9 @@ let defeated = new Set();
 let battle = null;
 let toast = null;       // {msg, until}
 let coffeePrompt = null; // {sel} — Yes/No confirm before drinking; sel 0=Yes 1=No (default No, anti-spam)
+let loadedBooks = [];   // parsed books.json array; [] if missing/malformed
+let bookPrompt = null;  // {sel, books} — book-picker modal
+let readerState = null; // {book, page, screens, maxPage} — full-canvas reader
 let questionStats = {};  // "CAT:idx" -> {seen, correct, wrong, lastSeen}
 let seenCounter = 0;    // monotonic draw counter — drives lastSeen recency (no Date.now())
 let seenThisRun = {};   // category -> Set<idx> drawn this run (within-run repeat avoidance)
@@ -754,6 +766,7 @@ window.addEventListener("keydown", e => {
   if (e.key === "Escape" && state === "battle" && battle && battle.phase === "question") e.preventDefault();
   keys[e.key] = true;
   if (state === "overworld" && player.moving && KEY_DIR[e.key]) bufferedDir = KEY_DIR[e.key];
+  if (e.repeat && (bookPrompt || readerState)) return; // prevent held-Enter blowing picker→reader
   handleKey(e.key);
 });
 window.addEventListener("keyup", e => { keys[e.key] = false; });
@@ -818,6 +831,26 @@ function handleKey(k) {
       }
       return;
     }
+    // Book picker — intercepts BEFORE interact() can re-fire
+    if (bookPrompt) {
+      const books = bookPrompt.books, n = books.length;
+      if (k === "ArrowUp" || k === "w" || k === "W") { bookPrompt.sel = (bookPrompt.sel - 1 + n) % n; sfx.select(); }
+      else if (k === "ArrowDown" || k === "s" || k === "S") { bookPrompt.sel = (bookPrompt.sel + 1) % n; sfx.select(); }
+      else if (k === "Enter" || k === " ") {
+        const book = books[bookPrompt.sel];
+        bookPrompt = null;
+        readerState = { book, page: 0, screens: buildReaderScreens(book), maxPage: 0 };
+        readerState.maxPage = readerState.screens.length - 1;
+      } else if (k === "Escape") { bookPrompt = null; sfx.select(); }
+      return;
+    }
+    // Full-canvas reader — intercepts BEFORE interact()
+    if (readerState) {
+      if (k === "ArrowLeft" || k === "a" || k === "A") { readerState.page = Math.max(0, readerState.page - 1); sfx.select(); }
+      else if (k === "ArrowRight" || k === "d" || k === "D") { readerState.page = Math.min(readerState.maxPage, readerState.page + 1); sfx.select(); }
+      else if (k === "Escape") { closeReader(); sfx.select(); }
+      return;
+    }
     if (k === "/" || k === "f" || k === "F") { if (currentMap === "office") openSearch(); return; }
     if (k === " " || k === "Enter" || k === "e" || k === "E") interact();
   } else if (state === "battle") {
@@ -880,6 +913,7 @@ canvas.addEventListener("mousemove", e => {
 
 canvas.addEventListener("click", e => {
   const [mx, my] = canvasPos(e);
+  if (bookPrompt || readerState) return; // swallow clicks behind book modal (keyboard-only UI)
   if (coffeePrompt && coffeePrompt.btns) {
     const hit = coffeePrompt.btns.findIndex(b => mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h);
     if (hit >= 0) { coffeePrompt.sel = hit; handleKey("Enter"); }
@@ -933,7 +967,7 @@ function interact() {
   if (map[ty] && map[ty][tx] === "D") showToast("A standing desk. Someone left 47 Chrome tabs open.");
   if (map[ty] && map[ty][tx] === "P") showToast("An office plant. It has seen things.");
   if (map[ty] && map[ty][tx] === "L") { warpToggle(); return; }
-  if (map[ty] && map[ty][tx] === "B") { showToast("Press Enter to read."); return; }        // stub → ticket #027
+  if (map[ty] && map[ty][tx] === "B") { openBookPicker(); return; }                          // book reader — ticket #027
   if (map[ty] && map[ty][tx] === "S") { showToast("Study station: coming soon."); return; } // stub → ticket #028
 }
 
@@ -943,6 +977,7 @@ function interact() {
 function warpToggle() {
   player.moving = false; stepT = 1;      // resolve any in-progress step
   coffeePrompt = null; scout = null;     // defensive: clear overworld modals/cinematics
+  bookPrompt = null; readerState = null; // defensive: clear book reader modals (#027)
   if (currentMap === "office") {
     currentMap = "library"; map = LIBRARY_MAP; mapCv = libraryMapCv;
     officeNpcs = npcs; npcs = [];         // stash office NPCs; library has none
@@ -980,6 +1015,8 @@ function updateOverworld(dt) {
   if (dustParticles.length) dustParticles = dustParticles.filter(d => d.life > 0);
 
   if (coffeePrompt) return;   // modal coffee dialog open — freeze movement input
+  if (bookPrompt) return;     // book picker open — freeze movement input
+  if (readerState) return;    // book reader open — freeze movement input
   if (scout) return;          // search pan-to-person cinematic — freeze movement
 
   const WALK_SPEED = 7.5, RUN_SPEED = 12.5; // tiles/sec
@@ -1071,6 +1108,225 @@ function wrapTextMemo(text, maxW, font) {
   const lines = wrapText(text, maxW, font); // wrapText sets ctx.font itself
   wrapCache.set(key, lines);
   return lines;
+}
+
+// ---------- Book reader helpers (#027) ----------
+
+// Strip Markdown tokens from a line (headers, bold, inline code).
+// doTrim=true for normal text lines; false for fallback_text (ASCII art must keep indentation).
+function sanitizeBookText(line, doTrim) {
+  let s = line.replace(/^#{1,3}\s*/, "").replace(/\*\*/g, "").replace(/`/g, "");
+  return doTrim ? s.trim() : s;
+}
+
+// Wrap a single sanitized line to body pixel width, then hard-chop any run-on segments
+// (e.g. long URLs with no spaces). Returns array of display strings.
+function wrapAndChop(line, bodyW, font) {
+  const wrapped = wrapText(line, bodyW, font);
+  const result = [];
+  for (const seg of wrapped) {
+    ctx.font = font;
+    if (ctx.measureText(seg).width <= bodyW) {
+      result.push(seg);
+    } else {
+      // Hard char-chop: slice chars until each piece fits.
+      let rem = seg;
+      while (rem.length > 0) {
+        let cut = rem.length;
+        while (cut > 1 && ctx.measureText(rem.slice(0, cut)).width > bodyW) cut--;
+        result.push(rem.slice(0, cut));
+        rem = rem.slice(cut);
+      }
+    }
+  }
+  return result.length > 0 ? result : [""];
+}
+
+// Build the array of screen-pages for the reader. Called once on book open.
+// Returns an array of {kind:"text", lines:[...]} or {kind:"sprite", slug} objects.
+function buildReaderScreens(book) {
+  const READER_W = 720, READER_H = 560;
+  const PAD = 32;
+  const bodyW = READER_W - PAD * 2;
+  const headerH = 44; // title bar height
+  const footerH = 32; // footer bar height
+  const lineH = 18;
+  const font = "12px monospace";
+  const maxBodyLines = Math.floor((READER_H - headerH - footerH) / lineH);
+
+  const screens = [];
+  for (const page of (book.pages || [])) {
+    if (page.type === "diagram_anchor") {
+      if (libStore[page.slug]) {
+        // Sprite available — one atomic screen
+        screens.push({ kind: "sprite", slug: page.slug });
+      } else {
+        // Fallback: ASCII box art — preserve indentation, no trim
+        const rawLines = (page.fallback_text || "").split("\n");
+        const displayLines = [];
+        for (const raw of rawLines) {
+          const sanitized = sanitizeBookText(raw, false);
+          for (const dl of wrapAndChop(sanitized, bodyW, font)) displayLines.push(dl);
+        }
+        // Chunk into screens
+        for (let i = 0; i < displayLines.length; i += maxBodyLines) {
+          screens.push({ kind: "text", lines: displayLines.slice(i, i + maxBodyLines) });
+        }
+      }
+    } else {
+      // text page
+      const displayLines = [];
+      for (const raw of (page.lines || [])) {
+        const sanitized = sanitizeBookText(raw, true);
+        if (sanitized === "") { displayLines.push(""); continue; }
+        for (const dl of wrapAndChop(sanitized, bodyW, font)) displayLines.push(dl);
+      }
+      // Chunk into screens
+      for (let i = 0; i < displayLines.length; i += maxBodyLines) {
+        screens.push({ kind: "text", lines: displayLines.slice(i, i + maxBodyLines) });
+      }
+    }
+  }
+  // Guarantee at least one screen so reader never has zero pages
+  if (screens.length === 0) screens.push({ kind: "text", lines: ["(No content.)"] });
+  return screens;
+}
+
+// Open the book-picker modal. Guard against missing books (shows toast instead of blank overlay).
+function openBookPicker() {
+  if (state !== "overworld" || coffeePrompt || readerState) return;
+  if (!loadedBooks.length) { showToast("No books available."); return; }
+  bookPrompt = { sel: 0, books: loadedBooks };
+}
+
+// Close the reader and fully reset movement state (mirrors warpToggle's pattern).
+function closeReader() {
+  readerState = null;
+  bookPrompt = null;
+  player.moving = false;
+  stepT = 1;
+  player.fx = player.x;
+  player.fy = player.y;
+  bufferedDir = null;
+  turnStartMs = null;
+}
+
+// ---------- Book reader draw functions (#027) ----------
+
+// Book-picker modal — mirrors drawCoffeePrompt box/scrim/color tokens.
+function drawBookPrompt() {
+  if (!bookPrompt) return;
+  const MAXROWS = 8;
+  const books = bookPrompt.books;
+  const total = books.length;
+  const rows = Math.min(MAXROWS, total);
+  const rowH = 34;
+  const bw = 500, headerH = 56, footerH = 28;
+  const bh = headerH + rows * rowH + footerH + 8;
+  const bx = (CANVAS_W - bw) / 2, by = (CANVAS_H - bh) / 2;
+
+  // Scrim + box
+  ctx.fillStyle = "rgba(8,12,24,0.78)"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.fillStyle = "rgba(15,23,42,0.97)"; ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = "#facc15"; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+
+  // Title
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 15px monospace";
+  ctx.fillText("LIBRARY — SELECT A BOOK", CANVAS_W / 2, by + 30);
+
+  // Scroll window (mirror drawSearch math)
+  const sel = bookPrompt.sel;
+  let start = 0;
+  if (total > MAXROWS) start = Math.max(0, Math.min(sel - 3, total - MAXROWS));
+
+  // Book rows
+  const listTop = by + headerH;
+  for (let i = 0; i < rows; i++) {
+    const idx = start + i;
+    const book = books[idx];
+    const ry = listTop + i * rowH;
+    const on = idx === sel;
+    ctx.fillStyle = on ? "#facc15" : "rgba(30,41,59,0.6)";
+    ctx.fillRect(bx + 12, ry, bw - 24, rowH - 2);
+    ctx.fillStyle = on ? "#0f172a" : "#e2e8f0";
+    ctx.font = "bold 13px monospace"; ctx.textAlign = "left";
+    ctx.fillText(book.title || "(untitled)", bx + 20, ry + 16);
+    ctx.fillStyle = on ? "#334155" : "#64748b";
+    ctx.font = "11px monospace";
+    ctx.fillText(book.domain || "", bx + 20, ry + 29);
+  }
+
+  // "+N more" overflow hint
+  if (start + rows < total) {
+    ctx.fillStyle = "#64748b"; ctx.font = "10px monospace"; ctx.textAlign = "center";
+    ctx.fillText(`+${total - (start + rows)} more`, CANVAS_W / 2, listTop + rows * rowH + 10);
+  }
+
+  // Footer
+  ctx.fillStyle = "#64748b"; ctx.font = "11px monospace"; ctx.textAlign = "center";
+  ctx.fillText("↑↓ select · Enter open · Esc close", CANVAS_W / 2, by + bh - 8);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+
+// Full-canvas reader — draws prebuilt screens, never re-wraps.
+function drawReader() {
+  if (!readerState) return;
+  const { book, page, screens, maxPage } = readerState;
+  const screen = screens[page];
+  if (!screen) return;
+
+  const RW = 720, RH = 560;
+  const rx = (CANVAS_W - RW) / 2, ry = (CANVAS_H - RH) / 2;
+  const PAD = 32;
+  const headerH = 44, footerH = 32;
+
+  // Scrim + box
+  ctx.fillStyle = "rgba(8,12,24,0.88)"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.fillStyle = "rgba(15,23,42,0.97)"; ctx.fillRect(rx, ry, RW, RH);
+  ctx.strokeStyle = "#facc15"; ctx.lineWidth = 2; ctx.strokeRect(rx, ry, RW, RH);
+
+  // Header
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 13px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  const title = (book.title || "Book").slice(0, 60);
+  ctx.fillText(`${title} — Page ${page + 1}/${screens.length}`, CANVAS_W / 2, ry + 26);
+  // Header separator
+  ctx.strokeStyle = "rgba(100,116,139,0.4)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(rx + PAD, ry + headerH - 4); ctx.lineTo(rx + RW - PAD, ry + headerH - 4); ctx.stroke();
+
+  // Body
+  const bodyTop = ry + headerH;
+  if (screen.kind === "sprite") {
+    const img = libStore[screen.slug];
+    if (img && img.width) {
+      const bodyW = RW - PAD * 2, bodyH = RH - headerH - footerH;
+      const scale = Math.min(bodyW / img.width, bodyH / img.height);
+      const dw = img.width * scale, dh = img.height * scale;
+      const dx = rx + (RW - dw) / 2, dy = bodyTop + (bodyH - dh) / 2;
+      ctx.drawImage(img, dx, dy, dw, dh);
+    }
+  } else {
+    const lineH = 18;
+    ctx.fillStyle = "#e2e8f0"; ctx.font = "12px monospace"; ctx.textAlign = "left";
+    for (let i = 0; i < screen.lines.length; i++) {
+      ctx.fillText(screen.lines[i], rx + PAD, bodyTop + 14 + i * lineH);
+    }
+  }
+
+  // Footer separator
+  const footerY = ry + RH - footerH;
+  ctx.strokeStyle = "rgba(100,116,139,0.4)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(rx + PAD, footerY); ctx.lineTo(rx + RW - PAD, footerY); ctx.stroke();
+
+  // Footer nav
+  ctx.font = "11px monospace"; ctx.textAlign = "center";
+  ctx.fillStyle = page > 0 ? "#94a3b8" : "#334155";
+  ctx.fillText("← prev", rx + 80, footerY + 20);
+  ctx.fillStyle = page < maxPage ? "#94a3b8" : "#334155";
+  ctx.fillText("next →", rx + RW - 80, footerY + 20);
+  ctx.fillStyle = "#64748b";
+  ctx.fillText("Esc close", CANVAS_W / 2, footerY + 20);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 
 // reveal `shown` chars from pre-wrapped lines at their final positions
@@ -2263,6 +2519,7 @@ function loop(t) {
   else if (state === "victory") drawVictory();
   else if (state === "search") { drawOverworld(); drawSearch(); }
   if (state === "overworld") drawCoffeePrompt();
+  if (state === "overworld") { if (bookPrompt) drawBookPrompt(); if (readerState) drawReader(); }
   drawToast();
 
   requestAnimationFrame(loop);
@@ -2275,7 +2532,7 @@ ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets()]).then(() => {
+Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets(), loadBooks()]).then(() => {
   officeMapCv = buildMapCanvas();         // reads global map (= OFFICE_MAP) — must run while currentMap is office
   libraryMapCv = buildLibraryMapCanvas(); // reads LIBRARY_MAP directly
   mapCv = officeMapCv;
