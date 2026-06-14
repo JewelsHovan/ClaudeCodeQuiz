@@ -1,0 +1,248 @@
+[
+  {
+    "correct_layout": [
+      "piece-1",
+      "piece-2"
+    ],
+    "domain": 1,
+    "id": "diagram-000",
+    "pieces": [
+      {
+        "id": "piece-1",
+        "label": "\"tool_use\" → Execute requested tools → Append results → Go to step 1",
+        "sprite_slug": "lib-diagram-domain1-agentic-architecture-orchestration-1-piece-1"
+      },
+      {
+        "id": "piece-2",
+        "label": "\"end_turn\" → Done! Return final response to user",
+        "sprite_slug": "lib-diagram-domain1-agentic-architecture-orchestration-1-piece-2"
+      }
+    ],
+    "root": "1. Send request to Claude (with tools defined)",
+    "slug": "lib-diagram-domain1-agentic-architecture-orchestration-1",
+    "sprite_slug": "lib-diagram-domain1-agentic-architecture-orchestration-1",
+    "title": "How It Works"
+  },
+  {
+    "correct_layout": [
+      "piece-1",
+      "piece-2"
+    ],
+    "domain": 1,
+    "id": "diagram-001",
+    "pieces": [
+      {
+        "id": "piece-1",
+        "label": "YES → Hook (deterministic guarantee)",
+        "sprite_slug": "lib-diagram-domain1-agentic-architecture-orchestration-2-piece-1"
+      },
+      {
+        "id": "piece-2",
+        "label": "NO → Prompt instruction (simpler, probabilistic)",
+        "sprite_slug": "lib-diagram-domain1-agentic-architecture-orchestration-2-piece-2"
+      }
+    ],
+    "root": "Must it work 100% of the time?",
+    "slug": "lib-diagram-domain1-agentic-architecture-orchestration-2",
+    "sprite_slug": "lib-diagram-domain1-agentic-architecture-orchestration-2",
+    "title": "Hooks vs Prompts Decision"
+  },
+  {
+    "correct_layout": [
+      "piece-1",
+      "piece-2"
+    ],
+    "domain": 0,
+    "id": "diagram-002",
+    "pieces": [
+      {
+        "id": "piece-1",
+        "label": "NO → Programmatic hooks / prerequisite gates",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-1-piece-1"
+      },
+      {
+        "id": "piece-2",
+        "label": "YES → Prompt instructions + few-shot examples",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-1-piece-2"
+      }
+    ],
+    "root": "Is compliance failure acceptable? (even 1% of the time)",
+    "slug": "lib-diagram-exam-cheat-sheet-1",
+    "sprite_slug": "lib-diagram-exam-cheat-sheet-1",
+    "title": "How to enforce business rules?"
+  },
+  {
+    "correct_layout": [
+      "piece-1",
+      "piece-2"
+    ],
+    "domain": 0,
+    "id": "diagram-003",
+    "pieces": [
+      {
+        "id": "piece-1",
+        "label": "YES → Hook (deterministic guarantee)",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-2-piece-1"
+      },
+      {
+        "id": "piece-2",
+        "label": "NO → Prompt instruction (probabilistic, lower effort)",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-2-piece-2"
+      }
+    ],
+    "root": "Financial/identity/security consequence?",
+    "slug": "lib-diagram-exam-cheat-sheet-2",
+    "sprite_slug": "lib-diagram-exam-cheat-sheet-2",
+    "title": "Hook or prompt?"
+  },
+  {
+    "correct_layout": [
+      "piece-1",
+      "piece-2"
+    ],
+    "domain": 0,
+    "id": "diagram-004",
+    "pieces": [
+      {
+        "id": "piece-1",
+        "label": "YES to any → Plan mode",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-3-piece-1"
+      },
+      {
+        "id": "piece-2",
+        "label": "NO to all → Direct execution",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-3-piece-2"
+      }
+    ],
+    "root": "Multiple files? Architectural decisions? Multiple valid approaches?",
+    "slug": "lib-diagram-exam-cheat-sheet-3",
+    "sprite_slug": "lib-diagram-exam-cheat-sheet-3",
+    "title": "Plan mode or direct execution?"
+  },
+  {
+    "correct_layout": [
+      "piece-1",
+      "piece-2"
+    ],
+    "domain": 0,
+    "id": "diagram-005",
+    "pieces": [
+      {
+        "id": "piece-1",
+        "label": "YES → Synchronous Messages API",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-4-piece-1"
+      },
+      {
+        "id": "piece-2",
+        "label": "NO → Message Batches API (50% savings)",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-4-piece-2"
+      }
+    ],
+    "root": "Is the workflow blocking? (someone waiting for results)",
+    "slug": "lib-diagram-exam-cheat-sheet-4",
+    "sprite_slug": "lib-diagram-exam-cheat-sheet-4",
+    "title": "Batch API or synchronous?"
+  },
+  {
+    "correct_layout": [
+      "piece-1",
+      "piece-2"
+    ],
+    "domain": 0,
+    "id": "diagram-006",
+    "pieces": [
+      {
+        "id": "piece-1",
+        "label": "READ (static/semi-static data) → Resource",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-5-piece-1"
+      },
+      {
+        "id": "piece-2",
+        "label": "ACTION (side effects, computation) → Tool",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-5-piece-2"
+      }
+    ],
+    "root": "Does the model need to READ data or PERFORM an action?",
+    "slug": "lib-diagram-exam-cheat-sheet-5",
+    "sprite_slug": "lib-diagram-exam-cheat-sheet-5",
+    "title": "MCP Resource or Tool?"
+  },
+  {
+    "correct_layout": [
+      "piece-1",
+      "piece-2"
+    ],
+    "domain": 0,
+    "id": "diagram-007",
+    "pieces": [
+      {
+        "id": "piece-1",
+        "label": "YES → .claude/rules/ with glob patterns",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-6-piece-1"
+      },
+      {
+        "id": "piece-2",
+        "label": "NO → Directory CLAUDE.md",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-6-piece-2"
+      }
+    ],
+    "root": "Do the files span multiple directories?",
+    "slug": "lib-diagram-exam-cheat-sheet-6",
+    "sprite_slug": "lib-diagram-exam-cheat-sheet-6",
+    "title": "Path-specific rules or directory CLAUDE.md?"
+  },
+  {
+    "correct_layout": [
+      "piece-1",
+      "piece-2"
+    ],
+    "domain": 0,
+    "id": "diagram-008",
+    "pieces": [
+      {
+        "id": "piece-1",
+        "label": "YES → Community server",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-7-piece-1"
+      },
+      {
+        "id": "piece-2",
+        "label": "NO → Custom server (proprietary/niche/regulated)",
+        "sprite_slug": "lib-diagram-exam-cheat-sheet-7-piece-2"
+      }
+    ],
+    "root": "Standard integration (GitHub, Jira, Slack, PostgreSQL)?",
+    "slug": "lib-diagram-exam-cheat-sheet-7",
+    "sprite_slug": "lib-diagram-exam-cheat-sheet-7",
+    "title": "Community MCP server or custom?"
+  },
+  {
+    "correct_layout": [
+      "piece-1",
+      "piece-2",
+      "piece-3"
+    ],
+    "domain": 0,
+    "id": "diagram-009",
+    "pieces": [
+      {
+        "id": "piece-1",
+        "label": "Client 1 ←→ Server A (GitHub - stdio subprocess)",
+        "sprite_slug": "lib-diagram-mcp-deep-dive-1-piece-1"
+      },
+      {
+        "id": "piece-2",
+        "label": "Client 2 ←→ Server B (Database - HTTP)",
+        "sprite_slug": "lib-diagram-mcp-deep-dive-1-piece-2"
+      },
+      {
+        "id": "piece-3",
+        "label": "Client 3 ←→ Server C (Custom API - HTTP)",
+        "sprite_slug": "lib-diagram-mcp-deep-dive-1-piece-3"
+      }
+    ],
+    "root": "Host (Claude Code)",
+    "slug": "lib-diagram-mcp-deep-dive-1",
+    "sprite_slug": "lib-diagram-mcp-deep-dive-1",
+    "title": "The Control Model (EXAM CRITICAL)"
+  }
+]

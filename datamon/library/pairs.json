@@ -1,0 +1,1241 @@
+[
+  {
+    "definition": "Each subagent type has:",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-000",
+    "term": "AgentDefinition Configuration"
+  },
+  {
+    "definition": "Validate accuracy by document type and field segment to verify consistent performance across ALL segments.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-001",
+    "term": "Before Reducing Human Review"
+  },
+  {
+    "definition": "claude mcp add --transport http --scope project github https://api.githubcopilot.com/mcp/",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-002",
+    "term": "CLI Commands"
+  },
+  {
+    "definition": "Step 1: Per-file local analysis (consistent depth per file)",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-003",
+    "term": "Code Review Decomposition"
+  },
+  {
+    "definition": "Plan mode for investigation → direct execution for implementation",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-004",
+    "term": "Combined Pattern"
+  },
+  {
+    "definition": "A new team member isn't getting instructions → check if instructions are in `~/.claude/CLAUDE.md` (user-level, not shared) instead of project-level `.claude/CLAUDE.md`.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-005",
+    "term": "Common Exam Scenario"
+  },
+  {
+    "definition": "In extended sessions, models start:",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-006",
+    "term": "Context Degradation"
+  },
+  {
+    "definition": "Return to coordinator:",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-007",
+    "term": "Correct Pattern: Structured Error Context"
+  },
+  {
+    "definition": "Synthesis output should annotate which findings are well-supported vs which topic areas have gaps due to unavailable sources.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-008",
+    "term": "Coverage Annotations"
+  },
+  {
+    "definition": "When agent prefers built-in tools (like Grep) over MCP tools → enhance MCP tool descriptions to explain capabilities and outputs in detail.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-009",
+    "term": "Enhancing MCP Tool Descriptions"
+  },
+  {
+    "definition": "Must it work 100% of the time?",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-010",
+    "term": "Hooks vs Prompts Decision"
+  },
+  {
+    "definition": "When resuming after code changes:",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-011",
+    "term": "Informing Resumed Sessions"
+  },
+  {
+    "definition": "Coordinator evaluates synthesis output for gaps",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-012",
+    "term": "Iterative Refinement Loop"
+  },
+  {
+    "definition": "Glob patterns apply to files by TYPE regardless of directory location.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-013",
+    "term": "Key Advantage"
+  },
+  {
+    "definition": "Independent review instances > self-review instructions > extended thinking for catching subtle issues.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-014",
+    "term": "Key Exam Point"
+  },
+  {
+    "definition": "Explicit criteria > vague instructions.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-015",
+    "term": "Key Principle"
+  },
+  {
+    "definition": "Subagents should:",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-016",
+    "term": "Local Recovery First"
+  },
+  {
+    "definition": "When a customer has multiple issues:",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-017",
+    "term": "Multi-Concern Requests"
+  },
+  {
+    "definition": "All configured MCP servers are discovered at connection time and available simultaneously.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-018",
+    "term": "Multi-Server Simultaneous Access"
+  },
+  {
+    "definition": "When tool results return multiple customer matches → ask for additional identifiers, DON'T select based on heuristics.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-019",
+    "term": "Multiple Matches"
+  },
+  {
+    "definition": "claude --resume investigation-session-1",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-020",
+    "term": "Named Session Resumption"
+  },
+  {
+    "definition": "claude -p \"Analyze this pull request for security issues\"",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-021",
+    "term": "Non-Interactive Mode"
+  },
+  {
+    "definition": "Create personal variants in `~/.claude/skills/` with different names to avoid affecting teammates.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-022",
+    "term": "Personal Skill Customization"
+  },
+  {
+    "definition": "Intercept tool RESULTS before the model processes them:",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-023",
+    "term": "PostToolUse Hooks (Data Normalization)"
+  },
+  {
+    "definition": "Intercept OUTGOING tool calls to enforce rules:",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-024",
+    "term": "Pre-Tool-Call Hooks (Compliance Enforcement)"
+  },
+  {
+    "definition": "Block downstream tool calls until prerequisite steps complete:",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-025",
+    "term": "Programmatic Prerequisites"
+  },
+  {
+    "definition": "Instead of giving synthesis agent full web search tools, provide a scoped `verify_fact` tool for simple lookups.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-026",
+    "term": "Replace Generic Tools"
+  },
+  {
+    "definition": "A model retains reasoning context from generation — it's less likely to question its own decisions in the same session.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-027",
+    "term": "Self-Review Limitation"
+  },
+  {
+    "definition": "Coordinator Agent:     [delegate_to_search, delegate_to_analysis, summarize]",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-028",
+    "term": "Solution: Scoped Tool Access"
+  },
+  {
+    "definition": "Sample high-confidence extractions to:",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-029",
+    "term": "Stratified Random Sampling"
+  },
+  {
+    "definition": "claude -p \"Review this PR\" --output-format json --json-schema schema.json",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-030",
+    "term": "Structured CI Output"
+  },
+  {
+    "definition": "The exam tests returning rich error context (not native MCP spec, but architectural best practice):",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-031",
+    "term": "Structured Error Metadata Pattern"
+  },
+  {
+    "definition": "When escalating to a human:",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-032",
+    "term": "Structured Handoff Protocol"
+  },
+  {
+    "definition": "Source attribution is lost during summarization when findings are compressed without preserving claim-source mappings.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-033",
+    "term": "The Problem"
+  },
+  {
+    "definition": "Tool descriptions are the PRIMARY mechanism LLMs use for tool selection.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-034",
+    "term": "Tool Descriptions Are Everything"
+  },
+  {
+    "definition": "If Edit can't find unique anchor text → use Read + Write as fallback for reliable modifications.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-035",
+    "term": "When Edit Fails"
+  },
+  {
+    "definition": "The agentic loop must be driven by stop_reason: execute tools and continue on \"tool_use\", and stop on \"end_turn\".",
+    "difficulty": "easy",
+    "domain": 1,
+    "id": "pair-036",
+    "term": "agent-loop"
+  },
+  {
+    "definition": "stop_reason should remain the primary termination driver; a separate safety budget acts only as a backstop that triggers graceful degradation (e.g., escalate with a handoff) when breached, rather than replacing normal termination.",
+    "difficulty": "hard",
+    "domain": 1,
+    "id": "pair-037",
+    "term": "agent-loop"
+  },
+  {
+    "definition": "Claude natively supports requesting multiple tools in a single assistant turn (parallel tool use).",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-038",
+    "term": "agent-loop"
+  },
+  {
+    "definition": "When a lookup returns multiple customer matches, the agent should request additional identifiers to disambiguate rather than guessing.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-039",
+    "term": "ambiguity-resolution"
+  },
+  {
+    "definition": "Low risk tolerance and maximizing returns are fundamentally incompatible goals.",
+    "difficulty": "easy",
+    "domain": 5,
+    "id": "pair-040",
+    "term": "ambiguity-resolution"
+  },
+  {
+    "definition": "Stating assumptions explicitly and proceeding gives the user an immediately useful response — removing the friction that drives abandonment — while keeping them informed and in control: any wrong assumption is visible and trivially correctable.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-041",
+    "term": "ambiguity-resolution"
+  },
+  {
+    "definition": "Overnight, latency-tolerant, non-interactive bulk work is the ideal use case for the Message Batches API: 50% savings on input and output tokens with results delivered within a 24-hour SLA.",
+    "difficulty": "easy",
+    "domain": 4,
+    "id": "pair-042",
+    "term": "batch-api"
+  },
+  {
+    "definition": "The Batch API suits latency-tolerant, non-blocking work like a weekly audit.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-043",
+    "term": "batch-api"
+  },
+  {
+    "definition": "Batch results are NOT returned in order, so you must use the custom_id you assigned each request to correlate results.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-044",
+    "term": "batch-api"
+  },
+  {
+    "definition": "The Batch API is fire-and-forget: each request runs to completion asynchronously with no mechanism to intercept a tool call mid-request, execute the tool in your application, and return results for Claude to continue.",
+    "difficulty": "hard",
+    "domain": 4,
+    "id": "pair-045",
+    "term": "batch-api"
+  },
+  {
+    "definition": "PR style checks block developers and require immediate responses, so they must stay synchronous.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-046",
+    "term": "batch-api"
+  },
+  {
+    "definition": "The -p (or --print) flag runs Claude Code in non-interactive mode: it processes the prompt, writes output to stdout, and exits.",
+    "difficulty": "easy",
+    "domain": 3,
+    "id": "pair-047",
+    "term": "ci-cd"
+  },
+  {
+    "definition": "Supplying existing test files lets the generator avoid duplicating scenarios, and documenting testing standards and what counts as a valuable test in CLAUDE.md steers it away from trivial getters/setters.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-048",
+    "term": "ci-cd"
+  },
+  {
+    "definition": "Incremental reviews should carry prior findings into context and instruct Claude to report only new or still-unaddressed issues.",
+    "difficulty": "hard",
+    "domain": 3,
+    "id": "pair-049",
+    "term": "ci-cd"
+  },
+  {
+    "definition": "`--output-format json` combined with `--json-schema` enforces structured output at the CLI level, guaranteeing well-formed JSON with the required fields (file path, line number, severity, suggested fix) that can be reliably parsed and posted as inline PR comments via the GitHub API.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-050",
+    "term": "ci-cd"
+  },
+  {
+    "definition": "Project-level CLAUDE.md (root CLAUDE.md or .claude/CLAUDE.md) is committed to version control, so it is shared with the whole team and always loaded into context.",
+    "difficulty": "easy",
+    "domain": 3,
+    "id": "pair-051",
+    "term": "claude-md"
+  },
+  {
+    "definition": "User-level ~/.claude/CLAUDE.md holds personal preferences that apply across all of a developer's projects and are never shared via version control, making it the correct home for individual, non-team settings.",
+    "difficulty": "easy",
+    "domain": 3,
+    "id": "pair-052",
+    "term": "claude-md"
+  },
+  {
+    "definition": "The /memory command shows which memory (CLAUDE.md) files are currently loaded, letting you diagnose hierarchy issues such as a user-level file overriding or conflicting with project-level instructions.",
+    "difficulty": "easy",
+    "domain": 3,
+    "id": "pair-053",
+    "term": "claude-md"
+  },
+  {
+    "definition": "@import lets CLAUDE.md reference external files, keeping it modular.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-054",
+    "term": "claude-md"
+  },
+  {
+    "definition": "CLAUDE.md content loads in every session, which is exactly right for coding standards and testing conventions that must always apply.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-055",
+    "term": "claude-md"
+  },
+  {
+    "definition": "If the guidance was added only to the original developers' user-level configs and never to the project-level `.claude/CLAUDE.md`, new team members will not receive it even with up-to-date code.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-056",
+    "term": "claude-md"
+  },
+  {
+    "definition": "Claude Code supports a `.claude/rules/` directory where teams create separate Markdown files for topical guidance (e.g., `testing.md`, `api-conventions.md`), turning one unwieldy CLAUDE.md into focused, independently maintainable modules.",
+    "difficulty": "easy",
+    "domain": 3,
+    "id": "pair-057",
+    "term": "claude-md"
+  },
+  {
+    "definition": "Custom slash commands substitute the text the user supplies into the command body via the $ARGUMENTS placeholder.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-058",
+    "term": "commands"
+  },
+  {
+    "definition": "Project commands stored in `.claude/commands/` are version-controlled with the repository and automatically available to everyone who clones it — exactly the requirement for a shared team command.",
+    "difficulty": "easy",
+    "domain": 3,
+    "id": "pair-059",
+    "term": "commands"
+  },
+  {
+    "definition": "Custom slash commands placed under `.claude/commands/` inside the project repository are version-controlled and automatically available to every developer who clones or updates the repo—this is the intended location for shared, project-level commands.",
+    "difficulty": "easy",
+    "domain": 3,
+    "id": "pair-060",
+    "term": "commands"
+  },
+  {
+    "definition": "Proprietary internal systems and regulated industries (healthcare/finance) with custom business logic, audit requirements, and in-house security control are the canonical case for building a CUSTOM MCP server.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-061",
+    "term": "community-vs-custom"
+  },
+  {
+    "definition": "When context fills with verbose discovery output and answers degrade, /compact condenses the conversation so the session can continue with the important information retained.",
+    "difficulty": "easy",
+    "domain": 5,
+    "id": "pair-062",
+    "term": "context-degradation"
+  },
+  {
+    "definition": "The recommended pattern is to externalize findings into scratchpad files, delegate narrow questions to subagents while the main agent coordinates, and summarize each phase's key findings before starting the next phase (injecting those summaries into the new context).",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-063",
+    "term": "context-degradation"
+  },
+  {
+    "definition": "Progressive summarization reliably degrades precise transactional data (amounts, dates, identifiers).",
+    "difficulty": "easy",
+    "domain": 5,
+    "id": "pair-064",
+    "term": "context-management"
+  },
+  {
+    "definition": "This is the \"lost in the middle\" effect: models reliably attend to the beginning and end of long inputs but may skip middle content.",
+    "difficulty": "easy",
+    "domain": 5,
+    "id": "pair-065",
+    "term": "context-management"
+  },
+  {
+    "definition": "Verbose tool outputs cause context bloat.",
+    "difficulty": "easy",
+    "domain": 5,
+    "id": "pair-066",
+    "term": "context-management"
+  },
+  {
+    "definition": "The hybrid approach preserves the highest-value information at the lowest token cost: safety-critical precise facts like allergies and quantities are extracted into a compact structured block (immune to summarization's precision loss), low-value general discussion is compressed, and recent exchanges stay verbatim for conversational coherence.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-067",
+    "term": "context-management"
+  },
+  {
+    "definition": "The coordinator's decomposition was too narrow, collapsing a broad topic into one facet and missing music, writing, and film.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-068",
+    "term": "coordinator"
+  },
+  {
+    "definition": "In a coordinator-subagent architecture, the coordinator owns the flow of information between subagents.",
+    "difficulty": "easy",
+    "domain": 1,
+    "id": "pair-069",
+    "term": "coordinator"
+  },
+  {
+    "definition": "Cost drops by trimming subagent outputs to concise structured results (preserving provenance), routing dynamically so only needed subagents run, and reserving the flagship for the reasoning that actually needs it.",
+    "difficulty": "hard",
+    "domain": 1,
+    "id": "pair-070",
+    "term": "cost"
+  },
+  {
+    "definition": "Specifying goals and quality criteria lets the subagent apply its own reasoning and adapt, which is more robust than hard-coded procedures that fail when discovered conditions differ from assumptions.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-071",
+    "term": "delegation"
+  },
+  {
+    "definition": "The two-tool token-binding design makes it architecturally impossible to execute a removal without a prior preview: the execute tool requires a single-use token that only the preview tool can mint.",
+    "difficulty": "hard",
+    "domain": 2,
+    "id": "pair-072",
+    "term": "deterministic-enforcement"
+  },
+  {
+    "definition": "A coordinator should dynamically route: examine query requirements, invoke only the necessary subagents, and iteratively re-delegate (e.g., an extra verification pass) when it detects gaps.",
+    "difficulty": "hard",
+    "domain": 1,
+    "id": "pair-073",
+    "term": "dynamic-routing"
+  },
+  {
+    "definition": "An 'other' escape-hatch value combined with a detail field captures documents that fit no defined category without forcing a wrong choice, while preserving structured analytics on the known categories and capturing rationale for the unknowns.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-074",
+    "term": "enum-escape-hatch"
+  },
+  {
+    "definition": "`${VAR}` expands to the variable's value and FAILS if the variable is unset.",
+    "difficulty": "easy",
+    "domain": 2,
+    "id": "pair-075",
+    "term": "env-var-expansion"
+  },
+  {
+    "definition": "Graceful degradation needs both local recovery for transient failures and structured error propagation (type, attempted queries, partial results, alternatives) so the coordinator can make an informed decision rather than blindly retrying.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-076",
+    "term": "error-handling"
+  },
+  {
+    "definition": "A policy cap is a business-rule violation: not retryable (retrying the same $750 request will always fail) and visible to the model so it can choose an alternative workflow.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-077",
+    "term": "error-handling"
+  },
+  {
+    "definition": "Unknown tool names, invalid arguments, and server-level failures are protocol errors and go in the JSON-RPC `error` field (e.g.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-078",
+    "term": "error-handling"
+  },
+  {
+    "definition": "An access failure (database unreachable) is fundamentally different from a valid empty result (query succeeded, zero matches).",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-079",
+    "term": "error-handling"
+  },
+  {
+    "definition": "Each failure maps to a distinct error category with a distinct recovery: a 429 rate-limit is `transient` and retryable (back off and retry); a malformed record is a `validation` error, not retryable (needs different input); a 403 access-denied is a `permission` error, not retryable (needs different credentials).",
+    "difficulty": "hard",
+    "domain": 2,
+    "id": "pair-080",
+    "term": "error-handling"
+  },
+  {
+    "definition": "Retrying transient failures is deterministic plumbing the tool can handle itself — it has definitive knowledge of the error type.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-081",
+    "term": "error-handling"
+  },
+  {
+    "definition": "A generic \"failed\" status hides the information the coordinator needs to recover well: the failure type (transient timeout), what was attempted, any partial results, and possible alternatives.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-082",
+    "term": "error-propagation"
+  },
+  {
+    "definition": "Returning empty results marked as success is the silent-suppression anti-pattern: the coordinator cannot tell that 2 documents failed or that 3 succeeded, so synthesis silently treats incomplete data as complete.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-083",
+    "term": "error-propagation"
+  },
+  {
+    "definition": "Two issues: (1) transient failures should first be handled by local recovery in the subagent, and (2) any propagated error must carry structured context — failure type, what was attempted, partial results, and potential alternatives — so the coordinator can decide intelligently rather than blindly retrying.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-084",
+    "term": "error-propagation"
+  },
+  {
+    "definition": "An access failure (timeout, service down) is unresolved and may warrant a retry; a valid empty result is a successful query that genuinely found nothing.",
+    "difficulty": "hard",
+    "domain": 5,
+    "id": "pair-085",
+    "term": "error-propagation"
+  },
+  {
+    "definition": "Returning an error with context to the coordinator lets it make an informed decision — skip the file, try an alternative parsing method, or notify the user — while maintaining full visibility into the failure.",
+    "difficulty": "easy",
+    "domain": 5,
+    "id": "pair-086",
+    "term": "error-propagation"
+  },
+  {
+    "definition": "An explicit request for a human is a hard escalation trigger: escalate immediately, no investigation first.",
+    "difficulty": "easy",
+    "domain": 5,
+    "id": "pair-087",
+    "term": "escalation"
+  },
+  {
+    "definition": "Self-reported confidence is poorly calibrated: a model can be highly confident yet wrong, particularly on difficult cases — the very ones that need escalation.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-088",
+    "term": "escalation"
+  },
+  {
+    "definition": "The root cause of two-directional miscalibration is unclear decision boundaries: the agent does not know what it should and should not handle.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-089",
+    "term": "escalation"
+  },
+  {
+    "definition": "Competitor price matching is a genuine policy gap: the documented rules cover price drops on the company's own site but are silent on competitor prices.",
+    "difficulty": "hard",
+    "domain": 5,
+    "id": "pair-090",
+    "term": "escalation"
+  },
+  {
+    "definition": "Vague instructions like 'be conservative' do not improve precision.",
+    "difficulty": "easy",
+    "domain": 4,
+    "id": "pair-091",
+    "term": "explicit-criteria"
+  },
+  {
+    "definition": "A high false-positive rate in one category undermines trust in all categories.",
+    "difficulty": "hard",
+    "domain": 4,
+    "id": "pair-092",
+    "term": "false-positives"
+  },
+  {
+    "definition": "When output format is inconsistent despite detailed instructions, especially across varied document structures, a few targeted few-shot examples demonstrating each case is the most direct and reliable fix.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-093",
+    "term": "few-shot"
+  },
+  {
+    "definition": "Few-shot examples are most valuable for ambiguous judgment calls, especially when they show the reasoning for choosing one action over an alternative.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-094",
+    "term": "few-shot"
+  },
+  {
+    "definition": "Concrete input-output examples remove the ambiguity inherent in prose descriptions by showing Claude the exact expected transformation result.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-095",
+    "term": "few-shot"
+  },
+  {
+    "definition": "The agent already performs well on single issues, so the capability exists—what it lacks is a demonstrated pattern for decomposing multi-issue messages, sequencing the tools, and keeping each issue's parameters separated.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-096",
+    "term": "few-shot"
+  },
+  {
+    "definition": "Few-shot examples are most effective when they target the exact failure mode: ambiguous queries.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-097",
+    "term": "few-shot"
+  },
+  {
+    "definition": "fork_session creates independent branches from a shared baseline, ideal for exploring divergent approaches in parallel without cross-contamination.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-098",
+    "term": "fork-session"
+  },
+  {
+    "definition": "Graceful degradation: a single source/subagent failure should not terminate the whole workflow.",
+    "difficulty": "hard",
+    "domain": 5,
+    "id": "pair-099",
+    "term": "graceful-degradation"
+  },
+  {
+    "definition": "A good handoff gives the human everything needed to act without the transcript: customer ID, root-cause analysis, amounts, a recommended action, and full context.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-100",
+    "term": "handoff"
+  },
+  {
+    "definition": "A pre-tool-call hook intercepts the outgoing process_refund call and blocks it until the prerequisite is met, giving deterministic (100%) enforcement that prompts cannot guarantee.",
+    "difficulty": "easy",
+    "domain": 1,
+    "id": "pair-101",
+    "term": "hooks"
+  },
+  {
+    "definition": "A pre-tool-call hook intercepts the outgoing refund call, reads its arguments, and deterministically blocks or redirects amounts over the threshold before any money moves.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-102",
+    "term": "hooks"
+  },
+  {
+    "definition": "A PostToolUse hook intercepts tool results and transforms them deterministically before the model processes them — ideal for normalizing inconsistent output formats without touching the MCP servers.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-103",
+    "term": "hooks"
+  },
+  {
+    "definition": "Trimming a known, fixed subset of fields is deterministic mechanical work — exactly what a PostToolUse hook is for.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-104",
+    "term": "hooks"
+  },
+  {
+    "definition": "When a business rule requires guaranteed compliance, a hook provides deterministic enforcement the model cannot bypass.",
+    "difficulty": "hard",
+    "domain": 2,
+    "id": "pair-105",
+    "term": "hooks"
+  },
+  {
+    "definition": "PostToolUse hooks fire after a tool runs and are the right place for deterministic transformations like formatting the file that was just written.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-106",
+    "term": "hooks"
+  },
+  {
+    "definition": "PreToolUse hooks intercept a tool call before it executes and can deterministically deny it based on the target path.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-107",
+    "term": "hooks"
+  },
+  {
+    "definition": "As of v2.1.163 (June 2026), Stop and SubagentStop hooks can return hookSpecificOutput.additionalContext to feed Claude context and continue the turn WITHOUT being treated as a hook error.",
+    "difficulty": "hard",
+    "domain": 3,
+    "id": "pair-108",
+    "term": "hooks"
+  },
+  {
+    "definition": "Hard, must-always-hold safety rules (blocking destructive migrations) need deterministic hook enforcement; soft stylistic preferences (commit-message wording) are fine as probabilistic prompt guidance.",
+    "difficulty": "hard",
+    "domain": 1,
+    "id": "pair-109",
+    "term": "hooks-vs-prompts"
+  },
+  {
+    "definition": "In hub-and-spoke, the coordinator owns all inter-subagent communication, delegation, and aggregation; peer-to-peer calls undermine that control.",
+    "difficulty": "hard",
+    "domain": 1,
+    "id": "pair-110",
+    "term": "hub-and-spoke"
+  },
+  {
+    "definition": "The coordinator pattern's primary advantages are centralized visibility into all interactions, uniform error handling across the system, and fine-grained control over what information flows to each subagent — the defining benefits of a star-shaped (hub-and-spoke) communication topology.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-111",
+    "term": "hub-and-spoke"
+  },
+  {
+    "definition": "A high aggregate metric can hide poor performance on particular document types or fields.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-112",
+    "term": "human-review"
+  },
+  {
+    "definition": "A model retains its reasoning context from generation and is biased toward defending its own decisions.",
+    "difficulty": "hard",
+    "domain": 4,
+    "id": "pair-113",
+    "term": "independent-review"
+  },
+  {
+    "definition": "Periodic reinforcement directly counters instruction drift: as conversation history accumulates and dilutes the system prompt's influence, re-injecting the guidelines at natural breakpoints re-establishes the constraints while preserving the conversation.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-114",
+    "term": "instruction-drift"
+  },
+  {
+    "definition": "As assistant responses accumulate, the proportion of context reflecting the system prompt's constraints shrinks relative to the model's own generated content.",
+    "difficulty": "hard",
+    "domain": 5,
+    "id": "pair-115",
+    "term": "instruction-drift"
+  },
+  {
+    "definition": "A scoped cross-role tool handles the 85% common case directly while preserving separation of concerns: complex investigations still route through the coordinator.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-116",
+    "term": "least-privilege"
+  },
+  {
+    "definition": "Giving a subagent tools outside its specialization violates least-privilege and invites cross-specialization misuse.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-117",
+    "term": "least-privilege"
+  },
+  {
+    "definition": "Replacing the general-purpose tool with a document-specific `load_document` tool that validates URL targets constrains capability at the interface level.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-118",
+    "term": "least-privilege"
+  },
+  {
+    "definition": "Resources are application-controlled, read-only reference data the model reasons FROM (catalogs, policies, schemas).",
+    "difficulty": "easy",
+    "domain": 2,
+    "id": "pair-119",
+    "term": "mcp"
+  },
+  {
+    "definition": "Project-scoped .mcp.json is committed to version control so the server is available to everyone on clone, and ${VAR} environment-variable expansion keeps each developer's token out of the repo.",
+    "difficulty": "hard",
+    "domain": 3,
+    "id": "pair-120",
+    "term": "mcp"
+  },
+  {
+    "definition": "Project-scoped `.mcp.json` is git-tracked and shared with everyone who clones the repo.",
+    "difficulty": "easy",
+    "domain": 2,
+    "id": "pair-121",
+    "term": "mcp-scoping"
+  },
+  {
+    "definition": "Local scope is private to the developer and the project, and has the highest precedence (local > project > user).",
+    "difficulty": "hard",
+    "domain": 2,
+    "id": "pair-122",
+    "term": "mcp-scoping"
+  },
+  {
+    "definition": "Match model capability to task difficulty: lightweight models handle bounded retrieval/extraction cheaply, while the hardest reasoning (decomposition, synthesis) is reserved for the flagship Opus 4.8.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-123",
+    "term": "model-selection"
+  },
+  {
+    "definition": "Multi-concern requests should be decomposed into distinct items, each investigated (potentially in parallel) over shared context, then synthesized into one response.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-124",
+    "term": "multi-concern"
+  },
+  {
+    "definition": "Independent subagents run in parallel when the coordinator emits multiple Task tool calls in one response.",
+    "difficulty": "easy",
+    "domain": 1,
+    "id": "pair-125",
+    "term": "orchestration"
+  },
+  {
+    "definition": "Surfacing the rationale and confidence directly in each finding attacks the actual bottleneck—per-finding investigation time—by letting developers triage at a glance instead of clicking into each one.",
+    "difficulty": "hard",
+    "domain": 4,
+    "id": "pair-126",
+    "term": "output-formatting"
+  },
+  {
+    "definition": "Directory CLAUDE.md files are ideal when conventions are contained within a single directory tree (the per-language conventions).",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-127",
+    "term": "path-specific-rules"
+  },
+  {
+    "definition": "When multiple path-specific rules match, the more specific glob (the narrower, deeper pattern targeting src/payments/**/*.ts) is the more targeted match and should govern that file, just as more-specific scoping wins elsewhere in the config hierarchy.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-128",
+    "term": "path-specific-rules"
+  },
+  {
+    "definition": "Planning mode is designed exactly for large changes with multiple possible approaches and architectural decisions.",
+    "difficulty": "easy",
+    "domain": 3,
+    "id": "pair-129",
+    "term": "planning-mode"
+  },
+  {
+    "definition": "Slack integration has multiple valid approaches with significantly different architectural implications, and the requirements are ambiguous.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-130",
+    "term": "planning-mode"
+  },
+  {
+    "definition": "Planning mode is the right strategy for complex architectural restructuring like splitting a monolith: it allows safe, read-only exploration and informed decisions about service boundaries before committing to expensive changes across dozens of files.",
+    "difficulty": "easy",
+    "domain": 3,
+    "id": "pair-131",
+    "term": "planning-mode"
+  },
+  {
+    "definition": "As of May 2026, `claude plugin init <name>` scaffolds a plugin, and skills placed in its .claude/skills directories auto-load as <name>@skills-dir with no marketplace publish or install step required.",
+    "difficulty": "hard",
+    "domain": 3,
+    "id": "pair-132",
+    "term": "plugins"
+  },
+  {
+    "definition": "Prefilling the assistant message with the start of the desired output (such as an opening brace) forces the model to continue from that exact point, eliminating conversational preamble and tightly controlling the response start.",
+    "difficulty": "hard",
+    "domain": 4,
+    "id": "pair-133",
+    "term": "prefilling"
+  },
+  {
+    "definition": "Prefilling the assistant's response with the start of a direct answer prevents greeting patterns at the generation level: the model continues from the prefilled text rather than getting the chance to produce an opening phrase at all.",
+    "difficulty": "easy",
+    "domain": 4,
+    "id": "pair-134",
+    "term": "prefilling"
+  },
+  {
+    "definition": "Identity- and financial-critical ordering requires deterministic enforcement.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-135",
+    "term": "programmatic-enforcement"
+  },
+  {
+    "definition": "Provenance is lost when findings are compressed without preserving claim-source links.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-136",
+    "term": "provenance"
+  },
+  {
+    "definition": "Conflicting source values should be annotated with their source attribution and dates rather than arbitrarily resolved.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-137",
+    "term": "provenance"
+  },
+  {
+    "definition": "Line items not summing to the total is a semantic error, which tool_use cannot prevent.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-138",
+    "term": "retry-feedback"
+  },
+  {
+    "definition": "Retry-with-error-feedback works for format and structural errors, but it cannot conjure data that is genuinely absent from the source.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-139",
+    "term": "retry-feedback"
+  },
+  {
+    "definition": "Retry-with-error-feedback must be bounded.",
+    "difficulty": "hard",
+    "domain": 5,
+    "id": "pair-140",
+    "term": "retry-feedback"
+  },
+  {
+    "definition": "Only require fields that are always present in the source.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-141",
+    "term": "schema-design"
+  },
+  {
+    "definition": "Capturing stated_total and calculated_total separately, plus a conflict_detected flag, lets the pipeline detect inconsistent source data and route it for review instead of silently resolving the conflict.",
+    "difficulty": "hard",
+    "domain": 4,
+    "id": "pair-142",
+    "term": "schema-design"
+  },
+  {
+    "definition": "A self-critique stage (the evaluator-optimizer pattern) directly targets inconsistent explanation completeness: the agent assesses its own draft against concrete criteria — policy context, timelines, next steps — before presenting it.",
+    "difficulty": "hard",
+    "domain": 4,
+    "id": "pair-143",
+    "term": "self-critique"
+  },
+  {
+    "definition": "Semantic retrieval over the archived history is the only approach that scales to months of discussion while still surfacing the specific past exchanges a question refers to.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-144",
+    "term": "semantic-retrieval"
+  },
+  {
+    "definition": "When prior context is mostly valid and only a few files changed, resume the session and explicitly name the changed files so the agent does targeted re-analysis instead of full re-exploration.",
+    "difficulty": "easy",
+    "domain": 1,
+    "id": "pair-145",
+    "term": "session-management"
+  },
+  {
+    "definition": "When prior context is mostly still valid but a few files changed, resume with --resume AND explicitly inform the agent which files changed so it can re-analyze them.",
+    "difficulty": "normal",
+    "domain": 5,
+    "id": "pair-146",
+    "term": "session-resume"
+  },
+  {
+    "definition": "Multi-agent orchestration adds latency, cost, and coordination complexity.",
+    "difficulty": "hard",
+    "domain": 1,
+    "id": "pair-147",
+    "term": "single-vs-multi-agent"
+  },
+  {
+    "definition": "context: fork runs the skill in an isolated sub-agent context so its verbose output does not pollute the main conversation; only a summary returns.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-148",
+    "term": "skills"
+  },
+  {
+    "definition": "allowed-tools restricts the tools available during skill execution.",
+    "difficulty": "normal",
+    "domain": 3,
+    "id": "pair-149",
+    "term": "skills"
+  },
+  {
+    "definition": "Personal skill customization is done by creating a variant in user-level ~/.claude/skills/ with a different name.",
+    "difficulty": "hard",
+    "domain": 3,
+    "id": "pair-150",
+    "term": "skills"
+  },
+  {
+    "definition": "A skill invoked on demand loads the bulky example context only for the task that needs it—generating new endpoints—and not during debugging, review, or other API-directory work.",
+    "difficulty": "hard",
+    "domain": 3,
+    "id": "pair-151",
+    "term": "skills"
+  },
+  {
+    "definition": "Each problem maps to a dedicated configuration feature: `argument-hint` surfaces the expected parameter at invocation time, reducing missing-argument runs; `context: fork` isolates execution so stale schema details from prior conversation cannot leak in; and `allowed-tools` deterministically constrains the skill to safe file-writing operations, preventing destructive actions.",
+    "difficulty": "hard",
+    "domain": 3,
+    "id": "pair-152",
+    "term": "skills"
+  },
+  {
+    "definition": "CLAUDE.md is always loaded into context and carries universal, always-on standards.",
+    "difficulty": "easy",
+    "domain": 3,
+    "id": "pair-153",
+    "term": "skills-vs-claude-md"
+  },
+  {
+    "definition": "The Claude API is stateless — it has no server-side memory of previous calls.",
+    "difficulty": "easy",
+    "domain": 5,
+    "id": "pair-154",
+    "term": "stateless-api"
+  },
+  {
+    "definition": "Claude's API is stateless — each request must include the complete conversation history in the `messages` array.",
+    "difficulty": "easy",
+    "domain": 5,
+    "id": "pair-155",
+    "term": "stateless-api"
+  },
+  {
+    "definition": "Tool use with JSON schemas eliminates SYNTAX-class errors (malformed JSON, wrong types, missing required fields, out-of-enum values) but does NOT prevent SEMANTIC errors such as hallucinated values or data placed in the wrong field.",
+    "difficulty": "easy",
+    "domain": 4,
+    "id": "pair-156",
+    "term": "structured-output"
+  },
+  {
+    "definition": "Requiring a non-nullable field when the data is sometimes absent is the single biggest driver of hallucination in extraction pipelines.",
+    "difficulty": "easy",
+    "domain": 4,
+    "id": "pair-157",
+    "term": "structured-output"
+  },
+  {
+    "definition": "When downstream agents have limited context budgets, subagents should return compact structured data — key facts, citations, relevance scores, and required metadata (dates, source locations) — instead of verbose prose and reasoning chains.",
+    "difficulty": "hard",
+    "domain": 5,
+    "id": "pair-158",
+    "term": "structured-subagent-output"
+  },
+  {
+    "definition": "An Explore subagent runs the verbose discovery in its own isolated context and returns only a concise summary to the main conversation.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-159",
+    "term": "subagent-delegation"
+  },
+  {
+    "definition": "Subagents run with isolated context and do not inherit the coordinator's history.",
+    "difficulty": "easy",
+    "domain": 1,
+    "id": "pair-160",
+    "term": "subagents"
+  },
+  {
+    "definition": "A session that generated code is less effective at critically reviewing its own changes because it shares the implementer's assumptions and context.",
+    "difficulty": "hard",
+    "domain": 3,
+    "id": "pair-161",
+    "term": "subagents"
+  },
+  {
+    "definition": "The system prompt is the mechanism designed for persistent behavioral constraints: it is sent with every request, carries instruction-level authority, and applies for the entire conversation — exactly what standing guidelines like tone and clarifying-question behavior require.",
+    "difficulty": "easy",
+    "domain": 4,
+    "id": "pair-162",
+    "term": "system-prompt"
+  },
+  {
+    "definition": "A predictable, multi-aspect review fits fixed prompt chaining: consistent per-file analysis followed by a cross-file integration pass, which avoids attention dilution.",
+    "difficulty": "easy",
+    "domain": 1,
+    "id": "pair-163",
+    "term": "task-decomposition"
+  },
+  {
+    "definition": "Open-ended tasks call for dynamic adaptive decomposition: explore and map structure first, identify high-impact areas, then form a prioritized plan that adapts as dependencies are discovered.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-164",
+    "term": "task-decomposition"
+  },
+  {
+    "definition": "Explicit partitioning of the research space before delegation addresses the root cause — unclear task boundaries — before any work begins.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-165",
+    "term": "task-decomposition"
+  },
+  {
+    "definition": "Decomposing the request into separate issues and investigating them in parallel with shared customer context fixes both observed problems at once: it eliminates redundant data retrieval by fetching customer context once and reusing it across issues, and it cuts total sequential tool-call loops by parallelizing the investigations before synthesizing a single resolution.",
+    "difficulty": "normal",
+    "domain": 1,
+    "id": "pair-166",
+    "term": "task-decomposition"
+  },
+  {
+    "definition": "The default annotation values assume worst case: `destructiveHint` defaults to true and `openWorldHint` defaults to true (while `readOnlyHint` and `idempotentHint` default to false).",
+    "difficulty": "easy",
+    "domain": 2,
+    "id": "pair-167",
+    "term": "tool-annotations"
+  },
+  {
+    "definition": "Tool annotations are HINTS, not guarantees.",
+    "difficulty": "hard",
+    "domain": 2,
+    "id": "pair-168",
+    "term": "tool-annotations"
+  },
+  {
+    "definition": "Once a tool set grows past ~15, the right move is to PARTITION tools across specialized subagents (about 4-5 tools each) with a coordinator delegating to them.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-169",
+    "term": "tool-count"
+  },
+  {
+    "definition": "Tool descriptions are the PRIMARY mechanism the model uses to select tools.",
+    "difficulty": "easy",
+    "domain": 2,
+    "id": "pair-170",
+    "term": "tool-descriptions"
+  },
+  {
+    "definition": "When the model prefers a built-in tool over an MCP tool, the usual cause is that the MCP tool's description does not make its distinct capabilities and outputs clear.",
+    "difficulty": "normal",
+    "domain": 2,
+    "id": "pair-171",
+    "term": "tool-descriptions"
+  },
+  {
+    "definition": "A split this sharp and systematic (78% vs 93%, conditioned on a single keyword) points to explicit routing logic somewhere in the prompt reacting to the word \"account\" and steering the agent toward customer-related tools.",
+    "difficulty": "hard",
+    "domain": 2,
+    "id": "pair-172",
+    "term": "tool-selection"
+  },
+  {
+    "definition": "When exactly one schema applies and you must guarantee that specific tool runs, forced tool_choice ({\"type\": \"tool\", \"name\": ...}) compels the model to call that named tool every time.",
+    "difficulty": "easy",
+    "domain": 4,
+    "id": "pair-173",
+    "term": "tool_choice"
+  },
+  {
+    "definition": "'any' forces a tool call while letting the model choose which schema fits the document.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-174",
+    "term": "tool_choice"
+  },
+  {
+    "definition": "Extended thinking is incompatible with 'any' and forced tool choice.",
+    "difficulty": "normal",
+    "domain": 4,
+    "id": "pair-175",
+    "term": "tool_choice"
+  },
+  {
+    "definition": "XML tags provide clear, unambiguous structure that separates distinct content blocks (rules, reference documents, examples).",
+    "difficulty": "hard",
+    "domain": 4,
+    "id": "pair-176",
+    "term": "xml-tags"
+  }
+]
