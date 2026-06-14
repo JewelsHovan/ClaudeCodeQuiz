@@ -32,6 +32,11 @@ const VIEW_W = 25, VIEW_H = 19;          // tiles visible
 const CANVAS_W = VIEW_W * TILE;          // 800
 const CANVAS_H = VIEW_H * TILE;          // 608
 const HUD_BOTTOM = 72;                    // bottom of the top-left HUD box (8 + 64)
+// Camera over-scroll: allow the top edge to scroll this many tiles PAST the map so the
+// top row never clamps up under the opaque top-left HUD. Sized to the HUD height (in tiles)
+// so map content always renders at/below the HUD's bottom edge — the exposed top strip is
+// dark letterbox the HUD covers. Only the top needs it; the HUD is top-anchored.
+const CAM_PAD_TOP = HUD_BOTTOM / TILE;    // 2.25 tiles
 // Collision set. Office floor plan (#021): # brick wall, D desk, P plant, C coffee counter,
 // W window (top wall), O wood column, G glass wall, F solid-furniture footprint, U overhead duct.
 const SOLID = new Set(["#", "D", "P", "C", "W", "O", "G", "F", "U"]);
@@ -176,6 +181,13 @@ function regionOf(x, y) {
   return x < 12 ? "CONTEXT" : (x < 24 ? "PROMPT" : "MIX");
 }
 
+// ---------- Zone identity styling (#A: open-plan polish) ----------
+// Cosmetic seam runners inlaid along the zone boundaries (verticals x=12 & x=24, horizontal
+// y=11) with walkway GAPS — the primary "separate rooms" cue. Purely visual: NOT in SOLID,
+// so movement + NPC placement are unaffected. Gap sets list the tile indices left open.
+const SEAM_VGAPS = new Set([0, 9, 10, 15, 16, 23]);          // open rows on x=12 / x=24
+const SEAM_HGAPS = new Set([0, 6, 7, 17, 18, 29, 30, 35]);   // open cols on y=11
+
 // ---------- Audio (tiny synth, no assets) ----------
 let audioCtx = null, muted = false;
 function beep(freq, dur = 0.08, type = "square", vol = 0.04, when = 0) {
@@ -202,7 +214,8 @@ const sfx = {
 };
 
 // ---------- Image loading & pixelation ----------
-const headshots = {};   // slug -> HTMLImageElement (or null on error)
+const headshots = {};   // slug -> real-photo HTMLImageElement (or null on error)
+const portraits = {};   // slug -> generated pixel-art bust portrait (#022) (or null on error)
 const sprites = {};     // slug -> generated pixel-art trainer sprite (or null)
 const tileStore = {};   // slug -> 32px office tile HTMLImageElement (or null on error)
 const pixelCache = {};  // slug+size -> canvas
@@ -220,6 +233,7 @@ function loadOne(src, store, slug) {
 function loadImages() {
   return Promise.all(ROSTER.flatMap(slug => [
     loadOne(`headshots/${slug}.png`, headshots, slug),
+    loadOne(`portraits/${slug}.png`, portraits, slug),  // #022: pixel-art bust; falls back to photo
     loadOne(`sprites/${slug}.png`, sprites, slug),
   ]));
 }
@@ -266,34 +280,48 @@ function loadProps() {
 
 // Smooth-downscaled square version of the trainer sprite for small sizes
 // (NN-downscaling 256px art to ~30px gets noisy; averaging keeps it readable).
+// The bitmap is cached at DEVICE resolution (size * scale): the main canvas
+// transform scales logical units by `scale`, so a `size`-px bitmap drawn at
+// `size` logical px would be upscaled `scale`× with smoothing off → blocky on
+// retina. Rendering at size*scale here downscales the 256px source straight to
+// the on-screen pixel count, so it maps ~1:1 and stays crisp. Callers still
+// pass the LOGICAL size and draw at that logical size — unchanged.
 function spriteMini(slug, size) {
-  const key = slug + ":" + size;
+  const dpx = Math.max(1, Math.round(size * scale));   // device pixels
+  const key = slug + ":" + dpx;
   if (miniCache[key]) return miniCache[key];
   const img = sprites[slug];
   if (!img) return null;
   const cv = document.createElement("canvas");
-  cv.width = size; cv.height = size;
+  cv.width = dpx; cv.height = dpx;
   const c = cv.getContext("2d");
   c.imageSmoothingEnabled = true;
   c.imageSmoothingQuality = "high";
-  c.drawImage(img, 0, 0, size, size);
+  c.drawImage(img, 0, 0, dpx, dpx);
   miniCache[key] = cv;
   return cv;
 }
 
-// Square-crop the headshot, downscale to n x n with no smoothing = pixel art.
+// Square-crop to n x n. Generated FE-style portraits (#022) are already palette-quantized
+// pixel art and arrive face-framed, so we downscale them with HIGH-QUALITY filtering (a clean
+// miniature; nearest would alias the 256px source into noise) and only a tiny top bias. The
+// real-photo fallback keeps the old nearest-neighbour pixelation. Pass n ≈ the on-screen draw
+// size so the caller's nearest upscale stays ~1:1 and the result reads crisp, not muddy.
 function pixelHead(slug, n) {
   const key = slug + ":" + n;
   if (pixelCache[key]) return pixelCache[key];
-  const img = headshots[slug];
+  // Prefer the generated pixel-art portrait (#022); fall back to the real photo if absent.
+  const portrait = portraits[slug];
+  const img = portrait || headshots[slug];
   const cv = document.createElement("canvas");
   cv.width = n; cv.height = n;
   const c = cv.getContext("2d");
   if (img) {
     const s = Math.min(img.width, img.height);
     const sx = (img.width - s) / 2;
-    const sy = (img.height - s) * 0.15; // bias crop toward the top (faces)
-    c.imageSmoothingEnabled = false;
+    const sy = (img.height - s) * (portrait ? 0.02 : 0.15); // photos: bias toward faces
+    c.imageSmoothingEnabled = !!portrait;                    // HQ for pixel-art portraits
+    c.imageSmoothingQuality = "high";
     c.drawImage(img, sx, sy, s, s, 0, 0, n, n);
   } else {
     // fallback: colored tile with initials
@@ -316,7 +344,7 @@ ctx.setTransform(scale, 0, 0, scale, 0, 0);
 ctx.imageSmoothingEnabled = false; // must follow resize — resize resets all context state
 
 let map = buildMap();
-let state = "title";    // title | select | overworld | battle | victory
+let state = "title";    // title | select | overworld | battle | victory | search
 let selectIdx = 0;
 let player = { slug: null, x: 18, y: 16, fx: 18, fy: 16, dir: "down", moving: false, hp: MAX_HP, dispHp: MAX_HP };
 let battleTransition = null;   // {npc, t} — flash + iris wipe into battle
@@ -324,6 +352,7 @@ let npcs = [];          // {slug, x, y, type, defeated}
 let defeated = new Set();
 let battle = null;
 let toast = null;       // {msg, until}
+let coffeePrompt = null; // {sel} — Yes/No confirm before drinking; sel 0=Yes 1=No (default No, anti-spam)
 let questionStats = {};  // "CAT:idx" -> {seen, correct, wrong, lastSeen}
 let seenCounter = 0;    // monotonic draw counter — drives lastSeen recency (no Date.now())
 let seenThisRun = {};   // category -> Set<idx> drawn this run (within-run repeat avoidance)
@@ -341,6 +370,12 @@ let prevE = 0;     // previous frame's eased step progress; drives slide-free ga
 // {x,y in tile coords; dx,dy drift in tiles/frame; life counts down to 0 then pruned}.
 let dustParticles = [];
 let camFx = null, camFy = null; // lerped camera (TILE units); null = snap-to-target next frame
+// Person search (#B). state==="search" overlays a name-filter panel on the frozen overworld;
+// picking someone starts a camera "scout" that pans to them, holds, then returns control.
+let searchQuery = "";       // current typed filter
+let searchSel = 0;          // highlighted result index (into searchResults)
+let searchResults = [];     // roster slugs matching the query (player excluded)
+let scout = null;           // {npc, phase:"out"|"hold"|"back", until} — camera pan-to-person
 const wrapCache = new Map(); // font|maxW|text -> wrapped lines
 
 // ---------- NPC placement ----------
@@ -661,6 +696,7 @@ function showToast(msg, ms = 2600) { toast = { msg, until: performance.now() + m
 // ---------- Input ----------
 const keys = {};
 window.addEventListener("keydown", e => {
+  if (state === "search") { e.preventDefault(); handleSearchKey(e); return; }
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
   if (e.key === "Tab" && state === "select") e.preventDefault();   // Tab cycles difficulty, not focus
   if (e.key === "Escape" && state === "battle" && battle && battle.phase === "question") e.preventDefault();
@@ -717,6 +753,20 @@ function handleKey(k) {
       showToast("Beat every colleague to become a Claude Certified Architect!", 3500);
     }
   } else if (state === "overworld") {
+    if (scout) return;                                  // camera pan cinematic — ignore input
+    if (coffeePrompt) {
+      if (k === "ArrowLeft" || k === "ArrowRight" || k === "a" || k === "d" || k === "A" || k === "D") {
+        coffeePrompt.sel ^= 1; sfx.select();
+      } else if (k === "Escape") {
+        coffeePrompt = null; sfx.select();
+      } else if (k === "Enter" || k === " ") {
+        const yes = coffeePrompt.sel === 0;
+        coffeePrompt = null;
+        if (yes) drinkCoffee(); else sfx.select();
+      }
+      return;
+    }
+    if (k === "/" || k === "f" || k === "F") { openSearch(); return; }
     if (k === " " || k === "Enter" || k === "e" || k === "E") interact();
   } else if (state === "battle") {
     const b = battle;
@@ -740,6 +790,29 @@ function handleKey(k) {
   }
 }
 
+function recomputeSearch() {
+  const q = searchQuery.trim().toLowerCase();
+  searchResults = ROSTER.filter(s => s !== player.slug && (!q || displayName(s).toLowerCase().includes(q)));
+  searchSel = 0;
+}
+function openSearch() { state = "search"; searchQuery = ""; recomputeSearch(); sfx.select(); }
+function handleSearchKey(e) {
+  const k = e.key;
+  if (k === "Escape") { state = "overworld"; sfx.select(); return; }
+  if (k === "Enter") {
+    const slug = searchResults[searchSel];
+    const npc = slug && npcs.find(n => n.slug === slug);
+    if (npc) { scout = { npc, phase: "out", until: 0 }; state = "overworld"; sfx.confirm(); }
+    else sfx.wrong();
+    return;
+  }
+  if (!searchResults.length) { if (k === "Backspace") { searchQuery = searchQuery.slice(0, -1); recomputeSearch(); } else if (k.length === 1 && /[A-Za-z .'-]/.test(k)) { searchQuery += k; recomputeSearch(); } return; }
+  if (k === "ArrowDown") { searchSel = (searchSel + 1) % searchResults.length; sfx.select(); return; }
+  if (k === "ArrowUp")   { searchSel = (searchSel + searchResults.length - 1) % searchResults.length; sfx.select(); return; }
+  if (k === "Backspace") { searchQuery = searchQuery.slice(0, -1); recomputeSearch(); return; }
+  if (k.length === 1 && /[A-Za-z .'-]/.test(k)) { searchQuery += k; recomputeSearch(); }
+}
+
 function canvasPos(e) {
   const r = canvas.getBoundingClientRect();
   return [(e.clientX - r.left) * (CANVAS_W / r.width),
@@ -755,6 +828,11 @@ canvas.addEventListener("mousemove", e => {
 
 canvas.addEventListener("click", e => {
   const [mx, my] = canvasPos(e);
+  if (coffeePrompt && coffeePrompt.btns) {
+    const hit = coffeePrompt.btns.findIndex(b => mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h);
+    if (hit >= 0) { coffeePrompt.sel = hit; handleKey("Enter"); }
+    return;
+  }
   if (state === "title") handleKey("Enter");
   else if (state === "select") {
     const diffHit = difficultyHitTest(mx, my);
@@ -794,17 +872,23 @@ function interact() {
   }
   if (map[ty] && map[ty][tx] === "C") {
     if (coffeeUses > 0) {
-      coffeeUses--;
-      player.hp = MAX_HP;
-      save();   // persist immediately so a reload can't refill the machine
-      sfx.confirm();
-      showToast(`Fresh coffee — HP restored! ${coffeeUses} ${coffeeUses === 1 ? "use" : "uses"} left.`);
+      coffeePrompt = { sel: 1 };   // ask first (default No) so mashing the key can't drain uses
+      sfx.select();
     } else {
       showToast("The machine's out of beans — no uses left!");
     }
   }
   if (map[ty] && map[ty][tx] === "D") showToast("A standing desk. Someone left 47 Chrome tabs open.");
   if (map[ty] && map[ty][tx] === "P") showToast("An office plant. It has seen things.");
+}
+
+function drinkCoffee() {
+  if (coffeeUses <= 0) return;
+  coffeeUses--;
+  player.hp = MAX_HP;
+  save();   // persist immediately so a reload can't refill the machine
+  sfx.confirm();
+  showToast(`Fresh coffee — HP restored! ${coffeeUses} ${coffeeUses === 1 ? "use" : "uses"} left.`);
 }
 
 const TAP_TURN_MS = 80;
@@ -817,6 +901,9 @@ function updateOverworld(dt) {
   // (moving OR idle) so the array is always bounded — idle simply spawns nothing below.
   for (const d of dustParticles) { d.x += d.dx; d.y += d.dy; d.life--; }
   if (dustParticles.length) dustParticles = dustParticles.filter(d => d.life > 0);
+
+  if (coffeePrompt) return;   // modal coffee dialog open — freeze movement input
+  if (scout) return;          // search pan-to-person cinematic — freeze movement
 
   const WALK_SPEED = 7.5, RUN_SPEED = 12.5; // tiles/sec
   player.running = !!(keys["r"] || keys["R"] || keys["Shift"]);
@@ -936,8 +1023,8 @@ function drawHPBar(x, y, w, h, frac, label) {
 }
 
 function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove) {
-  // Base overworld size 44px; the player grows ~0.5px/win, capped +14px (→58px at 28 wins).
-  const baseSize = isPlayer ? 44 + Math.min(defeated.size * 0.5, 14) : 44;
+  // Base overworld size 56px; the player grows ~0.5px/win, capped +14px (→70px at 28 wins).
+  const baseSize = isPlayer ? 56 + Math.min(defeated.size * 0.5, 14) : 56;
   const sizeScale = baseSize / 34;            // proportional factor vs. the old 34px base
   const footY = cy + 16;                      // tile bottom (cy + TILE/2) — feet anchored here
 
@@ -1015,7 +1102,7 @@ function drawTrainer(slug, cx, baseY, h, bobAmp = 0) {
     ctx.drawImage(img, px(cx - h / 2), px(baseY - h + yOff), h, h);
   } else {
     const s = Math.round(h * 0.7);
-    ctx.drawImage(pixelHead(slug, 32), px(cx - s / 2), px(baseY - s + yOff), s, s);
+    ctx.drawImage(pixelHead(slug, 64), px(cx - s / 2), px(baseY - s + yOff), s, s);
   }
 }
 
@@ -1029,7 +1116,7 @@ function drawTitle() {
     const y = 440 + Math.sin((frame + i * 30) / 20) * 8;
     const mini = spriteMini(ROSTER[i], 64);
     if (mini) ctx.drawImage(mini, px(x), px(y), 64, 64);
-    else ctx.drawImage(pixelHead(ROSTER[i], 24), px(x), px(y + 8), 48, 48);
+    else ctx.drawImage(pixelHead(ROSTER[i], 48), px(x), px(y + 8), 48, 48);
   }
   ctx.textAlign = "center";
   ctx.fillStyle = "#facc15"; ctx.font = "bold 72px monospace";
@@ -1141,7 +1228,7 @@ function drawSelect() {
     ctx.globalAlpha = isSel ? 1 : 0.72;
     const mini = spriteMini(ROSTER[i], size);
     if (mini) ctx.drawImage(mini, x, y - lift, size, size);
-    else ctx.drawImage(pixelHead(ROSTER[i], 28), x, y - lift, size, size);
+    else ctx.drawImage(pixelHead(ROSTER[i], 48), x, y - lift, size, size);
     ctx.globalAlpha = 1;
   }
 
@@ -1181,7 +1268,7 @@ function drawSelect() {
   ctx.globalAlpha = 0.25 + 0.75 * ease;
   const img = sprites[ROSTER[selectIdx]];
   if (img) ctx.drawImage(img, px(cx - h / 2 + slide), px(baseY - h + bob), h, h);
-  else ctx.drawImage(pixelHead(ROSTER[selectIdx], 32), px(cx - 70 + slide), px(baseY - 150 + bob), 140, 140);
+  else ctx.drawImage(pixelHead(ROSTER[selectIdx], 128), px(cx - 70 + slide), px(baseY - 150 + bob), 140, 140);
   ctx.globalAlpha = 1;
 
   // name + title
@@ -1287,6 +1374,73 @@ function wallSlug(x, y) {
   return (L || R) ? "wall-h" : "wall-v"; // T-junctions / inner / isolated: never crash
 }
 
+// ---- Procedural hardwood floor (#022) -------------------------------------------------
+// Replaces the 3 repeating 32px hardwood PNGs, which tiled into harsh full-height "corduroy"
+// stripes with visible seams (every tile's grain ran top-to-bottom and lined up with its
+// neighbours, so stripes spanned the whole map). Instead we bake ONE continuous map-sized
+// plank texture: discrete boards of varied width/length whose end-joints STAGGER per column,
+// gentle per-plank colour jitter, low-contrast soft grain, soft seams, and a faint global
+// light gradient. buildMapCanvas() samples each floor cell's region from this texture, so the
+// floor never repeats and the tile grid disappears. Built once; deterministic (fixed seed) so
+// rebuilds never flicker.
+let floorTex = null;
+function buildFloorTexture() {
+  if (floorTex) return floorTex;
+  const W = MAP_W * TILE, H = MAP_H * TILE;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const c = cv.getContext("2d");
+  c.imageSmoothingEnabled = true;                  // soft grain/seams — the "smoothness" win
+  const rng = mulberry32(0x0FF1CE);
+  const rand = (a, b) => a + (b - a) * rng();
+
+  // Warm-oak base wash so any sub-pixel gap reads as floor, never black.
+  c.fillStyle = "#b06f33"; c.fillRect(0, 0, W, H);
+
+  // Vertical boards laid column-by-column (grain runs vertically, matching the office's
+  // original orientation) but as FINITE planks with a random vertical phase per column,
+  // so the end-joints stagger and no grain line ever runs unbroken down the map.
+  let x = 0;
+  while (x < W) {
+    const pw = Math.round(rand(26, 42));           // board width
+    let y = -Math.round(rand(0, 220));             // staggered start => offset joints
+    while (y < H) {
+      const ph = Math.round(rand(150, 300));       // board length
+      const top = Math.max(0, y), bot = Math.min(H, y + ph);
+      // Warm-oak base with LOW-variance jitter: an organic blend, not three neon stripes.
+      c.fillStyle = `hsl(${rand(27, 33)}, ${rand(42, 54)}%, ${rand(40, 50)}%)`;
+      c.fillRect(x, top, pw, bot - top);
+      // A couple of faint lengthwise grain streaks (sub-pixel widths + smoothing => feathered).
+      for (let s = 1 + Math.floor(rng() * 2); s > 0; s--) {
+        const gx = x + rand(2, pw - 2);
+        c.fillStyle = rng() < 0.5 ? `rgba(60,35,12,${rand(0.03, 0.06)})`
+                                  : `rgba(255,225,180,${rand(0.025, 0.045)})`;
+        c.fillRect(gx, top, rand(0.8, 1.8), bot - top);
+      }
+      // Soft end-joint: gentle shadow + faint highlight (low alpha — blends, never harsh).
+      if (y >= 0) {
+        c.fillStyle = "rgba(45,25,8,0.15)";   c.fillRect(x, y, pw, 1.5);
+        c.fillStyle = "rgba(255,230,190,0.06)"; c.fillRect(x, y + 1.5, pw, 1);
+      }
+      y += ph;
+    }
+    // Soft side seam between board columns (low alpha => reads as a crease, not a hard line).
+    c.fillStyle = "rgba(40,22,6,0.11)";  c.fillRect(x + pw - 1, 0, 1, H);
+    c.fillStyle = "rgba(255,228,188,0.035)"; c.fillRect(x, 0, 1, H);
+    x += pw;
+  }
+
+  // Faint ambient light: a large soft warm gradient so the floor drifts tonally instead of
+  // sitting flat — the final touch that makes the whole surface read as one blended wood.
+  const g = c.createRadialGradient(W * 0.35, H * 0.30, 60, W * 0.5, H * 0.5, Math.max(W, H) * 0.8);
+  g.addColorStop(0, "rgba(255,238,205,0.10)");
+  g.addColorStop(1, "rgba(40,22,8,0.14)");
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+
+  floorTex = cv;
+  return cv;
+}
+
 function buildMapCanvas() {
   const cv = document.createElement("canvas");
   cv.width  = MAP_W * TILE;   // 1152
@@ -1296,9 +1450,12 @@ function buildMapCanvas() {
   // Warm-hardwood floor base under everything walkable (#021); brick / window / column /
   // duct / glass for structural chars. Each blit falls back to a flat tileColor() fill if
   // its PNG is missing, so a 404 degrades gracefully instead of leaving a black square.
-  const floorOf = (x, y) => 'hardwood-' + ['a', 'b', 'c'][(x * 31 + y * 17) % 3];
+  // Each floor cell is a 1:1 window into the single continuous plank texture (#022) — no
+  // tiling, no repeat, no seams. Falls back to a flat warm fill only if texture build fails.
+  const tex = buildFloorTexture();
   const floorBase = (sx, sy, x, y) => {
-    if (!blitTile(c, floorOf(x, y), sx, sy)) { c.fillStyle = tileColor("F", x, y); c.fillRect(sx, sy, TILE, TILE); }
+    if (tex) c.drawImage(tex, sx, sy, TILE, TILE, sx, sy, TILE, TILE);
+    else { c.fillStyle = tileColor("F", x, y); c.fillRect(sx, sy, TILE, TILE); }
   };
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
@@ -1350,6 +1507,27 @@ function buildMapCanvas() {
     }
   }
 
+  // ---- A3: cosmetic seam runners inlaid along zone boundaries (walkway gaps left open) ----
+  // A 2px groove + faint highlight straddling the grid line reads as an inlaid threshold
+  // between rooms. Drawn over the floor but BEFORE props, so desks/furniture sit on top.
+  const groove = "rgba(40,22,6,0.40)", sheen = "rgba(255,228,188,0.13)";
+  for (const bx of [12, 24]) {                       // vertical seams
+    const px0 = bx * TILE;
+    for (let yy = 0; yy < MAP_H; yy++) {
+      if (SEAM_VGAPS.has(yy)) continue;
+      c.fillStyle = groove; c.fillRect(px0 - 1, yy * TILE, 2, TILE);
+      c.fillStyle = sheen;  c.fillRect(px0 + 1, yy * TILE, 1, TILE);
+    }
+  }
+  {                                                   // horizontal seam y=11
+    const py0 = 11 * TILE;
+    for (let xx = 0; xx < MAP_W; xx++) {
+      if (SEAM_HGAPS.has(xx)) continue;
+      c.fillStyle = groove; c.fillRect(xx * TILE, py0 - 1, TILE, 2);
+      c.fillStyle = sheen;  c.fillRect(xx * TILE, py0 + 1, TILE, 1);
+    }
+  }
+
   // ---- Baked prop layer (#021): anchored office cutouts, drawn BEHIND characters ----
   // (col,row) = footprint top-left; blit at native widthPx×heightPx so the image fills the
   // tileW×tileH footprint (anchorY = heightPx-32 per #020 — the height already accounts for
@@ -1371,20 +1549,39 @@ function buildMapCanvas() {
 }
 
 // Zone labels centered on the new 3×2 office partition (see regionOf()).
-const OVERWORLD_LABELS = [["AGENT WING", 6, 5.5], ["MCP LAB", 18, 5.5], ["CONFIG BAY", 29, 5.5],
-                          ["CONTEXT CORNER", 5, 12.5], ["PROMPT STUDIO", 17, 12.5], ["THE LOUNGE", 29, 12.5]];
+// [text, tileX-center, tileY, zone-type]. Y sits near the top of each 3×2 band (top
+// row ≈2.6, bottom row just below the y=11 divider) so names read as room headers
+// above the characters rather than behind them. Type keys the accent color.
+const OVERWORLD_LABELS = [["AGENT WING", 6, 2.6, "AGENT"], ["MCP LAB", 18, 2.6, "MCP"], ["CONFIG BAY", 29, 2.6, "CONFIG"],
+                          ["CONTEXT CORNER", 6, 11.6, "CONTEXT"], ["PROMPT STUDIO", 18, 11.6, "PROMPT"], ["THE LOUNGE", 29, 11.6, "MIX"]];
 
 function drawOverworld() {
   if (!mapCv) return;
-  const targetCamX = Math.max(0, Math.min(MAP_W - VIEW_W, player.fx - VIEW_W / 2 + 0.5));
-  const targetCamY = Math.max(0, Math.min(MAP_H - VIEW_H, player.fy - VIEW_H / 2 + 0.5));
+  // Focus follows the player normally; during a search scout it pans to the target NPC
+  // (phase out→hold) then back to the player (phase back) before returning control.
+  const panToNpc = scout && scout.phase !== "back";
+  const foX = panToNpc ? scout.npc.x : player.fx;
+  const foY = panToNpc ? scout.npc.y : player.fy;
+  const targetCamX = Math.max(0, Math.min(MAP_W - VIEW_W, foX - VIEW_W / 2 + 0.5));
+  // top clamp allows -CAM_PAD_TOP so the player can be pushed below the HUD near the top edge
+  const targetCamY = Math.max(-CAM_PAD_TOP, Math.min(MAP_H - VIEW_H, foY - VIEW_H / 2 + 0.5));
   if (camFx === null) { camFx = targetCamX; camFy = targetCamY; }       // first frame: snap, no glide-in
   else {
     camFx += (targetCamX - camFx) * 0.12;
     camFy += (targetCamY - camFy) * 0.12;
   }
   camFx = Math.max(0, Math.min(MAP_W - VIEW_W, camFx));                 // re-clamp to map bounds
-  camFy = Math.max(0, Math.min(MAP_H - VIEW_H, camFy));
+  camFy = Math.max(-CAM_PAD_TOP, Math.min(MAP_H - VIEW_H, camFy));
+  if (scout) {
+    const near = Math.abs(camFx - targetCamX) < 0.06 && Math.abs(camFy - targetCamY) < 0.06;
+    if (scout.phase === "out" && near) { scout.phase = "hold"; scout.until = performance.now() + 1400; }
+    else if (scout.phase === "hold" && performance.now() > scout.until) scout.phase = "back";
+    else if (scout.phase === "back" && near) scout = null;             // home again → resume control
+  }
+
+  // backdrop behind any over-scrolled strip (top letterbox when camFy<0). The map drawImage
+  // covers the full canvas whenever camFy>=0, so this only shows near the top edge.
+  ctx.fillStyle = "#0f172a"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
   // 9-arg drawImage: source rect from the pre-rendered map, dest = full canvas.
   // Source offset -Math.round(-cam*TILE) reproduces the old per-tile
@@ -1394,13 +1591,27 @@ function drawOverworld() {
     -Math.round(-camFx * TILE), -Math.round(-camFy * TILE), CANVAS_W, CANVAS_H,
     0, 0, CANVAS_W, CANVAS_H);
 
-  // room labels
-  ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
-  for (const [txt, lx, ly] of OVERWORLD_LABELS) {
-    const sx = (lx - camFx) * TILE, sy = (ly - camFy) * TILE;
-    ctx.fillStyle = "rgba(15,23,42,0.45)";
-    ctx.fillText(txt, px(sx), px(sy));
+  // room labels — frosted nameplates: a dark rounded pill with a zone-accent underline
+  // (same palette as the "!" markers) so each zone name reads as legible signage on top
+  // of the busy floor instead of low-contrast text getting lost in the planks.
+  ctx.font = "bold 13px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const [txt, lx, ly, type] of OVERWORLD_LABELS) {
+    const sx = px((lx - camFx) * TILE), sy = px((ly - camFy) * TILE);
+    const tw = ctx.measureText(txt).width;
+    const padX = 14, h = 26, w = tw + padX * 2;
+    const bx = px(sx - w / 2), by = px(sy - h / 2);
+    const accent = TYPE_COLORS[type] || "#94a3b8";
+    ctx.fillStyle = "rgba(15,23,42,0.74)";
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx, by, w, h, 7); else ctx.rect(bx, by, w, h);
+    ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = "rgba(148,163,184,0.22)"; ctx.stroke();
+    ctx.fillStyle = accent;                                  // accent underline
+    ctx.fillRect(bx + padX, by + h - 6, w - padX * 2, 2);
+    ctx.fillStyle = "rgba(241,245,249,0.96)";                // light label text
+    ctx.fillText(txt, sx, sy - 1);
   }
+  ctx.textBaseline = "alphabetic";
 
   // Painter's algorithm: collect every on-screen character (NPCs + player) into one
   // list, sort back-to-front by feet-Y (tie-break x), and draw in that order so a
@@ -1452,22 +1663,46 @@ function drawOverworld() {
       ctx.fillText("✓", px(sx + 12), px(sy - 26));
     } else {
       ctx.fillStyle = TYPE_COLORS[npc.type]; ctx.font = "bold 12px monospace"; ctx.textAlign = "center";
-      ctx.fillText("!", px(sx), px(sy - 30 + Math.sin(frame / 10) * 2));
+      ctx.fillText("!", px(sx), px(sy - 46 + Math.sin(frame / 10) * 2));
     }
+  }
+
+  // Scout highlight: pulsing accent ring on the searched colleague + a top banner.
+  if (scout && scout.npc) {
+    const n = scout.npc;
+    const sx = (n.x - camFx) * TILE + TILE / 2, sy = (n.y - camFy) * TILE + TILE / 2;
+    const accent = TYPE_COLORS[n.type], pulse = 1 + Math.sin(frame / 6) * 0.12;
+    ctx.save();
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = 0.35; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.ellipse(px(sx), px(sy + 8), 22 * pulse, 11 * pulse, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 0.95; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(px(sx), px(sy + 8), 22 * pulse, 11 * pulse, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    const label = `\u2192 ${displayName(n.slug)} \u00b7 ${TYPE_NAMES[n.type]} \u00b7 ${n.defeated ? "\u2713 bested" : "not yet bested"}`;
+    ctx.font = "bold 14px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const bw = ctx.measureText(label).width + 34, bx = CANVAS_W / 2 - bw / 2, by = 84;
+    ctx.fillStyle = "rgba(15,23,42,0.92)";
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, bw, 30, 8); else ctx.rect(bx, by, bw, 30); ctx.fill();
+    ctx.fillStyle = accent; ctx.fillRect(bx, by, 4, 30);
+    ctx.fillStyle = "#f1f5f9"; ctx.fillText(label, CANVAS_W / 2 + 2, by + 16);
+    ctx.textBaseline = "alphabetic";
   }
 
   // HUD
   ctx.fillStyle = "rgba(15,23,42,0.85)";
   ctx.fillRect(8, 8, 250, 64);
-  ctx.drawImage(pixelHead(player.slug, 20), 16, 16, 40, 40);
+  ctx.drawImage(pixelHead(player.slug, 48), 16, 16, 48, 48);
   drawHPBar(66, 38, 140, 10, player.dispHp / MAX_HP, firstName(player.slug) + "  HP " + player.hp + "/" + MAX_HP);
   ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace"; ctx.textAlign = "left";
   ctx.fillText(`Rivals bested: ${defeated.size}/${npcs.length}`, 66, 62);
+  ctx.fillStyle = "rgba(148,163,184,0.55)"; ctx.font = "11px monospace"; ctx.textAlign = "left";
+  ctx.fillText("/  find a colleague", 12, CANVAS_H - 14);
 
   // facing hint
   const [tx, ty] = facingTile();
   const target = npcs.find(n => n.x === tx && n.y === ty && !n.defeated);
-  if (target) {
+  if (target && !scout) {
     ctx.fillStyle = "rgba(15,23,42,0.85)";
     const msg = `SPACE: battle ${displayName(target.slug)} [${target.type}]`;
     ctx.font = "bold 14px monospace";
@@ -1574,26 +1809,35 @@ function drawBattle() {
   ctx.fillStyle = "rgba(15,23,42,0.9)";
   ctx.fillRect(36, 36, 330, 84);
   ctx.strokeStyle = typeColor; ctx.lineWidth = 2; ctx.strokeRect(36, 36, 330, 84);
+  // FE face portrait (#023): small framed bust at the plate's left, tinted to the type colour
+  ctx.drawImage(pixelHead(b.npc.slug, 56), 48, 48, 56, 56);
+  ctx.strokeStyle = typeColor; ctx.lineWidth = 2; ctx.strokeRect(48, 48, 56, 56);
+  const oTx = 116;
   ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 16px monospace"; ctx.textAlign = "left";
-  ctx.fillText(displayName(b.npc.slug), 50, 60);
+  ctx.fillText(displayName(b.npc.slug), oTx, 62);
   ctx.fillStyle = typeColor; ctx.font = "bold 12px monospace";
-  ctx.fillText(`${b.npc.type} TRAINER · ${TYPE_NAMES[b.npc.type]}`, 50, 78);
+  ctx.fillText(`${b.npc.type} TRAINER · ${TYPE_NAMES[b.npc.type]}`, oTx, 82);
   ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
-  ctx.fillText(`${mon.name.toUpperCase()} Lv.${mon.level}`, 50, 98);
+  ctx.fillText(`${mon.name.toUpperCase()} Lv.${mon.level}`, oTx, 100);
   for (let i = 0; i < b.mons.length; i++) {
     ctx.fillStyle = b.mons[i].alive ? typeColor : "#334155";
     ctx.beginPath(); ctx.arc(350 - (b.mons.length - 1 - i) * 16, 92, 5, 0, 7); ctx.fill();
   }
 
   // player info plate (HP bar drains smoothly via dispHp)
+  const pbX = CANVAS_W - 366;
   ctx.fillStyle = "rgba(15,23,42,0.9)";
-  ctx.fillRect(CANVAS_W - 366, 300, 330, 70);
-  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2; ctx.strokeRect(CANVAS_W - 366, 300, 330, 70);
+  ctx.fillRect(pbX, 300, 330, 70);
+  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2; ctx.strokeRect(pbX, 300, 330, 70);
+  // FE face portrait (#023): small framed bust at the plate's left
+  ctx.drawImage(pixelHead(player.slug, 48), pbX + 8, 312, 48, 48);
+  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2; ctx.strokeRect(pbX + 8, 312, 48, 48);
+  const pTx = pbX + 68;
   ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 15px monospace"; ctx.textAlign = "left";
-  ctx.fillText("YOU (" + firstName(player.slug) + ")", CANVAS_W - 352, 324);
-  drawHPBar(CANVAS_W - 352, 340, 220, 12, player.dispHp / MAX_HP);
+  ctx.fillText("YOU (" + firstName(player.slug) + ")", pTx, 324);
+  drawHPBar(pTx, 340, 175, 12, player.dispHp / MAX_HP);
   ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
-  ctx.fillText(Math.round(player.dispHp) + "/" + MAX_HP, CANVAS_W - 120, 351);
+  ctx.fillText(Math.round(player.dispHp) + "/" + MAX_HP, pTx + 182, 351);
 
   // floating damage number
   if (b.dmgAt) {
@@ -1738,7 +1982,7 @@ function drawVictory() {
     const y = 420 + Math.floor(i / cols) * 50 + Math.sin((frame + i * 20) / 15) * 3;
     const mini = spriteMini(n.slug, 44);
     if (mini) ctx.drawImage(mini, px(x - 22), px(y), 44, 44);
-    else ctx.drawImage(pixelHead(n.slug, 20), px(x - 18), px(y), 36, 36);
+    else ctx.drawImage(pixelHead(n.slug, 36), px(x - 18), px(y), 36, 36);
   });
   ctx.fillStyle = "#64748b"; ctx.font = "13px monospace";
   ctx.fillText("ENTER to wander your office in glory · R on title screen to start a new run", CANVAS_W / 2, CANVAS_H - 16);
@@ -1757,8 +2001,96 @@ function drawToast() {
   ctx.fillText(toast.msg, CANVAS_W / 2, 106);
 }
 
+// Coffee confirm dialog. Buttons cached on the prompt object so the click handler can hit-test.
+function drawCoffeePrompt() {
+  if (!coffeePrompt) return;
+  const bw = 300, bh = 116, bx = (CANVAS_W - bw) / 2, by = (CANVAS_H - bh) / 2;
+  ctx.fillStyle = "rgba(8,12,24,0.78)"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.fillStyle = "rgba(15,23,42,0.97)"; ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = "#facc15"; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 15px monospace";
+  ctx.fillText("Grab a coffee?", CANVAS_W / 2, by + 30);
+  ctx.fillStyle = "#cbd5e1"; ctx.font = "12px monospace";
+  ctx.fillText(`Restores HP · ${coffeeUses} ${coffeeUses === 1 ? "use" : "uses"} left`, CANVAS_W / 2, by + 50);
+
+  const labels = ["Yes", "No"], btnW = 96, btnH = 30, gap = 24;
+  const totalW = btnW * 2 + gap, startX = (CANVAS_W - totalW) / 2, btnY = by + bh - 42;
+  coffeePrompt.btns = [];
+  for (let i = 0; i < 2; i++) {
+    const x = startX + i * (btnW + gap), on = coffeePrompt.sel === i;
+    ctx.fillStyle = on ? "#facc15" : "rgba(51,65,85,0.9)";
+    ctx.fillRect(x, btnY, btnW, btnH);
+    ctx.fillStyle = on ? "#0f172a" : "#e2e8f0"; ctx.font = "bold 13px monospace";
+    ctx.fillText(labels[i], x + btnW / 2, btnY + 20);
+    coffeePrompt.btns.push({ x, y: btnY, w: btnW, h: btnH });
+  }
+}
+
 // ---------- Main loop ----------
 let lastT = performance.now();
+function drawSearch() {
+  ctx.fillStyle = "rgba(2,6,23,0.62)"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  const MAXROWS = 7, w = 470, x = (CANVAS_W - w) / 2;
+  const total = searchResults.length;
+  let start = 0;
+  if (total > MAXROWS) start = Math.max(0, Math.min(searchSel - 3, total - MAXROWS));
+  const rows = Math.min(MAXROWS, total);
+  const listTop = 0, qh = 30;
+  const h = 56 + qh + 12 + Math.max(1, rows) * 40 + 18;
+  const y = (CANVAS_H - h) / 2;
+  // panel
+  ctx.fillStyle = "rgba(15,23,42,0.97)";
+  ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, 10); else ctx.rect(x, y, w, h); ctx.fill();
+  ctx.lineWidth = 1; ctx.strokeStyle = "rgba(148,163,184,0.32)"; ctx.stroke();
+  // header
+  ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 15px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  ctx.fillText("FIND A COLLEAGUE", x + 20, y + 30);
+  ctx.fillStyle = "#64748b"; ctx.font = "11px monospace"; ctx.textAlign = "right";
+  ctx.fillText("\u2191\u2193 select \u00b7 \u23ce go \u00b7 esc close", x + w - 20, y + 30);
+  // query box
+  const qy = y + 44;
+  ctx.fillStyle = "rgba(2,6,23,0.7)"; ctx.fillRect(x + 20, qy, w - 40, qh);
+  ctx.textAlign = "left"; ctx.font = "14px monospace";
+  if (searchQuery) {
+    const caret = Math.floor(frame / 30) % 2 ? "_" : "";
+    ctx.fillStyle = "#f1f5f9"; ctx.fillText(searchQuery + caret, x + 30, qy + 20);
+  } else {
+    ctx.fillStyle = "#475569"; ctx.fillText("type a name\u2026", x + 30, qy + 20);
+  }
+  // results
+  const listY = qy + qh + 12;
+  if (!total) {
+    ctx.fillStyle = "#64748b"; ctx.font = "13px monospace"; ctx.textAlign = "center";
+    ctx.fillText("No one by that name.", CANVAS_W / 2, listY + 26);
+  } else {
+    for (let i = 0; i < rows; i++) {
+      const idx = start + i, slug = searchResults[idx];
+      const npc = npcs.find(n => n.slug === slug);
+      const ry = listY + i * 40, sel = idx === searchSel;
+      const accent = npc ? TYPE_COLORS[npc.type] : "#94a3b8";
+      if (sel) {
+        ctx.fillStyle = "rgba(148,163,184,0.14)"; ctx.fillRect(x + 14, ry, w - 28, 36);
+        ctx.fillStyle = accent; ctx.fillRect(x + 14, ry, 3, 36);
+      }
+      ctx.drawImage(pixelHead(slug, 32), x + 24, ry + 3, 30, 30);
+      ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 13px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+      ctx.fillText(displayName(slug), x + 64, ry + 16);
+      ctx.fillStyle = accent; ctx.font = "11px monospace";
+      ctx.fillText(npc ? TYPE_NAMES[npc.type] : "", x + 64, ry + 30);
+      if (npc && npc.defeated) {
+        ctx.fillStyle = "#22c55e"; ctx.font = "bold 13px monospace"; ctx.textAlign = "right";
+        ctx.fillText("\u2713 bested", x + w - 24, ry + 24);
+      }
+    }
+    if (start + rows < total) {
+      ctx.fillStyle = "#64748b"; ctx.font = "10px monospace"; ctx.textAlign = "center";
+      ctx.fillText(`+${total - (start + rows)} more \u2014 keep typing or scroll`, CANVAS_W / 2, listY + rows * 40 + 6);
+    }
+  }
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+
 function loop(t) {
   const dt = Math.min(0.05, (t - lastT) / 1000); // clamp caps tab-refocus dt spikes
   lastT = t;
@@ -1786,6 +2118,8 @@ function loop(t) {
   else if (state === "transition") { drawOverworld(); drawTransition(); }
   else if (state === "battle") drawBattle();
   else if (state === "victory") drawVictory();
+  else if (state === "search") { drawOverworld(); drawSearch(); }
+  if (state === "overworld") drawCoffeePrompt();
   drawToast();
 
   requestAnimationFrame(loop);

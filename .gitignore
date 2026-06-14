@@ -20,6 +20,12 @@ learn-docs/generated/
 .swarm/
 .tdd/
 
+# deep-think session artifacts (ephemeral)
+.deep-think/
+
+# Wrangler local cache / tmp
+.wrangler/
+
 # Python bytecode
 __pycache__/
 
