@@ -174,6 +174,40 @@ PNG yields `tileStore[slug]=null` and `blitTile()=false`, triggering the drawn-b
 fallback. The tool **never** writes to `tiles/` or `props/`. Diagram-sprite slugs use
 the `lib-diagram-{doc_slug}-{N}` convention to match `diagrams.json` (ticket #024).
 
+## Library minigame content banks (gen_library.py)
+
+Four JSON content banks under `datamon/library/` power the library minigame:
+
+| File | Min entries | Description |
+|---|---|---|
+| `pairs.json` | 20 | Term↔definition flash pairs |
+| `cloze.json` | 20 | Fill-in-the-blank items (one `___` blank per item) |
+| `diagrams.json` | 5 | ASCII decision-tree puzzle pieces |
+| `books.json` | 10 | Pre-paginated study-doc pages for the in-game reader (ticket E #027) |
+
+All content is **derived automatically** from `docs/*.md` and `quiz/bank/domain{1-5}.json`.
+No manual authoring, no network access, stdlib only.
+
+**Regenerate:**
+```bash
+uv run python datamon/tools/gen_library.py --pairs --cloze --diagrams
+uv run python datamon/tools/gen_library.py --books
+# or regenerate all four at once:
+uv run python datamon/tools/gen_library.py
+```
+
+**Validate (exits 0 + prints count summary on success):**
+```bash
+uv run python datamon/tools/gen_library.py --validate
+```
+
+**Difficulty normalisation:** The quiz bank uses `easy`/`medium`/`hard`; the library banks
+output `easy`/`normal`/`hard` (i.e. `medium` → `normal`).
+
+> **Note:** Re-running OVERWRITES the generated output files. If you have hand-curated
+> edits to `pairs.json`, `cloze.json`, `diagrams.json`, or `books.json`, apply them as a
+> post-process step or re-apply them manually after regeneration.
+
 ## Overworld walk/run animation
 
 The overworld player animates by **procedurally deforming its own per-character `spriteMini`

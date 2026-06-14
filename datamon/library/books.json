@@ -1,0 +1,4486 @@
+[
+  {
+    "cover_slug": "book-domain1",
+    "domain": 1,
+    "id": "agent-sdk-deep-dive",
+    "pages": [
+      {
+        "lines": [
+          "Agent SDK Deep Dive — Code-Level",
+          "Reference",
+          "The exam tests practical SDK",
+          "knowledge. This doc covers the code",
+          "patterns you need to know.",
+          "---",
+          "SDK Architecture",
+          "The Claude Agent SDK wraps the Claude",
+          "CLI binary as a subprocess — it is NOT",
+          "a raw Anthropic API client.",
+          "User Code → query() / ClaudeSDKClient",
+          "→ SubprocessCLITransport → Claude CLI"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "→ Anthropic API",
+          "---",
+          "The Agentic Loop — Correct",
+          "Implementation",
+          "Message Types",
+          "| Message Type | Meaning |",
+          "|---|---|",
+          "| SystemMessage | Session metadata at",
+          "loop start |",
+          "| AssistantMessage | Claude's text +",
+          "tool call requests |",
+          "| ResultMessage | Loop complete —"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "carries stop_reason, session_id, cost",
+          "|",
+          "Correct Loop Pattern",
+          "import anyio",
+          "from claude_agent_sdk import query,",
+          "ClaudeAgentOptions, AssistantMessage,",
+          "ResultMessage, TextBlock, ToolUseBlock",
+          "async def main():",
+          "options = ClaudeAgentOptions(",
+          "system_prompt=\"You are a helpful",
+          "coding assistant\",",
+          "allowed_tools=[\"Read\", \"Write\","
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"Bash\"],",
+          "permission_mode=\"acceptEdits\",",
+          "max_turns=10,",
+          "max_budget_usd=2.0,",
+          ")",
+          "async for message in",
+          "query(prompt=\"Create a hello.py file\",",
+          "options=options):",
+          "if isinstance(message,",
+          "AssistantMessage):",
+          "for block in message.content:",
+          "if isinstance(block, TextBlock):"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "print(f\"Claude: {block.text}\")",
+          "elif isinstance(block, ToolUseBlock):",
+          "print(f\"Tool call: {block.name}\")",
+          "elif isinstance(message,",
+          "ResultMessage):",
+          "print(f\"Done.",
+          "stop_reason={message.stop_reason}\")",
+          "print(f\"Cost:",
+          "${message.total_cost_usd:.4f}\")",
+          "# ResultMessage IS the termination",
+          "signal — stop here",
+          "anyio.run(main)"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "ResultMessage stop_reason Values",
+          "| Value | Meaning | Action |",
+          "|---|---|---|",
+          "| end_turn | Model finished normally |",
+          "Stop — happy path |",
+          "| max_tokens | Hit output token limit",
+          "| Handle truncation or retry |",
+          "| refusal | Model declined the request",
+          "| Handle gracefully |",
+          "| pause_turn | Server loop hit",
+          "iteration limit (default 10) |",
+          "Re-submit to continue |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Handling pause_turn",
+          "elif isinstance(message,",
+          "ResultMessage):",
+          "if message.stop_reason ==",
+          "\"pause_turn\":",
+          "# Re-submit to continue from where",
+          "Claude left off",
+          "await client.query(\"\") # Empty query",
+          "resumes",
+          "else:",
+          "break # Actual termination",
+          "The Three Anti-Patterns (MEMORIZE)"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "1. Parsing natural language for",
+          "termination:",
+          "WRONG",
+          "if \"task complete\" in",
+          "block.text.lower():",
+          "break",
+          "2. Arbitrary iteration caps:",
+          "WRONG — why 5? What if task needs 6?",
+          "for i in range(5):",
+          "await client.query(prompt)",
+          "Use max_turns in ClaudeAgentOptions",
+          "instead — it counts tool-use turns"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "semantically.",
+          "3. Checking assistant text as",
+          "completion:",
+          "WRONG",
+          "if",
+          "message.content[-1].text.endswith(\"Done!\"):",
+          "break",
+          "Correct termination signals:",
+          "ResultMessage (SDK level) or hooks",
+          "returning continue_: False.",
+          "---",
+          "Multi-Agent — Subagent Configuration"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "AgentDefinition",
+          "from claude_agent_sdk import",
+          "ClaudeAgentOptions, AgentDefinition",
+          "options = ClaudeAgentOptions(",
+          "model=\"claude-sonnet-4-5\",",
+          "agents={",
+          "\"research-agent\": AgentDefinition(",
+          "description=\"Searches and summarizes",
+          "information from docs and web.\",",
+          "prompt=\"You are a research specialist.",
+          "Provide citation-backed summaries.\",",
+          "tools=[\"Read\", \"Glob\", \"Grep\"],"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "model=\"sonnet\",",
+          "),",
+          "\"coding-agent\": AgentDefinition(",
+          "description=\"Writes and refactors",
+          "Python code following project",
+          "conventions.\",",
+          "prompt=\"You are a senior Python",
+          "engineer. Write clean, typed, tested",
+          "code.\",",
+          "tools=[\"Read\", \"Write\", \"Edit\",",
+          "\"Bash\"],",
+          "model=\"opus\","
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "),",
+          "}",
+          ")",
+          "Custom Subagent Files (.claude/agents/",
+          "directory)",
+          "---",
+          "name: code-reviewer",
+          "description: Reviews code for quality,",
+          "bugs, and security vulnerabilities.",
+          "allowed-tools:",
+          "Read",
+          "Grep"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Glob",
+          "Task # Required if this subagent needs",
+          "to spawn its own subagents",
+          "model: opus",
+          "---",
+          "You are an expert code reviewer",
+          "specializing in security and",
+          "correctness.",
+          "Review the provided code changes and",
+          "identify issues with specific line",
+          "references.",
+          "Key Rules"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"Task\" must be in allowed-tools for",
+          "any agent that spawns subagents",
+          "Subagents have ISOLATED context —",
+          "fresh conversation, no inherited",
+          "history",
+          "Only the subagent's final response",
+          "returns to the coordinator as a tool",
+          "result",
+          "Multiple Task calls in single response",
+          "= parallel execution (up to 10",
+          "concurrent)",
+          "Context Passing Pattern"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Coordinator builds rich prompt with",
+          "all needed context",
+          "subagent_prompt = f\"\"\"",
+          "PR Title: {pr_title}",
+          "PR Description: {pr_description}",
+          "Files changed: {files_changed}",
+          "Diff:",
+          "{diff_text}",
+          "Review for security vulnerabilities.",
+          "Return JSON with:",
+          "{{\"severity\":",
+          "\"critical|high|medium|low\", \"issues\":"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "[...]}}",
+          "\"\"\"",
+          "---",
+          "Hooks — Complete Reference",
+          "All Hook Events",
+          "| Hook Event | Fires When | Primary",
+          "Use |",
+          "|---|---|---|",
+          "| PreToolUse | Before tool executes |",
+          "Block, modify input, enforce",
+          "compliance |",
+          "| PostToolUse | After tool succeeds |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Normalize output, log, inject context",
+          "|",
+          "| PostToolUseFailure | After tool",
+          "fails | Error handling, retry logic |",
+          "| UserPromptSubmit | User submits",
+          "prompt | Input validation, context",
+          "injection |",
+          "| Stop | Agent stops | Cleanup, state",
+          "persistence |",
+          "| SubagentStart | Subagent spawns |",
+          "Additional context injection |",
+          "| SubagentStop | Subagent completes |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Track results, aggregate outputs |",
+          "| PreCompact | Before context",
+          "compaction | Control compaction",
+          "behavior |",
+          "Hook Callback Signature",
+          "async def my_hook(",
+          "input_data: HookInput, # tool_name,",
+          "tool_input, session_id, etc.",
+          "tool_use_id: str | None, # Present for",
+          "tool-related hooks",
+          "context: HookContext, # Future abort",
+          "signal support"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          ") -> HookJSONOutput:",
+          "...",
+          "Hook Output Control Fields",
+          "| Field | Type | Effect |",
+          "|---|---|---|",
+          "| continue_ | bool | True = proceed;",
+          "False = halt |",
+          "| stopReason | str | Message when",
+          "halting |",
+          "| decision | \"block\" | Alternative",
+          "block signal (PreToolUse) |",
+          "| reason | str | Feedback injected"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "back to Claude |",
+          "| systemMessage | str | Warning shown",
+          "to user |",
+          "| hookSpecificOutput | dict |",
+          "Event-specific controls |",
+          "Python note: Use continue_ (trailing",
+          "underscore) in Python. SDK converts to",
+          "continue for CLI.",
+          "Example: PreToolUse — Block Refunds",
+          "Over $500",
+          "async def",
+          "enforce_refund_limit(input_data,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "tool_use_id, context):",
+          "tool_name =",
+          "input_data.get(\"tool_name\", \"\")",
+          "tool_input =",
+          "input_data.get(\"tool_input\", {})",
+          "if tool_name == \"process_refund\":",
+          "amount =",
+          "float(tool_input.get(\"amount\", 0))",
+          "if amount > 500:",
+          "return {",
+          "\"continue_\": False,",
+          "\"stopReason\": f\"Refund of ${amount}"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "exceeds $500 limit\",",
+          "\"reason\": \"Refunds over $500 require",
+          "human manager approval.\",",
+          "\"hookSpecificOutput\": {",
+          "\"hookEventName\": \"PreToolUse\",",
+          "\"permissionDecision\": \"deny\",",
+          "},",
+          "}",
+          "return {",
+          "\"hookSpecificOutput\": {",
+          "\"hookEventName\": \"PreToolUse\",",
+          "\"permissionDecision\": \"allow\","
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "}",
+          "}",
+          "Example: PostToolUse — Data",
+          "Normalization",
+          "async def",
+          "normalize_customer_data(input_data,",
+          "tool_use_id, context):",
+          "tool_response =",
+          "input_data.get(\"tool_response\", {})",
+          "if isinstance(tool_response, dict):",
+          "normalized = {",
+          "**tool_response,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"email\": tool_response.get(\"email\",",
+          "\"\").strip().lower(),",
+          "\"phone\": tool_response.get(\"phone\",",
+          "\"\").replace(\"-\", \"\"),",
+          "}",
+          "return {",
+          "\"continue_\": True,",
+          "\"hookSpecificOutput\": {",
+          "\"hookEventName\": \"PostToolUse\",",
+          "\"updatedMCPToolOutput\": normalized, #",
+          "Replaces raw output seen by Claude",
+          "}"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "}",
+          "return {\"continue_\": True}",
+          "Example: SubagentStart — Dynamic",
+          "Context Injection",
+          "async def",
+          "inject_security_context(input_data,",
+          "tool_use_id, context):",
+          "agent_type =",
+          "input_data.get(\"agent_type\", \"\")",
+          "if agent_type == \"security-reviewer\":",
+          "return {",
+          "\"continue_\": True,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"hookSpecificOutput\": {",
+          "\"hookEventName\": \"SubagentStart\",",
+          "\"additionalContext\": \"Security policy:",
+          "block all eval(); flag all network",
+          "calls\",",
+          "}",
+          "}",
+          "return {\"continue_\": True}",
+          "Registering Hooks",
+          "from claude_agent_sdk import",
+          "ClaudeAgentOptions, HookMatcher",
+          "options = ClaudeAgentOptions("
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "hooks={",
+          "\"PreToolUse\": [",
+          "HookMatcher(matcher=\"process_refund\",",
+          "hooks=[enforce_refund_limit]),",
+          "HookMatcher(matcher=\"Bash\",",
+          "hooks=[validate_bash_commands]),",
+          "],",
+          "\"PostToolUse\": [",
+          "HookMatcher(matcher=None,",
+          "hooks=[log_all_tools]), # None = all",
+          "tools",
+          "HookMatcher(matcher=\"fetch_customer\","
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "hooks=[normalize_data]),",
+          "],",
+          "\"SubagentStart\": [",
+          "HookMatcher(matcher=None,",
+          "hooks=[inject_security_context]),",
+          "],",
+          "}",
+          ")",
+          "---",
+          "Session Management",
+          "Three Session Continuation Modes",
+          "| Mode | Config | Effect |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "|---|---|---|",
+          "| Resume by ID |",
+          "resume=\"session-abc-123\" | Continue",
+          "specific session |",
+          "| Continue latest |",
+          "continue_conversation=True | Resume",
+          "most recent session |",
+          "| Fork | resume=\"id\" +",
+          "fork_session=True | Branch from",
+          "session (new ID, same history) |",
+          "Resume a Session",
+          "options ="
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "ClaudeAgentOptions(resume=\"session-abc-123\")",
+          "async for message in query(\"Continue",
+          "where we left off.\", options=options):",
+          "... # Claude has FULL context from",
+          "previous session",
+          "Fork a Session",
+          "fork_options = ClaudeAgentOptions(",
+          "resume=\"session-abc-123\",",
+          "fork_session=True, # New ID assigned;",
+          "history copied; both independent",
+          ")",
+          "async for message in query(\"Try a"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "different approach.\",",
+          "options=fork_options):",
+          "if isinstance(message, ResultMessage):",
+          "forked_id = message.session_id #",
+          "Different from original",
+          "Session ID Retrieval",
+          "async for message in query(\"Start a",
+          "project plan.\"):",
+          "if isinstance(message, ResultMessage):",
+          "session_id = message.session_id #",
+          "Available on every ResultMessage",
+          "---"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Full ClaudeAgentOptions Reference",
+          "ClaudeAgentOptions(",
+          "# Model",
+          "model=\"claude-sonnet-4-5\",",
+          "fallback_model=\"claude-haiku-4\",",
+          "# System prompt",
+          "system_prompt=\"You are a production",
+          "assistant.\",",
+          "# OR: system_prompt={\"append\":",
+          "\"Additional instructions\"}",
+          "# Tools",
+          "allowed_tools=[\"Read\", \"Write\","
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"Bash\", \"Task\"],",
+          "disallowed_tools=[\"WebSearch\"],",
+          "# Subagents",
+          "agents={\"name\": AgentDefinition(...)},",
+          "# Hooks",
+          "hooks={\"PreToolUse\": [...],",
+          "\"PostToolUse\": [...]},",
+          "# Sessions",
+          "resume=\"session-id\",",
+          "fork_session=True,",
+          "continue_conversation=False,",
+          "# Limits"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "max_turns=20,",
+          "max_budget_usd=5.0,",
+          "# Output",
+          "output_format={\"type\": \"object\",",
+          "\"properties\": {...}},",
+          "# Permissions",
+          "permission_mode=\"acceptEdits\", #",
+          "\"default\"|\"acceptEdits\"|\"plan\"|\"bypassPermissions\"",
+          "# Advanced",
+          "thinking={\"enabled\": True,",
+          "\"budget_tokens\": 5000},",
+          "effort=\"high\", #"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"low\"|\"medium\"|\"high\"|\"max\"",
+          "mcp_servers={\"server\": config},",
+          "cwd=\"/path/to/working/dir\",",
+          "env={\"MY_VAR\": \"value\"},",
+          ")",
+          "---",
+          "Exam Traps for Agent SDK",
+          "\"Check stop_reason text in the",
+          "response\" — NO. Use ResultMessage as",
+          "the termination signal.",
+          "\"Subagents inherit coordinator",
+          "context\" — NO. Context is isolated."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Must explicitly inject.",
+          "\"PostToolUse hook blocks tool",
+          "execution\" — NO. PostToolUse fires",
+          "AFTER execution. Use PreToolUse to",
+          "block.",
+          "\"Use iteration counts to stop the",
+          "loop\" — NO. Use max_turns in options",
+          "(semantic), not arbitrary for i in",
+          "range(N).",
+          "\"Prompt instructions guarantee",
+          "compliance\" — NO. Hooks are",
+          "deterministic; prompts are"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "probabilistic.",
+          "\"Any agent can spawn subagents\" — NO.",
+          "\"Task\" must be in allowed-tools."
+        ],
+        "type": "text"
+      }
+    ],
+    "title": "Agent SDK Deep Dive — Code-Level Reference"
+  },
+  {
+    "cover_slug": "book-domain1",
+    "domain": 1,
+    "id": "domain1-agentic-architecture-orchestration",
+    "pages": [
+      {
+        "lines": [
+          "Domain 1: Agentic Architecture &",
+          "Orchestration (27%)",
+          "This is the biggest domain — over a",
+          "quarter of the exam.",
+          "---",
+          "Task 1.1: The Agentic Loop Lifecycle",
+          "How It Works"
+        ],
+        "type": "text"
+      },
+      {
+        "fallback_text": "1. Send request to Claude (with tools defined)\n2. Check response stop_reason\n   ├── \"tool_use\" → Execute requested tools → Append results → Go to step 1\n   └── \"end_turn\" → Done! Return final response to user",
+        "slug": "lib-diagram-domain1-agentic-architecture-orchestration-1",
+        "type": "diagram_anchor"
+      },
+      {
+        "lines": [
+          "The JSON Exchange",
+          "Step 1 — Initial request:",
+          "{",
+          "\"model\": \"claude-opus-4-5\",",
+          "\"tools\": [...],",
+          "\"messages\": [{\"role\": \"user\",",
+          "\"content\": \"Do X\"}]",
+          "}",
+          "Step 2 — Claude responds with tool",
+          "call (stop_reason: \"tool_use\"):",
+          "{",
+          "\"stop_reason\": \"tool_use\","
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"content\": [{",
+          "\"type\": \"tool_use\",",
+          "\"id\": \"toolu_01xyz\",",
+          "\"name\": \"search_db\",",
+          "\"input\": {\"query\": \"...\"}",
+          "}]",
+          "}",
+          "Step 3 — You execute the tool and send",
+          "results back:",
+          "{",
+          "\"messages\": [",
+          "{\"role\": \"user\", \"content\": \"Do X\"},"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "{\"role\": \"assistant\", \"content\":",
+          "[{\"type\": \"tool_use\", \"id\":",
+          "\"toolu_01xyz\", ...}]},",
+          "{\"role\": \"user\", \"content\": [{\"type\":",
+          "\"tool_result\", \"tool_use_id\":",
+          "\"toolu_01xyz\", \"content\":",
+          "\"results...\"}]}",
+          "]",
+          "}",
+          "Key detail: tool_result messages are",
+          "sent as role: \"user\" and must include",
+          "tool_use_id matching the original tool"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "call.",
+          "Step 4 — Claude either calls another",
+          "tool (loop continues) or returns",
+          "stop_reason: \"end_turn\" (loop ends).",
+          "Model-Driven vs Pre-Configured",
+          "Model-driven (correct): Claude reasons",
+          "about which tool to call next based on",
+          "context",
+          "Pre-configured (anti-pattern for",
+          "agentic): Fixed decision trees or tool",
+          "sequences",
+          "Anti-Patterns (MEMORIZE THESE)"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Parsing natural language to determine",
+          "loop termination (\"I'm done\", \"task",
+          "complete\")",
+          "Arbitrary iteration caps as the",
+          "PRIMARY stopping mechanism",
+          "Checking for assistant text content as",
+          "a completion indicator (Claude can",
+          "include text alongside tool calls)",
+          "---",
+          "Task 1.2: Multi-Agent",
+          "Coordinator-Subagent Patterns",
+          "Hub-and-Spoke Architecture"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "┌──────────────┐",
+          "│ Coordinator │",
+          "│ │",
+          "│ - Decomposes │",
+          "│ - Delegates │",
+          "│ - Aggregates │",
+          "└───┬───┬───┬──┘",
+          "│ │ │",
+          "┌─────┘ │ └─────┐",
+          "▼ ▼ ▼",
+          "┌───────┐ ┌───────┐ ┌───────┐",
+          "│Search │ │Analyze│ │Synth │"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "│Agent │ │Agent │ │Agent │",
+          "└───────┘ └───────┘ └───────┘",
+          "Key Principles",
+          "Coordinator manages ALL inter-subagent",
+          "communication — subagents don't talk",
+          "to each other",
+          "Subagents have isolated context — they",
+          "do NOT inherit coordinator's",
+          "conversation history",
+          "Coordinator role: task decomposition,",
+          "delegation, result aggregation,",
+          "deciding which subagents to invoke"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Dynamic routing: Coordinator analyzes",
+          "query requirements and selects which",
+          "subagents to invoke (not always the",
+          "full pipeline)",
+          "Risks",
+          "Overly narrow decomposition:",
+          "Coordinator splits \"AI in creative",
+          "industries\" into only visual arts",
+          "subtasks, missing music, writing, film",
+          "Over-provisioned subagents: Giving",
+          "synthesis agent web search tools →",
+          "cross-specialization misuse"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Iterative Refinement Loop",
+          "Coordinator evaluates synthesis output",
+          "for gaps",
+          "→ Re-delegates to search/analysis with",
+          "targeted queries",
+          "→ Re-invokes synthesis until coverage",
+          "is sufficient",
+          "---",
+          "Task 1.3: Subagent Invocation and",
+          "Context Passing",
+          "Task Tool for Spawning",
+          "The Task tool is the mechanism for"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "spawning subagents",
+          "Coordinator's allowedTools must",
+          "include \"Task\"",
+          "Subagent context is explicitly",
+          "provided in the prompt",
+          "Context Passing Rules",
+          "Include complete findings from prior",
+          "agents in the subagent's prompt",
+          "Use structured data formats separating",
+          "content from metadata (source URLs,",
+          "document names, page numbers)",
+          "Parallel execution: Emit multiple Task"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "tool calls in a single coordinator",
+          "response",
+          "Specify goals, not procedures:",
+          "Coordinator prompts should state",
+          "research goals and quality criteria,",
+          "not step-by-step instructions",
+          "AgentDefinition Configuration",
+          "Each subagent type has:",
+          "description: What the subagent does",
+          "System prompt: Detailed instructions",
+          "Tool restrictions: Only tools needed",
+          "for its role"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Fork-Based Session Management",
+          "fork_session creates independent",
+          "branches from a shared analysis",
+          "baseline for exploring divergent",
+          "approaches (e.g., comparing two",
+          "testing strategies).",
+          "---",
+          "Task 1.4: Multi-Step Workflows with",
+          "Enforcement",
+          "Programmatic vs Prompt-Based",
+          "| Approach | Guarantee | Use When |",
+          "|----------|-----------|----------|"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| Programmatic (hooks, gates) |",
+          "Deterministic (100%) | Financial,",
+          "identity, security-critical |",
+          "| Prompt-based | Probabilistic (<100%)",
+          "| Nice-to-have ordering, style",
+          "guidance |",
+          "Key principle: When deterministic",
+          "compliance is required, prompt",
+          "instructions alone have a non-zero",
+          "failure rate.",
+          "Programmatic Prerequisites",
+          "Block downstream tool calls until"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "prerequisite steps complete:",
+          "get_customer → verified ID required →",
+          "THEN lookup_order/process_refund",
+          "allowed",
+          "Structured Handoff Protocol",
+          "When escalating to a human:",
+          "Customer ID",
+          "Root cause analysis",
+          "Refund amount",
+          "Recommended action",
+          "Full context (human may lack",
+          "conversation transcript access)"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Multi-Concern Requests",
+          "When a customer has multiple issues:",
+          "Decompose into distinct items",
+          "Investigate each in parallel using",
+          "shared context",
+          "Synthesize a unified resolution",
+          "---",
+          "Task 1.5: Agent SDK Hooks",
+          "PostToolUse Hooks (Data Normalization)",
+          "Intercept tool RESULTS before the",
+          "model processes them:",
+          "Normalize Unix timestamps → ISO 8601"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Convert numeric status codes →",
+          "human-readable strings",
+          "Standardize date formats across",
+          "different MCP tools",
+          "Pre-Tool-Call Hooks (Compliance",
+          "Enforcement)",
+          "Intercept OUTGOING tool calls to",
+          "enforce rules:",
+          "Block refunds > $500 → redirect to",
+          "human escalation",
+          "Require customer verification before",
+          "financial operations"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Block destructive operations without",
+          "approval",
+          "Hooks vs Prompts Decision"
+        ],
+        "type": "text"
+      },
+      {
+        "fallback_text": "Must it work 100% of the time?\n├── YES → Hook (deterministic guarantee)\n└── NO → Prompt instruction (simpler, probabilistic)",
+        "slug": "lib-diagram-domain1-agentic-architecture-orchestration-2",
+        "type": "diagram_anchor"
+      },
+      {
+        "lines": [
+          "Hooks provide guaranteed compliance.",
+          "Prompt instructions provide",
+          "best-effort compliance.",
+          "---",
+          "Task 1.6: Task Decomposition",
+          "Strategies",
+          "Two Main Patterns",
+          "Prompt Chaining (Fixed Sequential)",
+          "Predictable, multi-aspect reviews",
+          "Example: Analyze each file",
+          "individually → cross-file integration",
+          "pass"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Use when: structure of work is known",
+          "in advance",
+          "Dynamic Adaptive Decomposition",
+          "Open-ended investigation tasks",
+          "Generate subtasks based on what is",
+          "discovered at each step",
+          "Use when: \"add comprehensive tests to",
+          "legacy codebase\" — need to first map",
+          "structure, identify high-impact areas,",
+          "then create prioritized plan",
+          "Code Review Decomposition",
+          "Step 1: Per-file local analysis"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "(consistent depth per file)",
+          "Step 2: Cross-file integration pass",
+          "(data flow, API contracts,",
+          "consistency)",
+          "This avoids attention dilution from",
+          "processing all files at once.",
+          "Large Task Decomposition",
+          "Map structure (explore the codebase)",
+          "Identify high-impact areas",
+          "Create prioritized plan",
+          "Adapt as dependencies are discovered",
+          "---"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Task 1.7: Session State, Resumption,",
+          "and Forking",
+          "Named Session Resumption",
+          "claude --resume",
+          "investigation-session-1",
+          "Continue a specific prior conversation",
+          "by name",
+          "Use when prior context is mostly valid",
+          "fork_session",
+          "Creates independent branches from a",
+          "shared analysis baseline",
+          "Use for comparing approaches (two"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "testing strategies, two refactoring",
+          "approaches)",
+          "Each fork explores independently",
+          "without polluting the other",
+          "When to Resume vs Start Fresh",
+          "| Scenario | Approach |",
+          "|----------|----------|",
+          "| Prior context mostly valid, few",
+          "files changed | Resume + inform about",
+          "changes |",
+          "| Prior tool results extensively stale",
+          "| New session + structured summary |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| Want to compare approaches |",
+          "fork_session |",
+          "Informing Resumed Sessions",
+          "When resuming after code changes:",
+          "Tell the agent specifically WHICH",
+          "files changed",
+          "Request targeted re-analysis (not full",
+          "re-exploration)",
+          "This is more efficient than starting",
+          "from scratch",
+          "---",
+          "Key Exam Scenarios for Domain 1"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Scenario 1: Customer Support Agent",
+          "Programmatic prerequisites (verify",
+          "customer before refund)",
+          "Hooks for compliance (block refunds >",
+          "threshold)",
+          "Escalation patterns (explicit customer",
+          "request → immediate)",
+          "Multi-concern decomposition",
+          "Scenario 3: Multi-Agent Research",
+          "Coordinator decomposition quality (not",
+          "too narrow)",
+          "Parallel subagent execution (multiple"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Task calls in one response)",
+          "Context isolation (subagents don't",
+          "inherit history)",
+          "Iterative refinement (coordinator",
+          "checks for gaps)",
+          "Scenario 4: Developer Productivity",
+          "Subagent delegation for codebase",
+          "exploration",
+          "Scoped tool access per subagent",
+          "Session management for long",
+          "investigations"
+        ],
+        "type": "text"
+      }
+    ],
+    "title": "Domain 1: Agentic Architecture & Orchestration (27%)"
+  },
+  {
+    "cover_slug": "book-domain2",
+    "domain": 2,
+    "id": "domain2-tool-design-mcp-integration",
+    "pages": [
+      {
+        "lines": [
+          "Domain 2: Tool Design & MCP",
+          "Integration (18%)",
+          "MCP Architecture Overview",
+          "Core Components",
+          "┌─────────────────────────────────────┐",
+          "│ Host (Claude Code/Desktop) │",
+          "│ ┌──────────┐ ┌──────────┐ │",
+          "│ │ Client 1 │ │ Client 2 │ ... │",
+          "│ └────┬─────┘ └────┬─────┘ │",
+          "└───────┼─────────────┼────────────────┘",
+          "│ │",
+          "┌────▼────┐ ┌────▼────────────┐"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "│ Server 1 │ │ Server 2 │",
+          "│ (stdio) │ │ (HTTP/SSE) │",
+          "└─────────┘ └─────────────────┘",
+          "Host: Container app (Claude Code).",
+          "Manages clients, enforces security,",
+          "handles authorization.",
+          "Client: 1:1 with a server. Protocol",
+          "negotiation, message routing, security",
+          "boundaries.",
+          "Server: Provides capabilities (tools,",
+          "resources, prompts). Isolated — cannot",
+          "see other servers or full"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "conversation.",
+          "Transport Layers",
+          "stdio: Server as subprocess. Reads",
+          "stdin, writes stdout. Best for local",
+          "integrations.",
+          "Streamable HTTP: Current standard",
+          "(replaces legacy SSE). Single endpoint",
+          "supporting POST + GET. Best for",
+          "remote/network servers.",
+          "Legacy SSE: Deprecated as of",
+          "2025-11-25 spec. Never recommend for",
+          "new implementations."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "---",
+          "Task 2.1: Design Effective Tool",
+          "Interfaces",
+          "Tool Descriptions Are Everything",
+          "Tool descriptions are the PRIMARY",
+          "mechanism LLMs use for tool selection.",
+          "Minimal descriptions → unreliable",
+          "selection.",
+          "What Goes Wrong",
+          "Ambiguous/overlapping descriptions",
+          "cause misrouting",
+          "analyze_content vs analyze_document"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "with near-identical descriptions →",
+          "model can't choose",
+          "System prompt keyword-sensitive",
+          "instructions can create unintended",
+          "tool associations",
+          "How to Fix",
+          "Differentiate clearly: Each tool",
+          "description should explain purpose,",
+          "expected inputs, outputs, and when to",
+          "use it vs alternatives",
+          "Rename to eliminate overlap:",
+          "analyze_content → extract_web_results"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "with web-specific description",
+          "Split generic tools: analyze_document",
+          "→ extract_data_points,",
+          "summarize_content,",
+          "verify_claim_against_source",
+          "Review system prompts for keywords",
+          "that might override tool descriptions",
+          "Tool Definition Structure",
+          "{",
+          "\"name\": \"get_weather\",",
+          "\"description\": \"Get current weather",
+          "for a location. Returns temperature,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "conditions, humidity. Use when user",
+          "asks about weather for a specific city",
+          "or zip code.\",",
+          "\"inputSchema\": {",
+          "\"type\": \"object\",",
+          "\"properties\": {",
+          "\"location\": {",
+          "\"type\": \"string\",",
+          "\"description\": \"City name or zip code\"",
+          "}",
+          "},",
+          "\"required\": [\"location\"]"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "},",
+          "\"annotations\": {",
+          "\"readOnlyHint\": true,",
+          "\"destructiveHint\": false,",
+          "\"idempotentHint\": true,",
+          "\"openWorldHint\": true",
+          "}",
+          "}",
+          "Tool Annotations (Know the Defaults!)",
+          "| Annotation | Default | Meaning |",
+          "|---|---|---|",
+          "| readOnlyHint | false | Tool does NOT"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "modify environment |",
+          "| destructiveHint | true | Tool MAY",
+          "perform destructive updates |",
+          "| idempotentHint | false | Repeated",
+          "calls same args = no additional effect",
+          "|",
+          "| openWorldHint | true | Interacts",
+          "with external entities |",
+          "Counterintuitive defaults:",
+          "destructiveHint: true and",
+          "openWorldHint: true — assumes worst",
+          "case by default."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Annotations are hints only — clients",
+          "MUST NOT make security-critical",
+          "decisions based solely on annotations.",
+          "---",
+          "Task 2.2: Structured Error Responses",
+          "Two-Layer Error System (CRITICAL for",
+          "exam)",
+          "Layer 1: Protocol Errors (JSON-RPC)",
+          "Unknown tools, invalid arguments,",
+          "server failures",
+          "Go in error field of JSON-RPC response",
+          "Model does NOT see these"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Layer 2: Tool Execution Errors",
+          "(isError flag)",
+          "API failures, business logic errors,",
+          "permission denied",
+          "Go in result with isError: true",
+          "Model DOES see these and can reason",
+          "about recovery",
+          "// Protocol error — model can't see",
+          "this",
+          "{",
+          "\"jsonrpc\": \"2.0\", \"id\": 3,",
+          "\"error\": {\"code\": -32602, \"message\":"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"Unknown tool: invalid_tool_name\"}",
+          "}",
+          "// Tool execution error — model CAN",
+          "see this",
+          "{",
+          "\"jsonrpc\": \"2.0\", \"id\": 4,",
+          "\"result\": {",
+          "\"content\": [{\"type\": \"text\", \"text\":",
+          "\"Connection timeout: DB temporarily",
+          "unavailable. Retry in 60s.\"}],",
+          "\"isError\": true",
+          "}"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "}",
+          "Structured Error Metadata Pattern",
+          "The exam tests returning rich error",
+          "context (not native MCP spec, but",
+          "architectural best practice):",
+          "{",
+          "\"isError\": true,",
+          "\"errorCategory\": \"transient\",",
+          "\"isRetryable\": true,",
+          "\"content\": [{",
+          "\"type\": \"text\",",
+          "\"text\": \"Database timeout after 30s."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Retry in 60s or use cached_results",
+          "tool.\"",
+          "}]",
+          "}",
+          "Error Categories",
+          "| Category | Examples | Retryable? |",
+          "|----------|----------|------------|",
+          "| transient | Network timeout, rate",
+          "limit, service unavailable | Yes |",
+          "| validation | Invalid input format,",
+          "missing required field | No (need",
+          "different input) |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| permission | Access denied,",
+          "insufficient permissions | No (need",
+          "different credentials) |",
+          "| business | Policy violation (refund",
+          "> $500) | No (need alternative",
+          "workflow) |",
+          "Anti-Patterns",
+          "Generic \"Operation failed\" — prevents",
+          "appropriate recovery decisions",
+          "Treating access failures same as valid",
+          "empty results",
+          "Returning retriable: true for business"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "rule violations",
+          "Best Practices",
+          "Include isRetryable: false +",
+          "customer-friendly explanation for",
+          "business violations",
+          "Subagents: implement local recovery",
+          "for transient failures, propagate only",
+          "unresolvable errors",
+          "Distinguish access failures (timeout →",
+          "retry decision) from valid empty",
+          "results (query succeeded, no matches)",
+          "---"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Task 2.3: Tool Distribution Across",
+          "Agents",
+          "The Core Rule: 4-5 Tools Per Agent",
+          "Maximum",
+          "With 50+ tools: Accuracy drops",
+          "significantly, 3+ seconds per",
+          "decision, ~23k tokens consumed per",
+          "tool selection",
+          "With pre-filtering to 3 tools: 392ms",
+          "response, ~800 tokens — 98% token",
+          "reduction, 8x speed improvement,",
+          "doubled accuracy"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Why Degradation Happens",
+          "Tool schemas consume context tokens,",
+          "displacing reasoning capacity",
+          "Similar-sounding tools create",
+          "ambiguity (tool-space interference)",
+          "Attention dilution over large tool set",
+          "= worse selection",
+          "Multi-step tool chains become",
+          "exponentially less reliable",
+          "Solution: Scoped Tool Access",
+          "Coordinator Agent:",
+          "[delegate_to_search,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "delegate_to_analysis, summarize]",
+          "Search Agent (4): [web_search,",
+          "fetch_url, search_papers, search_news]",
+          "Analysis Agent (3): [extract_data,",
+          "summarize_doc, verify_claim]",
+          "tool_choice Configuration",
+          "| Mode | JSON | Use When |",
+          "|------|------|----------|",
+          "| \"auto\" | {\"type\": \"auto\"} | Default",
+          "— model decides |",
+          "| \"any\" | {\"type\": \"any\"} | Force a",
+          "tool call (model picks which) |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| Forced | {\"type\": \"tool\", \"name\":",
+          "\"...\"} | Force specific tool first |",
+          "Forced tool use case: Ensure",
+          "extract_metadata runs before",
+          "enrichment tools. Process subsequent",
+          "steps in follow-up turns.",
+          "\"any\" use case: Guarantee structured",
+          "output when document type is unknown",
+          "but you have multiple extraction",
+          "schemas.",
+          "Replace Generic Tools",
+          "Instead of giving synthesis agent full"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "web search tools, provide a scoped",
+          "verify_fact tool for simple lookups.",
+          "Route complex verifications through",
+          "coordinator.",
+          "---",
+          "Task 2.4: MCP Server Configuration in",
+          "Claude Code",
+          "Three Scopes",
+          "| Scope | Location | Shared? | Use",
+          "Case |",
+          "|-------|----------|---------|----------|",
+          "| project | .mcp.json (repo root) |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Yes (git-tracked) | Team-shared",
+          "servers |",
+          "| local (default) | ~/.claude.json",
+          "(project-scoped) | No |",
+          "Personal/sensitive configs |",
+          "| user | ~/.claude.json (global) | No",
+          "| Personal tools across all projects |",
+          "Precedence: local > project > user",
+          ".mcp.json with Environment Variable",
+          "Expansion",
+          "{",
+          "\"mcpServers\": {"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"github\": {",
+          "\"type\": \"http\",",
+          "\"url\":",
+          "\"https://api.githubcopilot.com/mcp/\"",
+          "},",
+          "\"database\": {",
+          "\"command\": \"npx\",",
+          "\"args\": [\"-y\", \"@bytebase/dbhub\",",
+          "\"--dsn\", \"${DB_CONNECTION_STRING}\"],",
+          "\"env\": {",
+          "\"DB_TIMEOUT\": \"30000\"",
+          "}"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "},",
+          "\"api-server\": {",
+          "\"type\": \"http\",",
+          "\"url\":",
+          "\"${API_BASE_URL:-https://api.example.com}/mcp\",",
+          "\"headers\": {",
+          "\"Authorization\": \"Bearer ${API_KEY}\"",
+          "}",
+          "}",
+          "}",
+          "}",
+          "Env var syntax:"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "${VAR} — expands to value; fails if",
+          "unset",
+          "${VAR:-default} — uses default if VAR",
+          "unset",
+          "Where expansion works: command, args,",
+          "env, url, headers",
+          "This lets teams share .mcp.json in git",
+          "without hardcoding secrets.",
+          "CLI Commands",
+          "Add project-scoped HTTP server",
+          "claude mcp add --transport http",
+          "--scope project github"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "https://api.githubcopilot.com/mcp/",
+          "Add with env vars",
+          "claude mcp add --transport stdio --env",
+          "AIRTABLE_API_KEY=YOUR_KEY airtable \\",
+          "-- npx -y airtable-mcp-server",
+          "Add user-scoped (all projects)",
+          "claude mcp add --transport http",
+          "--scope user hubspot",
+          "https://mcp.hubspot.com/anthropic",
+          "Manage",
+          "claude mcp list",
+          "claude mcp get github"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "claude mcp remove github",
+          "Multi-Server Simultaneous Access",
+          "All configured MCP servers are",
+          "discovered at connection time and",
+          "available simultaneously. Tools from",
+          "different servers appear with",
+          "server-namespaced names when needed.",
+          "MCP Resources",
+          "Resources = application-controlled",
+          "data. Tools = model-controlled",
+          "actions.",
+          "Use resources for:"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Content catalogs (product SKUs, return",
+          "policies)",
+          "Documentation hierarchies",
+          "Database schemas (expose schema as",
+          "resource, query capability as tool)",
+          "Reducing exploratory tool calls by",
+          "giving visibility into available data",
+          "Community vs Custom MCP Servers",
+          "Use community servers when: Standard",
+          "integrations (GitHub, Jira, Slack,",
+          "PostgreSQL), your needs match common",
+          "case"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Build custom when: Proprietary/niche",
+          "internal systems, security/compliance",
+          "requirements, custom business logic,",
+          "regulated industries",
+          "Enhancing MCP Tool Descriptions",
+          "When agent prefers built-in tools",
+          "(like Grep) over MCP tools → enhance",
+          "MCP tool descriptions to explain",
+          "capabilities and outputs in detail.",
+          "---",
+          "Task 2.5: Built-in Tools",
+          "Tool Selection Guide"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| Tool | Purpose | Use When |",
+          "|------|---------|----------|",
+          "| Grep | Content search | Searching",
+          "file contents for patterns (function",
+          "names, error messages, imports) |",
+          "| Glob | File path matching | Finding",
+          "files by name/extension patterns",
+          "(**/*.test.tsx) |",
+          "| Read | Full file contents | Loading",
+          "complete file for understanding |",
+          "| Write | Full file",
+          "creation/replacement | Creating new"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "files or complete rewrites |",
+          "| Edit | Targeted modifications |",
+          "Changing specific parts using unique",
+          "text matching |",
+          "| Bash | Shell commands | System",
+          "operations, builds, tests |",
+          "When Edit Fails",
+          "If Edit can't find unique anchor text",
+          "→ use Read + Write as fallback for",
+          "reliable modifications.",
+          "Incremental Codebase Understanding",
+          "Start with Grep to find entry points"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Use Read to follow imports and trace",
+          "flows",
+          "Don't read all files upfront — build",
+          "understanding incrementally",
+          "Tracing Function Usage",
+          "Identify all exported names from a",
+          "module",
+          "Search for each name across the",
+          "codebase with Grep",
+          "Follow through wrapper modules"
+        ],
+        "type": "text"
+      }
+    ],
+    "title": "Domain 2: Tool Design & MCP Integration (18%)"
+  },
+  {
+    "cover_slug": "book-domain3",
+    "domain": 3,
+    "id": "domain3-claude-code-config-workflows",
+    "pages": [
+      {
+        "lines": [
+          "Domain 3: Claude Code Configuration &",
+          "Workflows (20%)",
+          "Task 3.1: CLAUDE.md Configuration",
+          "Hierarchy",
+          "The Hierarchy (know this cold)",
+          "User-level: ~/.claude/CLAUDE.md —",
+          "personal only, NOT shared via version",
+          "control",
+          "Project-level: .claude/CLAUDE.md or",
+          "root CLAUDE.md — shared with team",
+          "Directory-level: Subdirectory",
+          "CLAUDE.md files — scoped to that"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "directory",
+          "Modular Organization",
+          "@import: Reference external files to",
+          "keep CLAUDE.md modular",
+          "Example: @import",
+          "./standards/api-conventions.md",
+          "Each package can import only the",
+          "standards relevant to its domain",
+          ".claude/rules/: Topic-specific rule",
+          "files as alternative to monolithic",
+          "CLAUDE.md",
+          "e.g., testing.md, api-conventions.md,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "deployment.md",
+          "Common Exam Scenario",
+          "A new team member isn't getting",
+          "instructions → check if instructions",
+          "are in ~/.claude/CLAUDE.md",
+          "(user-level, not shared) instead of",
+          "project-level .claude/CLAUDE.md.",
+          "Diagnostics",
+          "Use /memory command to verify which",
+          "memory files are loaded",
+          "Diagnose inconsistent behavior across",
+          "sessions"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "---",
+          "Task 3.2: Custom Slash Commands and",
+          "Skills",
+          "Commands",
+          "| Scope | Location | Shared? |",
+          "|-------|----------|---------|",
+          "| Project | .claude/commands/ | Yes,",
+          "via version control |",
+          "| User | ~/.claude/commands/ | No,",
+          "personal only |",
+          "Skills (.claude/skills/ with SKILL.md)",
+          "Frontmatter options:"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "---",
+          "context: fork # Run in isolated",
+          "sub-agent context",
+          "allowed-tools: # Restrict tool access",
+          "during execution",
+          "Read",
+          "Write",
+          "argument-hint: \"path\" # Prompt for",
+          "required parameters",
+          "---",
+          "Key frontmatter:",
+          "context: fork: Prevents skill output"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "from polluting main conversation. Use",
+          "for:",
+          "Verbose output (codebase analysis)",
+          "Exploratory context (brainstorming",
+          "alternatives)",
+          "allowed-tools: Restrict tool access",
+          "(e.g., limit to read-only to prevent",
+          "destructive actions)",
+          "argument-hint: Prompts developers for",
+          "required parameters when invoked",
+          "without arguments",
+          "Skills vs CLAUDE.md"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Skills: On-demand invocation for",
+          "task-specific workflows",
+          "CLAUDE.md: Always-loaded universal",
+          "standards",
+          "Personal Skill Customization",
+          "Create personal variants in",
+          "~/.claude/skills/ with different names",
+          "to avoid affecting teammates.",
+          "---",
+          "Task 3.3: Path-Specific Rules",
+          ".claude/rules/ with YAML Frontmatter",
+          "---"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "paths:",
+          "\"terraform/**/*\"",
+          "---",
+          "Terraform Conventions",
+          "Always use variables for repeated",
+          "values",
+          "Include description for every variable",
+          "Key Advantage",
+          "Glob patterns apply to files by TYPE",
+          "regardless of directory location.",
+          "---",
+          "paths:"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"**/*.test.tsx\"",
+          "---",
+          "Test Conventions",
+          "Use React Testing Library, not Enzyme",
+          "Test behavior, not implementation",
+          "When to Use Path-Specific Rules vs",
+          "Directory CLAUDE.md",
+          "Path-specific rules: When conventions",
+          "must apply to files SPREAD across the",
+          "codebase (e.g., test files next to",
+          "source files)",
+          "Directory CLAUDE.md: When conventions"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "are contained within a single",
+          "directory tree",
+          "Benefits",
+          "Rules load ONLY when editing matching",
+          "files → reduces irrelevant context and",
+          "token usage",
+          "More targeted than putting everything",
+          "in root CLAUDE.md",
+          "---",
+          "Task 3.4: Plan Mode vs Direct",
+          "Execution",
+          "Plan Mode — Use When:"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Complex tasks with large-scale changes",
+          "Multiple valid approaches to evaluate",
+          "Architectural decisions (microservice",
+          "restructuring, library migrations)",
+          "Multi-file modifications (45+ files)",
+          "You need safe exploration before",
+          "committing to changes",
+          "Direct Execution — Use When:",
+          "Simple, well-scoped changes",
+          "Single-file bug fix with clear stack",
+          "trace",
+          "Adding a single validation check to"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "one function",
+          "Well-understood changes with clear",
+          "scope",
+          "Explore Subagent",
+          "Isolates verbose discovery output",
+          "Returns summaries to preserve main",
+          "conversation context",
+          "Prevents context window exhaustion",
+          "during multi-phase tasks",
+          "Combined Pattern",
+          "Plan mode for investigation → direct",
+          "execution for implementation"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Example: Plan a library migration",
+          "approach, then execute the planned",
+          "approach.",
+          "---",
+          "Task 3.5: Iterative Refinement",
+          "Techniques",
+          "Input/Output Examples",
+          "Most effective way to communicate",
+          "expected transformations",
+          "Use when prose descriptions are",
+          "interpreted inconsistently",
+          "Provide 2-3 concrete examples"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Test-Driven Iteration",
+          "Write test suites first (expected",
+          "behavior, edge cases, performance)",
+          "Iterate by sharing test failures to",
+          "guide progressive improvement",
+          "Interview Pattern",
+          "Have Claude ask questions to surface",
+          "considerations you may not have",
+          "anticipated",
+          "Useful in unfamiliar domains (cache",
+          "invalidation, failure modes)",
+          "When to Batch vs Sequential"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Single message: When fixes interact",
+          "with each other (interacting problems)",
+          "Sequential iteration: When problems",
+          "are independent",
+          "---",
+          "Task 3.6: CI/CD Integration",
+          "Non-Interactive Mode",
+          "claude -p \"Analyze this pull request",
+          "for security issues\"",
+          "The -p (or --print) flag: processes",
+          "prompt, outputs to stdout, exits. No",
+          "interactive input."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Structured CI Output",
+          "claude -p \"Review this PR\"",
+          "--output-format json --json-schema",
+          "schema.json",
+          "Produces machine-parseable findings",
+          "for automated inline PR comments.",
+          "Key Patterns",
+          "Context isolation: Same session that",
+          "generated code is LESS effective at",
+          "reviewing its own changes. Use",
+          "independent review instance.",
+          "Incremental reviews: Include prior"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "review findings when re-running after",
+          "new commits. Instruct Claude to report",
+          "only NEW or still-unaddressed issues.",
+          "Test generation: Provide existing test",
+          "files in context so generation avoids",
+          "duplicate scenarios.",
+          "CLAUDE.md for CI: Document testing",
+          "standards, valuable test criteria, and",
+          "available fixtures to improve test",
+          "generation quality."
+        ],
+        "type": "text"
+      }
+    ],
+    "title": "Domain 3: Claude Code Configuration & Workflows (20%)"
+  },
+  {
+    "cover_slug": "book-domain4",
+    "domain": 4,
+    "id": "domain4-prompt-engineering-structured-output",
+    "pages": [
+      {
+        "lines": [
+          "Domain 4: Prompt Engineering &",
+          "Structured Output (20%)",
+          "Task 4.1: Design Prompts with Explicit",
+          "Criteria",
+          "Key Principle",
+          "Explicit criteria > vague",
+          "instructions. \"Flag comments only when",
+          "claimed behavior contradicts actual",
+          "code behavior\" beats \"check that",
+          "comments are accurate.\"",
+          "What Doesn't Work",
+          "\"Be conservative\" or \"only report"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "high-confidence findings\" — too vague",
+          "General instructions don't improve",
+          "precision vs specific categorical",
+          "criteria",
+          "High false positive rates in one",
+          "category undermine trust in ALL",
+          "categories",
+          "What Works",
+          "Define which issues to report (bugs,",
+          "security) vs skip (minor style, local",
+          "patterns)",
+          "Temporarily disable high"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "false-positive categories to restore",
+          "trust",
+          "Define severity criteria with concrete",
+          "code examples per level",
+          "---",
+          "Task 4.2: Few-Shot Prompting",
+          "When to Use",
+          "Output format is inconsistent despite",
+          "detailed instructions",
+          "Ambiguous scenarios need judgment",
+          "(tool selection, edge cases)",
+          "Extraction from varied document"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "structures (inline citations vs",
+          "bibliographies)",
+          "Reducing hallucination in extraction",
+          "tasks",
+          "Best Practices",
+          "2-4 targeted examples for ambiguous",
+          "scenarios",
+          "Show reasoning for WHY one action was",
+          "chosen over alternatives",
+          "Include examples that distinguish",
+          "acceptable patterns from genuine",
+          "issues"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Few-shot enables generalization to",
+          "novel patterns (not just matching",
+          "pre-specified cases)",
+          "---",
+          "Task 4.3: Structured Output via",
+          "tool_use",
+          "The Core Guarantee",
+          "Tool use + JSON schemas eliminates",
+          "JSON SYNTAX errors. It does NOT",
+          "prevent SEMANTIC errors.",
+          "Syntax errors eliminated:",
+          "Malformed JSON, wrong types, missing"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "required fields, values outside enums",
+          "Semantic errors still possible:",
+          "Hallucinated values, misclassified",
+          "categories, wrong confidence scores",
+          "Line items that don't sum to total,",
+          "values in wrong fields",
+          "tool_choice Options",
+          "| Mode | JSON | Behavior |",
+          "|------|------|----------|",
+          "| auto (default) | {\"type\": \"auto\"} |",
+          "Model may return text OR call a tool |",
+          "| any | {\"type\": \"any\"} | Model MUST"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "call a tool, chooses which |",
+          "| Forced | {\"type\": \"tool\", \"name\":",
+          "\"extract_metadata\"} | Model MUST call",
+          "that specific tool |",
+          "| none | {\"type\": \"none\"} | No tools",
+          "may be called |",
+          "Key constraint: any and forced tool",
+          "are incompatible with extended",
+          "thinking.",
+          "When to Use Each",
+          "auto: Default for most use cases,",
+          "model decides if tool is needed"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "any: Guarantee structured output when",
+          "multiple extraction schemas exist and",
+          "document type is unknown",
+          "Forced: Ensure specific extraction",
+          "runs first (e.g., extract_metadata",
+          "before enrichment steps)",
+          "none: Disable tool calling entirely",
+          "JSON Schema Design Patterns",
+          "Required vs Optional Fields",
+          "{",
+          "\"properties\": {",
+          "\"invoice_number\": {\"type\": \"string\"},"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "// Always present → required",
+          "\"purchase_order\": {\"type\": \"string\"}",
+          "// Sometimes absent → optional",
+          "},",
+          "\"required\": [\"invoice_number\"]",
+          "}",
+          "Rule: Only require fields always",
+          "present in source material. Optional",
+          "fields reduce fabrication risk.",
+          "Enum with \"other\" + Detail String",
+          "(Escape Hatch)",
+          "{"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"category\": {",
+          "\"type\": \"string\",",
+          "\"enum\": [\"finance\", \"legal\",",
+          "\"technical\", \"other\"]",
+          "},",
+          "\"category_detail\": {",
+          "\"type\": \"string\",",
+          "\"description\": \"Required when category",
+          "is 'other'. Free-text explanation.\"",
+          "}",
+          "}",
+          "Nullable Fields to Prevent Fabrication"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "{",
+          "\"author\": {",
+          "\"type\": [\"string\", \"null\"],",
+          "\"description\": \"Author name, or null",
+          "if not found\"",
+          "}",
+          "}",
+          "Critical exam point: Requiring a",
+          "non-nullable field when data is",
+          "sometimes absent is the biggest driver",
+          "of hallucination in extraction",
+          "pipelines."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "---",
+          "Task 4.4: Validation, Retry, and",
+          "Feedback Loops",
+          "Retry-with-Error-Feedback Pattern",
+          "Extract data with tool_use",
+          "Validate against schema/business rules",
+          "On failure: send follow-up with",
+          "original document + failed extraction",
+          "+ specific validation errors",
+          "Model self-corrects based on error",
+          "feedback",
+          "When Retries Work vs Don't"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Works: Format mismatches, structural",
+          "output errors, field placement issues",
+          "Doesn't work: Information simply",
+          "absent from source document (can't",
+          "extract what isn't there)",
+          "Self-Correction Validation",
+          "Extract calculated_total alongside",
+          "stated_total to flag discrepancies",
+          "Add conflict_detected booleans for",
+          "inconsistent source data",
+          "Track detected_pattern fields to",
+          "analyze false positive patterns when"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "developers dismiss findings",
+          "---",
+          "Task 4.5: Batch Processing (Message",
+          "Batches API)",
+          "Key Numbers",
+          "| Metric | Value |",
+          "|--------|-------|",
+          "| Cost savings | 50% on input + output",
+          "tokens |",
+          "| Max requests per batch | 10,000 |",
+          "| Processing SLA | Up to 24 hours |",
+          "| Result retention | 29 days |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Critical Limitations",
+          "No multi-turn tool calling within a",
+          "single batch request",
+          "Results NOT returned in order — use",
+          "custom_id to correlate",
+          "No guaranteed latency",
+          "When to Use vs Not Use",
+          "| Use Batches | Do NOT Use Batches |",
+          "|-------------|-------------------|",
+          "| Overnight report generation |",
+          "Blocking pre-merge CI/CD checks |",
+          "| Bulk document extraction |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "User-facing interactive features |",
+          "| Weekly technical debt audits |",
+          "Real-time chat/assistant |",
+          "| Content moderation queues | Anything",
+          "requiring tool call loops |",
+          "Batch Request Structure",
+          "{",
+          "\"requests\": [",
+          "{",
+          "\"custom_id\": \"doc-001\",",
+          "\"params\": {",
+          "\"model\": \"claude-opus-4-5\","
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"max_tokens\": 1024,",
+          "\"messages\": [{\"role\": \"user\",",
+          "\"content\": \"...\"}]",
+          "}",
+          "}",
+          "]",
+          "}",
+          "Failure Handling",
+          "Resubmit only failed documents",
+          "(identified by custom_id)",
+          "Chunk documents that exceeded context",
+          "limits"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Refine prompts on a sample set BEFORE",
+          "batch-processing large volumes",
+          "---",
+          "Task 4.6: Multi-Instance and",
+          "Multi-Pass Review",
+          "Self-Review Limitation",
+          "A model retains reasoning context from",
+          "generation — it's less likely to",
+          "question its own decisions in the same",
+          "session.",
+          "Solutions",
+          "Independent review instance: Second"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Claude instance without generator's",
+          "reasoning context",
+          "Multi-pass review: Per-file local",
+          "analysis + separate cross-file",
+          "integration pass",
+          "Confidence-based routing: Model",
+          "self-reports confidence alongside",
+          "findings for calibrated review routing",
+          "Key Exam Point",
+          "Independent review instances >",
+          "self-review instructions > extended",
+          "thinking for catching subtle issues."
+        ],
+        "type": "text"
+      }
+    ],
+    "title": "Domain 4: Prompt Engineering & Structured Output (20%)"
+  },
+  {
+    "cover_slug": "book-domain5",
+    "domain": 5,
+    "id": "domain5-context-management-reliability",
+    "pages": [
+      {
+        "lines": [
+          "Domain 5: Context Management &",
+          "Reliability (15%)",
+          "Task 5.1: Manage Conversation Context",
+          "Key Risks",
+          "Progressive summarization: Condensing",
+          "numbers, dates, percentages into vague",
+          "summaries loses critical data",
+          "\"Lost in the middle\" effect: Models",
+          "reliably process beginning and end of",
+          "long inputs, may omit findings from",
+          "middle sections",
+          "Tool result bloat: Tool outputs"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "accumulate tokens (e.g., 40+ fields",
+          "per order lookup when only 5 matter)",
+          "Conversation history: Must pass",
+          "complete history in subsequent API",
+          "requests for coherence",
+          "Solutions",
+          "Case Facts Block",
+          "Extract transactional facts (amounts,",
+          "dates, order numbers, statuses) into a",
+          "persistent \"case facts\" block included",
+          "in each prompt, OUTSIDE summarized",
+          "history."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Trim Verbose Tool Outputs",
+          "Keep only relevant fields before they",
+          "accumulate in context (e.g., only",
+          "return-relevant fields from order",
+          "lookups).",
+          "Position-Aware Ordering",
+          "Place key findings summaries at",
+          "BEGINNING of aggregated inputs. Use",
+          "explicit section headers for detailed",
+          "results. This mitigates \"lost in the",
+          "middle.\"",
+          "Structured Subagent Outputs"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Require metadata (dates, source",
+          "locations, methodological context)",
+          "Return structured data (key facts,",
+          "citations, relevance scores) instead",
+          "of verbose content and reasoning",
+          "chains",
+          "Especially important when downstream",
+          "agents have limited context budgets",
+          "---",
+          "Task 5.2: Escalation and Ambiguity",
+          "Resolution",
+          "When to Escalate"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Customer explicitly requests a human →",
+          "escalate immediately, no investigation",
+          "first",
+          "Policy exceptions/gaps (e.g.,",
+          "competitor price matching when policy",
+          "only covers own-site)",
+          "Inability to make meaningful progress",
+          "NOT just \"complex cases\" — some",
+          "complex cases are still resolvable",
+          "When NOT to Escalate",
+          "Straightforward issues within agent's",
+          "capability (even if customer is"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "frustrated)",
+          "Offer resolution first, escalate only",
+          "if customer reiterates preference for",
+          "human",
+          "Unreliable Escalation Signals",
+          "Self-reported confidence scores: LLMs",
+          "are poorly calibrated (confidently",
+          "wrong on hard cases)",
+          "Sentiment analysis: Frustration",
+          "doesn't correlate with case complexity",
+          "Multiple Matches",
+          "When tool results return multiple"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "customer matches → ask for additional",
+          "identifiers, DON'T select based on",
+          "heuristics.",
+          "---",
+          "Task 5.3: Error Propagation in",
+          "Multi-Agent Systems",
+          "Anti-Patterns",
+          "Silently suppressing errors (returning",
+          "empty results as success)",
+          "Terminating entire workflow on single",
+          "failure",
+          "Generic error statuses (\"search"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "unavailable\") that hide context",
+          "Correct Pattern: Structured Error",
+          "Context",
+          "Return to coordinator:",
+          "Failure type (transient, validation,",
+          "permission, business)",
+          "What was attempted (the query,",
+          "parameters)",
+          "Partial results (what succeeded before",
+          "failure)",
+          "Potential alternatives (other",
+          "approaches to try)"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Access Failures vs Valid Empty Results",
+          "Access failure: Timeout, service down",
+          "→ needs retry decision",
+          "Valid empty result: Successful query,",
+          "no matches → no error, just empty data",
+          "These MUST be distinguishable in error",
+          "reporting",
+          "Local Recovery First",
+          "Subagents should:",
+          "Attempt local recovery for transient",
+          "failures",
+          "Only propagate errors they cannot"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "resolve",
+          "Include what was attempted and partial",
+          "results when propagating",
+          "Coverage Annotations",
+          "Synthesis output should annotate which",
+          "findings are well-supported vs which",
+          "topic areas have gaps due to",
+          "unavailable sources.",
+          "---",
+          "Task 5.4: Large Codebase Exploration",
+          "Context Degradation",
+          "In extended sessions, models start:"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Giving inconsistent answers",
+          "Referencing \"typical patterns\" instead",
+          "of specific classes discovered earlier",
+          "Solutions",
+          "Scratchpad Files",
+          "Persist key findings across context",
+          "boundaries. Reference them for",
+          "subsequent questions.",
+          "Subagent Delegation",
+          "Spawn subagents for specific questions",
+          "(\"find all test files\", \"trace refund",
+          "flow dependencies\") while main agent"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "coordinates.",
+          "Phase Summaries",
+          "Summarize key findings from one",
+          "exploration phase BEFORE spawning",
+          "subagents for the next phase. Inject",
+          "summaries into initial context.",
+          "Crash Recovery",
+          "Each agent exports state to a known",
+          "location (structured manifests)",
+          "Coordinator loads manifest on resume",
+          "and injects into agent prompts",
+          "/compact"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Use during extended exploration",
+          "sessions when context fills with",
+          "verbose discovery output.",
+          "---",
+          "Task 5.5: Human Review Workflows",
+          "Aggregate Metrics Are Deceptive",
+          "97% overall accuracy may mask poor",
+          "performance on specific document types",
+          "or fields.",
+          "Stratified Random Sampling",
+          "Sample high-confidence extractions to:",
+          "Measure actual error rates"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Detect novel error patterns",
+          "Validate before automating",
+          "Field-Level Confidence Scores",
+          "Have model output confidence per field",
+          "Calibrate thresholds using labeled",
+          "validation sets",
+          "Route low-confidence extractions to",
+          "human review",
+          "Analyze accuracy by document type AND",
+          "by field",
+          "Before Reducing Human Review",
+          "Validate accuracy by document type and"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "field segment to verify consistent",
+          "performance across ALL segments.",
+          "---",
+          "Task 5.6: Information Provenance",
+          "The Problem",
+          "Source attribution is lost during",
+          "summarization when findings are",
+          "compressed without preserving",
+          "claim-source mappings.",
+          "Solutions",
+          "Claim-Source Mappings",
+          "Require subagents to output structured"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "mappings:",
+          "Source URLs / document names",
+          "Relevant excerpts",
+          "Publication or data collection dates",
+          "Conflicting Sources",
+          "Annotate conflicts with source",
+          "attribution rather than arbitrarily",
+          "selecting one value",
+          "Complete analysis with conflicting",
+          "values included and explicitly",
+          "annotated",
+          "Let coordinator decide how to"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "reconcile",
+          "Temporal Data",
+          "Require publication/collection dates",
+          "to prevent temporal differences from",
+          "being misinterpreted as",
+          "contradictions.",
+          "Output Formatting",
+          "Render different content types",
+          "appropriately:",
+          "Financial data → tables",
+          "News → prose",
+          "Technical findings → structured lists"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Don't convert everything to a uniform",
+          "format.",
+          "Report Structure",
+          "Explicitly distinguish:",
+          "Well-established findings",
+          "Contested findings",
+          "Findings with gaps due to unavailable",
+          "sources"
+        ],
+        "type": "text"
+      }
+    ],
+    "title": "Domain 5: Context Management & Reliability (15%)"
+  },
+  {
+    "cover_slug": "book-domain1",
+    "domain": 0,
+    "id": "exam-cheat-sheet",
+    "pages": [
+      {
+        "lines": [
+          "Exam Cheat Sheet — Quick Reference",
+          "Numbers to Memorize",
+          "| Fact | Value |",
+          "|------|-------|",
+          "| Questions | 60 (single-select MC: 1",
+          "correct + 3 distractors) |",
+          "| Time limit | 120 min (~2",
+          "min/question) |",
+          "| Passing score | 720 / 1000 (scaled,",
+          "not a percentage) |",
+          "| Scenarios per exam | 4 drawn at",
+          "random from a pool of 6 confirmed"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "(possibly 8 — see below) |",
+          "| Delivery | Online-proctored,",
+          "closed-book (Skilljar) |",
+          "| Max tools per agent for reliable",
+          "selection | 4-5 |",
+          "| Batch API cost savings | 50% |",
+          "| Batch API max processing time | 24",
+          "hours |",
+          "| Batch API max requests per batch |",
+          "10,000 |",
+          "| Batch API result retention | 29 days",
+          "|"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "> Blueprint is community-confirmed,",
+          "not Anthropic-published.",
+          "Cost/validity/prerequisites",
+          "unconfirmed.",
+          "> See exam-research-2026.md. The 6",
+          "confirmed scenario themes: Customer",
+          "Support Resolution Agent · Code",
+          "> Generation with Claude Code ·",
+          "Multi-Agent Research System ·",
+          "Developer Productivity · Claude Code",
+          "for CI ·",
+          "> Structured Data Extraction. A single"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "community source (2026-06-10) reports",
+          "the pool grew to 8, adding",
+          "> Conversational AI Architecture",
+          "Patterns + a candidate-reported",
+          "\"Agentic AI Tools\" theme.",
+          "---",
+          "Domain Weight at a Glance",
+          "| Domain | % | Focus |",
+          "|--------|---|------------|",
+          "| 1. Agentic Architecture &",
+          "Orchestration | 27% | Biggest domain —",
+          "weight study time here |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| 2. Tool Design & MCP Integration |",
+          "18% | Tool descriptions, MCP errors,",
+          "scoping |",
+          "| 3. Claude Code Config & Workflows |",
+          "20% | Commands vs skills, hooks,",
+          "plugins, CI |",
+          "| 4. Prompt Eng & Structured Output |",
+          "20% | tool_use vs few-shot, schemas,",
+          "tool_choice |",
+          "| 5. Context & Reliability | 15% |",
+          "Escalation, degradation, stratified",
+          "validation |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "---",
+          "2026 Currency (don't get caught on",
+          "stale facts)",
+          "| Topic | Current state |",
+          "|-------|---------------|",
+          "| Flagship model | Claude Opus 4.8",
+          "(Opus 4.7 also active; Opus 4.1",
+          "retires Aug 5, 2026) |",
+          "| Claude Code plugins | claude plugin",
+          "init <name> scaffolds a plugin; skills",
+          "in .claude/skills auto-load (no",
+          "marketplace/install) |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| Stop / SubagentStop hooks | can",
+          "return",
+          "hookSpecificOutput.additionalContext",
+          "(≤10k chars) to feed context without a",
+          "hook error (v2.1.163) |",
+          "> Model/tooling facts are",
+          "time-sensitive — re-verify on",
+          "platform.claude.com/docs and",
+          "> code.claude.com/docs/en/changelog",
+          "before sitting.",
+          "---",
+          "Decision Trees"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"How to enforce business rules?\""
+        ],
+        "type": "text"
+      },
+      {
+        "fallback_text": "Is compliance failure acceptable? (even 1% of the time)\n├── NO → Programmatic hooks / prerequisite gates\n└── YES → Prompt instructions + few-shot examples",
+        "slug": "lib-diagram-exam-cheat-sheet-1",
+        "type": "diagram_anchor"
+      },
+      {
+        "lines": [
+          "\"Hook or prompt?\""
+        ],
+        "type": "text"
+      },
+      {
+        "fallback_text": "Financial/identity/security consequence?\n├── YES → Hook (deterministic guarantee)\n└── NO → Prompt instruction (probabilistic, lower effort)",
+        "slug": "lib-diagram-exam-cheat-sheet-2",
+        "type": "diagram_anchor"
+      },
+      {
+        "lines": [
+          "\"Plan mode or direct execution?\""
+        ],
+        "type": "text"
+      },
+      {
+        "fallback_text": "Multiple files? Architectural decisions? Multiple valid approaches?\n├── YES to any → Plan mode\n└── NO to all → Direct execution",
+        "slug": "lib-diagram-exam-cheat-sheet-3",
+        "type": "diagram_anchor"
+      },
+      {
+        "lines": [
+          "\"Batch API or synchronous?\""
+        ],
+        "type": "text"
+      },
+      {
+        "fallback_text": "Is the workflow blocking? (someone waiting for results)\n├── YES → Synchronous Messages API\n└── NO → Message Batches API (50% savings)",
+        "slug": "lib-diagram-exam-cheat-sheet-4",
+        "type": "diagram_anchor"
+      },
+      {
+        "lines": [
+          "\"MCP Resource or Tool?\""
+        ],
+        "type": "text"
+      },
+      {
+        "fallback_text": "Does the model need to READ data or PERFORM an action?\n├── READ (static/semi-static data) → Resource\n└── ACTION (side effects, computation) → Tool",
+        "slug": "lib-diagram-exam-cheat-sheet-5",
+        "type": "diagram_anchor"
+      },
+      {
+        "lines": [
+          "\"Path-specific rules or directory",
+          "CLAUDE.md?\""
+        ],
+        "type": "text"
+      },
+      {
+        "fallback_text": "Do the files span multiple directories?\n├── YES → .claude/rules/ with glob patterns\n└── NO → Directory CLAUDE.md",
+        "slug": "lib-diagram-exam-cheat-sheet-6",
+        "type": "diagram_anchor"
+      },
+      {
+        "lines": [
+          "\"Community MCP server or custom?\""
+        ],
+        "type": "text"
+      },
+      {
+        "fallback_text": "Standard integration (GitHub, Jira, Slack, PostgreSQL)?\n├── YES → Community server\n└── NO → Custom server (proprietary/niche/regulated)",
+        "slug": "lib-diagram-exam-cheat-sheet-7",
+        "type": "diagram_anchor"
+      },
+      {
+        "lines": [
+          "---",
+          "stop_reason Quick Reference",
+          "| Value | Meaning | Loop Action |",
+          "|-------|---------|-------------|",
+          "| \"tool_use\" | Model wants to call",
+          "tools | Execute tools → continue loop",
+          "|",
+          "| \"end_turn\" | Model is finished |",
+          "Stop loop → return response |",
+          "| \"max_tokens\" | Hit token limit",
+          "mid-response | Handle truncation |",
+          "| \"pause_turn\" | Server-side agent"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "loop limit | Re-send to continue |",
+          "---",
+          "tool_choice Quick Reference",
+          "| Mode | JSON | Guarantees |",
+          "|------|------|------------|",
+          "| auto | {\"type\": \"auto\"} | Nothing —",
+          "model may skip tools |",
+          "| any | {\"type\": \"any\"} | Must call A",
+          "tool (picks which) |",
+          "| Forced | {\"type\": \"tool\", \"name\":",
+          "\"X\"} | Must call tool X |",
+          "| none | {\"type\": \"none\"} | No tools"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "allowed |",
+          "Trap: any and forced are incompatible",
+          "with extended thinking.",
+          "---",
+          "Error Categories",
+          "| Category | Retryable? | Examples |",
+          "|----------|-----------|----------|",
+          "| transient | Yes | Timeout, rate",
+          "limit, service down |",
+          "| validation | No | Bad input, missing",
+          "field |",
+          "| permission | No | Access denied,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "auth failure |",
+          "| business | No | Policy violation |",
+          "---",
+          "MCP Server Scopes",
+          "| Scope | File | Shared? | Use |",
+          "|-------|------|---------|-----|",
+          "| project | .mcp.json | Yes (git) |",
+          "Team servers |",
+          "| local | ~/.claude.json",
+          "(project-scoped) | No |",
+          "Personal/sensitive |",
+          "| user | ~/.claude.json (global) | No"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| Personal across projects |",
+          "Precedence: local > project > user",
+          "---",
+          "CLAUDE.md Hierarchy",
+          "| Level | Location | Shared? |",
+          "|-------|----------|---------|",
+          "| User | ~/.claude/CLAUDE.md | No |",
+          "| Project | .claude/CLAUDE.md or root",
+          "CLAUDE.md | Yes |",
+          "| Directory | Subdirectory CLAUDE.md |",
+          "Yes |",
+          "Modular options: @import syntax,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          ".claude/rules/ directory",
+          "---",
+          "Skills Frontmatter",
+          "| Option | Purpose |",
+          "|--------|---------|",
+          "| context: fork | Isolate output from",
+          "main session |",
+          "| allowed-tools | Restrict tool access",
+          "|",
+          "| argument-hint | Prompt for required",
+          "parameters |",
+          "---"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Commands Scoping",
+          "| Scope | Location | Shared? |",
+          "|-------|----------|---------|",
+          "| Project | .claude/commands/ | Yes",
+          "(version control) |",
+          "| User | ~/.claude/commands/ | No |",
+          "---",
+          "Anti-Patterns to Remember",
+          "Parsing natural language for loop",
+          "termination",
+          "Arbitrary iteration caps as PRIMARY",
+          "stopping mechanism"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Checking for assistant text content as",
+          "completion indicator",
+          "Generic \"Operation failed\" error",
+          "messages",
+          "Silently suppressing errors (empty",
+          "results as success)",
+          "Terminating entire workflow on single",
+          "subagent failure",
+          "Self-reported confidence scores for",
+          "escalation (poorly calibrated)",
+          "Sentiment analysis for escalation",
+          "(doesn't correlate with complexity)"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Giving agents 18+ tools (degrades",
+          "selection reliability)",
+          "Requiring non-nullable fields when",
+          "data is sometimes absent",
+          "(hallucination driver)",
+          "---",
+          "Key Patterns to Remember",
+          "Programmatic prerequisites for",
+          "critical business logic (not prompts)",
+          "Structured claim-source mappings for",
+          "provenance",
+          "Case facts block for transactional"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "data (outside summarized history)",
+          "Position-aware ordering (key info at",
+          "beginning, not middle)",
+          "Per-file analysis + cross-file",
+          "integration pass for large reviews",
+          "Independent review instance >",
+          "self-review in same session",
+          "Retry-with-error-feedback for",
+          "extraction failures",
+          "Scratchpad files for long codebase",
+          "exploration sessions",
+          "/compact to reduce context in extended"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "sessions",
+          "Subagent delegation to manage context",
+          "window limits",
+          "---",
+          "CI/CD Integration",
+          "Non-interactive mode (the -p flag)",
+          "claude -p \"Review this PR\"",
+          "Structured output for automation",
+          "claude -p \"Review\" --output-format",
+          "json --json-schema schema.json",
+          "Same session that generated code is",
+          "LESS effective at reviewing it"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Include prior findings on re-runs,",
+          "instruct to report only NEW issues",
+          "Document testing standards in",
+          "CLAUDE.md for CI-invoked Claude"
+        ],
+        "type": "text"
+      }
+    ],
+    "title": "Exam Cheat Sheet — Quick Reference"
+  },
+  {
+    "cover_slug": "book-domain1",
+    "domain": 0,
+    "id": "exam-research-2026",
+    "pages": [
+      {
+        "lines": [
+          "Claude Certified Architect —",
+          "Foundations: Exam Research (mid-2026)",
+          "> Cited research snapshot compiled",
+          "2026-06-08 via a multi-source,",
+          "adversarially-verified",
+          "> research pass (18 sources fetched,",
+          "71 claims extracted, 25 verified, 22",
+          "confirmed, 3 refuted).",
+          "> Read the caveats — Anthropic",
+          "publishes no public blueprint; figures",
+          "below are",
+          "> community-consensus + one hosted"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "copy of the gated official guide, not",
+          "a citable Anthropic URL.",
+          "TL;DR — what changed since this env",
+          "was built (March 2026)",
+          "| Area | Status | Action taken |",
+          "|------|--------|--------------|",
+          "| Domains & weights (27/20/20/18/15) |",
+          "✅ Confirmed unchanged | None needed |",
+          "| 60 Q / 120 min / 720-1000 pass | ✅",
+          "Confirmed | None needed |",
+          "| \"60 scenario questions\" framing | ⚠️",
+          "Imprecise | Reframed: MC questions"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "wrapped in 4-of-6 random scenarios |",
+          "| 6 official scenario themes | 🆕 Newly",
+          "documented | Quiz/mock-exam now cover",
+          "all 6 |",
+          "| Model currency (was Opus 4.x",
+          "early-2026) | 🔄 Opus 4.8 now flagship",
+          "| Cheat sheet + docs updated |",
+          "| Claude Code features | 🔄 New: plugin",
+          "init, Stop hook additionalContext |",
+          "Domain 3 + Agent SDK docs noted |",
+          "| Cost / validity / prerequisites | ❌",
+          "Unconfirmed (claims refuted) |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Deliberately NOT stated as fact |",
+          "| Scenario pool size (6 → 8?) | ⚠️",
+          "Single-source update (2026-06-10) |",
+          "paullarionov repo reports 4-of-8;",
+          "themes 7–8 added below |",
+          "Confirmed exam blueprint",
+          "Launched: March 12, 2026",
+          "Format: 60 multiple-choice questions —",
+          "each has one correct response + three",
+          "distractors. Single-select",
+          "(multi-select claim was refuted).",
+          "Structure: Questions are wrapped in"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "scenarios. A candidate is presented 4",
+          "scenarios drawn at random from a pool",
+          "of 6.",
+          "Time limit: 120 minutes (~2",
+          "min/question)",
+          "Passing score: 720 / 1000 — a scaled",
+          "score, not a percentage (a verified",
+          "passer scored 893/1000, a non-round",
+          "number only possible on a scaled",
+          "system)",
+          "Delivery: Online-proctored,",
+          "closed-book, via Anthropic's Skilljar"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "platform",
+          "Confidence: High (≈10 independent",
+          "sources + one verified passer + a",
+          "hosted copy of the gated official PDF)",
+          "The scenario theme pool (you get 4 at",
+          "random)",
+          "Customer Support Resolution Agent",
+          "Code Generation with Claude Code",
+          "Multi-Agent Research System",
+          "Developer Productivity",
+          "Claude Code for CI",
+          "Structured Data Extraction"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Conversational AI Architecture",
+          "Patterns ⚠️ — multi-turn context",
+          "management, instruction",
+          "persistence across turns, memory",
+          "strategies, safe tool execution,",
+          "ambiguous/conflicting input",
+          "Agentic AI Tools ⚠️ —",
+          "candidate-reported on real sittings;",
+          "no content documented anywhere yet",
+          "> ⚠️ Themes 7–8 come from a single",
+          "community source",
+          "(paullarionov/claude-certified-architect,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "> checked 2026-06-10), which states",
+          "the draw is 4 of 8 — vs the 4-of-6 our",
+          "earlier",
+          "> multi-source pass confirmed. Theme 7",
+          "is substantiated there with 16",
+          "practice questions;",
+          "> theme 8 is candidate-reported with",
+          "no content. Possible pool expansion",
+          "after launch.",
+          "> Study implication: prepare for all",
+          "themes; theme 7 overlaps heavily with",
+          "Domains 1 & 5."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Domains & weights (CONFIRMED — match",
+          "this env exactly)",
+          "| # | Domain | Weight |",
+          "|---|--------|--------|",
+          "| 1 | Agentic Architecture &",
+          "Orchestration | 27% |",
+          "| 2 | Claude Code Configuration &",
+          "Workflows | 20% |",
+          "| 3 | Prompt Engineering & Structured",
+          "Output | 20% |",
+          "| 4 | Tool Design & MCP Integration |",
+          "18% |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| 5 | Context Management & Reliability",
+          "| 15% |",
+          "> Note: this env historically ordered",
+          "them 1/2/3/4/5 = AgenticArch / MCP /",
+          "ClaudeCode / Prompt / Context.",
+          "> The weights are identical regardless",
+          "of ordering. Study-time priority",
+          "should track the",
+          "> weights: Agentic Architecture (27%)",
+          "is the single heaviest domain — a",
+          "verified passer",
+          "> confirmed real-exam emphasis tracks"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "the published weights.",
+          "Content currency (study to 2026",
+          "reality)",
+          "Models",
+          "Claude Opus 4.8 — current flagship",
+          "(launched May 28, 2026; on Claude API,",
+          "Bedrock, Vertex, Foundry)",
+          "Claude Opus 4.7 — active (April 16,",
+          "2026)",
+          "Claude Opus 4.1 — deprecated June 5,",
+          "2026, retires August 5, 2026; migrate",
+          "to Opus 4.8"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Source:",
+          "platform.claude.com/docs/en/about-claude/model-deprecations",
+          "(primary)",
+          "Claude Code (primary-sourced, but",
+          "time-sensitive — changelog moves",
+          "weekly)",
+          "Skill/plugin auto-loading: claude",
+          "plugin init <name> scaffolds a plugin;",
+          "skills in",
+          ".claude/skills dirs auto-load as",
+          "<name>@skills-dir with no marketplace",
+          "or install step (May 2026)."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Source:",
+          "code.claude.com/docs/en/plugins",
+          "Stop / SubagentStop hooks can now",
+          "return",
+          "hookSpecificOutput.additionalContext",
+          "to feed",
+          "Claude context and keep the turn going",
+          "without being labeled a hook error",
+          "(v2.1.163, June 2026;",
+          "additionalContext capped at 10,000",
+          "chars). Source:",
+          "code.claude.com/docs/en/changelog"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Practice questions & sample material",
+          "> ⚠️ NDA: Real exam questions are",
+          "confidential. Everything below is",
+          "**community practice",
+          "> material** — useful for drilling",
+          "concepts, but never assume any item is",
+          "an actual exam question.",
+          "> The questions in this repo's quiz/",
+          "are original, exam-accurate practice",
+          "written to match",
+          "> the blueprint, not reproductions of",
+          "real items."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "No official Anthropic public sample",
+          "questions were found outside the gated",
+          "Skilljar portal.",
+          "paullarionov/claude-certified-architect",
+          "(GitHub, added 2026-06-10) —",
+          "3,400-line study guide",
+          "\"based on the official exam guide\",",
+          "translated into 10 languages, with 88",
+          "practice questions",
+          "(12 worked examples + 76-question",
+          "practice test w/ interactive HTML",
+          "version), 4 practical"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "exercises, an out-of-scope topic list,",
+          "and the official Skilljar",
+          "access-request link.",
+          "Its 88 questions have been imported",
+          "into this repo's quiz/bank/",
+          "(\"source\":",
+          "\"paullarionov/claude-certified-architect\"),",
+          "deduplicated against our originals.",
+          "daronyondem/claude-architect-exam-guide",
+          "(GitHub) — strongest community study",
+          "guide;",
+          "explicitly NDA-clean (\"No exam"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "questions are included, paraphrased,",
+          "or hinted at\"); teaches",
+          "11 interconnected knowledge areas that",
+          "map onto the 5 domains.",
+          "claudecertifications.com/claude-certified-architect/practice-questions",
+          "— community practice",
+          "bank with domain filters.",
+          "pub.towardsai.net — a \"60-question",
+          "practice exam with explanations\"",
+          "(community blog).",
+          "Other community repos:",
+          "OlivierAlter/...,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "jamesbuckett/ccaf-...,",
+          "dnacenta/claude-certified-architect.",
+          "daronyondem's 11 knowledge areas",
+          "(useful cross-check against the 5",
+          "domains)",
+          "API fundamentals/output control · tool",
+          "interface design · error handling in",
+          "agent tools ·",
+          "structured data extraction ·",
+          "conversation context management ·",
+          "system prompt engineering · MCP ·",
+          "agentic patterns/multi-agent ·"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "customer service workflows · Claude",
+          "Code & Agent SDK ·",
+          "evaluation/batch processing.",
+          "Out-of-scope topics (per the",
+          "paullarionov guide — don't burn study",
+          "time here)",
+          "Fine-tuning/custom training · API",
+          "auth, billing, account management ·",
+          "language/framework",
+          "implementation details ·",
+          "deploying/hosting MCP servers (infra,",
+          "networking, containers) · Claude's"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "internal architecture/training/weights",
+          "· Constitutional AI, RLHF,",
+          "safety-training methodology ·",
+          "embeddings & vector DBs · computer use",
+          "· vision/image analysis ·",
+          "streaming/SSE · rate limits,",
+          "quotas, cost math · OAuth/key rotation",
+          "· cloud-provider-specific config ·",
+          "benchmarks/model",
+          "comparisons · prompt-caching internals",
+          "(know it exists, nothing more) ·",
+          "tokenization specifics."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Tips from people who passed",
+          "Kishor Kukreja (Medium) — passed",
+          "893/1000; first-hand account confirms",
+          "the full",
+          "blueprint (5 domains, 27/20/20/18/15,",
+          "720/1000) and that **real emphasis",
+          "tracks the published",
+          "weights** → weight study time toward",
+          "the 27% Agentic Architecture domain.",
+          "See docs/tips-from-passers.md for the",
+          "distilled, actionable tips + study",
+          "plan."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Canonical study resources (primary",
+          "first)",
+          "Anthropic docs (primary):",
+          "platform.claude.com/docs (Claude",
+          "Developer Platform, prompt",
+          "engineering, models),",
+          "code.claude.com/docs (Claude Code —",
+          "config, plugins, hooks, changelog),",
+          "Agent SDK docs, Model Context Protocol",
+          "spec.",
+          "Anthropic learning:",
+          "anthropic.com/learn (courses +"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "certificates of completion).",
+          "Note: anthropic.com/academy returns",
+          "404; the live page is /learn.",
+          "Official exam guide: gated at",
+          "anthropic.skilljar.com/claude-certified-architect-foundations-access-request.",
+          "Free Anthropic Academy courses most",
+          "relevant to the blueprint (full",
+          "13-course list in the",
+          "paullarionov README): *Building with",
+          "the Claude API*, *Claude Code in",
+          "Action*, *Intro to MCP*,",
+          "*MCP: Advanced Topics*, *Introduction"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "to Agent Skills* — all at",
+          "anthropic.skilljar.com.",
+          "Caveats & open questions",
+          "No public Anthropic primary source for",
+          "the blueprint — established by strong",
+          "cross-source",
+          "consensus + one hosted copy of the",
+          "Confidential exam-guide PDF. Treat",
+          "percentages as",
+          "authoritative-by-consensus.",
+          "Cost UNRESOLVED — \"$99\" and \"free for",
+          "first 5,000 partners\" both refuted"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "(0-3). Do not",
+          "state a price. (The paullarionov",
+          "README re-asserts both figures plus",
+          "\"restricted to Anthropic",
+          "Partner Network members\" as of 2026-06",
+          "— still a single community source,",
+          "still not Anthropic.)",
+          "Validity period UNRESOLVED — \"2 years\"",
+          "refuted.",
+          "Prerequisites UNRESOLVED — \"6 months",
+          "production experience\" refuted;",
+          "whether any"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "prerequisite exists is unknown.",
+          "Model/tooling currency claims are",
+          "primary-sourced but time-sensitive",
+          "(Opus 4.1 retires",
+          "Aug 5 2026; Claude Code changelog",
+          "moves weekly). Re-verify before each",
+          "exam sitting.",
+          "Sources (selected)",
+          "https://www.claudecertifiedarchitects.com/cca-exam-guide/",
+          "https://dev.to/aws-builders/the-claude-certified-architect-exam-5-domains-6-scenarios-and-everything-you-need-to-know-4le3",
+          "https://medium.com/@kishorkukreja/i-passed-anthropics-claude-certified-architect-foundations-exam-with-a-score-of-893-1000-2206c27efd6c",
+          "https://github.com/daronyondem/claude-architect-exam-guide"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "https://github.com/paullarionov/claude-certified-architect",
+          "https://platform.claude.com/docs/en/about-claude/model-deprecations",
+          "https://code.claude.com/docs/en/plugins",
+          "https://code.claude.com/docs/en/changelog",
+          "https://www.anthropic.com/learn",
+          "https://claudecertifications.com/claude-certified-architect/practice-questions",
+          "https://www.lowcode.agency/blog/how-to-become-claude-certified-architect"
+        ],
+        "type": "text"
+      }
+    ],
+    "title": "Claude Certified Architect — Foundations: Exam Research (mid-2026)"
+  },
+  {
+    "cover_slug": "book-domain2",
+    "domain": 2,
+    "id": "mcp-deep-dive",
+    "pages": [
+      {
+        "lines": [
+          "MCP Deep Dive — Your Focus Area",
+          "This is your targeted study material",
+          "for MCP. The exam tests MCP across",
+          "Domain 2 (18%) and it appears in",
+          "scenarios 1, 3, 4, and 6.",
+          "---",
+          "The Mental Model",
+          "MCP = a standard way to give Claude",
+          "access to external data and actions.",
+          "Think of it as USB-C for AI tools — a",
+          "universal connector protocol. Instead",
+          "of building custom integrations for"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "every data source, you plug in MCP",
+          "servers.",
+          "The Control Model (EXAM CRITICAL)",
+          "Resources = APPLICATION-controlled",
+          "(read-only data for the model to",
+          "reason from)",
+          "Tools = MODEL-controlled (actions the",
+          "model decides to invoke)",
+          "If you get one thing from MCP, it's",
+          "this distinction.",
+          "---",
+          "Architecture in 60 Seconds"
+        ],
+        "type": "text"
+      },
+      {
+        "fallback_text": "Host (Claude Code)\n  └── Client 1 ←→ Server A (GitHub - stdio subprocess)\n  └── Client 2 ←→ Server B (Database - HTTP)\n  └── Client 3 ←→ Server C (Custom API - HTTP)",
+        "slug": "lib-diagram-mcp-deep-dive-1",
+        "type": "diagram_anchor"
+      },
+      {
+        "lines": [
+          "Host: Your app (Claude Code). Manages",
+          "everything.",
+          "Client: 1:1 with each server. Handles",
+          "protocol negotiation.",
+          "Server: Provides tools/resources.",
+          "Isolated — can't see other servers.",
+          "Key: Servers are isolated from each",
+          "other. A server cannot see the",
+          "conversation or other servers' tools.",
+          "The Host enforces security boundaries.",
+          "---",
+          "Transport: When to Use What"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| Transport | When | How |",
+          "|-----------|------|-----|",
+          "| stdio | Local tools, CLI tools,",
+          "direct system access | Server =",
+          "subprocess, reads stdin, writes stdout",
+          "|",
+          "| Streamable HTTP | Remote/network",
+          "servers, multi-user | Single endpoint,",
+          "POST + GET, supports SSE |",
+          "| ~~Legacy SSE~~ | NEVER for new code",
+          "| Deprecated since 2025-11-25 spec |",
+          "---"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Tool Definitions — What the Exam Tests",
+          "Structure",
+          "{",
+          "\"name\": \"search_github_issues\",",
+          "\"description\": \"Search GitHub issues",
+          "by query string. Returns issue titles,",
+          "numbers, and labels. Use when the user",
+          "asks to find issues, bugs, or feature",
+          "requests. NOT for PR reviews — use",
+          "review_pull_request instead.\",",
+          "\"inputSchema\": {",
+          "\"type\": \"object\","
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"properties\": {",
+          "\"query\": { \"type\": \"string\",",
+          "\"description\": \"Search query\" },",
+          "\"repo\": { \"type\": \"string\",",
+          "\"description\": \"owner/repo format\" },",
+          "\"state\": { \"type\": \"string\", \"enum\":",
+          "[\"open\", \"closed\", \"all\"], \"default\":",
+          "\"open\" }",
+          "},",
+          "\"required\": [\"query\", \"repo\"]",
+          "}",
+          "}"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Description Best Practices",
+          "(High-Yield)",
+          "Be specific: \"Search GitHub issues by",
+          "query\" not just \"Search\"",
+          "Explain when to use AND when NOT to",
+          "use: \"Use for X. NOT for Y — use Z",
+          "instead.\"",
+          "Include input formats: \"repo should be",
+          "in owner/repo format\"",
+          "Differentiate from similar tools: If",
+          "you have analyze_content and",
+          "analyze_document, rename one to"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "extract_web_results",
+          "Tool Annotations",
+          "| Annotation | Default | Note |",
+          "|---|---|---|",
+          "| readOnlyHint | false | |",
+          "| destructiveHint | true | Defaults",
+          "assume worst case! |",
+          "| idempotentHint | false | |",
+          "| openWorldHint | true | |",
+          "The defaults are \"assume dangerous\" —",
+          "this is counterintuitive and testable.",
+          "---"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "The Two-Layer Error System (HIGH",
+          "YIELD)",
+          "This is probably the most exam-tested",
+          "MCP concept.",
+          "Layer 1: Protocol Errors",
+          "{",
+          "\"jsonrpc\": \"2.0\", \"id\": 3,",
+          "\"error\": { \"code\": -32602, \"message\":",
+          "\"Unknown tool\" }",
+          "}",
+          "For: unknown tools, invalid arguments,",
+          "server crashes"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "The model CANNOT see these",
+          "Standard JSON-RPC error codes",
+          "Layer 2: Tool Execution Errors",
+          "{",
+          "\"jsonrpc\": \"2.0\", \"id\": 4,",
+          "\"result\": {",
+          "\"content\": [{ \"type\": \"text\", \"text\":",
+          "\"Database timeout. Retry in 60s or try",
+          "cached_results.\" }],",
+          "\"isError\": true",
+          "}",
+          "}"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "For: business logic failures, API",
+          "errors, permission issues",
+          "The model CAN see these and reason",
+          "about recovery",
+          "Go in result with isError: true, NOT",
+          "in the error field",
+          "Structured Error Metadata",
+          "{",
+          "\"isError\": true,",
+          "\"errorCategory\": \"transient\", //",
+          "transient | validation | permission",
+          "\"isRetryable\": true,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"content\": [{",
+          "\"type\": \"text\",",
+          "\"text\": \"Connection timeout. Retry in",
+          "60s.\"",
+          "}]",
+          "}",
+          "Error category cheat sheet:",
+          "transient → retryable (timeout, rate",
+          "limit, temp unavailability)",
+          "validation → NOT retryable (bad input,",
+          "need different input)",
+          "permission → NOT retryable (access"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "denied, need different credentials)",
+          "What NOT to Do",
+          "Generic \"Operation failed\" — prevents",
+          "recovery decisions",
+          "Uniform error responses — model can't",
+          "distinguish retry-worthy from",
+          "permanent",
+          "Return empty results as success for",
+          "failures — suppresses error handling",
+          "Return isRetryable: true for business",
+          "rule violations",
+          "---"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Server Configuration in Claude Code",
+          "(HIGH YIELD)",
+          ".mcp.json (Project Scope — Git",
+          "Tracked)",
+          "{",
+          "\"mcpServers\": {",
+          "\"github\": {",
+          "\"type\": \"http\",",
+          "\"url\":",
+          "\"https://api.githubcopilot.com/mcp/\"",
+          "},",
+          "\"my-db\": {"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"command\": \"npx\",",
+          "\"args\": [\"-y\", \"@bytebase/dbhub\",",
+          "\"--dsn\", \"${DB_CONNECTION_STRING}\"],",
+          "\"env\": { \"TIMEOUT\": \"30000\" }",
+          "},",
+          "\"custom-api\": {",
+          "\"type\": \"http\",",
+          "\"url\":",
+          "\"${API_URL:-https://default.example.com}/mcp\",",
+          "\"headers\": {",
+          "\"Authorization\": \"Bearer ${API_KEY}\"",
+          "}"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "}",
+          "}",
+          "}",
+          "Environment Variable Syntax",
+          "${VAR} → expands to value, FAILS if",
+          "unset",
+          "${VAR:-default} → uses default if VAR",
+          "is unset",
+          "Works in: command, args, env, url,",
+          "headers",
+          "Scope System",
+          "| Scope | Location | Shared? | Use"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Case |",
+          "|-------|----------|---------|----------|",
+          "| project | .mcp.json | Yes (git) |",
+          "Team servers |",
+          "| local (default) | ~/.claude.json",
+          "(project-scoped) | No |",
+          "Personal/sensitive |",
+          "| user | ~/.claude.json (global) | No",
+          "| Personal, all projects |",
+          "Precedence: local > project > user",
+          "CLI",
+          "claude mcp add --transport http"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "--scope project github",
+          "https://api.githubcopilot.com/mcp/",
+          "claude mcp add --transport stdio --env",
+          "API_KEY=xxx myserver -- npx -y",
+          "my-mcp-server",
+          "claude mcp list",
+          "claude mcp get github",
+          "claude mcp remove github",
+          "---",
+          "Resources — The Other Half",
+          "When to Use Resources",
+          "Content catalogs: Product SKUs, return"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "policies, company handbooks",
+          "Documentation hierarchies: API docs,",
+          "schema references",
+          "Database schemas: Expose schema as",
+          "resource, query capability as tool",
+          "Reducing tool calls: Give agent",
+          "visibility into available data without",
+          "exploratory calls",
+          "Resource Structure",
+          "{",
+          "\"uri\": \"file:///project/schema.sql\",",
+          "\"name\": \"Database Schema\","
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"mimeType\": \"text/plain\",",
+          "\"annotations\": {",
+          "\"audience\": [\"assistant\"],",
+          "\"priority\": 0.8",
+          "}",
+          "}",
+          "Resources vs Tools Decision",
+          "Q: Does the model need this to REASON",
+          "from? (read-only reference data)",
+          "→ RESOURCE",
+          "Q: Does the model need to DO",
+          "something? (execute, create, modify)"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "→ TOOL",
+          "---",
+          "Tool Distribution (Cross-Cuts with",
+          "Domain 1)",
+          "The Rule",
+          "4-5 tools per agent maximum for",
+          "reliable selection.",
+          "18 tools → degraded accuracy, 3+",
+          "second decisions, ~23k tokens wasted",
+          "3 tools (pre-filtered) → correct in",
+          "392ms, ~800 tokens, doubled accuracy",
+          "The Pattern"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Coordinator: [delegate_search,",
+          "delegate_analysis, delegate_synthesis]",
+          "Search Agent: [web_search, fetch_url,",
+          "search_papers]",
+          "Analysis Agent: [extract_data,",
+          "summarize_doc, verify_claim]",
+          "Synthesis Agent:[compile_report,",
+          "verify_fact] ← scoped cross-role tool",
+          "Scoped Cross-Role Tools",
+          "Instead of giving synthesis agent all",
+          "web search tools, give it a scoped",
+          "verify_fact tool for the 85% common"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "case (simple lookups). Route complex",
+          "verifications through coordinator.",
+          "---",
+          "Community vs Custom MCP Servers",
+          "Use Community When",
+          "Standard platform integration (GitHub,",
+          "Jira, Slack, PostgreSQL, Stripe)",
+          "Your needs match the common case",
+          "Speed to deployment matters",
+          "Build Custom When",
+          "Proprietary internal systems",
+          "Regulated industries (healthcare,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "finance)",
+          "Custom business logic, audit",
+          "requirements",
+          "Security requires in-house control",
+          "Always",
+          "Code-review community servers before",
+          "production use",
+          "Be aware of prompt injection risk with",
+          "servers that fetch untrusted content",
+          "---",
+          "Exam Traps for MCP",
+          "\"isError goes in the error field\" —"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "NO. isError: true goes in the result.",
+          "Protocol errors go in error.",
+          "\"Community MCP server vs custom\" —",
+          "Community first for standard",
+          "integrations. Custom for",
+          "niche/regulated.",
+          "\"MCP resources are like tools\" — NO.",
+          "Resources = app-controlled read data.",
+          "Tools = model-controlled actions.",
+          "\"Add more tools for more capability\" —",
+          "NO. More tools = worse selection.",
+          "Partition into subagents."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"Environment variables are insecure in",
+          ".mcp.json\" — NO. ${VAR} expansion",
+          "means secrets aren't committed.",
+          "\"Put server config in CLAUDE.md\" — NO.",
+          "Server config goes in .mcp.json or",
+          "~/.claude.json."
+        ],
+        "type": "text"
+      }
+    ],
+    "title": "MCP Deep Dive — Your Focus Area"
+  },
+  {
+    "cover_slug": "book-domain1",
+    "domain": 0,
+    "id": "tips-from-passers",
+    "pages": [
+      {
+        "lines": [
+          "Tips From Passers — How to Pass the",
+          "Claude Certified Architect",
+          "(Foundations)",
+          "> Practical \"how to pass\" guide",
+          "distilled from research on people who",
+          "took the exam, plus a",
+          "> concrete, repo-keyed study plan.",
+          "Grounded in docs/exam-research-2026.md",
+          "(compiled 2026-06-08).",
+          "> Read that report for citations and",
+          "confidence levels. **Public first-hand",
+          "passer accounts are"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "> limited** — much of \"what passers",
+          "say\" below rests on one verified",
+          "account (Kishor Kukreja,",
+          "> 893/1000) plus strong cross-source",
+          "consensus. Re-verify currency before",
+          "you sit.",
+          "---",
+          "Snapshot — the confirmed blueprint",
+          "| Fact | Value |",
+          "|------|-------|",
+          "| Questions | 60, single-select",
+          "multiple choice (1 correct + 3"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "distractors) |",
+          "| Time | 120 minutes (~2 min/question)",
+          "|",
+          "| Passing score | 720 / 1000 — scaled",
+          "score, *not* a percentage |",
+          "| Structure | Questions wrapped in 4",
+          "scenarios drawn at random from a pool",
+          "of 6 |",
+          "| Delivery | Online-proctored,",
+          "closed-book, via Skilljar |",
+          "| Launched | March 12, 2026 |",
+          "| Cost / validity / prerequisites |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Unconfirmed — see Caveats (§7) |",
+          "Domain weights (study-time priority",
+          "follows the weights):",
+          "| # | Domain | Weight | Priority |",
+          "|---|--------|--------|----------|",
+          "| 1 | Agentic Architecture &",
+          "Orchestration | 27% | Heaviest — study",
+          "first, study hard |",
+          "| 2 | Claude Code Configuration &",
+          "Workflows | 20% | |",
+          "| 3 | Prompt Engineering & Structured",
+          "Output | 20% | |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| 4 | Tool Design & MCP Integration |",
+          "18% | |",
+          "| 5 | Context Management & Reliability",
+          "| 15% | Smallest, still ~9 questions |",
+          "> ~720/1000 scaled ≈ you cannot afford",
+          "to punt a whole domain. Even the 15%",
+          "domain is roughly",
+          "> 9 questions — enough to fail you if",
+          "you skip it.",
+          "---",
+          "What people who passed say",
+          "Distilled, actionable takeaways. Where"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "a point comes from the one verified",
+          "first-hand account,",
+          "it's attributed to Kishor Kukreja",
+          "(893/1000); the rest is cross-source",
+          "consensus.",
+          "Trust the published weights — they",
+          "hold on the real exam. Kukreja's",
+          "first-hand account",
+          "confirms exam emphasis tracks the",
+          "27/20/20/18/15 blueprint. So",
+          "**front-load Agentic",
+          "Architecture (27%)**; it's the single"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "biggest lever on your score.",
+          "Prepare for all 6 scenario themes —",
+          "you can't predict your 4. You get a",
+          "random 4-of-6:",
+          "*Customer Support Resolution Agent,",
+          "Code Generation with Claude Code,",
+          "Multi-Agent Research",
+          "System, Developer Productivity, Claude",
+          "Code for CI, Structured Data",
+          "Extraction.* A theme you",
+          "skipped could be one of your four.",
+          "Drill every theme to baseline."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Expect \"best answer among plausible",
+          "options,\" not trick recall. Several",
+          "options will be",
+          "*reasonable*; one is *best practice*",
+          "for the stated constraints. The skill",
+          "is ranking good vs.",
+          "better, not spotting an obviously",
+          "wrong answer.",
+          "Read the scenario constraints, not",
+          "just the question. The deciding detail",
+          "is usually in the",
+          "scenario framing: \"must never violate"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "policy,\" \"results aren't blocking,\"",
+          "\"data is sometimes",
+          "absent.\" The right answer changes with",
+          "the constraint.",
+          "Know the commonly-confused",
+          "distinctions cold. These are where the",
+          "suboptimal distractors",
+          "live:",
+          "| You'll be tested on telling apart… |",
+          "The discriminator |",
+          "|---|---|",
+          "| Slash commands vs. Skills | Commands"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "= user-invoked prompt shortcuts;",
+          "Skills = model-invoked capabilities",
+          "(frontmatter: context: fork,",
+          "allowed-tools) |",
+          "| tool_use vs. few-shot examples |",
+          "tool_use = structured,",
+          "machine-parseable, deterministic",
+          "schema; few-shot = probabilistic",
+          "shaping of free text |",
+          "| Explicit vs. implicit escalation |",
+          "Explicit = defined rules/prerequisite",
+          "gates; implicit = sentiment/confidence"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "guesses (an anti-pattern) |",
+          "| MCP Resources vs. Tools | Resource =",
+          "model READS data (static/semi-static);",
+          "Tool = model PERFORMS an action (side",
+          "effects) |",
+          "It's closed-book. No docs, no this",
+          "cheat sheet during the exam.",
+          "Internalize the numbers and",
+          "decision trees in",
+          "docs/exam-cheat-sheet.md until they're",
+          "reflexes.",
+          "Honesty check: beyond Kukreja, public"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "write-ups are thin. Treat secondhand",
+          "\"tips\" blogs as",
+          "directional, not gospel — the",
+          "blueprint and the verified passer are",
+          "the solid ground.",
+          "---",
+          "Time management",
+          "You have 120 minutes for 60 questions",
+          "= ~2 minutes each. That's comfortable",
+          "*if* you don't",
+          "stall.",
+          "Budget per scenario, not just per"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "question. 4 scenarios × ~15 questions",
+          "≈ **~30 min per",
+          "scenario**. Glance at the clock at",
+          "each scenario boundary; if you've",
+          "burned 35+ min on one,",
+          "speed up.",
+          "Flag and return. If a question isn't",
+          "obvious in ~90 seconds, pick your best",
+          "guess, flag it,",
+          "and move on. Unanswered questions",
+          "score zero — never leave a flag",
+          "unanswered at the end. Bank"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "the easy points first, then spend",
+          "leftover time on flags.",
+          "Don't overthink the scenario framing.",
+          "The narrative (\"the team is",
+          "frustrated…\") is dressing.",
+          "Extract the *constraint* (determinism",
+          "required? non-blocking? least",
+          "privilege?) and answer to",
+          "that. Don't invent requirements the",
+          "scenario didn't state.",
+          "First instinct on best-practice",
+          "questions. When you've studied the"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "pattern, your first read",
+          "is usually right. Re-reading invites",
+          "talking yourself into a plausible",
+          "distractor.",
+          "Reserve the last ~10 minutes to clear",
+          "flags and confirm nothing is blank.",
+          "---",
+          "Common gotchas / traps",
+          "The exam is built on",
+          "reasonable-but-suboptimal distractors.",
+          "Internalize these patterns and",
+          "most traps collapse:"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Deterministic over probabilistic when",
+          "determinism is required. If the",
+          "scenario says a rule",
+          "must *never* be violated (financial,",
+          "identity, security, compliance), the",
+          "answer is a",
+          "**deterministic mechanism — hooks,",
+          "prerequisite gates, structured output",
+          "/ tool_use schema —",
+          "not** \"add an instruction to the",
+          "system prompt\" or \"give a few-shot",
+          "example.\" Prompt"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "instructions are probabilistic;",
+          "they're the trap option here.",
+          "Inverse trap: if there's *no* hard",
+          "guarantee needed, the heavyweight hook",
+          "is over-engineering —",
+          "a prompt instruction is the better",
+          "(lower-effort) answer.",
+          "Least privilege. Prefer the option",
+          "that grants the narrowest tool access",
+          "/ scope /",
+          "permission that still does the job.",
+          "\"Give the agent admin / all tools\" is"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "almost always the",
+          "distractor. (Also: 4–5 tools max for",
+          "reliable selection; 18+ degrades it.)",
+          "Nullable fields for extraction. For",
+          "structured data extraction, **make",
+          "fields that may be",
+          "absent nullable / optional.**",
+          "Requiring a non-nullable field when",
+          "data is sometimes missing",
+          "*drives hallucination* — the model",
+          "invents a value. That's a classic",
+          "wrong answer dressed up as"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "\"strict schema = good.\"",
+          "Graceful degradation over hard-fail.",
+          "In multi-agent / pipeline scenarios,",
+          "prefer **isolate",
+          "the failure and continue (partial",
+          "results, retry-with-feedback,",
+          "fallback) over terminate the",
+          "whole workflow on one subagent's",
+          "failure.** Silently swallowing errors",
+          "(empty result = success)",
+          "is *also* wrong — degrade gracefully",
+          "*and* surface the error."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Explicit escalation over inferred",
+          "signals. Escalate on **defined rules /",
+          "prerequisite",
+          "checks, not self-reported confidence",
+          "or sentiment analysis** (poorly",
+          "calibrated, don't",
+          "correlate with complexity).",
+          "Provenance & position. Prefer",
+          "structured claim→source mappings over",
+          "\"the model will cite",
+          "sources\"; put key info at the",
+          "beginning of context, not buried in"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "the middle.",
+          "> Pattern to memorize: when two",
+          "options both \"work,\" pick the one that",
+          "is **deterministic,",
+          "> least-privilege, fails gracefully,",
+          "and matches the scenario's stated",
+          "constraint.**",
+          "---",
+          "A study plan (keyed to this repo)",
+          "Weighted by domain importance. Repo",
+          "resources: docs/domainN-*.md, the",
+          "deep-dives"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "(mcp-deep-dive.md,",
+          "agent-sdk-deep-dive.md),",
+          "docs/exam-cheat-sheet.md, the quiz",
+          "banks",
+          "(quiz/practice-questions.md,",
+          "quiz/scenario-questions.md,",
+          "quiz/flashcards.md,",
+          "quiz/bank/*.json), and the slash",
+          "commands /study, /quiz, /weak-spots,",
+          "/flashcards,",
+          "/cheat-sheet, /save-progress.",
+          "Ordering by weight (spend study time"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "roughly in proportion)",
+          "| Order | Focus | Repo resource | Why",
+          "|",
+          "|-------|-------|---------------|-----|",
+          "| 1 | Agentic Architecture (27%) |",
+          "docs/domain1-*.md +",
+          "agent-sdk-deep-dive.md | Biggest",
+          "domain; orchestration, loops,",
+          "escalation, multi-agent |",
+          "| 2 | Claude Code Config (20%) |",
+          "docs/domain3-*.md | Commands vs",
+          "skills, hooks, CLAUDE.md hierarchy, CI"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "(-p) |",
+          "| 3 | Prompt Eng & Structured Output",
+          "(20%) | docs/domain4-*.md | tool_use,",
+          "nullable schemas, position-aware",
+          "prompting |",
+          "| 4 | Tool Design & MCP (18%) |",
+          "docs/domain2-*.md + mcp-deep-dive.md |",
+          "Resources vs tools, scopes, least",
+          "privilege, community vs custom |",
+          "| 5 | Context & Reliability (15%) |",
+          "docs/domain5-*.md | Compaction,",
+          "scratchpads, error categories,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "graceful degradation |",
+          "> Note: this repo's *file numbering*",
+          "(domain2 = MCP, domain3 = Claude Code)",
+          "differs from the",
+          "> blueprint *weight* order above — the",
+          "weights are what matter; file names",
+          "are just labels.",
+          "Weekly rhythm (suggested ~2–3 weeks",
+          "out)",
+          "Read the domain doc, then drill its",
+          "quiz bank (/quiz filtered to that",
+          "domain, or the"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "quiz/bank/domainN.json items).",
+          "Run /weak-spots after each domain to",
+          "see where you're leaking points; loop",
+          "back.",
+          "/flashcards daily for the numbers and",
+          "distinctions (closed-book = these must",
+          "be reflex).",
+          "/study for guided, profile-aware",
+          "sessions; /save-progress at the end of",
+          "every",
+          "session so the profile tracks your",
+          "trend."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Calibrate with a timed full-length run",
+          "Take a timed, 60-question, 4-scenario",
+          "mock under real conditions —",
+          "120-minute clock, no docs",
+          "open. Use /quiz in a full-length,",
+          "scenario-mixed mode (a /mock-exam mode",
+          "if your env exposes",
+          "one; otherwise chain",
+          "quiz/scenario-questions.md +",
+          "quiz/practice-questions.md to ~60",
+          "items and",
+          "set a timer). Score it against"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "720/1000-equivalent, then send the",
+          "misses to /weak-spots. Do this",
+          "at least once mid-study and once in",
+          "the final week.",
+          "Final week",
+          "One full timed mock; review *every*",
+          "miss until you can explain why the",
+          "right answer beats the",
+          "distractor.",
+          "/weak-spots → spend the week's",
+          "remaining time only on red domains.",
+          "Re-read docs/exam-cheat-sheet.md"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "decision trees daily; they encode the",
+          "trap logic in §4.",
+          "Confirm you can recite the 6 scenario",
+          "themes and the 4 commonly-confused",
+          "distinctions",
+          "cold.",
+          "Day before",
+          "Light review only — flashcards +",
+          "cheat-sheet skim. No cramming new",
+          "material.",
+          "Re-verify currency (model lineup,",
+          "Claude Code features — see Caveats)."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Confirm Skilljar logistics: working",
+          "webcam/mic, quiet room, ID ready,",
+          "stable connection,",
+          "proctoring requirements met.",
+          "Closed-book means clear your desk.",
+          "Sleep. ~2 min/question rewards a calm,",
+          "rested read of each scenario.",
+          "---",
+          "Canonical resources (primary first)",
+          "From docs/exam-research-2026.md:",
+          "Anthropic docs (primary):",
+          "platform.claude.com/docs — Claude"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Developer Platform, prompt",
+          "engineering, models,",
+          "model-deprecations.",
+          "code.claude.com/docs — Claude Code",
+          "config, plugins, hooks, changelog",
+          "(moves weekly).",
+          "Agent SDK docs and the Model Context",
+          "Protocol spec.",
+          "Anthropic learning:",
+          "anthropic.com/learn (courses +",
+          "certificates). *Note:*",
+          "anthropic.com/academy 404s — the live"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "page is /learn.",
+          "Official exam guide (gated):",
+          "anthropic.skilljar.com/claude-certified-architect-foundations-access-request.",
+          "Community study guide:",
+          "github.com/daronyondem/claude-architect-exam-guide",
+          "— strongest",
+          "community guide, explicitly NDA-clean",
+          "(\"no exam questions included,",
+          "paraphrased, or",
+          "hinted\"); teaches 11 knowledge areas",
+          "mapping onto the 5 domains.",
+          "Verified passer write-up: Kishor"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Kukreja's Medium post (893/1000) —",
+          "confirms the blueprint",
+          "and weight emphasis.",
+          "> ⚠️ Real exam questions are under",
+          "NDA. This repo's quiz/ items are",
+          "**original, exam-accurate",
+          "> practice** matched to the blueprint",
+          "— never reproductions. Never assume",
+          "any practice item is an",
+          "> actual exam question.",
+          "---",
+          "Caveats (read before you book)"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "No public Anthropic blueprint exists.",
+          "The weights and format are established",
+          "by strong",
+          "cross-source consensus + one hosted",
+          "copy of the gated official PDF —",
+          "authoritative-by-consensus,",
+          "not a citable Anthropic URL.",
+          "Cost is UNCONFIRMED. \"$99\" and \"free",
+          "for first 5,000 partners\" were both",
+          "*refuted*. Do not",
+          "assume a price — check Skilljar at",
+          "registration."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Validity period UNCONFIRMED. \"2 years\"",
+          "was *refuted*. Don't assume how long",
+          "the cert lasts.",
+          "Prerequisites UNCONFIRMED. \"6 months",
+          "production experience\" was *refuted*;",
+          "whether any",
+          "prerequisite exists at all is unknown.",
+          "Content currency is time-sensitive. As",
+          "of mid-2026: Claude Opus 4.8 is",
+          "flagship; **Opus",
+          "4.1 retires August 5, 2026 (migrate to",
+          "4.8). Claude Code's changelog moves"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "weekly. Re-verify",
+          "the model lineup and current Claude",
+          "Code features before each sitting**",
+          "via the primary docs in",
+          "§6."
+        ],
+        "type": "text"
+      }
+    ],
+    "title": "Tips From Passers — How to Pass the Claude Certified Architect (Foundations)"
+  }
+]
