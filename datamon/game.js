@@ -169,6 +169,12 @@ const TILE_SLUGS = [
   "wall-h", "wall-v",
   "wall-corner-tl", "wall-corner-tr", "wall-corner-bl", "wall-corner-br",
   "desk", "plant", "coffee", "rug",
+  // Office surface tileset (ticket #019, PRD 005): warm hardwood, brick walls,
+  // industrial window, wood column, silver ducting. Round-1 names above remain
+  // loadable; map integration (which slug renders where) is ticket #021.
+  "hardwood-a", "hardwood-b", "hardwood-c",
+  "brick-red", "brick-white",
+  "window-h", "column", "duct",
 ];
 
 function loadTiles() {
@@ -1153,7 +1159,25 @@ function drawSelect() {
     CANVAS_W / 2, CANVAS_H - 20);
 }
 
+// Flat-color fallback per office tile slug (dominant color of each PNG). Used when a
+// tile image is missing so the renderer degrades to a solid fill instead of a black
+// square or a crash (ticket #019 Must-Not). Map-char cases below stay unchanged.
+const TILE_FALLBACK = {
+  // round-1 tiles
+  "floor-a": "#f2e8d5", "floor-b": "#e8dbc3", "floor-c": "#f2e8d5",
+  "wall-h": "#aa563a", "wall-v": "#aa563a",
+  "wall-corner-tl": "#aa563a", "wall-corner-tr": "#aa563a",
+  "wall-corner-bl": "#aa563a", "wall-corner-br": "#aa563a",
+  "desk": "#a9743b", "plant": "#5b8c42", "coffee": "#4a4640", "rug": "#bc6040",
+  // office surface tileset (#019)
+  "hardwood-a": "#c8702f", "hardwood-b": "#d07a37", "hardwood-c": "#be682a",
+  "brick-red": "#aa563a", "brick-white": "#cec2b2",
+  "window-h": "#6c7a84", "column": "#8c5a30", "duct": "#b4aea2",
+};
+
 function tileColor(t, x, y) {
+  // Slug-keyed flat fallback for the office tileset (missing-PNG degradation).
+  if (TILE_FALLBACK[t]) return TILE_FALLBACK[t];
   switch (t) {
     case "#": return "#334155";
     case "~": return (x + y) % 2 ? "#7c3aed" : "#6d28d9";

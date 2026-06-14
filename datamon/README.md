@@ -72,10 +72,13 @@ localStorage (per browser + port, so stick with one way of serving it).
 - `sprites/` — generated GBA-style pixel trainer sprites (transparent 256px PNGs)
 - `headshots/` — 128px teammate headshots, pixelated at runtime (sprite fallback
   + character-select portraits)
-- `tiles/` — GBA-style office tileset: 13 committed 32×32 RGBA PNGs (floor variants,
-  walls + corners, desk, plant, coffee, rug). Loaded into `tileStore` via `loadTiles()`
-  for the tile-based renderer (ticket #003). The game runs fine without them — see regen below.
-- `tools/` — `gen_tiles.py` (regenerates the tileset) and `check_tiles.py` (validates it)
+- `tiles/` — committed 32×32 RGBA office tileset PNGs: round-1 ("Claude lab") floor
+  variants, walls + corners, desk, plant, coffee, rug — plus the PRD 005 office surface
+  set (hardwood, red/white brick, industrial window, wood column, silver ducting).
+  Loaded into `tileStore` via `loadTiles()` for the tile-based renderer. The game runs
+  fine without them (flat-color fallback) — see regen below.
+- `tools/` — `gen_tiles.py` + `gen_office_tiles.py` (regenerate the tilesets) and
+  `check_tiles.py` (validates round-1)
 - `play.sh` — one-command launcher (serve + open browser)
 
 Adding questions: append to `QUESTION_BANK` in `questions.js` (`q`, 4 choices `c`,
@@ -99,17 +102,29 @@ tile-based renderer. Tiles are intentionally generated **deterministically** so 
 are exactly 32×32, fully transparent, free of anti-aliasing, and seamless — properties
 an image model can't reliably hit, and which matter for a pixel-art tile renderer.
 
-**Primary recipe — the committed generator (reproducible, no API, no manual slicing):**
+**Primary recipe — the committed generators (reproducible, no API, no manual slicing):**
 
 ```bash
-uv run --with pillow python datamon/tools/gen_tiles.py    # (re)writes datamon/tiles/*.png
-uv run --with pillow python datamon/tools/check_tiles.py  # asserts all 13 are 32×32 RGBA
+# Round-1 "Claude lab" tileset (floors, terracotta walls, desk/plant/coffee/rug):
+uv run --with pillow python datamon/tools/gen_tiles.py        # (re)writes datamon/tiles/*.png
+# Office surface tileset (PRD 005): hardwood, brick walls, window, column, ducting:
+uv run --with pillow python datamon/tools/gen_office_tiles.py # (re)writes datamon/tiles/*.png
+uv run --with pillow python datamon/tools/check_tiles.py      # asserts round-1 are 32×32 RGBA
 ```
 
-Edit the palette constants or the per-tile draw functions at the top of
-`datamon/tools/gen_tiles.py` to restyle. The required slugs (consumed by `loadTiles()`
-in `game.js`) are: `floor-a`, `floor-b`, `floor-c`, `wall-h`, `wall-v`,
-`wall-corner-tl/-tr/-bl/-br`, `desk`, `plant`, `coffee`, `rug`.
+> **Order matters:** `gen_office_tiles.py` re-styles the wall autotile set
+> (`wall-h`, `wall-v`, `wall-corner-*`) into red office brick, so run it **after**
+> `gen_tiles.py` if you want the brick walls. Both generators are deterministic —
+> a clean re-run produces byte-identical PNGs.
+
+Edit the palette constants or the per-tile draw functions at the top of either
+generator to restyle. Slugs consumed by `loadTiles()` in `game.js`:
+- **Round-1** (`gen_tiles.py`): `floor-a/-b/-c`, `wall-h`, `wall-v`,
+  `wall-corner-tl/-tr/-bl/-br`, `desk`, `plant`, `coffee`, `rug`.
+- **Office surface** (`gen_office_tiles.py`, PRD 005): `hardwood-a/-b/-c` (warm orange
+  planks), `brick-red`, `brick-white`, `window-h` (industrial blinds), `column`
+  (wood beam), `duct` (silver + red pipe), plus the re-styled `wall-*` brick set.
+  Palette matches `datamon/.design/office-concept-topdown.png`.
 
 **Alternative — hand-authored art via the `image-compass:image` skill:**
 
