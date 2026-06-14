@@ -890,22 +890,13 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove) {
     ctx.restore();
   }
 
-  // Clip-safe clamp: a tall sprite (up to 58px) grows upward past its own tile. Never
-  // let it paint into the top HUD band, and — when a solid tile sits directly above the
-  // feet — never let it paint up into that wall tile (otherwise the head clips through
-  // the wall). Clip (truncate) the overflow rather than squashing the sprite. Estimate the
-  // painted top conservatively, accounting for the squash scale and bob lift.
-  let clipTop = HUD_BOTTOM + 2;
-  if (wallAbove) clipTop = Math.max(clipTop, footY - TILE);   // stop at the character's own tile top
-  const topPaint = footY - (baseSize + Math.max(bobOff, 0)) * Math.max(scaleY, 1);
-  const needClip = topPaint < clipTop;
-  if (needClip) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, clipTop, CANVAS_W, CANVAS_H - clipTop);
-    ctx.clip();
-  }
-
+  // A tall sprite (up to 58px) grows upward past its own 32px tile — that's CORRECT
+  // top-down layering: the character stands in front of the wall/desk to its north and
+  // draws over it (depth-sort orders characters against each other; the static map is
+  // always behind them). The opaque HUD is drawn AFTER all characters, so it naturally
+  // covers anything behind it — no clip needed. (The previous clip-to-tile truncated
+  // 44–58px sprites to 32px whenever a wall sat above, decapitating them — the
+  // "headless legs near walls" bug. Removed.)
   const mini = spriteMini(slug, baseSize);
   if (mini) {
     // Foot-anchored affine: translate to the feet, scale about that point, draw upward.
@@ -926,8 +917,6 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove) {
     ctx.fillRect(px(cx + 1 * sizeScale + sway), px(footY - 4 * sizeScale - bobOff), 5 * sizeScale, 4 * sizeScale);
     ctx.drawImage(pixelHead(slug, 16), px(cx - headSize / 2 + sway), px(footY - 32 * sizeScale - bobOff), headSize, headSize);
   }
-
-  if (needClip) ctx.restore();
 }
 
 // Draw a trainer sprite bottom-anchored at (cx, baseY) with given height.
