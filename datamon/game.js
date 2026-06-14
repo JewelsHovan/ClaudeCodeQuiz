@@ -39,7 +39,7 @@ const HUD_BOTTOM = 72;                    // bottom of the top-left HUD box (8 +
 const CAM_PAD_TOP = HUD_BOTTOM / TILE;    // 2.25 tiles
 // Collision set. Office floor plan (#021): # brick wall, D desk, P plant, C coffee counter,
 // W window (top wall), O wood column, G glass wall, F solid-furniture footprint, U overhead duct.
-const SOLID = new Set(["#", "D", "P", "C", "W", "O", "G", "F", "U"]);
+const SOLID = new Set(["#", "D", "P", "C", "W", "O", "G", "F", "U", "B", "S", "L"]);
 const TYPE_COLORS = { AGENT: "#3b82f6", MCP: "#a855f7", CONFIG: "#22c55e", PROMPT: "#f97316", CONTEXT: "#06b6d4", MIX: "#f59e0b" };
 const TYPE_NAMES  = { AGENT: "Agent Wing", MCP: "MCP Lab", CONFIG: "Config Bay", PROMPT: "Prompt Studio", CONTEXT: "Context Corner", MIX: "The Lounge" };
 // Exam domains + their weight on the real exam (drives the MIX deck).
@@ -89,7 +89,7 @@ function shuffled(arr, rng) {
 // Legend: # brick wall · W window · O wood column · G glass wall · D desk · P plant ·
 //         C coffee counter (heal) · F solid-furniture footprint (prop baked on top) ·
 //         U overhead duct · ~ rug · . hardwood floor
-const DOORS = [[7, 15]]; // glass meeting-room entrance
+const DOORS = [[7, 15], [24, 23]]; // glass meeting-room entrance + library door approach
 
 // Baked decoration layer (#021): {slug, col, row} where (col,row) is the prop's footprint
 // TOP-LEFT tile. Drawn behind characters in buildMapCanvas() (see the prop-bake loop there).
@@ -127,6 +127,11 @@ const PROP_PLACEMENTS = [
   // Radiators along the bottom wall
   { slug: "radiator", col: 16, row: 22 }, { slug: "radiator", col: 29, row: 22 },
 ];
+
+// Library bookshelf bake placements: 8 shelves across the top (cols 4,6,8,10 left + 26,28,30,32 right)
+const LIBRARY_PROP_PLACEMENTS = [4, 6, 8, 10, 26, 28, 30, 32].map(c => ({ slug: "bookshelf", col: c, row: 1 }));
+// Library room label (single zone — CONTEXT type for cyan accent)
+const LIBRARY_LABELS = [["THE LIBRARY", 18, 6.6, "CONTEXT"]];
 
 function buildMap() {
   const g = Array.from({ length: MAP_H }, () => Array(MAP_W).fill("."));
@@ -170,6 +175,22 @@ function buildMap() {
   ];
   for (const [x, y] of furniture) g[y][x] = "F";
 
+  g[23][24] = "L"; // library door in south wall (OFFICE_DOOR_TILE) — hardcoded to avoid TDZ
+
+  return g;
+}
+
+function buildLibraryMap() {
+  const g = Array.from({ length: MAP_H }, () => Array(MAP_W).fill("."));
+  // Brick perimeter
+  for (let x = 0; x < MAP_W; x++) { g[0][x] = "#"; g[MAP_H - 1][x] = "#"; }
+  for (let y = 0; y < MAP_H; y++) { g[y][0] = "#"; g[y][MAP_W - 1] = "#"; }
+  // South-wall warp door back to office (hardcoded to avoid TDZ — mirrors LIBRARY_DOOR_TILE [18,23])
+  g[23][18] = "L";
+  // Bookshelf banks: each shelf is 1 col × 3 rows (matches 32×96 asset), all 3 cells solid "B"
+  for (const c of [4, 6, 8, 10, 26, 28, 30, 32]) { g[1][c] = "B"; g[2][c] = "B"; g[3][c] = "B"; }
+  // Four study stations (single solid cells)
+  for (const [x, y] of [[7, 14], [15, 14], [22, 14], [30, 14]]) g[y][x] = "S";
   return g;
 }
 
@@ -267,6 +288,8 @@ function loadTiles() {
 // (or skips), never throwing. Served over http (play.sh); on file:// fetch fails → [].
 const propStore = {};     // slug -> HTMLImageElement (or null on error)
 let propManifest = [];    // array of manifest entries (or [] on failure)
+const libStore = {};      // slug -> HTMLImageElement (or null on error) — library assets
+let libManifest = [];     // library manifest entries (or [] on failure)
 function loadProps() {
   return fetch("props/manifest.json")
     .then(r => (r.ok ? r.json() : []))
@@ -276,6 +299,19 @@ function loadProps() {
         loadOne(`props/${m.file}`, propStore, m.slug)));
     })
     .catch(() => { propManifest = []; });
+}
+
+// Library assets (#026): mirrored exactly from loadProps() for crash-safety.
+// On file:// protocol or any network error: libManifest = [], libStore stays empty,
+// buildLibraryMapCanvas() degrades to drawn-box fallbacks — never rejects the boot Promise.all.
+function loadLibraryAssets() {
+  return fetch("library/assets/manifest.json")
+    .then(r => (r.ok ? r.json() : []))
+    .then(list => {
+      libManifest = Array.isArray(list) ? list : [];
+      return Promise.all(libManifest.map(m => loadOne(`library/assets/${m.file}`, libStore, m.slug)));
+    })
+    .catch(() => { libManifest = []; });
 }
 
 // Smooth-downscaled square version of the trainer sprite for small sizes
@@ -344,11 +380,22 @@ ctx.setTransform(scale, 0, 0, scale, 0, 0);
 ctx.imageSmoothingEnabled = false; // must follow resize — resize resets all context state
 
 let map = buildMap();
+const OFFICE_MAP = map;                  // stable office grid for warp-back
+const LIBRARY_MAP = buildLibraryMap();   // pure data; function is hoisted
+let currentMap = "office";               // "office" | "library"
+let officeNpcs = [];                     // stash for office NPCs while in library
+// Warp geometry — door tiles are SOLID (face-to-interact); entry cells are walkable floor.
+// Hardcoded coords are the source of truth (buildMap/buildLibraryMap also use literals).
+const OFFICE_DOOR_TILE  = [24, 23];      // "L" in office south wall
+const OFFICE_ENTRY      = [24, 22];      // land here returning to office (must be floor)
+const LIBRARY_DOOR_TILE = [18, 23];      // "L" in library south wall
+const LIBRARY_ENTRY     = [18, 22];      // land here entering library (must be floor)
 let state = "title";    // title | select | overworld | battle | victory | search
 let selectIdx = 0;
 let player = { slug: null, x: 18, y: 16, fx: 18, fy: 16, dir: "down", moving: false, hp: MAX_HP, dispHp: MAX_HP };
 let battleTransition = null;   // {npc, t} — flash + iris wipe into battle
 let npcs = [];          // {slug, x, y, type, defeated}
+let rivalTotal = 0;     // stable denominator for HUD "Rivals bested" (set in placeNPCs)
 let defeated = new Set();
 let battle = null;
 let toast = null;       // {msg, until}
@@ -360,7 +407,9 @@ let coffeeUses = 0;   // coffee heals remaining this run (cap 3); persisted in s
 let difficulty = "normal";   // "easy" | "normal" | "hard" — chosen at select, persisted in save
 let frame = 0;
 let dtF = 1;           // logical 60Hz frames this tick
-let mapCv = null;   // pre-rendered static map — built once at boot
+let mapCv = null;        // active pre-rendered map (points to officeMapCv or libraryMapCv)
+let officeMapCv = null;  // pre-rendered office map — built once at boot
+let libraryMapCv = null; // pre-rendered library map — built once at boot
 let battleGrad = null; // battle backdrop gradient — built once at boot
 let stepStartFx = 0, stepStartFy = 0, stepT = 1; // eased-step progress (0..1); 1 = idle
 let gaitPhase = 0; // gait cycle phase (radians); advanced by eased travel, reset when idle
@@ -402,6 +451,7 @@ function placeNPCs() {
       regions[type] = regions[type].filter(([x, y]) => x !== spot[0] || y !== spot[1]);
     }
   });
+  rivalTotal = npcs.length; // stable HUD denominator — set after placement completes
 }
 
 // ---------- Save / load ----------
@@ -597,6 +647,8 @@ function advanceBattle() {
   } else if (b.phase === "lose") {
     wrapCache.clear();
     battle = null;
+    // Safety belt: battles can only start in the office; ensure we warp back if somehow in library
+    if (currentMap !== "office") { currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv; npcs = officeNpcs; }
     player.hp = MAX_HP;
     player.x = player.fx = 18; player.y = player.fy = 16;
     camFx = camFy = null; stepT = 1; player.moving = false;
@@ -766,7 +818,7 @@ function handleKey(k) {
       }
       return;
     }
-    if (k === "/" || k === "f" || k === "F") { openSearch(); return; }
+    if (k === "/" || k === "f" || k === "F") { if (currentMap === "office") openSearch(); return; }
     if (k === " " || k === "Enter" || k === "e" || k === "E") interact();
   } else if (state === "battle") {
     const b = battle;
@@ -880,6 +932,31 @@ function interact() {
   }
   if (map[ty] && map[ty][tx] === "D") showToast("A standing desk. Someone left 47 Chrome tabs open.");
   if (map[ty] && map[ty][tx] === "P") showToast("An office plant. It has seen things.");
+  if (map[ty] && map[ty][tx] === "L") { warpToggle(); return; }
+  if (map[ty] && map[ty][tx] === "B") { showToast("Press Enter to read."); return; }        // stub → ticket #027
+  if (map[ty] && map[ty][tx] === "S") { showToast("Study station: coming soon."); return; } // stub → ticket #028
+}
+
+// ---------- Library warp (#026) ----------
+// Swap the active map, stash/restore NPCs, teleport the player to the entry tile.
+// Called from interact() when facing an "L" door tile in either map.
+function warpToggle() {
+  player.moving = false; stepT = 1;      // resolve any in-progress step
+  coffeePrompt = null; scout = null;     // defensive: clear overworld modals/cinematics
+  if (currentMap === "office") {
+    currentMap = "library"; map = LIBRARY_MAP; mapCv = libraryMapCv;
+    officeNpcs = npcs; npcs = [];         // stash office NPCs; library has none
+    player.x = player.fx = LIBRARY_ENTRY[0]; player.y = player.fy = LIBRARY_ENTRY[1];
+    player.dir = "up";
+    showToast("Entered the library.");
+  } else {
+    currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv;
+    npcs = officeNpcs;                    // restore office NPCs
+    player.x = player.fx = OFFICE_ENTRY[0]; player.y = player.fy = OFFICE_ENTRY[1];
+    player.dir = "up";
+    showToast("Back to the office.");
+  }
+  camFx = camFy = null; bufferedDir = null; turnStartMs = null; // snap camera, clear input buffers
 }
 
 function drinkCoffee() {
@@ -1548,6 +1625,71 @@ function buildMapCanvas() {
   return cv;
 }
 
+// ---------- Library map canvas (#026) ----------
+// Renders LIBRARY_MAP to a 1152×768 canvas. No seam runners. No PROP_PLACEMENTS.
+// Explicit fallback fill colors for every cell type — do NOT rely on tileColor() (office-only).
+function buildLibraryMapCanvas() {
+  const cv = document.createElement("canvas");
+  cv.width  = MAP_W * TILE; // 1152
+  cv.height = MAP_H * TILE; // 768
+  const c = cv.getContext("2d");
+  c.imageSmoothingEnabled = false;
+
+  // Helper: blit a library tile (32×32) from libStore; returns true on success.
+  function blitLibTile(slug, sx, sy) {
+    if (libStore[slug]) { c.drawImage(libStore[slug], sx, sy, TILE, TILE); return true; }
+    return false;
+  }
+
+  // Study station accent colors by position index (Domain 1–4 colors)
+  const STATION_COORDS = [[7, 14], [15, 14], [22, 14], [30, 14]];
+  const STATION_ACCENTS = ["#3b82f6", "#a855f7", "#22c55e", "#f97316"];
+
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const sx = x * TILE, sy = y * TILE;
+      const t = LIBRARY_MAP[y][x];
+      const floorSlug = ["lib-floor-a", "lib-floor-b", "lib-floor-c"][(x * 7 + y * 3) % 3];
+
+      if (t === "#") {
+        if (!blitLibTile("lib-wall", sx, sy)) {
+          c.fillStyle = "#3b2f24"; c.fillRect(sx, sy, TILE, TILE);
+        }
+      } else if (t === "L") {
+        // Floor base then drawn door (no asset dependency)
+        if (!blitLibTile(floorSlug, sx, sy)) { c.fillStyle = "#6b563b"; c.fillRect(sx, sy, TILE, TILE); }
+        c.fillStyle = "#5a3a1a"; c.fillRect(sx + 4, sy + 2, TILE - 8, TILE - 2);
+        c.fillStyle = "#c8a36a"; c.fillRect(sx + TILE - 12, sy + 14, 3, 6); // door knob
+      } else if (t === "S") {
+        // Floor base then drawn study carrel, domain-tinted by station index
+        if (!blitLibTile(floorSlug, sx, sy)) { c.fillStyle = "#6b563b"; c.fillRect(sx, sy, TILE, TILE); }
+        const si = STATION_COORDS.findIndex(([cx, cy]) => cx === x && cy === y);
+        const accent = si >= 0 ? STATION_ACCENTS[si] : "#94a3b8";
+        c.fillStyle = "#7a5a36"; c.fillRect(sx + 3, sy + 10, TILE - 6, TILE - 14); // desk surface
+        c.fillStyle = accent;    c.fillRect(sx + 9, sy + 5, 14, 8);                // domain book
+      } else {
+        // "." and "B" cells — floor base ("B" gets bookshelf prop baked on top below)
+        if (!blitLibTile(floorSlug, sx, sy)) { c.fillStyle = "#6b563b"; c.fillRect(sx, sy, TILE, TILE); }
+      }
+    }
+  }
+
+  // Bake library props (bookshelves) — no seam runners, no PROP_PLACEMENTS
+  for (const p of LIBRARY_PROP_PLACEMENTS) {
+    const meta = libManifest.find(m => m.slug === p.slug);
+    const dx = p.col * TILE + ((meta && meta.anchorX) || 0), dy = p.row * TILE;
+    const img = libStore[p.slug];
+    if (img && meta) {
+      c.drawImage(img, dx, dy, meta.widthPx, meta.heightPx);
+    } else {
+      // Explicit brown fallback box spanning 1×3 tiles (bookshelf footprint)
+      c.fillStyle = "#8a6a44"; c.fillRect(p.col * TILE, p.row * TILE, TILE, 3 * TILE);
+    }
+  }
+
+  return cv;
+}
+
 // Zone labels centered on the new 3×2 office partition (see regionOf()).
 // [text, tileX-center, tileY, zone-type]. Y sits near the top of each 3×2 band (top
 // row ≈2.6, bottom row just below the y=11 divider) so names read as room headers
@@ -1594,8 +1736,9 @@ function drawOverworld() {
   // room labels — frosted nameplates: a dark rounded pill with a zone-accent underline
   // (same palette as the "!" markers) so each zone name reads as legible signage on top
   // of the busy floor instead of low-contrast text getting lost in the planks.
+  const labels = currentMap === "office" ? OVERWORLD_LABELS : LIBRARY_LABELS;
   ctx.font = "bold 13px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  for (const [txt, lx, ly, type] of OVERWORLD_LABELS) {
+  for (const [txt, lx, ly, type] of labels) {
     const sx = px((lx - camFx) * TILE), sy = px((ly - camFy) * TILE);
     const tw = ctx.measureText(txt).width;
     const padX = 14, h = 26, w = tw + padX * 2;
@@ -1695,7 +1838,7 @@ function drawOverworld() {
   ctx.drawImage(pixelHead(player.slug, 48), 16, 16, 48, 48);
   drawHPBar(66, 38, 140, 10, player.dispHp / MAX_HP, firstName(player.slug) + "  HP " + player.hp + "/" + MAX_HP);
   ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace"; ctx.textAlign = "left";
-  ctx.fillText(`Rivals bested: ${defeated.size}/${npcs.length}`, 66, 62);
+  ctx.fillText(`Rivals bested: ${defeated.size}/${rivalTotal}`, 66, 62);
   ctx.fillStyle = "rgba(148,163,184,0.55)"; ctx.font = "11px monospace"; ctx.textAlign = "left";
   ctx.fillText("/  find a colleague", 12, CANVAS_H - 14);
 
@@ -2132,7 +2275,9 @@ ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-Promise.all([loadImages(), loadTiles(), loadProps()]).then(() => {
-  mapCv = buildMapCanvas();
+Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets()]).then(() => {
+  officeMapCv = buildMapCanvas();         // reads global map (= OFFICE_MAP) — must run while currentMap is office
+  libraryMapCv = buildLibraryMapCanvas(); // reads LIBRARY_MAP directly
+  mapCv = officeMapCv;
   requestAnimationFrame(loop);
 });
