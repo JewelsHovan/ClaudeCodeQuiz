@@ -194,6 +194,19 @@ function buildLibraryMap() {
   return g;
 }
 
+// Study-station registry (#028) — keys are "x,y" tile coords mirroring the "S" cells above.
+// `type` routes to the correct minigame; G (#029) supplies matching+cloze, H (#030) assembly+timed.
+// `id` is the stable per-station save key in minigameScores. `label` is shown by drawMinigame().
+const STUDY_STATIONS = {
+  "7,14":  { id: "match",    type: "matching", label: "Matching Pairs" },
+  "15,14": { id: "cloze",    type: "cloze",    label: "Fill in the Blank" },
+  "22,14": { id: "assemble", type: "assembly", label: "Diagram Assembly" },
+  "30,14": { id: "recall",   type: "timed",    label: "Timed Recall" },
+};
+// Boot-time guard: every "S" cell must have a matching registry entry (catches coord typos early).
+console.assert(["7,14", "15,14", "22,14", "30,14"].every(key => key in STUDY_STATIONS),
+  "STUDY_STATIONS key mismatch — a study-station coord has no minigame mapping");
+
 // 6 exam-domain zones mapped onto the open-plan office (3 columns × 2 rows).
 // Top:    AGENT (lounge) · MCP (bullpen-north) · CONFIG (kitchen)
 // Bottom: CONTEXT (meeting room) · PROMPT (bullpen-center) · MIX (bullpen-right)
@@ -399,7 +412,7 @@ const OFFICE_DOOR_TILE  = [24, 23];      // "L" in office south wall
 const OFFICE_ENTRY      = [24, 22];      // land here returning to office (must be floor)
 const LIBRARY_DOOR_TILE = [18, 23];      // "L" in library south wall
 const LIBRARY_ENTRY     = [18, 22];      // land here entering library (must be floor)
-let state = "title";    // title | select | overworld | battle | victory | search
+let state = "title";    // title | select | overworld | battle | victory | search | minigame
 let selectIdx = 0;
 let player = { slug: null, x: 18, y: 16, fx: 18, fy: 16, dir: "down", moving: false, hp: MAX_HP, dispHp: MAX_HP };
 let battleTransition = null;   // {npc, t} — flash + iris wipe into battle
@@ -417,6 +430,10 @@ let seenCounter = 0;    // monotonic draw counter — drives lastSeen recency (n
 let seenThisRun = {};   // category -> Set<idx> drawn this run (within-run repeat avoidance)
 let coffeeUses = 0;   // coffee heals remaining this run (cap 3); persisted in save
 let difficulty = "normal";   // "easy" | "normal" | "hard" — chosen at select, persisted in save
+// ---------- Library minigame harness (#028) ----------
+let currentMinigame = null;  // {type, stationId, label, score, phase} while state==="minigame"; null otherwise
+let libraryProgress = {};    // bookId -> pageReached; persisted now, written by the reader later (#027 follow-up)
+let minigameScores = {};     // stationId -> best score (higher is better; 0 = not attempted)
 let frame = 0;
 let dtF = 1;           // logical 60Hz frames this tick
 let mapCv = null;        // active pre-rendered map (points to officeMapCv or libraryMapCv)
@@ -470,7 +487,7 @@ function placeNPCs() {
 let saveCache; // undefined = not yet read; null = confirmed empty save
 function save() {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ player: player.slug, defeated: [...defeated], questionStats, seenCounter, coffeeUses, difficulty }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ player: player.slug, defeated: [...defeated], questionStats, seenCounter, coffeeUses, difficulty, libraryProgress, minigameScores }));
   } catch (e) {}
   saveCache = undefined;
 }
@@ -483,6 +500,9 @@ function loadSave() {
       coffeeUses = typeof s.coffeeUses === "number" ? s.coffeeUses : 0;
       // Additive migration: old saves lack `difficulty` → default "normal".
       difficulty = (s.difficulty === "easy" || s.difficulty === "hard") ? s.difficulty : "normal";
+      // Additive migration (#028): old saves lack these → default {} (never wipe existing fields).
+      libraryProgress = (s.libraryProgress && typeof s.libraryProgress === "object") ? s.libraryProgress : {};
+      minigameScores  = (s.minigameScores  && typeof s.minigameScores  === "object") ? s.minigameScores  : {};
       return s;
     }
   } catch (e) {}
@@ -795,6 +815,7 @@ function handleKey(k) {
       seenThisRun = {};
       coffeeUses = 3;
       difficulty = "normal";
+      libraryProgress = {}; minigameScores = {}; currentMinigame = null;  // #028 — clear minigame state too
       showToast("Save cleared!");
     }
   } else if (state === "select") {
@@ -813,6 +834,7 @@ function handleKey(k) {
       camFx = camFy = null; stepT = 1; player.moving = false;
       placeNPCs();
       coffeeUses = 3;
+      libraryProgress = {}; minigameScores = {}; currentMinigame = null;  // #028 — fresh character starts clean
       save();
       state = "overworld"; bufferedDir = null; turnStartMs = null;
       showToast("Beat every colleague to become a Claude Certified Architect!", 3500);
@@ -872,6 +894,9 @@ function handleKey(k) {
     }
   } else if (state === "victory") {
     if (k === "Enter" || k === " ") { state = "overworld"; bufferedDir = null; turnStartMs = null; }
+  } else if (state === "minigame") {
+    // Harness-level keys only. Tickets G/H add gameplay keys here (read currentMinigame.type/phase).
+    if (k === "Escape") { exitMinigame(currentMinigame ? currentMinigame.score : 0); return; }
   }
 }
 
@@ -968,7 +993,12 @@ function interact() {
   if (map[ty] && map[ty][tx] === "P") showToast("An office plant. It has seen things.");
   if (map[ty] && map[ty][tx] === "L") { warpToggle(); return; }
   if (map[ty] && map[ty][tx] === "B") { openBookPicker(); return; }                          // book reader — ticket #027
-  if (map[ty] && map[ty][tx] === "S") { showToast("Study station: coming soon."); return; } // stub → ticket #028
+  if (map[ty] && map[ty][tx] === "S") {                                                       // study station → minigame (#028)
+    const st = STUDY_STATIONS[`${tx},${ty}`];
+    if (st) launchMinigame(st.type, st.id, st.label);
+    else showToast("Study station: coming soon.");
+    return;
+  }
 }
 
 // ---------- Library warp (#026) ----------
@@ -1211,6 +1241,45 @@ function closeReader() {
   turnStartMs = null;
 }
 
+// ---------- Library minigame harness (#028) ----------
+// Shared entry/exit for the 4 study-station minigames. Tickets G (#029) and H (#030) plug their
+// gameplay into the "minigame" state (read currentMinigame.type/phase); this file only provides
+// the harness: enter, scaffold scoring, and clean return-to-overworld.
+function launchMinigame(type, stationId, label) {
+  // Mid-slide guard (NOTES.md line 12) — resolve any pending step BEFORE entering the minigame,
+  // matching closeReader's full canonical reset so the player can't ghost-step on exit.
+  player.moving = false;
+  stepT = 1;
+  player.fx = player.x;
+  player.fy = player.y;
+  bufferedDir = null;
+  turnStartMs = null;
+  toast = null;                 // clear any lingering toast so it can't paint over the minigame
+  currentMinigame = { type, stationId, label: label || "Study Station", score: 0, phase: "intro" };
+  state = "minigame";
+  sfx.select();
+}
+
+// Return to the library overworld. NOTE: there is no "library" state — the library is
+// state==="overworld" with currentMap==="library", so we return to "overworld" (currentMap is
+// already "library" and is left untouched). score: higher is better; 0 = not attempted.
+function exitMinigame(score = 0) {
+  if (currentMinigame) {
+    const sid = currentMinigame.stationId;
+    const s = typeof score === "number" ? score : (currentMinigame.score || 0);
+    minigameScores[sid] = Math.max(minigameScores[sid] || 0, s || 0);  // best score per station
+  }
+  currentMinigame = null;
+  state = "overworld";
+  player.moving = false;
+  stepT = 1;
+  player.fx = player.x;
+  player.fy = player.y;
+  bufferedDir = null;
+  turnStartMs = null;
+  save();
+}
+
 // ---------- Book reader draw functions (#027) ----------
 
 // Book-picker modal — mirrors drawCoffeePrompt box/scrim/color tokens.
@@ -1340,6 +1409,33 @@ function typewriterSlice(lines, shown) {
     else { out.push(lines[i].slice(0, remaining)); break; }
   }
   return out;
+}
+
+// Minigame harness screen (#028). Full-canvas placeholder/intro; mirrors drawReader's scrim+box.
+// Tickets G (#029) / H (#030) extend this to render their actual gameplay per currentMinigame.type.
+function drawMinigame() {
+  if (!currentMinigame) return;
+  const { label, score } = currentMinigame;
+  const RW = 720, RH = 560;
+  const rx = (CANVAS_W - RW) / 2, ry = (CANVAS_H - RH) / 2;
+
+  // Scrim + box (same tokens as drawReader)
+  ctx.fillStyle = "rgba(8,12,24,0.88)"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.fillStyle = "rgba(15,23,42,0.97)"; ctx.fillRect(rx, ry, RW, RH);
+  ctx.strokeStyle = "#facc15"; ctx.lineWidth = 2; ctx.strokeRect(rx, ry, RW, RH);
+
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 18px monospace";
+  ctx.fillText(label || "Study Station", CANVAS_W / 2, ry + 60);
+
+  ctx.fillStyle = "#e2e8f0"; ctx.font = "13px monospace";
+  ctx.fillText("Minigame coming soon — gameplay arrives with the next update.", CANVAS_W / 2, ry + RH / 2 - 10);
+  ctx.fillStyle = "#64748b"; ctx.font = "12px monospace";
+  ctx.fillText(`Score: ${score | 0}`, CANVAS_W / 2, ry + RH / 2 + 16);
+
+  ctx.fillStyle = "#64748b"; ctx.font = "11px monospace";
+  ctx.fillText("Esc — exit", CANVAS_W / 2, ry + RH - 18);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 
 function drawHPBar(x, y, w, h, frac, label) {
@@ -2518,6 +2614,7 @@ function loop(t) {
   else if (state === "battle") drawBattle();
   else if (state === "victory") drawVictory();
   else if (state === "search") { drawOverworld(); drawSearch(); }
+  else if (state === "minigame") drawMinigame();
   if (state === "overworld") drawCoffeePrompt();
   if (state === "overworld") { if (bookPrompt) drawBookPrompt(); if (readerState) drawReader(); }
   drawToast();
