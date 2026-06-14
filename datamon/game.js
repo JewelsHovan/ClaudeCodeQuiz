@@ -32,7 +32,9 @@ const VIEW_W = 25, VIEW_H = 19;          // tiles visible
 const CANVAS_W = VIEW_W * TILE;          // 800
 const CANVAS_H = VIEW_H * TILE;          // 608
 const HUD_BOTTOM = 72;                    // bottom of the top-left HUD box (8 + 64)
-const SOLID = new Set(["#", "D", "P", "C"]);
+// Collision set. Office floor plan (#021): # brick wall, D desk, P plant, C coffee counter,
+// W window (top wall), O wood column, G glass wall, F solid-furniture footprint, U overhead duct.
+const SOLID = new Set(["#", "D", "P", "C", "W", "O", "G", "F", "U"]);
 const TYPE_COLORS = { AGENT: "#3b82f6", MCP: "#a855f7", CONFIG: "#22c55e", PROMPT: "#f97316", CONTEXT: "#06b6d4", MIX: "#f59e0b" };
 const TYPE_NAMES  = { AGENT: "Agent Wing", MCP: "MCP Lab", CONFIG: "Config Bay", PROMPT: "Prompt Studio", CONTEXT: "Context Corner", MIX: "The Lounge" };
 // Exam domains + their weight on the real exam (drives the MIX deck).
@@ -75,42 +77,103 @@ function shuffled(arr, rng) {
 }
 
 // ---------- Map ----------
-// Legend: # wall, . floor, D desk, P plant, C coffee machine, ~ rug
-const DOORS = [[9, 5], [18, 5], [27, 5], [4, 10], [13, 10], [22, 10], [31, 10]];
+// Office floor plan (PRD 005 / #021) — mirrors datamon/.design/office-concept-topdown.png.
+// Open-plan layout: lounge (top-left) · open bullpen-north (top-mid) · kitchen (top-right) ·
+// glass meeting room (bottom-left) · desk bullpen (bottom-mid & bottom-right). The only
+// enclosed room is the glass meeting room, so there is exactly one interior door.
+// Legend: # brick wall · W window · O wood column · G glass wall · D desk · P plant ·
+//         C coffee counter (heal) · F solid-furniture footprint (prop baked on top) ·
+//         U overhead duct · ~ rug · . hardwood floor
+const DOORS = [[7, 15]]; // glass meeting-room entrance
+
+// Baked decoration layer (#021): {slug, col, row} where (col,row) is the prop's footprint
+// TOP-LEFT tile. Drawn behind characters in buildMapCanvas() (see the prop-bake loop there).
+// Manifest convention (#020): anchorX=0, anchorY=heightPx-32 ("feet at bottom row") for all
+// props, and heightPx = tileH*TILE — so blitting at (col*TILE + anchorX, row*TILE) at native
+// widthPx×heightPx exactly fills the tileW×tileH footprint. Solid furniture (couch, kallax,
+// bar, fridge, arc-lamp) has matching "F" collision cells set in buildMap().
+const PROP_PLACEMENTS = [
+  // Lounge — Agent Wing (top-left)
+  { slug: "starry-painting", col: 1, row: 0 }, { slug: "tv", col: 6, row: 0 },
+  { slug: "kallax", col: 4, row: 1 },
+  { slug: "couch", col: 1, row: 4 }, { slug: "couch", col: 1, row: 6 },
+  { slug: "arc-lamp", col: 7, row: 4 }, { slug: "rug", col: 1, row: 8 },
+  { slug: "radiator", col: 10, row: 1 },
+  // Kitchen — Config Bay (top-right)
+  { slug: "fridge", col: 33, row: 2 }, { slug: "coffee-counter", col: 31, row: 2 },
+  { slug: "bar", col: 28, row: 5 },
+  { slug: "stool", col: 28, row: 6 }, { slug: "stool", col: 29, row: 6 }, { slug: "stool", col: 30, row: 6 },
+  { slug: "radiator", col: 25, row: 1 },
+  // Glass meeting room — Context Corner (bottom-left)
+  { slug: "compass-sign", col: 2, row: 15 },
+  { slug: "glass-wall", col: 9, row: 16 }, { slug: "glass-wall", col: 9, row: 19 },
+  { slug: "desk", col: 3, row: 18 }, { slug: "desk", col: 3, row: 19 },
+  { slug: "office-chair", col: 2, row: 18 }, { slug: "office-chair", col: 6, row: 18 },
+  // Bullpen — Prompt Studio (bottom-center)
+  { slug: "desk", col: 14, row: 16 }, { slug: "office-chair", col: 14, row: 17 },
+  { slug: "desk", col: 20, row: 16 }, { slug: "office-chair", col: 20, row: 17 },
+  { slug: "desk", col: 14, row: 19 }, { slug: "office-chair", col: 14, row: 20 },
+  { slug: "desk", col: 20, row: 19 }, { slug: "office-chair", col: 20, row: 20 },
+  // Bullpen — The Lounge/MIX (bottom-right)
+  { slug: "desk", col: 26, row: 15 }, { slug: "office-chair", col: 26, row: 16 },
+  { slug: "desk", col: 31, row: 15 }, { slug: "office-chair", col: 31, row: 16 },
+  { slug: "desk", col: 26, row: 19 }, { slug: "office-chair", col: 26, row: 20 },
+  { slug: "desk", col: 31, row: 19 }, { slug: "office-chair", col: 31, row: 20 },
+  // Radiators along the bottom wall
+  { slug: "radiator", col: 16, row: 22 }, { slug: "radiator", col: 29, row: 22 },
+];
 
 function buildMap() {
   const g = Array.from({ length: MAP_H }, () => Array(MAP_W).fill("."));
+  // Brick perimeter
   for (let x = 0; x < MAP_W; x++) { g[0][x] = "#"; g[MAP_H - 1][x] = "#"; }
   for (let y = 0; y < MAP_H; y++) { g[y][0] = "#"; g[y][MAP_W - 1] = "#"; }
-  // interior walls: three verticals splitting the top into 4 rooms, one horizontal
-  for (let y = 1; y < 10; y++) { g[y][9] = "#"; g[y][18] = "#"; g[y][27] = "#"; }
-  for (let x = 1; x < MAP_W - 1; x++) g[10][x] = "#";
-  for (const [dx, dy] of DOORS) g[dy][dx] = ".";
+  // Industrial windows along the top wall; brick pilasters every 6 tiles stay "#".
+  for (let x = 1; x < MAP_W - 1; x++) if (x % 6 !== 0) g[0][x] = "W";
+  // Overhead duct run above the kitchen
+  g[0][26] = "U"; g[0][27] = "U";
 
-  // desk clusters per room
+  // Glass-walled meeting room (bottom-left): top edge row 15 (x1..9) + right edge col 9 (y16..22).
+  for (let x = 1; x <= 9; x++) g[15][x] = "G";
+  for (let y = 16; y <= 22; y++) g[y][9] = "G";
+  g[15][7] = ".";                       // meeting-room door (matches DOORS)
+  for (const [x, y] of [[3, 18], [4, 18], [3, 19], [4, 19]]) g[y][x] = "D"; // conference table
+
+  // Wood column pillars dotting the open floor
+  for (const [x, y] of [[11, 5], [23, 5], [12, 13], [18, 13], [24, 13], [30, 13]]) g[y][x] = "O";
+
+  // Coffee counter (interact to heal) in the kitchen
+  g[2][31] = "C";
+
+  // Bullpen desk clusters (each desk prop is 2 tiles wide → pairs of "D" cells)
   const desks = [
-    [2, 3], [3, 3], [6, 3], [7, 3], [2, 7], [3, 7], [6, 7], [7, 7],          // Agent Wing
-    [11, 3], [12, 3], [15, 3], [16, 3], [11, 7], [12, 7], [15, 7], [16, 7],  // MCP Lab
-    [20, 3], [21, 3], [24, 3], [25, 3], [20, 7], [21, 7], [24, 7], [25, 7],  // Config Bay
-    [29, 3], [30, 3], [33, 3], [29, 7], [30, 7], [33, 7],                    // Prompt Studio
+    [14, 16], [15, 16], [20, 16], [21, 16], [14, 19], [15, 19], [20, 19], [21, 19], // Prompt Studio
+    [26, 15], [27, 15], [31, 15], [32, 15], [26, 19], [27, 19], [31, 19], [32, 19], // MIX
   ];
   for (const [x, y] of desks) g[y][x] = "D";
 
-  // plants
-  for (const [x, y] of [[1, 1], [11, 1], [13, 1], [24, 1], [26, 1], [34, 1],
-                        [1, 12], [34, 12], [1, 22 - 1], [34, 21], [10, 15], [27, 15]]) g[y][x] = "P";
+  // Plants
+  for (const [x, y] of [[11, 11], [1, 12], [24, 12], [34, 12], [34, 21], [13, 3], [22, 3]]) g[y][x] = "P";
 
-  // lounge rug
-  for (let y = 14; y <= 18; y++) for (let x = 14; x <= 21; x++) g[y][x] = "~";
+  // Solid-furniture footprints (floor base; the matching prop bakes on top in buildMapCanvas)
+  const furniture = [
+    [4, 1], [5, 1], [4, 2], [5, 2],     // kallax bookshelf (2×2)
+    [1, 4], [2, 4], [1, 6], [2, 6],     // two couches
+    [7, 4], [7, 5],                     // arc-lamp (1×2 footprint)
+    [28, 5], [29, 5], [30, 5],          // kitchen bar (3×1)
+    [33, 2], [33, 3],                   // fridge (1×2)
+  ];
+  for (const [x, y] of furniture) g[y][x] = "F";
 
-  // coffee machines (interact to heal)
-  g[21][2] = "C"; g[21][33] = "C";
   return g;
 }
 
+// 6 exam-domain zones mapped onto the open-plan office (3 columns × 2 rows).
+// Top:    AGENT (lounge) · MCP (bullpen-north) · CONFIG (kitchen)
+// Bottom: CONTEXT (meeting room) · PROMPT (bullpen-center) · MIX (bullpen-right)
 function regionOf(x, y) {
-  if (y < 10) { if (x < 9) return "AGENT"; if (x < 18) return "MCP"; if (x < 27) return "CONFIG"; return "PROMPT"; }
-  return x < 18 ? "CONTEXT" : "MIX";
+  if (y < 11) { if (x < 12) return "AGENT"; if (x < 24) return "MCP"; return "CONFIG"; }
+  return x < 12 ? "CONTEXT" : (x < 24 ? "PROMPT" : "MIX");
 }
 
 // ---------- Audio (tiny synth, no assets) ----------
@@ -181,6 +244,24 @@ function loadTiles() {
   return Promise.all(TILE_SLUGS.map(slug =>
     loadOne(`tiles/${slug}.png`, tileStore, slug)
   ));
+}
+
+// Office props (#020/#021): multi-tile anchored cutouts baked into the static map (#021).
+// propManifest entries: {slug, file, widthPx, heightPx, tileW, tileH, anchorX, anchorY}.
+// loadOne resolves propStore[slug] = null on any load error, and a missing/invalid
+// manifest leaves propManifest = [] — either way buildMapCanvas() degrades to drawn boxes
+// (or skips), never throwing. Served over http (play.sh); on file:// fetch fails → [].
+const propStore = {};     // slug -> HTMLImageElement (or null on error)
+let propManifest = [];    // array of manifest entries (or [] on failure)
+function loadProps() {
+  return fetch("props/manifest.json")
+    .then(r => (r.ok ? r.json() : []))
+    .then(list => {
+      propManifest = Array.isArray(list) ? list : [];
+      return Promise.all(propManifest.map(m =>
+        loadOne(`props/${m.file}`, propStore, m.slug)));
+    })
+    .catch(() => { propManifest = []; });
 }
 
 // Smooth-downscaled square version of the trainer sprite for small sizes
@@ -1179,9 +1260,14 @@ function tileColor(t, x, y) {
   // Slug-keyed flat fallback for the office tileset (missing-PNG degradation).
   if (TILE_FALLBACK[t]) return TILE_FALLBACK[t];
   switch (t) {
-    case "#": return "#334155";
-    case "~": return (x + y) % 2 ? "#7c3aed" : "#6d28d9";
-    default:  return (x + y) % 2 ? "#cbd5e1" : "#c2cad6";
+    case "#": return (x % 6 === 0 || y % 6 === 0) ? "#cec2b2" : "#aa563a"; // brick (pilaster/red)
+    case "W": return "#6c7a84";  // window
+    case "O": return "#8c5a30";  // wood column
+    case "U": return "#b4aea2";  // duct
+    case "G": return "#a9c7d6";  // glass wall
+    case "~": return (x + y) % 2 ? "#b5651d" : "#a85a18"; // rug
+    // "F" furniture footprint + "." floor + anything unrecognized → warm hardwood
+    default:  return (x + y) % 2 ? "#c8702f" : "#be682a";
   }
 }
 
@@ -1207,20 +1293,38 @@ function buildMapCanvas() {
   cv.height = MAP_H * TILE;   // 768
   const c = cv.getContext("2d");
   c.imageSmoothingEnabled = false;
+  // Warm-hardwood floor base under everything walkable (#021); brick / window / column /
+  // duct / glass for structural chars. Each blit falls back to a flat tileColor() fill if
+  // its PNG is missing, so a 404 degrades gracefully instead of leaving a black square.
+  const floorOf = (x, y) => 'hardwood-' + ['a', 'b', 'c'][(x * 31 + y * 17) % 3];
+  const floorBase = (sx, sy, x, y) => {
+    if (!blitTile(c, floorOf(x, y), sx, sy)) { c.fillStyle = tileColor("F", x, y); c.fillRect(sx, sy, TILE, TILE); }
+  };
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
       const sx = x * TILE, sy = y * TILE;
       const t = map[y][x];
-      // floor variant keyed on display coords — do not shift map origin without regenerating
-      const floorSlug = 'floor-' + ['a','b','c'][(x * 31 + y * 17) % 3];
       if (t === "#") {
-        if (!blitTile(c, wallSlug(x, y), sx, sy)) {
+        const brick = (x % 6 === 0 || y % 6 === 0) ? "brick-white" : "brick-red";
+        if (!blitTile(c, brick, sx, sy) && !blitTile(c, wallSlug(x, y), sx, sy)) {
           c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE);
           c.fillStyle = "#1e293b"; c.fillRect(sx, sy + TILE - 6, TILE, 6);
         }
+      } else if (t === "W") {
+        if (!blitTile(c, "window-h", sx, sy)) { c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE); }
+      } else if (t === "O") {
+        if (!blitTile(c, "column", sx, sy)) { c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE); }
+      } else if (t === "U") {
+        if (!blitTile(c, "duct", sx, sy)) { c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE); }
+      } else if (t === "G") {
+        // glass wall: hardwood base + translucent tint (no glass *tile* exists; the glass-wall
+        // PROP bakes on top in the prop pass below where placed)
+        floorBase(sx, sy, x, y);
+        c.fillStyle = "rgba(150,200,220,0.30)"; c.fillRect(sx, sy, TILE, TILE);
+        c.fillStyle = "rgba(225,242,250,0.55)"; c.fillRect(sx, sy, TILE, 3);
       } else if (t === "D" || t === "P" || t === "C") {
         // floor base FIRST (objects sit on floor; PNGs have transparent margins)
-        if (!blitTile(c, floorSlug, sx, sy)) { c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE); }
+        floorBase(sx, sy, x, y);
         const objSlug = t === "D" ? "desk" : t === "P" ? "plant" : "coffee";
         if (!blitTile(c, objSlug, sx, sy)) {
           if (t === "D") {
@@ -1240,16 +1344,35 @@ function buildMapCanvas() {
         }
       } else if (t === "~") {
         if (!blitTile(c, "rug", sx, sy)) { c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE); }
-      } else { // floor "." and any unrecognized
-        if (!blitTile(c, floorSlug, sx, sy)) { c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE); }
+      } else { // floor "." , furniture base "F", and any unrecognized → hardwood floor
+        floorBase(sx, sy, x, y);
       }
+    }
+  }
+
+  // ---- Baked prop layer (#021): anchored office cutouts, drawn BEHIND characters ----
+  // (col,row) = footprint top-left; blit at native widthPx×heightPx so the image fills the
+  // tileW×tileH footprint (anchorY = heightPx-32 per #020 — the height already accounts for
+  // the upward extent). Missing PNG → neutral-grey drawn box at the footprint (Must-Not:
+  // never render a black screen / throw when a prop asset is absent).
+  for (const p of PROP_PLACEMENTS) {
+    const meta = propManifest.find(m => m.slug === p.slug);
+    if (!meta) continue; // slug not in manifest — skip silently
+    const dx = p.col * TILE + (meta.anchorX || 0), dy = p.row * TILE;
+    const img = propStore[p.slug];
+    if (img) {
+      c.drawImage(img, dx, dy, meta.widthPx, meta.heightPx);
+    } else {
+      c.fillStyle = "#8a8f98";
+      c.fillRect(p.col * TILE, p.row * TILE, (meta.tileW || 1) * TILE, (meta.tileH || 1) * TILE);
     }
   }
   return cv;
 }
 
-const OVERWORLD_LABELS = [["AGENT WING", 4.5, 5.6], ["MCP LAB", 13.5, 5.6], ["CONFIG BAY", 22.5, 5.6],
-                          ["PROMPT STUDIO", 30.5, 5.6], ["CONTEXT CORNER", 8, 13], ["THE LOUNGE", 26, 13]];
+// Zone labels centered on the new 3×2 office partition (see regionOf()).
+const OVERWORLD_LABELS = [["AGENT WING", 6, 5.5], ["MCP LAB", 18, 5.5], ["CONFIG BAY", 29, 5.5],
+                          ["CONTEXT CORNER", 5, 12.5], ["PROMPT STUDIO", 17, 12.5], ["THE LOUNGE", 29, 12.5]];
 
 function drawOverworld() {
   if (!mapCv) return;
@@ -1675,7 +1798,7 @@ ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-Promise.all([loadImages(), loadTiles()]).then(() => {
+Promise.all([loadImages(), loadTiles(), loadProps()]).then(() => {
   mapCv = buildMapCanvas();
   requestAnimationFrame(loop);
 });
