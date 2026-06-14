@@ -249,6 +249,10 @@ let battleGrad = null; // battle backdrop gradient — built once at boot
 let stepStartFx = 0, stepStartFy = 0, stepT = 1; // eased-step progress (0..1); 1 = idle
 let gaitPhase = 0; // gait cycle phase (radians); advanced by eased travel, reset when idle
 let prevE = 0;     // previous frame's eased step progress; drives slide-free gait delta
+// Footfall dust (PRD 004 / #017). World-space puffs spawned at each gait contact crossing
+// while the player moves; ticked + pruned every frame so the array never grows unbounded.
+// {x,y in tile coords; dx,dy drift in tiles/frame; life counts down to 0 then pruned}.
+let dustParticles = [];
 let camFx = null, camFy = null; // lerped camera (TILE units); null = snap-to-target next frame
 const wrapCache = new Map(); // font|maxW|text -> wrapped lines
 
@@ -722,14 +726,35 @@ const KEY_DIR = { ArrowUp: "up", w: "up", ArrowDown: "down", s: "down",
 let turnStartMs = null;  // wall-clock when tap-to-turn window opened; null when closed
 let bufferedDir = null;  // direction pressed mid-slide; consumed at slide end
 function updateOverworld(dt) {
+  // Footfall dust: drift + age every particle, then prune the dead ones. Runs every frame
+  // (moving OR idle) so the array is always bounded — idle simply spawns nothing below.
+  for (const d of dustParticles) { d.x += d.dx; d.y += d.dy; d.life--; }
+  if (dustParticles.length) dustParticles = dustParticles.filter(d => d.life > 0);
+
   const WALK_SPEED = 7.5, RUN_SPEED = 12.5; // tiles/sec
   player.running = !!(keys["r"] || keys["R"] || keys["Shift"]);
   if (player.moving) {
     const speed = player.running ? RUN_SPEED : WALK_SPEED;
     stepT = Math.min(1, stepT + speed * dt);              // speed=7.5/12.5 → walk/run cadence
     const e = stepT * stepT * (3 - 2 * stepT);            // smoothstep ease-in/out
+    const prevGait = gaitPhase;                           // remember phase before advancing
     gaitPhase += Math.abs(e - prevE) * Math.PI * 2;       // gait tracks eased travel → no foot-slide
     prevE = e;
+    // Footfall contact = descending zero-crossing of sin(2*phase) (two per gait cycle = L/R
+    // foot). Spawn a small dust burst there: 2 walking, 4 running. World-space, near the feet.
+    if (Math.sin(2 * prevGait) > 0 && Math.sin(2 * gaitPhase) <= 0) {
+      const count = player.running ? 4 : 2;
+      for (let i = 0; i < count; i++) {
+        dustParticles.push({
+          x: player.fx + (Math.random() - 0.5) * 0.25,   // jitter around feet (tiles)
+          y: player.fy + 0.34,                           // just below sprite centre
+          dx: (Math.random() - 0.5) * 0.018,             // outward drift
+          dy: -0.022 - Math.random() * 0.012,            // upward drift
+          life: 12 + Math.floor(Math.random() * 3),      // 12–14 frames (~0.2s @ 60fps)
+          maxLife: 14,
+        });
+      }
+    }
     player.fx = stepStartFx + (player.x - stepStartFx) * e;
     player.fy = stepStartFy + (player.y - stepStartFy) * e;
     if (stepT >= 1) {
@@ -845,6 +870,24 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove) {
     scaleY = 1 + Math.sin(2 * p) * sq;                    // footfall-timed squash/stretch
     scaleX = 1 / scaleY;                                  // volume-conserving (foot-anchored)
     sway   = K * stride * Math.sin(p);                    // whole-sprite X translate
+  }
+
+  // Footfall ground-shadow (PRD 004 / #017): an elliptical shadow under the moving player's
+  // feet that squashes WIDER + DARKER at footfall contact and thins/fades at the airborne
+  // phase. contact = -sin(2p) peaks (+1) exactly at the squash contact instant. Player only —
+  // NPCs are always idle (no gaitPhase), and the idle player skips this entirely. Drawn before
+  // the sprite so it sits behind the character.
+  if (isPlayer && player.moving) {
+    const contact = -Math.sin(2 * gaitPhase);             // +1 at footfall, -1 airborne
+    const shadowW = (baseSize * 0.5) * (1 + contact * 0.3);  // ±30% width swing
+    const shadowAlpha = Math.max(0, 0.18 + contact * 0.1);   // ~0.08 airborne … 0.28 contact
+    ctx.save();
+    ctx.globalAlpha = shadowAlpha;
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.ellipse(px(cx), px(footY + 2), shadowW / 2, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   // Clip-safe clamp: a tall sprite (up to 58px) grows upward past its own tile. Never
@@ -1248,6 +1291,19 @@ function drawOverworld() {
 
   for (const c of chars) {
     drawCharacter(c.sx, c.sy, c.slug, c.dir, c.isPlayer, c.bob, isSolidTile(c.tx, c.ty - 1));
+  }
+
+  // Footfall dust (PRD 004 / #017): draw each live puff in screen space (camera-relative),
+  // fading via alpha = life/maxLife. Pure draw — ageing + pruning happen in updateOverworld.
+  if (dustParticles.length) {
+    ctx.fillStyle = "#d4c4a0";
+    for (const d of dustParticles) {
+      const dsx = (d.x - camFx) * TILE + TILE / 2;
+      const dsy = (d.y - camFy) * TILE + TILE / 2;
+      ctx.globalAlpha = (d.life / d.maxLife) * 0.55;
+      ctx.fillRect(px(dsx), px(dsy), 2, 2);
+    }
+    ctx.globalAlpha = 1;
   }
 
   // Defeat markers in a separate pass AFTER all characters, so they always render on
