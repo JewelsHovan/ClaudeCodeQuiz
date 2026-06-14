@@ -126,45 +126,26 @@ and downscale to 32×32 with **nearest-neighbor** (not bilinear) to keep crisp p
 **Fallback safety:** if `tiles/` is missing or any PNG 404s, `loadTiles()` stores `null`
 for that slug and the game renders with flat `tileColor()` colors — no crash, no error.
 
-## Character animation frames
+## Overworld walk/run animation
 
-The overworld characters use a **shared generic body rig** — a single GBA-style indigo jacket /
-dark trouser figure — with each character's `pixelHead` composited on top at runtime.  This
-keeps art assets small (8 sheets instead of per-character sprite sets) while still showing
-every teammate's face.
+The overworld player animates by **procedurally deforming its own per-character `spriteMini`
+sprite** every frame — there is no shared/generic body rig and no extra art assets. Each
+character keeps its individual pixel art; the motion comes from canvas affine transforms in
+`drawCharacter()`. NPCs (integer-only positions, never `moving`) and the idle player are
+rendered perfectly still (bob=0, sway=0, scaleX=scaleY=1).
 
-The title parade and character-select screen continue to use the per-character `spriteMini`
-art (intentional — those surfaces want the full, individual sprites).
+Deformation (moving player only), driven by the gait phase `p = gaitPhase`:
 
-**Output layout:** 8 sprite sheets in `datamon/sprites/anim/`, each `128×44` RGBA PNG.
-Format: 4 frames × 32px wide at constant height 44px.
+- **Bob** — `bobOff = A * (sin(p) − 0.2·sin(2p))`, `A = 1.5px` (asymmetric vertical lift).
+- **Squash/stretch** — `scaleY = 1 + sin(2p)·sq`, `scaleX = 1/scaleY` (volume-conserving,
+  anchored at the feet). `sq = 0.02` walking, `0.12` running.
+- **Sway** — `sway = K·stride·sin(p)` px, a whole-sprite horizontal **translate only** (no
+  shear/skew). `K = 26`; `stride = 0.06` walking, `0.11` running.
 
-| Sheet | Frames |
-|---|---|
-| `walk_{down,up,left,right}.png` | 4-frame walk cycle (f0 = idle/contact) |
-| `run_{down,up,left,right}.png` | 4-frame run cycle — wider stride + 1px lean |
+**Slide-free gait:** `gaitPhase` advances from the *eased* per-frame position delta
+(`gaitPhase += |Δe| · 2π`, where `e` is the smoothstep step progress), not from `speed · dt`
+— so the cycle stays locked to actual tile travel and the feet never slide. It resets to 0
+when idle and at each step start.
 
-Head anchor: frame-local `y = 18` (the neckline).  The head zone `y ∈ [0, 18)` is left
-transparent so the game can composite `pixelHead(slug)` directly at the frame's top edge.
-The neckline is held at a **constant** y across all 4 frames of every sheet so the head
-never drifts vertically during animation.
-
-**Regen + validate:**
-
-```bash
-uv run --with pillow python datamon/tools/gen_anim.py    # (re)writes datamon/sprites/anim/*.png
-uv run --with pillow python datamon/tools/check_anim.py  # asserts all 8 are 128×44 RGBA
-```
-
-**Hold R (or Shift) to run.** While R is held the game selects the `run_*` sheets and
-advances the animation at 12.5 tiles/sec instead of 7.5, giving a visually distinct faster
-gait.
-
-**Graceful fallback:** if `sprites/anim/` is absent or any of the 8 sheets 404, `loadAnim()`
-stores `null` for that key (same `loadOne` null-fallback used by tiles).  `animReady()`
-detects the gap and `drawCharacter` falls back silently to the round-2 procedural walk cycle
-— no JS error, no visible glitch.
-
-**DevTools test** (procedural fallback): open the browser console, run
-`window._forceProcedural = true` then reload — `animReady()` returns `false` and the
-original procedural path runs byte-identically.
+**Hold R (or Shift) to run.** While held, `player.running` switches to the punchier run
+params (sq=0.12, stride=0.11) and movement speeds up from 7.5 to 12.5 tiles/sec.

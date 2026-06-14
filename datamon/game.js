@@ -144,8 +144,6 @@ const sprites = {};     // slug -> generated pixel-art trainer sprite (or null)
 const tileStore = {};   // slug -> 32px office tile HTMLImageElement (or null on error)
 const pixelCache = {};  // slug+size -> canvas
 const miniCache = {};   // slug+size -> downscaled sprite canvas
-const animFrames = (window._animFrames = {}); // "walk_down".. -> HTMLImageElement|null ; separate from sprites/tileStore
-const ANIM_DIRS = ["down","up","left","right"], ANIM_NFRAMES = 4, ANIM_FW = 32, ANIM_FH = 44, ANIM_HEAD_ANCHOR_Y = 18, ANIM_HEAD_SRC = 20;
 
 function loadOne(src, store, slug) {
   return new Promise(resolve => {
@@ -177,19 +175,6 @@ function loadTiles() {
   return Promise.all(TILE_SLUGS.map(slug =>
     loadOne(`tiles/${slug}.png`, tileStore, slug)
   ));
-}
-
-function loadAnim() {
-  const jobs = [];
-  for (const gait of ["walk","run"]) for (const d of ANIM_DIRS)
-    jobs.push(loadOne(`sprites/anim/${gait}_${d}.png`, animFrames, `${gait}_${d}`));
-  return Promise.all(jobs);
-}
-function animReady() {
-  if (window._forceProcedural) return false;
-  for (const gait of ["walk","run"]) for (const d of ANIM_DIRS)
-    if (!window._animFrames[`${gait}_${d}`]) return false;
-  return true;
 }
 
 // Smooth-downscaled square version of the trainer sprite for small sizes
@@ -262,7 +247,8 @@ let dtF = 1;           // logical 60Hz frames this tick
 let mapCv = null;   // pre-rendered static map — built once at boot
 let battleGrad = null; // battle backdrop gradient — built once at boot
 let stepStartFx = 0, stepStartFy = 0, stepT = 1; // eased-step progress (0..1); 1 = idle
-let gaitPhase = 0; // free-running anim cycle position (tiles traveled); reset when idle
+let gaitPhase = 0; // gait cycle phase (radians); advanced by eased travel, reset when idle
+let prevE = 0;     // previous frame's eased step progress; drives slide-free gait delta
 let camFx = null, camFy = null; // lerped camera (TILE units); null = snap-to-target next frame
 const wrapCache = new Map(); // font|maxW|text -> wrapped lines
 
@@ -741,8 +727,9 @@ function updateOverworld(dt) {
   if (player.moving) {
     const speed = player.running ? RUN_SPEED : WALK_SPEED;
     stepT = Math.min(1, stepT + speed * dt);              // speed=7.5/12.5 → walk/run cadence
-    gaitPhase += speed * dt;
     const e = stepT * stepT * (3 - 2 * stepT);            // smoothstep ease-in/out
+    gaitPhase += Math.abs(e - prevE) * Math.PI * 2;       // gait tracks eased travel → no foot-slide
+    prevE = e;
     player.fx = stepStartFx + (player.x - stepStartFx) * e;
     player.fy = stepStartFy + (player.y - stepStartFy) * e;
     if (stepT >= 1) {
@@ -751,7 +738,7 @@ function updateOverworld(dt) {
     }
     return;
   }
-  gaitPhase = 0;
+  gaitPhase = 0; prevE = 0;
   let dir = null;
   if (keys["ArrowUp"] || keys["w"]) dir = "up";
   else if (keys["ArrowDown"] || keys["s"]) dir = "down";
@@ -772,7 +759,7 @@ function tryStep(dir) {
   const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[dir];
   const nx = player.x + d[0], ny = player.y + d[1];
   if (walkable(nx, ny)) {
-    stepStartFx = player.fx; stepStartFy = player.fy; stepT = 0;   // begin eased step
+    stepStartFx = player.fx; stepStartFy = player.fy; stepT = 0; prevE = 0;   // begin eased step
     player.x = nx; player.y = ny; player.moving = true;
     if (state === "overworld") sfx.move();
   }
@@ -842,24 +829,33 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove) {
   const sizeScale = baseSize / 34;            // proportional factor vs. the old 34px base
   const footY = cy + 16;                      // tile bottom (cy + TILE/2) — feet anchored here
 
-  if (animReady()) { drawCharacterFrames(cx, cy, slug, dir, isPlayer, baseSize, footY, wallAbove); return; }
-
-  // Procedural walk cycle driven by movement progress (tile units, ~1→0 per step).
-  // Idle characters (isPlayer false, or player not moving) get exactly zero offset.
-  let yOff = 0, swing = 0;
+  // Procedural deformation of the character's OWN per-character sprite (PRD 004 / #016).
+  // Applied ONLY to the moving player; the idle player and every NPC are exactly still.
+  // Locked, live-validated params: bob A=1.5px, squash sq=0.02 walk / 0.12 run,
+  // sway K*stride*sin(p) (stride 0.06 walk / 0.11 run, K=26). Phase p = gaitPhase, which
+  // advances from eased travel in updateOverworld() (so feet never slide). Sway is a
+  // translate ONLY — no shear/skew (the user explicitly rejected head-tilt).
+  let bobOff = 0, sway = 0, scaleX = 1, scaleY = 1;
   if (isPlayer && player.moving) {
-    const prog = Math.hypot(player.x - player.fx, player.y - player.fy);
-    swing = Math.sin(prog * Math.PI * 4);     // ±1 leg swing
-    yOff  = -Math.abs(swing) * sizeScale * 2; // body lift, scaled proportionally to size
+    const p = gaitPhase;
+    const A = 1.5;
+    const sq = player.running ? 0.12 : 0.02;
+    const stride = player.running ? 0.11 : 0.06, K = 26;
+    bobOff = A * (Math.sin(p) - 0.2 * Math.sin(2 * p));   // asymmetric vertical bob (px)
+    scaleY = 1 + Math.sin(2 * p) * sq;                    // footfall-timed squash/stretch
+    scaleX = 1 / scaleY;                                  // volume-conserving (foot-anchored)
+    sway   = K * stride * Math.sin(p);                    // whole-sprite X translate
   }
 
   // Clip-safe clamp: a tall sprite (up to 58px) grows upward past its own tile. Never
   // let it paint into the top HUD band, and — when a solid tile sits directly above the
   // feet — never let it paint up into that wall tile (otherwise the head clips through
-  // the wall). Clip (truncate) the overflow rather than squashing the sprite.
+  // the wall). Clip (truncate) the overflow rather than squashing the sprite. Estimate the
+  // painted top conservatively, accounting for the squash scale and bob lift.
   let clipTop = HUD_BOTTOM + 2;
   if (wallAbove) clipTop = Math.max(clipTop, footY - TILE);   // stop at the character's own tile top
-  const needClip = (footY - baseSize + yOff) < clipTop;
+  const topPaint = footY - (baseSize + Math.max(bobOff, 0)) * Math.max(scaleY, 1);
+  const needClip = topPaint < clipTop;
   if (needClip) {
     ctx.save();
     ctx.beginPath();
@@ -869,50 +865,24 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove) {
 
   const mini = spriteMini(slug, baseSize);
   if (mini) {
-    // full-body pixel trainer sprite, feet anchored to tile bottom, grows upward
-    ctx.drawImage(mini, px(cx - baseSize / 2 + swing * sizeScale), px(footY - baseSize + yOff), baseSize, baseSize);
+    // Foot-anchored affine: translate to the feet, scale about that point, draw upward.
+    // bob is applied inside the scaled space (matches the validated prototype).
+    ctx.save();
+    ctx.translate(px(cx + sway), px(footY));
+    ctx.scale(scaleX, scaleY);
+    ctx.drawImage(mini, -baseSize / 2, -baseSize + bobOff, baseSize, baseSize);
+    ctx.restore();
   } else {
-    // fallback: simple body + pixelated headshot (scaled to match the sprite path)
+    // fallback: simple body + pixelated headshot (only when no sprite image is available)
     const bodyColor = isPlayer ? "#ef4444" : "#475569";
     const headSize = 20 * sizeScale;
     ctx.fillStyle = bodyColor;
-    ctx.fillRect(px(cx - 7 * sizeScale), px(footY - 14 * sizeScale + yOff), 14 * sizeScale, 10 * sizeScale);
+    ctx.fillRect(px(cx - 7 * sizeScale + sway), px(footY - 14 * sizeScale - bobOff), 14 * sizeScale, 10 * sizeScale);
     ctx.fillStyle = "#1e293b";
-    // legs swing in opposition, scaled
-    ctx.fillRect(px(cx - 6 * sizeScale + swing * 2 * sizeScale), px(footY - 4 * sizeScale + yOff), 5 * sizeScale, 4 * sizeScale);
-    ctx.fillRect(px(cx + 1 * sizeScale - swing * 2 * sizeScale), px(footY - 4 * sizeScale + yOff), 5 * sizeScale, 4 * sizeScale);
-    ctx.drawImage(pixelHead(slug, 16), px(cx - headSize / 2), px(footY - 32 * sizeScale + yOff), headSize, headSize);
+    ctx.fillRect(px(cx - 6 * sizeScale + sway), px(footY - 4 * sizeScale - bobOff), 5 * sizeScale, 4 * sizeScale);
+    ctx.fillRect(px(cx + 1 * sizeScale + sway), px(footY - 4 * sizeScale - bobOff), 5 * sizeScale, 4 * sizeScale);
+    ctx.drawImage(pixelHead(slug, 16), px(cx - headSize / 2 + sway), px(footY - 32 * sizeScale - bobOff), headSize, headSize);
   }
-
-  if (needClip) ctx.restore();
-}
-
-function drawCharacterFrames(cx, cy, slug, dir, isPlayer, baseSize, footY, wallAbove) {
-  const moving = isPlayer && player.moving;
-  const gait = (moving && player.running) ? "run" : "walk";
-  const fi = moving ? Math.floor(gaitPhase * ANIM_NFRAMES) % ANIM_NFRAMES : 0; // idle = rest frame 0
-  const safeDir = ANIM_DIRS.includes(dir) ? dir : "down";
-  const sheet = window._animFrames[`${gait}_${safeDir}`] || window._animFrames["walk_down"];
-
-  const s = baseSize / ANIM_FH;            // uniform scale (drawW/FW == drawH/FH == s)
-  const drawH = baseSize, drawW = baseSize * ANIM_FW / ANIM_FH;
-  const dx = px(cx - drawW / 2), dy = px(footY - drawH);
-
-  // clip-safe parity with #011 (clip from the body/head top)
-  let clipTop = HUD_BOTTOM + 2;
-  if (wallAbove) clipTop = Math.max(clipTop, footY - TILE);
-  const needClip = dy < clipTop;
-  if (needClip) { ctx.save(); ctx.beginPath(); ctx.rect(0, clipTop, CANVAS_W, CANVAS_H - clipTop); ctx.clip(); }
-
-  // shared generic body frame
-  ctx.drawImage(sheet, fi * ANIM_FW, 0, ANIM_FW, ANIM_FH, dx, dy, drawW, drawH);
-
-  // per-character head composited at the (constant) neckline, scaled with the body
-  const headN = Math.round(ANIM_HEAD_SRC * s);
-  ctx.drawImage(pixelHead(slug, 18), px(cx - headN / 2), px(dy), headN, headN);
-
-  if (window._debugAnchor) { ctx.strokeStyle = "#ff0000"; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(dx, px(dy + ANIM_HEAD_ANCHOR_Y * s)); ctx.lineTo(dx + drawW, px(dy + ANIM_HEAD_ANCHOR_Y * s)); ctx.stroke(); }
 
   if (needClip) ctx.restore();
 }
@@ -1636,7 +1606,7 @@ ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-Promise.all([loadImages(), loadTiles(), loadAnim()]).then(() => {
+Promise.all([loadImages(), loadTiles()]).then(() => {
   mapCv = buildMapCanvas();
   requestAnimationFrame(loop);
 });
