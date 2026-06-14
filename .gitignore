@@ -25,3 +25,6 @@ __pycache__/
 
 # claude-mem context dump (local tool artifact)
 AGENTS.md
+
+# Personal office reference photos (local only; AI concepts are committed)
+datamon/.design/refs/
