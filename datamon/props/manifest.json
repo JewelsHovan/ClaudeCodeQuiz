@@ -1,0 +1,152 @@
+[
+  {
+    "slug": "couch",
+    "file": "couch.png",
+    "widthPx": 64,
+    "heightPx": 32,
+    "tileW": 2,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "kallax",
+    "file": "kallax.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "arc-lamp",
+    "file": "arc-lamp.png",
+    "widthPx": 32,
+    "heightPx": 64,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "tv",
+    "file": "tv.png",
+    "widthPx": 64,
+    "heightPx": 32,
+    "tileW": 2,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "rug",
+    "file": "rug.png",
+    "widthPx": 96,
+    "heightPx": 64,
+    "tileW": 3,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "bar",
+    "file": "bar.png",
+    "widthPx": 96,
+    "heightPx": 32,
+    "tileW": 3,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "stool",
+    "file": "stool.png",
+    "widthPx": 32,
+    "heightPx": 32,
+    "tileW": 1,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "fridge",
+    "file": "fridge.png",
+    "widthPx": 32,
+    "heightPx": 64,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "coffee-counter",
+    "file": "coffee-counter.png",
+    "widthPx": 32,
+    "heightPx": 32,
+    "tileW": 1,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "starry-painting",
+    "file": "starry-painting.png",
+    "widthPx": 64,
+    "heightPx": 32,
+    "tileW": 2,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "compass-sign",
+    "file": "compass-sign.png",
+    "widthPx": 64,
+    "heightPx": 32,
+    "tileW": 2,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "radiator",
+    "file": "radiator.png",
+    "widthPx": 32,
+    "heightPx": 32,
+    "tileW": 1,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "glass-wall",
+    "file": "glass-wall.png",
+    "widthPx": 32,
+    "heightPx": 96,
+    "tileW": 1,
+    "tileH": 3,
+    "anchorX": 0,
+    "anchorY": 64
+  },
+  {
+    "slug": "desk",
+    "file": "desk.png",
+    "widthPx": 64,
+    "heightPx": 32,
+    "tileW": 2,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "office-chair",
+    "file": "office-chair.png",
+    "widthPx": 32,
+    "heightPx": 32,
+    "tileW": 1,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  }
+]

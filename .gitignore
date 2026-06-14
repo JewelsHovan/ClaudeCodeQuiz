@@ -28,3 +28,6 @@ AGENTS.md
 
 # Personal office reference photos (local only; AI concepts are committed)
 datamon/.design/refs/
+
+# Raw AI image-generator output (throwaway; curated props are committed under datamon/props/)
+.claude-images/
