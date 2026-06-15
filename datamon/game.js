@@ -323,6 +323,22 @@ function loadBooks() {
     .catch(() => { loadedBooks = []; });
 }
 
+// Matching pairs (#029): mirrors loadBooks() for crash-safety.
+function loadPairs() {
+  return fetch("library/pairs.json")
+    .then(r => (r.ok ? r.json() : []))
+    .then(data => { if (Array.isArray(data)) loadedPairs = data; })
+    .catch(() => { loadedPairs = []; });
+}
+
+// Cloze items (#029): mirrors loadBooks() for crash-safety.
+function loadCloze() {
+  return fetch("library/cloze.json")
+    .then(r => (r.ok ? r.json() : []))
+    .then(data => { if (Array.isArray(data)) loadedCloze = data; })
+    .catch(() => { loadedCloze = []; });
+}
+
 // Library assets (#026): mirrored exactly from loadProps() for crash-safety.
 // On file:// protocol or any network error: libManifest = [], libStore stays empty,
 // buildLibraryMapCanvas() degrades to drawn-box fallbacks — never rejects the boot Promise.all.
@@ -423,6 +439,8 @@ let battle = null;
 let toast = null;       // {msg, until}
 let coffeePrompt = null; // {sel} — Yes/No confirm before drinking; sel 0=Yes 1=No (default No, anti-spam)
 let loadedBooks = [];   // parsed books.json array; [] if missing/malformed
+let loadedPairs = [];   // parsed pairs.json array; [] if missing/malformed (#029)
+let loadedCloze = [];   // parsed cloze.json array; [] if missing/malformed (#029)
 let bookPrompt = null;  // {sel, books} — book-picker modal
 let readerState = null; // {book, page, screens, maxPage} — full-canvas reader
 let questionStats = {};  // "CAT:idx" -> {seen, correct, wrong, lastSeen}
@@ -786,7 +804,7 @@ window.addEventListener("keydown", e => {
   if (e.key === "Escape" && state === "battle" && battle && battle.phase === "question") e.preventDefault();
   keys[e.key] = true;
   if (state === "overworld" && player.moving && KEY_DIR[e.key]) bufferedDir = KEY_DIR[e.key];
-  if (e.repeat && (bookPrompt || readerState)) return; // prevent held-Enter blowing picker→reader
+  if (e.repeat && (bookPrompt || readerState || state === "minigame")) return; // prevent held-Enter blowing picker→reader or minigame
   handleKey(e.key);
 });
 window.addEventListener("keyup", e => { keys[e.key] = false; });
@@ -895,8 +913,12 @@ function handleKey(k) {
   } else if (state === "victory") {
     if (k === "Enter" || k === " ") { state = "overworld"; bufferedDir = null; turnStartMs = null; }
   } else if (state === "minigame") {
-    // Harness-level keys only. Tickets G/H add gameplay keys here (read currentMinigame.type/phase).
-    if (k === "Escape") { exitMinigame(currentMinigame ? currentMinigame.score : 0); return; }
+    if (!currentMinigame) return;
+    if (currentMinigame.phase === "score") { exitMinigame(currentMinigame.score); return; }
+    if (k === "Escape") { exitMinigame(0); return; }
+    if (currentMinigame.phase === "intro") return;
+    if (currentMinigame.type === "matching") handleMatchingKey(k);
+    else if (currentMinigame.type === "cloze") handleClozeKey(k);
   }
 }
 
@@ -1280,6 +1302,371 @@ function exitMinigame(score = 0) {
   save();
 }
 
+// ---------- Library minigame gameplay (#029) ----------
+
+// Build distractor options for a cloze item. Returns 4-element shuffled array [correct, ...distractors].
+function buildClozeOptions(item) {
+  const correct = item.answer;
+  const norm = s => String(s).trim().toLowerCase();
+  const normCorrect = norm(correct);
+  // Prefer same-domain distractors; fall back to all others
+  const candidates = shuffled([
+    ...loadedCloze.filter(c => c.id !== item.id && c.domain === item.domain).map(c => c.answer),
+    ...loadedCloze.filter(c => c.id !== item.id && c.domain !== item.domain).map(c => c.answer),
+  ], Math.random);
+  const distractors = [];
+  const seen = new Set([normCorrect]);
+  for (const cand of candidates) {
+    if (distractors.length >= 3) break;
+    const nc = norm(cand);
+    if (seen.has(nc)) continue;
+    seen.add(nc);
+    distractors.push(cand);
+  }
+  // Pad if still short (last resort)
+  while (distractors.length < 3) distractors.push(`Option ${distractors.length + 2}`);
+  return shuffled([correct, ...distractors], Math.random);
+}
+
+// Initialize the current minigame (called once when phase==="intro").
+// Mutates currentMinigame IN PLACE via Object.assign — never reassigns the local reference.
+function initMinigame() {
+  if (!currentMinigame || currentMinigame.phase !== "intro") return;
+  const mg = currentMinigame;
+  if (mg.type === "matching") {
+    // Dedupe by term (keep first occurrence), then filter valid
+    const seen = new Set();
+    const pool = loadedPairs.filter(p => {
+      if (!p || !p.term || !p.definition) return false;
+      const t = p.term;
+      if (seen.has(t)) return false;
+      seen.add(t);
+      return true;
+    });
+    if (pool.length === 0) { showToast("Content unavailable"); exitMinigame(0); return; }
+    const board = shuffled(pool, Math.random).slice(0, Math.min(6, pool.length));
+    const defOrder = shuffled(board.map((_, i) => i), Math.random);
+    Object.assign(mg, {
+      board, defOrder, total: board.length,
+      matched: [], leftSel: 0, rightSel: 0, feedback: null,
+      phase: "select_term", score: 0,
+    });
+  } else if (mg.type === "cloze") {
+    const pool = loadedCloze.filter(c => c && c.template && c.answer);
+    if (pool.length === 0) { showToast("Content unavailable"); exitMinigame(0); return; }
+    const queue = shuffled(pool, Math.random).slice(0, Math.min(8, pool.length));
+    queue.forEach(it => { it._opts = buildClozeOptions(it); });
+    Object.assign(mg, {
+      queue, total: queue.length, idx: 0, sel: 0, correct: 0,
+      feedback: null, phase: "question", score: 0,
+    });
+  }
+}
+
+// Frame-based feedback expiry
+function advanceMatching() {
+  const mg = currentMinigame;
+  mg.feedback = null;
+  if (mg.matched.length >= mg.total) {
+    mg.score = Math.round(mg.matched.length / mg.total * 100);
+    mg.phase = "score";
+  } else {
+    mg.leftSel = 0; mg.rightSel = 0;
+    // skip past any already-matched rows so the cursor starts on an unmatched term
+    let t = 0; while (mg.matched.includes(mg.board[mg.leftSel].id) && t <= mg.board.length) { mg.leftSel = (mg.leftSel + 1) % mg.board.length; t++; }
+    mg.phase = "select_term";
+  }
+}
+
+function advanceCloze() {
+  const mg = currentMinigame;
+  mg.feedback = null;
+  mg.idx++;
+  if (mg.idx >= mg.total) {
+    mg.score = Math.round(mg.correct / mg.total * 100);
+    mg.phase = "score";
+  } else {
+    mg.sel = 0;
+    mg.phase = "question";
+  }
+}
+
+// Per-frame update for active minigame
+function updateMinigame() {
+  const mg = currentMinigame;
+  if (!mg) return;
+  if (mg.type === "cloze" && mg.phase === "feedback" && mg.feedback && frame >= mg.feedback.until) advanceCloze();
+  if (mg.type === "matching" && mg.phase === "feedback" && mg.feedback && frame >= mg.feedback.until) advanceMatching();
+}
+
+// ---------- Matching gameplay ----------
+
+function handleMatchingKey(k) {
+  const mg = currentMinigame;
+  if (!mg) return;
+  if (mg.phase === "feedback") return;
+  const { board, defOrder, matched } = mg;
+  const n = board.length;
+  const leftMatched  = (i) => matched.includes(board[i].id);
+  const rightMatched = (i) => matched.includes(board[defOrder[i]].id);
+  const stepLeft  = (d) => { let i = mg.leftSel,  t = 0; do { i = (i + d + n) % n; t++; } while (leftMatched(i)  && t <= n); mg.leftSel  = i; sfx.select(); };
+  const stepRight = (d) => { let i = mg.rightSel, t = 0; do { i = (i + d + n) % n; t++; } while (rightMatched(i) && t <= n); mg.rightSel = i; sfx.select(); };
+  if (mg.phase === "select_term") {
+    if (k === "ArrowUp") stepLeft(-1);
+    else if (k === "ArrowDown") stepLeft(1);
+    else if (k === "Enter" || k === " ") {
+      if (leftMatched(mg.leftSel)) { sfx.select(); return; }
+      mg.phase = "select_def";
+      // land rightSel on the first unmatched definition row
+      mg.rightSel = 0; let t = 0; while (rightMatched(mg.rightSel) && t <= n) { mg.rightSel = (mg.rightSel + 1) % n; t++; }
+      sfx.select();
+    }
+  } else if (mg.phase === "select_def") {
+    if (k === "ArrowUp") stepRight(-1);
+    else if (k === "ArrowDown") stepRight(1);
+    else if (k === "Enter" || k === " ") {
+      const defItem = board[defOrder[mg.rightSel]];
+      if (matched.includes(defItem.id)) { sfx.select(); return; }
+      const correct = board[mg.leftSel].id === defItem.id;
+      if (correct) {
+        mg.matched.push(board[mg.leftSel].id);
+        mg.score = Math.round(mg.matched.length / mg.total * 100);
+        sfx.confirm();
+      } else { sfx.select(); }
+      mg.feedback = { correct, termIdx: mg.leftSel, defRow: mg.rightSel, until: frame + 90 };
+      mg.phase = "feedback";
+    }
+  }
+}
+
+function drawMatching() {
+  const mg = currentMinigame;
+  if (!mg) return;
+  const { board, defOrder, matched, leftSel, rightSel, feedback, phase } = mg;
+  const RW = 720, RH = 560;
+  const rx = (CANVAS_W - RW) / 2, ry = (CANVAS_H - RH) / 2;
+  const n = board.length;
+  const colW = 310, rowH = 52, startY = ry + 80;
+  const leftX = rx + 20, rightX = rx + RW - colW - 20;
+
+  // Title
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 15px monospace";
+  ctx.fillText("Matching Pairs", CANVAS_W / 2, ry + 28);
+  ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
+  ctx.fillText(`${matched.length} / ${mg.total} matched`, CANVAS_W / 2, ry + 48);
+
+  // Column headers
+  ctx.fillStyle = "#64748b"; ctx.font = "bold 11px monospace";
+  ctx.textAlign = "left";
+  ctx.fillText("TERM", leftX + 8, startY - 10);
+  ctx.fillText("DEFINITION", rightX + 8, startY - 10);
+
+  for (let i = 0; i < n; i++) {
+    const rowY = startY + i * rowH;
+    const termId = board[i].id;
+    const isMatchedTerm = matched.includes(termId);
+
+    // Left column (terms)
+    let leftBg = "rgba(30,41,59,0.6)";
+    let leftFg = "#e2e8f0";
+    if (isMatchedTerm) { leftBg = "#14532d"; leftFg = "#22c55e"; }
+    else if (phase === "select_term" && i === leftSel) { leftBg = "#facc15"; leftFg = "#0f172a"; }
+    else if (phase === "select_def" && i === leftSel) { leftBg = "#facc15"; leftFg = "#0f172a"; }
+    else if (phase === "feedback" && feedback && i === feedback.termIdx) {
+      leftBg = feedback.correct ? "#14532d" : "#450a0a";
+      leftFg = feedback.correct ? "#22c55e" : "#f87171";
+    }
+
+    ctx.fillStyle = leftBg;
+    ctx.fillRect(leftX, rowY, colW, rowH - 4);
+    if ((phase === "select_term" && i === leftSel && !isMatchedTerm) ||
+        (phase === "select_def" && i === leftSel && !isMatchedTerm)) {
+      ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2;
+      ctx.strokeRect(leftX, rowY, colW, rowH - 4);
+    }
+    ctx.fillStyle = leftFg; ctx.font = "bold 12px monospace"; ctx.textAlign = "left";
+    const termLines = wrapTextMemo(board[i].term, colW - 16, "bold 12px monospace");
+    const termDisplay = termLines.slice(0, 2);
+    for (let li = 0; li < termDisplay.length; li++) {
+      ctx.fillText(termDisplay[li], leftX + 8, rowY + 16 + li * 16);
+    }
+
+    // Right column (definitions — permuted by defOrder)
+    const defItem = board[defOrder[i]];
+    const isMatchedDef = matched.includes(defItem.id);
+    let rightBg = "rgba(30,41,59,0.6)";
+    let rightFg = "#e2e8f0";
+    if (isMatchedDef) { rightBg = "#14532d"; rightFg = "#22c55e"; }
+    else if (phase === "select_def" && i === rightSel) { rightBg = "#facc15"; rightFg = "#0f172a"; }
+    else if (phase === "feedback" && feedback && i === feedback.defRow) {
+      rightBg = feedback.correct ? "#14532d" : "#450a0a";
+      rightFg = feedback.correct ? "#22c55e" : "#f87171";
+    }
+
+    ctx.fillStyle = rightBg;
+    ctx.fillRect(rightX, rowY, colW, rowH - 4);
+    if (phase === "select_def" && i === rightSel && !isMatchedDef) {
+      ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2;
+      ctx.strokeRect(rightX, rowY, colW, rowH - 4);
+    }
+    ctx.fillStyle = rightFg; ctx.font = "12px monospace"; ctx.textAlign = "left";
+    const defLines = wrapTextMemo(defItem.definition, colW - 16, "12px monospace");
+    const defDisplay = defLines.slice(0, 2);
+    for (let li = 0; li < defDisplay.length; li++) {
+      ctx.fillText(defDisplay[li], rightX + 8, rowY + 16 + li * 16);
+    }
+  }
+
+  // Bottom bar
+  const barY = ry + RH - 30;
+  ctx.fillStyle = "#94a3b8"; ctx.font = "11px monospace"; ctx.textAlign = "center";
+  let hint = "";
+  if (phase === "select_term") hint = "↑↓ select term   Enter confirm   Esc abort";
+  else if (phase === "select_def") hint = "↑↓ select definition   Enter confirm   Esc abort";
+  else if (phase === "feedback") hint = feedback && feedback.correct ? "✓ Correct!" : "✗ Wrong — try again";
+  ctx.fillText(hint, CANVAS_W / 2, barY);
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 12px monospace";
+  ctx.fillText(`Score: ${mg.score | 0}%`, CANVAS_W / 2, barY + 16);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+
+// ---------- Cloze gameplay ----------
+
+function handleClozeKey(k) {
+  const mg = currentMinigame;
+  if (!mg || mg.phase !== "question") return;
+  const item = mg.queue[mg.idx];
+  if (k === "ArrowUp") { mg.sel = (mg.sel - 2 + 4) % 4; sfx.select(); }
+  else if (k === "ArrowDown") { mg.sel = (mg.sel + 2) % 4; sfx.select(); }
+  else if (k === "ArrowLeft") { mg.sel = (mg.sel % 2 === 0) ? mg.sel : mg.sel - 1; sfx.select(); }
+  else if (k === "ArrowRight") { mg.sel = (mg.sel % 2 === 1) ? mg.sel : mg.sel + 1; sfx.select(); }
+  else if (k === "1") { mg.sel = 0; sfx.select(); }
+  else if (k === "2") { mg.sel = 1; sfx.select(); }
+  else if (k === "3") { mg.sel = 2; sfx.select(); }
+  else if (k === "4") { mg.sel = 3; sfx.select(); }
+  else if (k === "Enter" || k === " ") {
+    const chosen = item._opts[mg.sel];
+    const correct = chosen === item.answer;
+    const correctIdx = item._opts.indexOf(item.answer);
+    if (correct) { mg.correct++; sfx.confirm(); } else { sfx.select(); }
+    mg.feedback = { correct, chosenIdx: mg.sel, correctIdx, until: frame + 90 };
+    mg.phase = "feedback";
+  }
+}
+
+function drawCloze() {
+  const mg = currentMinigame;
+  if (!mg) return;
+  const { queue, idx, sel, feedback, phase, correct: correctCount } = mg;
+  const item = queue[idx];
+  const RW = 720, RH = 560;
+  const rx = (CANVAS_W - RW) / 2, ry = (CANVAS_H - RH) / 2;
+
+  // Title
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 15px monospace";
+  ctx.fillText("Fill in the Blank", CANVAS_W / 2, ry + 28);
+  ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
+  ctx.fillText(`Question ${idx + 1} / ${mg.total}`, CANVAS_W / 2, ry + 48);
+
+  // Prompt (template with ___)
+  const promptMaxW = RW - 80;
+  ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 14px monospace";
+  const templateLines = wrapTextMemo(item.template, promptMaxW, "bold 14px monospace");
+  const clampedLines = templateLines.slice(0, 5);
+  const promptStartY = ry + 80;
+  for (let i = 0; i < clampedLines.length; i++) {
+    ctx.textAlign = "center";
+    ctx.fillText(clampedLines[i], CANVAS_W / 2, promptStartY + i * 20);
+  }
+
+  // Hint (optional dim line)
+  if (item.hint) {
+    ctx.fillStyle = "#64748b"; ctx.font = "11px monospace"; ctx.textAlign = "center";
+    ctx.fillText(`Hint: ${item.hint}`, CANVAS_W / 2, promptStartY + clampedLines.length * 20 + 10);
+  }
+
+  // Option boxes in 2×2 grid
+  const optW = 310, optH = 48;
+  const optGapX = 20, optGapY = 12;
+  const gridW = optW * 2 + optGapX;
+  const gridStartX = (CANVAS_W - gridW) / 2;
+  const gridStartY = ry + 200;
+  const optPositions = [];
+  for (let i = 0; i < 4; i++) {
+    const col = i % 2, row = Math.floor(i / 2);
+    optPositions.push([gridStartX + col * (optW + optGapX), gridStartY + row * (optH + optGapY), optW, optH]);
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const [ox, oy, ow, oh] = optPositions[i];
+    let bg = "rgba(30,41,59,0.6)";
+    let fg = "#e2e8f0";
+    if (phase === "feedback" && feedback) {
+      if (i === feedback.correctIdx) { bg = "#14532d"; fg = "#22c55e"; }
+      else if (i === feedback.chosenIdx && !feedback.correct) { bg = "#450a0a"; fg = "#f87171"; }
+    } else if (i === sel) { bg = "#facc15"; fg = "#0f172a"; }
+
+    ctx.fillStyle = bg; ctx.fillRect(ox, oy, ow, oh);
+    if (i === sel && phase === "question") {
+      ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2; ctx.strokeRect(ox, oy, ow, oh);
+    }
+    ctx.fillStyle = fg; ctx.font = "bold 12px monospace"; ctx.textAlign = "left";
+    const label = `${i + 1}. `;
+    ctx.fillText(label, ox + 8, oy + 18);
+    ctx.font = "12px monospace";
+    const optText = String(item._opts[i]);
+    const optLines = wrapTextMemo(optText, ow - 36, "12px monospace");
+    ctx.fillText(optLines[0] || optText, ox + 8 + ctx.measureText(label).width, oy + 18);
+    if (optLines[1]) ctx.fillText(optLines[1], ox + 8, oy + 34);
+  }
+
+  // Bottom bar
+  const barY = ry + RH - 30;
+  ctx.fillStyle = "#94a3b8"; ctx.font = "11px monospace"; ctx.textAlign = "center";
+  let hint = "↑↓←→ or 1-4 select   Enter confirm   Esc abort";
+  if (phase === "feedback" && feedback) {
+    hint = feedback.correct ? "✓ Correct!" : `✗ Wrong — correct: ${item._opts[feedback.correctIdx]}`;
+  }
+  ctx.fillText(hint, CANVAS_W / 2, barY);
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 12px monospace";
+  ctx.fillText(`${correctCount} correct`, CANVAS_W / 2, barY + 16);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+
+// ---------- Shared score screen ----------
+
+function drawMinigameScore() {
+  const mg = currentMinigame;
+  if (!mg) return;
+  const RW = 720, RH = 560;
+  const rx = (CANVAS_W - RW) / 2, ry = (CANVAS_H - RH) / 2;
+  const { score, total } = mg;
+
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 20px monospace";
+  ctx.fillText("Round Complete!", CANVAS_W / 2, ry + 100);
+
+  // Big score
+  const pct = score | 0;
+  const scoreColor = pct >= 80 ? "#22c55e" : pct >= 50 ? "#facc15" : "#f87171";
+  ctx.fillStyle = scoreColor; ctx.font = "bold 48px monospace";
+  ctx.fillText(`${pct}%`, CANVAS_W / 2, ry + 200);
+
+  // Detail
+  ctx.fillStyle = "#e2e8f0"; ctx.font = "13px monospace";
+  if (mg.type === "matching") {
+    ctx.fillText(`${mg.matched ? mg.matched.length : 0} / ${total} pairs matched`, CANVAS_W / 2, ry + 250);
+  } else if (mg.type === "cloze") {
+    ctx.fillText(`${mg.correct || 0} / ${total} correct`, CANVAS_W / 2, ry + 250);
+  }
+
+  ctx.fillStyle = "#64748b"; ctx.font = "12px monospace";
+  ctx.fillText("Press any key to return", CANVAS_W / 2, ry + RH - 40);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+
 // ---------- Book reader draw functions (#027) ----------
 
 // Book-picker modal — mirrors drawCoffeePrompt box/scrim/color tokens.
@@ -1411,11 +1798,11 @@ function typewriterSlice(lines, shown) {
   return out;
 }
 
-// Minigame harness screen (#028). Full-canvas placeholder/intro; mirrors drawReader's scrim+box.
-// Tickets G (#029) / H (#030) extend this to render their actual gameplay per currentMinigame.type.
+// Minigame harness screen (#028/#029). Dispatches to per-type draw functions.
+// Shared scrim+panel drawn here; per-type draw functions add their content on top.
 function drawMinigame() {
   if (!currentMinigame) return;
-  const { label, score } = currentMinigame;
+  const { label, score, phase, type } = currentMinigame;
   const RW = 720, RH = 560;
   const rx = (CANVAS_W - RW) / 2, ry = (CANVAS_H - RH) / 2;
 
@@ -1424,6 +1811,18 @@ function drawMinigame() {
   ctx.fillStyle = "rgba(15,23,42,0.97)"; ctx.fillRect(rx, ry, RW, RH);
   ctx.strokeStyle = "#facc15"; ctx.lineWidth = 2; ctx.strokeRect(rx, ry, RW, RH);
 
+  if (phase === "intro") {
+    ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#e2e8f0"; ctx.font = "13px monospace";
+    ctx.fillText("Loading…", CANVAS_W / 2, ry + RH / 2);
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    return;
+  }
+  if (phase === "score") { drawMinigameScore(); return; }
+  if (type === "matching") { drawMatching(); return; }
+  if (type === "cloze") { drawCloze(); return; }
+
+  // Fallback: original placeholder text (assembly/timed — #030)
   ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "#facc15"; ctx.font = "bold 18px monospace";
   ctx.fillText(label || "Study Station", CANVAS_W / 2, ry + 60);
@@ -2603,6 +3002,11 @@ function loop(t) {
     battle.timerMs -= dt * 1000;
     if (battle.timerMs <= 0) { battle.timerMs = 0; timeoutQuestion(); }
   }
+  // Minigame update: init on first frame, then tick feedback timers (#029)
+  if (state === "minigame" && currentMinigame) {
+    if (currentMinigame.phase === "intro") initMinigame();
+    else updateMinigame();
+  }
   // HP bar drains/refills smoothly toward the real value
   player.dispHp += (player.hp - player.dispHp) * (1 - Math.pow(0.88, dtF));
   if (Math.abs(player.hp - player.dispHp) < 0.6) player.dispHp = player.hp;
@@ -2629,7 +3033,7 @@ ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets(), loadBooks()]).then(() => {
+Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets(), loadBooks(), loadPairs(), loadCloze()]).then(() => {
   officeMapCv = buildMapCanvas();         // reads global map (= OFFICE_MAP) — must run while currentMap is office
   libraryMapCv = buildLibraryMapCanvas(); // reads LIBRARY_MAP directly
   mapCv = officeMapCv;
