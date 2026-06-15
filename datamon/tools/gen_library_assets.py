@@ -39,7 +39,7 @@ Usage:
 
   # (Re)generate covers + diagram sprites via the OpenAI image API:
   uv run --with pillow python datamon/tools/gen_library_assets.py --gen
-  uv run --with pillow python datamon/tools/gen_library_assets.py --only book-domain1,lib-diagram-domain2-1
+  uv run --with pillow python datamon/tools/gen_library_assets.py --only book-domain1,lib-diagram-mcp-deep-dive-1
 
 Env:
   OPENAI_API_KEY        required for --gen / --only
@@ -62,6 +62,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent                       # ClaudeCodeQuiz/
 DATAMON = HERE.parent                           # datamon/
 ASSETS_DIR = DATAMON / "library" / "assets"
+DIAGRAMS_JSON = DATAMON / "library" / "diagrams.json"  # canonical diagram-slug source (gen_library.py)
 DESIGN = DATAMON / ".design"
 CONCEPT = DESIGN / "office-concept-topdown.png"
 
@@ -268,9 +269,15 @@ def book_cover_fallback(domain: str) -> Image.Image:
     return img
 
 
-def diagram_fallback(domain: str) -> Image.Image:
-    """64x64 schematic on parchment: domain-coloured boxes joined by ink arrows."""
-    accent = DOMAIN_COLORS[domain]
+def diagram_fallback(domain: int) -> Image.Image:
+    """64x64 schematic on parchment: domain-coloured boxes joined by ink arrows.
+
+    `domain` is the int from diagrams.json (0 for reference docs like the cheat
+    sheet). Any value outside 1..5 clamps to domain1 (blue) — only domain1..5
+    colours exist, and the fallback is just a placeholder until AI art lands.
+    """
+    n = domain if 1 <= domain <= 5 else 1
+    accent = DOMAIN_COLORS[f"domain{n}"]
     img = _new(64, 64)
     d = ImageDraw.Draw(img)
     # parchment card with a thin ink frame
@@ -289,12 +296,45 @@ def diagram_fallback(domain: str) -> Image.Image:
     for (ax, ay) in ((16, 36), (48, 36)):
         d.line([ax - 2, ay - 3, ax, ay], fill=INK)
         d.line([ax + 2, ay - 3, ax, ay], fill=INK)
-    # baseline divider + index dots
+    # baseline divider + index dots (n already clamped to 1..5 above)
     d.line([6, 56, 58, 56], fill=PARCH_DK)
-    n = int(domain[-1])
     for i in range(n):
         d.rectangle([8 + i * 4, 58, 10 + i * 4, 60], fill=accent)
     return img
+
+
+# ---------------------------------------------------------------------------
+# Diagram-slug source of truth.
+# ---------------------------------------------------------------------------
+# Ink-colour word per domain for the AI prompt-tail (mirrors DOMAIN_COLORS).
+_INK_WORD = {1: "blue", 2: "teal", 3: "purple", 4: "amber", 5: "green"}
+
+
+def load_diagram_specs() -> list[tuple[str, int]]:
+    """Return (slug, domain) for every diagram in diagrams.json — the canonical
+    source shared byte-for-byte with the books.json diagram_anchor pages.
+
+    Diagram sprites are derived from this list (gap-closure #031) so their slugs
+    ALWAYS match what the in-game reader looks up; a hardcoded list drifts the
+    instant docs change. Returns [] if diagrams.json is absent or unparseable —
+    the caller (deterministic-only path) then simply produces no diagram sprites
+    and the reader keeps its ASCII fallback (no regression).
+    """
+    if not DIAGRAMS_JSON.exists():
+        return []
+    try:
+        data = json.loads(DIAGRAMS_JSON.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+    specs: list[tuple[str, int]] = []
+    seen: set[str] = set()
+    for d in data:
+        slug = d.get("slug")
+        if isinstance(slug, str) and slug and slug not in seen:
+            dom = d.get("domain", 0)
+            specs.append((slug, dom if isinstance(dom, int) else 0))
+            seen.add(slug)
+    return specs
 
 
 # ---------------------------------------------------------------------------
@@ -314,12 +354,19 @@ ASSETS = [
     ("book-domain3",       "ai", lambda: book_cover_fallback("domain3"), "a closed hardcover book standing upright, purple cover with a gold title band, top-down."),
     ("book-domain4",       "ai", lambda: book_cover_fallback("domain4"), "a closed hardcover book standing upright, amber cover with a gold title band, top-down."),
     ("book-domain5",       "ai", lambda: book_cover_fallback("domain5"), "a closed hardcover book standing upright, green cover with a gold title band, top-down."),
-    ("lib-diagram-domain1-1", "ai", lambda: diagram_fallback("domain1"), "a tiny schematic diagram of connected boxes and arrows in blue ink on parchment, top-down flat."),
-    ("lib-diagram-domain2-1", "ai", lambda: diagram_fallback("domain2"), "a tiny schematic diagram of connected boxes and arrows in teal ink on parchment, top-down flat."),
-    ("lib-diagram-domain3-1", "ai", lambda: diagram_fallback("domain3"), "a tiny schematic diagram of connected boxes and arrows in purple ink on parchment, top-down flat."),
-    ("lib-diagram-domain4-1", "ai", lambda: diagram_fallback("domain4"), "a tiny schematic diagram of connected boxes and arrows in amber ink on parchment, top-down flat."),
-    ("lib-diagram-domain5-1", "ai", lambda: diagram_fallback("domain5"), "a tiny schematic diagram of connected boxes and arrows in green ink on parchment, top-down flat."),
 ]
+
+# Diagram sprites: one per diagrams.json slug, so the manifest always covers every
+# books.json diagram_anchor (gap-closure #031). The lambda binds `dom` as a default
+# arg to capture the per-iteration value (classic loop-closure pitfall otherwise).
+for _slug, _domain in load_diagram_specs():
+    _ink = _INK_WORD.get(_domain if 1 <= _domain <= 5 else 1)
+    ASSETS.append((
+        _slug,
+        "ai",
+        (lambda dom=_domain: diagram_fallback(dom)),
+        f"a tiny schematic diagram of connected boxes and arrows in {_ink} ink on parchment, top-down flat.",
+    ))
 
 DRAW = {a[0]: a[2] for a in ASSETS}
 KIND = {a[0]: a[1] for a in ASSETS}
@@ -517,9 +564,22 @@ def validate() -> int:
             sys.stderr.write(f"[validate] {slug}: PNG {w}x{h} != manifest "
                              f"{e['widthPx']}x{e['heightPx']}\n")
             errors += 1
-    if len(entries) < 15:
-        sys.stderr.write(f"[validate] FAIL: {len(entries)} entries, need >=15\n")
+    # Floor is the 11 always-present deterministic assets (6 tiles + 5 covers);
+    # the diagram-sprite count is now dynamic (derived from diagrams.json).
+    if len(entries) < 11:
+        sys.stderr.write(f"[validate] FAIL: {len(entries)} entries, need >=11\n")
         errors += 1
+    # Cross-check (gap-closure #031): every diagram slug in diagrams.json must have a
+    # manifest entry, so the book reader blits the sprite instead of ASCII fallback.
+    # Skip silently when diagrams.json is absent (deterministic-only bootstrap).
+    diagram_specs = load_diagram_specs()
+    if diagram_specs:
+        manifest_slugs = {e.get("slug") for e in entries}
+        for slug, _ in diagram_specs:
+            if slug not in manifest_slugs:
+                sys.stderr.write(f"[validate] diagram slug {slug!r} from diagrams.json "
+                                 f"missing from manifest\n")
+                errors += 1
     if errors:
         sys.stderr.write(f"[validate] FAIL: {errors} error(s)\n")
         return 1

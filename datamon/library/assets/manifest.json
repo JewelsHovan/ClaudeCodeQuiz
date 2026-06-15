@@ -60,8 +60,8 @@
     "anchorY": 64
   },
   {
-    "slug": "lib-diagram-domain1-1",
-    "file": "lib-diagram-domain1-1.png",
+    "slug": "lib-diagram-domain1-agentic-architecture-orchestration-1",
+    "file": "lib-diagram-domain1-agentic-architecture-orchestration-1.png",
     "widthPx": 64,
     "heightPx": 64,
     "tileW": 2,
@@ -70,8 +70,8 @@
     "anchorY": 32
   },
   {
-    "slug": "lib-diagram-domain2-1",
-    "file": "lib-diagram-domain2-1.png",
+    "slug": "lib-diagram-domain1-agentic-architecture-orchestration-2",
+    "file": "lib-diagram-domain1-agentic-architecture-orchestration-2.png",
     "widthPx": 64,
     "heightPx": 64,
     "tileW": 2,
@@ -80,8 +80,8 @@
     "anchorY": 32
   },
   {
-    "slug": "lib-diagram-domain3-1",
-    "file": "lib-diagram-domain3-1.png",
+    "slug": "lib-diagram-exam-cheat-sheet-1",
+    "file": "lib-diagram-exam-cheat-sheet-1.png",
     "widthPx": 64,
     "heightPx": 64,
     "tileW": 2,
@@ -90,8 +90,8 @@
     "anchorY": 32
   },
   {
-    "slug": "lib-diagram-domain4-1",
-    "file": "lib-diagram-domain4-1.png",
+    "slug": "lib-diagram-exam-cheat-sheet-2",
+    "file": "lib-diagram-exam-cheat-sheet-2.png",
     "widthPx": 64,
     "heightPx": 64,
     "tileW": 2,
@@ -100,8 +100,58 @@
     "anchorY": 32
   },
   {
-    "slug": "lib-diagram-domain5-1",
-    "file": "lib-diagram-domain5-1.png",
+    "slug": "lib-diagram-exam-cheat-sheet-3",
+    "file": "lib-diagram-exam-cheat-sheet-3.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-exam-cheat-sheet-4",
+    "file": "lib-diagram-exam-cheat-sheet-4.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-exam-cheat-sheet-5",
+    "file": "lib-diagram-exam-cheat-sheet-5.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-exam-cheat-sheet-6",
+    "file": "lib-diagram-exam-cheat-sheet-6.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-exam-cheat-sheet-7",
+    "file": "lib-diagram-exam-cheat-sheet-7.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-mcp-deep-dive-1",
+    "file": "lib-diagram-mcp-deep-dive-1.png",
     "widthPx": 64,
     "heightPx": 64,
     "tileW": 2,
