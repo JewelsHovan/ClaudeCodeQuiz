@@ -60,6 +60,46 @@
     "anchorY": 64
   },
   {
+    "slug": "lib-carrel-assembly",
+    "file": "lib-carrel-assembly.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "lib-carrel-cloze",
+    "file": "lib-carrel-cloze.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "lib-carrel-match",
+    "file": "lib-carrel-match.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "lib-carrel-timed",
+    "file": "lib-carrel-timed.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
     "slug": "lib-diagram-domain1-agentic-architecture-orchestration-1",
     "file": "lib-diagram-domain1-agentic-architecture-orchestration-1.png",
     "widthPx": 64,
@@ -160,6 +200,16 @@
     "anchorY": 32
   },
   {
+    "slug": "lib-door",
+    "file": "lib-door.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
     "slug": "lib-floor-a",
     "file": "lib-floor-a.png",
     "widthPx": 32,
@@ -190,11 +240,41 @@
     "anchorY": 0
   },
   {
+    "slug": "lib-lamp",
+    "file": "lib-lamp.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "lib-plant",
+    "file": "lib-plant.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
     "slug": "lib-rug",
     "file": "lib-rug.png",
     "widthPx": 32,
     "heightPx": 32,
     "tileW": 1,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "lib-table",
+    "file": "lib-table.png",
+    "widthPx": 64,
+    "heightPx": 32,
+    "tileW": 2,
     "tileH": 1,
     "anchorX": 0,
     "anchorY": 0

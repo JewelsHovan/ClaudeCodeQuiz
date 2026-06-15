@@ -304,6 +304,50 @@ def diagram_fallback(domain: int) -> Image.Image:
 
 
 # ---------------------------------------------------------------------------
+# Furniture / decor props (art overhaul). AI-eligible with a simple drawn fallback.
+# These replace the crude in-canvas rectangles drawn for study carrels + the warp
+# door, and add atmosphere props (reading table, plant, floor lamp).
+# ---------------------------------------------------------------------------
+STATION_ACCENT = {
+    "match":    (58, 96, 168, 255),    # blue
+    "cloze":    (118, 74, 158, 255),   # purple
+    "assembly": (74, 142, 78, 255),    # green
+    "timed":    (206, 150, 54, 255),   # amber
+}
+
+
+def prop_fallback(w: int, h: int, accent=WOOD) -> Image.Image:
+    """Generic placeholder prop: a wooden base with an accent-coloured body.
+    Drawn only until AI art lands; keeps --no-gen + --validate green."""
+    img = _new(w, h)
+    d = ImageDraw.Draw(img)
+    d.rectangle([2, h - 18, w - 3, h - 3], fill=WOOD, outline=WOOD_DK)   # base
+    d.rectangle([2, h - 18, w - 3, h - 17], fill=WOOD_LT)               # lit lip
+    d.rectangle([w // 2 - 6, 3, w // 2 + 6, h - 16], fill=accent, outline=INK)
+    return img
+
+
+# Target pixel footprints for the overhaul props (w, h). Anything not listed falls
+# back to the book/diagram rule in target_for().
+PROP_SIZES = {
+    "lib-carrel-match":    (32, 48),
+    "lib-carrel-cloze":    (32, 48),
+    "lib-carrel-assembly": (32, 48),
+    "lib-carrel-timed":    (32, 48),
+    "lib-door":            (32, 48),
+    "lib-plant":           (32, 48),
+    "lib-lamp":            (32, 48),
+    "lib-table":           (64, 32),
+}
+
+
+def target_for(slug: str) -> tuple[int, int]:
+    if slug in PROP_SIZES:
+        return PROP_SIZES[slug]
+    return (32, 48) if slug.startswith("book-") else (64, 64)
+
+
+# ---------------------------------------------------------------------------
 # Diagram-slug source of truth.
 # ---------------------------------------------------------------------------
 # Ink-colour word per domain for the AI prompt-tail (mirrors DOMAIN_COLORS).
@@ -354,6 +398,23 @@ ASSETS = [
     ("book-domain3",       "ai", lambda: book_cover_fallback("domain3"), "a closed hardcover book standing upright, purple cover with a gold title band, top-down."),
     ("book-domain4",       "ai", lambda: book_cover_fallback("domain4"), "a closed hardcover book standing upright, amber cover with a gold title band, top-down."),
     ("book-domain5",       "ai", lambda: book_cover_fallback("domain5"), "a closed hardcover book standing upright, green cover with a gold title band, top-down."),
+    # --- Furniture / decor props (art overhaul) ----------------------------
+    ("lib-carrel-match",    "ai", lambda: prop_fallback(32, 48, STATION_ACCENT["match"]),
+        "a single cozy wooden study carrel desk seen from above at a slight 3/4 angle, an open book and stacked papers on the desk, a small brass banker's lamp with a glowing BLUE glass shade, a wooden chair tucked in."),
+    ("lib-carrel-cloze",    "ai", lambda: prop_fallback(32, 48, STATION_ACCENT["cloze"]),
+        "a single cozy wooden study carrel desk seen from above at a slight 3/4 angle, an open book and a quill, a small brass banker's lamp with a glowing PURPLE glass shade, a wooden chair tucked in."),
+    ("lib-carrel-assembly", "ai", lambda: prop_fallback(32, 48, STATION_ACCENT["assembly"]),
+        "a single cozy wooden study carrel desk seen from above at a slight 3/4 angle, a scattered jigsaw of diagram cards on the desk, a small brass banker's lamp with a glowing GREEN glass shade, a wooden chair tucked in."),
+    ("lib-carrel-timed",    "ai", lambda: prop_fallback(32, 48, STATION_ACCENT["timed"]),
+        "a single cozy wooden study carrel desk seen from above at a slight 3/4 angle, an open book and a small brass hourglass, a small banker's lamp with a glowing AMBER glass shade, a wooden chair tucked in."),
+    ("lib-door",            "ai", lambda: prop_fallback(32, 48, (140, 90, 50, 255)),
+        "an ornate arched dark-stained-wood double door with brass handles and a small arched window, set in a carved stone frame, viewed head-on from the front, warm light glowing through the window."),
+    ("lib-table",           "ai", lambda: prop_fallback(64, 32, WOOD),
+        "a long rectangular dark-wood reading table seen from directly above, a few open books, scattered papers and two small green-shaded lamps arranged on the tabletop, two chairs on the long sides."),
+    ("lib-plant",           "ai", lambda: prop_fallback(32, 48, (74, 142, 78, 255)),
+        "a tall leafy green potted fern in a round terracotta pot, viewed from above at a slight 3/4 angle, lush fronds."),
+    ("lib-lamp",            "ai", lambda: prop_fallback(32, 48, RUG_GOLD),
+        "a tall ornate brass floor reading lamp with a warm-glowing green glass shade, viewed from above at a slight 3/4 angle."),
 ]
 
 # Diagram sprites: one per diagrams.json slug, so the manifest always covers every
@@ -626,7 +687,7 @@ def main() -> int:
             return 2
         only = {s.strip() for s in args.only.split(",") if s.strip()} or AI_SLUGS
         for slug in [s for s in ALL_SLUGS if s in only and KIND[s] == "ai"]:
-            tgt = (32, 48) if slug.startswith("book-") else (64, 64)
+            tgt = target_for(slug)
             raw = ai_generate(slug, tgt, ic)
             if not raw or not raw.exists():
                 sys.stderr.write(f"[skip] {slug}: generation failed -> drawing fallback\n")

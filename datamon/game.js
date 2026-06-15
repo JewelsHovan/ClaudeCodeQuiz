@@ -131,6 +131,26 @@ const PROP_PLACEMENTS = [
 
 // Library bookshelf bake placements: 8 shelves across the top (cols 4,6,8,10 left + 26,28,30,32 right)
 const LIBRARY_PROP_PLACEMENTS = [4, 6, 8, 10, 26, 28, 30, 32].map(c => ({ slug: "bookshelf", col: c, row: 1 }));
+// Decor/furniture sprites (PRD 006 art overhaul) — baked bottom-anchored on their tile
+// (a 48px-tall sprite extends 16px above the tile; a 64px-wide table spans 2 cols to the
+// right). The warp door + 4 themed study carrels replace the old drawn-rectangle stand-ins;
+// plants/lamps/tables add atmosphere. Solidity for the non-tile decor is set in buildLibraryMap.
+const LIBRARY_DECOR = [
+  { slug: "lib-door",            col: 18, row: 23 },   // warp door, set into the south wall
+  { slug: "lib-carrel-match",    col: 7,  row: 14 },   // station sprites (type → carrel colour)
+  { slug: "lib-carrel-cloze",    col: 15, row: 14 },
+  { slug: "lib-carrel-assembly", col: 22, row: 14 },
+  { slug: "lib-carrel-timed",    col: 30, row: 14 },
+  { slug: "lib-table",           col: 13, row: 9 },    // central reading tables (64px → 2 cols)
+  { slug: "lib-table",           col: 21, row: 9 },
+  { slug: "lib-plant", col: 2,  row: 6 }, { slug: "lib-plant", col: 34, row: 6 },
+  { slug: "lib-plant", col: 2,  row: 20 }, { slug: "lib-plant", col: 34, row: 20 },
+  { slug: "lib-lamp",  col: 4,  row: 20 }, { slug: "lib-lamp",  col: 32, row: 20 },
+];
+// Reading-nook rug: central rectangle filled with the carpet-weave tile (borderless,
+// tileable) + a single gold border drawn around the whole area, so it reads as one rug
+// rather than a grid of bordered boxes. Walkable (cells stay floor in the map grid).
+const LIBRARY_RUG = { x0: 12, y0: 8, x1: 23, y1: 11 };
 // Library room label (single zone — CONTEXT type for cyan accent)
 const LIBRARY_LABELS = [["THE LIBRARY", 18, 6.6, "CONTEXT"]];
 
@@ -192,6 +212,10 @@ function buildLibraryMap() {
   for (const c of [4, 6, 8, 10, 26, 28, 30, 32]) { g[1][c] = "B"; g[2][c] = "B"; g[3][c] = "B"; }
   // Four study stations (single solid cells)
   for (const [x, y] of [[7, 14], [15, 14], [22, 14], [30, 14]]) g[y][x] = "S";
+  // Solid decor footprints (plants, lamps, reading tables) — sprites baked from
+  // LIBRARY_DECOR; "O" keeps the player from walking through them. Tables span 2 cols.
+  for (const [x, y] of [[2, 6], [34, 6], [2, 20], [34, 20], [4, 20], [32, 20],
+                        [13, 9], [14, 9], [21, 9], [22, 9]]) g[y][x] = "O";
   return g;
 }
 
@@ -1699,10 +1723,14 @@ function drawCloze() {
     ctx.fillText(clampedLines[i], CANVAS_W / 2, promptStartY + i * 20);
   }
 
-  // Hint (optional dim line)
+  // Hint (optional dim line) — wrapped + clamped to the prompt width so a long hint
+  // (cloze hints are full sentences) can't render as one centered line that bleeds
+  // off both screen edges past the panel border.
   if (item.hint) {
     ctx.fillStyle = "#64748b"; ctx.font = "11px monospace"; ctx.textAlign = "center";
-    ctx.fillText(`Hint: ${item.hint}`, CANVAS_W / 2, promptStartY + clampedLines.length * 20 + 10);
+    const hintY = promptStartY + clampedLines.length * 20 + 12;
+    const hintLines = wrapTextMemo(`Hint: ${item.hint}`, promptMaxW, "11px monospace").slice(0, 2);
+    for (let i = 0; i < hintLines.length; i++) ctx.fillText(hintLines[i], CANVAS_W / 2, hintY + i * 14);
   }
 
   // Option boxes in 2×2 grid
@@ -2741,6 +2769,19 @@ function buildMapCanvas() {
       c.fillRect(p.col * TILE, p.row * TILE, (meta.tileW || 1) * TILE, (meta.tileH || 1) * TILE);
     }
   }
+
+  // Library entrance: bake the ornate library door over the office "L" warp tile so the
+  // entrance reads as a real doorway instead of a bare gap in the brick. lib-door lives in
+  // libStore (loadLibraryAssets resolves before this runs at boot); bottom-anchored on the
+  // south-wall tile, overhanging upward. Falls back to the plain floor gap if the asset is absent.
+  {
+    const [dcol, drow] = OFFICE_DOOR_TILE;
+    const dmeta = libManifest.find(m => m.slug === "lib-door");
+    const dimg = libStore["lib-door"];
+    if (dimg && dmeta) {
+      c.drawImage(dimg, dcol * TILE, (drow + 1) * TILE - dmeta.heightPx, dmeta.widthPx, dmeta.heightPx);
+    }
+  }
   return cv;
 }
 
@@ -2760,49 +2801,50 @@ function buildLibraryMapCanvas() {
     return false;
   }
 
-  // Study station accent colors by position index (Domain 1–4 colors)
-  const STATION_COORDS = [[7, 14], [15, 14], [22, 14], [30, 14]];
-  const STATION_ACCENTS = ["#3b82f6", "#a855f7", "#22c55e", "#f97316"];
-
+  // Floor + walls. Door ("L"), stations ("S") and solid decor ("O") all render as a
+  // plain floor tile here; their sprites are baked on top from LIBRARY_DECOR below, so
+  // a 48px-tall prop can overhang the tile cleanly. The floor is clean grey stone with
+  // a sparse slate accent (no striping); the central reading nook is a red-carpet rug.
+  const R = LIBRARY_RUG;
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
       const sx = x * TILE, sy = y * TILE;
-      const t = LIBRARY_MAP[y][x];
-      const floorSlug = ["lib-floor-a", "lib-floor-b", "lib-floor-c"][(x * 7 + y * 3) % 3];
-
-      if (t === "#") {
-        if (!blitLibTile("lib-wall", sx, sy)) {
-          c.fillStyle = "#3b2f24"; c.fillRect(sx, sy, TILE, TILE);
-        }
-      } else if (t === "L") {
-        // Floor base then drawn door (no asset dependency)
-        if (!blitLibTile(floorSlug, sx, sy)) { c.fillStyle = "#6b563b"; c.fillRect(sx, sy, TILE, TILE); }
-        c.fillStyle = "#5a3a1a"; c.fillRect(sx + 4, sy + 2, TILE - 8, TILE - 2);
-        c.fillStyle = "#c8a36a"; c.fillRect(sx + TILE - 12, sy + 14, 3, 6); // door knob
-      } else if (t === "S") {
-        // Floor base then drawn study carrel, domain-tinted by station index
-        if (!blitLibTile(floorSlug, sx, sy)) { c.fillStyle = "#6b563b"; c.fillRect(sx, sy, TILE, TILE); }
-        const si = STATION_COORDS.findIndex(([cx, cy]) => cx === x && cy === y);
-        const accent = si >= 0 ? STATION_ACCENTS[si] : "#94a3b8";
-        c.fillStyle = "#7a5a36"; c.fillRect(sx + 3, sy + 10, TILE - 6, TILE - 14); // desk surface
-        c.fillStyle = accent;    c.fillRect(sx + 9, sy + 5, 14, 8);                // domain book
-      } else {
-        // "." and "B" cells — floor base ("B" gets bookshelf prop baked on top below)
-        if (!blitLibTile(floorSlug, sx, sy)) { c.fillStyle = "#6b563b"; c.fillRect(sx, sy, TILE, TILE); }
+      if (LIBRARY_MAP[y][x] === "#") {
+        if (!blitLibTile("lib-wall", sx, sy)) { c.fillStyle = "#3b2f24"; c.fillRect(sx, sy, TILE, TILE); }
+        continue;
       }
+      const inRug = x >= R.x0 && x <= R.x1 && y >= R.y0 && y <= R.y1;
+      // Integer mix-hash (xorshift-style) so slate accents scatter with no lattice/banding.
+      let hsh = (x * 374761393 + y * 668265263) | 0;
+      hsh = (hsh ^ (hsh >>> 13)) | 0;
+      hsh = (hsh * 1274126177) | 0;
+      const accent = ((hsh >>> 0) % 100) < 14;                         // ~14% slate accents
+      const slug = inRug ? "lib-floor-b"                               // red carpet weave
+        : (accent ? "lib-floor-c" : "lib-floor-a");                    // stone + scattered slate
+      if (!blitLibTile(slug, sx, sy)) { c.fillStyle = "#6b563b"; c.fillRect(sx, sy, TILE, TILE); }
     }
   }
+  // Single gold border around the reading-nook rug (drawn once, not per tile).
+  c.strokeStyle = "#b08a46"; c.lineWidth = 3;
+  c.strokeRect(R.x0 * TILE + 2, R.y0 * TILE + 2,
+               (R.x1 - R.x0 + 1) * TILE - 4, (R.y1 - R.y0 + 1) * TILE - 4);
 
-  // Bake library props (bookshelves) — no seam runners, no PROP_PLACEMENTS
+  // Bake bookshelves (top-anchored 1×3 props) then decor/furniture (bottom-anchored so
+  // a 48px sprite sits feet-on-tile, overhanging 16px upward; a 64px table spans 2 cols).
   for (const p of LIBRARY_PROP_PLACEMENTS) {
     const meta = libManifest.find(m => m.slug === p.slug);
     const dx = p.col * TILE + ((meta && meta.anchorX) || 0), dy = p.row * TILE;
     const img = libStore[p.slug];
+    if (img && meta) c.drawImage(img, dx, dy, meta.widthPx, meta.heightPx);
+    else { c.fillStyle = "#8a6a44"; c.fillRect(p.col * TILE, p.row * TILE, TILE, 3 * TILE); }
+  }
+  for (const p of LIBRARY_DECOR) {
+    const meta = libManifest.find(m => m.slug === p.slug);
+    const img = libStore[p.slug];
     if (img && meta) {
-      c.drawImage(img, dx, dy, meta.widthPx, meta.heightPx);
+      c.drawImage(img, p.col * TILE, (p.row + 1) * TILE - meta.heightPx, meta.widthPx, meta.heightPx);
     } else {
-      // Explicit brown fallback box spanning 1×3 tiles (bookshelf footprint)
-      c.fillStyle = "#8a6a44"; c.fillRect(p.col * TILE, p.row * TILE, TILE, 3 * TILE);
+      c.fillStyle = "#7a5a36"; c.fillRect(p.col * TILE, p.row * TILE, TILE, TILE);   // drawn fallback
     }
   }
 
@@ -2814,7 +2856,10 @@ function buildLibraryMapCanvas() {
 // row ≈2.6, bottom row just below the y=11 divider) so names read as room headers
 // above the characters rather than behind them. Type keys the accent color.
 const OVERWORLD_LABELS = [["AGENT WING", 6, 2.6, "AGENT"], ["MCP LAB", 18, 2.6, "MCP"], ["CONFIG BAY", 29, 2.6, "CONFIG"],
-                          ["CONTEXT CORNER", 6, 11.6, "CONTEXT"], ["PROMPT STUDIO", 18, 11.6, "PROMPT"], ["THE LOUNGE", 29, 11.6, "MIX"]];
+                          ["CONTEXT CORNER", 6, 11.6, "CONTEXT"], ["PROMPT STUDIO", 18, 11.6, "PROMPT"], ["THE LOUNGE", 29, 11.6, "MIX"],
+                          // Wayfinding sign floating above the library warp door (OFFICE_DOOR_TILE [24,23]) — SPACE on the door
+                          // to enter. Row 19.5 keeps it clear of the player standing at the door (row 22) and above the door sprite.
+                          ["LIBRARY ↓", 24, 19.5, "CONTEXT"]];
 
 function drawOverworld() {
   if (!mapCv) return;
