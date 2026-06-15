@@ -52,6 +52,7 @@ function weightedDomain() {
 }
 const MAX_HP = 100, WRONG_DMG = 25, FLEE_CHANCE = 0.5;
 const HARD_TIMER_MS = 30000;   // Hard-mode per-question countdown (ms)
+const TIMED_RECALL_MS = 30000; // Library Timed Recall/Boss minigame countdown (ms) (#030)
 const DIFFICULTIES = ["easy", "normal", "hard"];
 // Mon-level delta per tier (applied in startBattle); Easy is gentler, Hard is tougher.
 const TIER_LEVEL_DELTA = { easy: -2, normal: 0, hard: 2 };
@@ -339,6 +340,15 @@ function loadCloze() {
     .catch(() => { loadedCloze = []; });
 }
 
+// Diagram layouts (#030): mirrors loadCloze() for crash-safety. Per-piece sprites (if present)
+// load via loadLibraryAssets() into libStore; missing sprites degrade to labelled boxes downstream.
+function loadDiagrams() {
+  return fetch("library/diagrams.json")
+    .then(r => (r.ok ? r.json() : []))
+    .then(data => { if (Array.isArray(data)) loadedDiagrams = data; })
+    .catch(() => { loadedDiagrams = []; });
+}
+
 // Library assets (#026): mirrored exactly from loadProps() for crash-safety.
 // On file:// protocol or any network error: libManifest = [], libStore stays empty,
 // buildLibraryMapCanvas() degrades to drawn-box fallbacks — never rejects the boot Promise.all.
@@ -441,6 +451,7 @@ let coffeePrompt = null; // {sel} — Yes/No confirm before drinking; sel 0=Yes 
 let loadedBooks = [];   // parsed books.json array; [] if missing/malformed
 let loadedPairs = [];   // parsed pairs.json array; [] if missing/malformed (#029)
 let loadedCloze = [];   // parsed cloze.json array; [] if missing/malformed (#029)
+let loadedDiagrams = [];// parsed diagrams.json array; [] if missing/malformed (#030)
 let bookPrompt = null;  // {sel, books} — book-picker modal
 let readerState = null; // {book, page, screens, maxPage} — full-canvas reader
 let questionStats = {};  // "CAT:idx" -> {seen, correct, wrong, lastSeen}
@@ -914,11 +925,19 @@ function handleKey(k) {
     if (k === "Enter" || k === " ") { state = "overworld"; bufferedDir = null; turnStartMs = null; }
   } else if (state === "minigame") {
     if (!currentMinigame) return;
-    if (currentMinigame.phase === "score") { exitMinigame(currentMinigame.score); return; }
+    const ph = currentMinigame.phase;
+    // Assembly success first shows the completed diagram; a key advances to the score screen.
+    if (ph === "success") { currentMinigame.phase = "score"; sfx.select(); return; }
+    // Terminal phases — any key returns to the library overworld with the final score.
+    if (ph === "score" || ph === "gameover" || ph === "complete") {
+      exitMinigame(currentMinigame.score); return;
+    }
     if (k === "Escape") { exitMinigame(0); return; }
-    if (currentMinigame.phase === "intro") return;
+    if (ph === "intro") return;
     if (currentMinigame.type === "matching") handleMatchingKey(k);
     else if (currentMinigame.type === "cloze") handleClozeKey(k);
+    else if (currentMinigame.type === "assembly") handleAssemblyKey(k);
+    else if (currentMinigame.type === "timed") handleTimedKey(k);
   }
 }
 
@@ -980,6 +999,24 @@ canvas.addEventListener("click", e => {
       if (hit >= 0) answerQuestion(hit);
     } else handleKey("Enter");
   } else if (state === "victory") handleKey("Enter");
+  else if (state === "minigame") {
+    const mg = currentMinigame;
+    if (!mg) return;
+    const ph = mg.phase;
+    if (ph === "success") { mg.phase = "score"; sfx.select(); return; }
+    if (ph === "score" || ph === "gameover" || ph === "complete") {
+      exitMinigame(mg.score); return;
+    }
+    if (mg.type === "assembly" && ph === "place" && mg._trayRects) {
+      const hit = mg._trayRects.find(r => mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h);
+      if (hit) { mg.traySel = hit.idx; assemblyPlace(hit.idx); }
+    } else if (mg.type === "timed" && ph === "question" && mg._optRects) {
+      for (let i = 0; i < mg._optRects.length; i++) {
+        const [ox, oy, ow, oh] = mg._optRects[i];
+        if (mx >= ox && mx <= ox + ow && my >= oy && my <= oy + oh) { mg.sel = i; timedAnswer(i); break; }
+      }
+    }
+  }
 });
 
 // ---------- Overworld logic ----------
@@ -1360,6 +1397,53 @@ function initMinigame() {
       queue, total: queue.length, idx: 0, sel: 0, correct: 0,
       feedback: null, phase: "question", score: 0,
     });
+  } else if (mg.type === "assembly") {
+    // Diagram Assembly (#030): place piece sprites/boxes into the correct ordered layout.
+    const pool = loadedDiagrams.filter(d =>
+      d && Array.isArray(d.pieces) && d.pieces.length > 0 && Array.isArray(d.correct_layout) && d.correct_layout.length > 0);
+    if (pool.length === 0) { showToast("Content unavailable"); exitMinigame(0); return; }
+    const diagram = pool[Math.floor(Math.random() * pool.length)];
+    const byId = {};
+    for (const p of diagram.pieces) byId[p.id] = p;
+    // Target slots follow correct_layout order; only include pieces that actually exist.
+    const layout = diagram.correct_layout.filter(id => byId[id]);
+    // Guard a malformed diagram whose layout IDs don't match any piece (avoids a 0/0 round).
+    if (layout.length === 0) { showToast("Content unavailable"); exitMinigame(0); return; }
+    const tray = shuffled(layout.map(id => byId[id]), Math.random);
+    Object.assign(mg, {
+      diagram, layout, byId,
+      slots: layout.map(() => null),   // slot i expects piece layout[i]
+      tray,                            // remaining unplaced pieces (shuffled)
+      traySel: 0, placed: 0, mistakes: 0, total: layout.length,
+      feedback: null, phase: "place", score: 0,
+      title: diagram.title || "Diagram", root: diagram.root || "",
+    });
+  } else if (mg.type === "timed") {
+    // Timed Recall/Boss (#030): rapid-fire MCQ from the in-page exam bank (QUESTION_BANK,
+    // questions.js — the same content battles use, re-tagged by #014). quiz/bank/*.json is
+    // outside the datamon web root so it cannot be fetched in deployment; QUESTION_BANK is the
+    // robust in-page projection of it. Missing/empty → graceful "No questions available".
+    const bank = (typeof QUESTION_BANK !== "undefined" && QUESTION_BANK) ? QUESTION_BANK : null;
+    const DOMAIN_NAMES = {
+      AGENT: "Agentic Architecture", MCP: "Tool Design & MCP", CONFIG: "Claude Code Config",
+      PROMPT: "Prompt Engineering", CONTEXT: "Context & Reliability",
+    };
+    const cats = bank ? Object.keys(DOMAIN_NAMES).filter(c => Array.isArray(bank[c]) && bank[c].length) : [];
+    if (!bank || cats.length === 0) { showToast("No questions available"); exitMinigame(0); return; }
+    const TARGET = 10;
+    const norm = (q, cat) => ({ stem: q.q, opts: q.c.slice(0, 4), answerIdx: q.a, domainName: DOMAIN_NAMES[cat] });
+    // Pick a focus domain (boss feel); top up from other domains if it has < TARGET.
+    const focus = cats[Math.floor(Math.random() * cats.length)];
+    let queue = shuffled(bank[focus], Math.random).slice(0, TARGET).map(q => norm(q, focus));
+    if (queue.length < TARGET) {
+      const rest = shuffled(cats.filter(c => c !== focus).flatMap(c => bank[c].map(q => norm(q, c))), Math.random);
+      queue = queue.concat(rest.slice(0, TARGET - queue.length));
+    }
+    Object.assign(mg, {
+      queue, total: queue.length, idx: 0, sel: 0, correct: 0,
+      feedback: null, phase: "question", score: 0,
+      domainName: DOMAIN_NAMES[focus], timerEnd: Date.now() + TIMED_RECALL_MS,
+    });
   }
 }
 
@@ -1391,12 +1475,46 @@ function advanceCloze() {
   }
 }
 
+// Timed Recall (#030): advance to the next question, or end on completion.
+function advanceTimed() {
+  const mg = currentMinigame;
+  mg.feedback = null;
+  mg.idx++;
+  if (mg.idx >= mg.total) {
+    mg.score = mg.correct;           // score = number correct (0..total)
+    mg.phase = "complete";           // finished before time ran out
+  } else {
+    mg.sel = 0;
+    mg.phase = "question";
+  }
+}
+
 // Per-frame update for active minigame
 function updateMinigame() {
   const mg = currentMinigame;
   if (!mg) return;
   if (mg.type === "cloze" && mg.phase === "feedback" && mg.feedback && frame >= mg.feedback.until) advanceCloze();
   if (mg.type === "matching" && mg.phase === "feedback" && mg.feedback && frame >= mg.feedback.until) advanceMatching();
+  if (mg.type === "assembly" && mg.phase === "feedback" && mg.feedback && frame >= mg.feedback.until) {
+    mg.feedback = null;
+    if (mg.placed >= mg.total) {
+      // Score rewards an efficient (mistake-free) assembly: 100% with no wrong attempts.
+      mg.score = Math.round(mg.total / (mg.total + mg.mistakes) * 100);
+      mg.phase = "success";
+    } else {
+      mg.phase = "place";
+    }
+  }
+  if (mg.type === "timed") {
+    // Wall-clock countdown (Date.now() delta) — interrupts question OR feedback the instant it hits 0.
+    if ((mg.phase === "question" || mg.phase === "feedback") && Date.now() >= mg.timerEnd) {
+      mg.feedback = null;
+      mg.score = mg.correct;
+      mg.phase = "gameover";         // ran out of time
+    } else if (mg.phase === "feedback" && mg.feedback && frame >= mg.feedback.until) {
+      advanceTimed();
+    }
+  }
 }
 
 // ---------- Matching gameplay ----------
@@ -1635,6 +1753,246 @@ function drawCloze() {
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 
+// ---------- Diagram Assembly gameplay (#030) ----------
+
+// Place the selected tray piece into the next empty slot (slots fill in order). Shared by
+// keyboard (Enter/Space) and mouse (click). Correct → lock + advance; wrong → red flash, stays.
+function assemblyPlace(trayIdx) {
+  const mg = currentMinigame;
+  if (!mg || mg.phase !== "place") return;
+  if (trayIdx < 0 || trayIdx >= mg.tray.length) return;
+  const slotIdx = mg.placed;                 // next empty slot
+  const piece = mg.tray[trayIdx];
+  const correct = piece.id === mg.layout[slotIdx];
+  if (correct) {
+    mg.slots[slotIdx] = piece;
+    mg.tray.splice(trayIdx, 1);
+    mg.placed++;
+    if (mg.traySel >= mg.tray.length) mg.traySel = Math.max(0, mg.tray.length - 1);
+    sfx.confirm();
+    mg.feedback = { correct: true, slotIdx, until: frame + 30 };
+  } else {
+    mg.mistakes++;
+    sfx.wrong();
+    mg.feedback = { correct: false, slotIdx, trayIdx, until: frame + 45 };
+  }
+  mg.phase = "feedback";
+}
+
+function handleAssemblyKey(k) {
+  const mg = currentMinigame;
+  if (!mg || mg.phase !== "place") return;
+  const n = mg.tray.length;
+  if (n === 0) return;
+  if (k === "ArrowLeft" || k === "ArrowUp") { mg.traySel = (mg.traySel - 1 + n) % n; sfx.select(); }
+  else if (k === "ArrowRight" || k === "ArrowDown") { mg.traySel = (mg.traySel + 1) % n; sfx.select(); }
+  else if (k === "Enter" || k === " ") assemblyPlace(mg.traySel);
+}
+
+// Draw one diagram piece (sprite if available in libStore, else a labelled colored box).
+// Per-piece sprites are frequently absent (slug mismatch — tickets #031/#032), so the labelled
+// box is the common, intended path. `idx` drives the fallback hue so pieces read distinctly.
+function drawPiece(piece, x, y, w, h, idx, opts = {}) {
+  const img = piece && piece.sprite_slug ? libStore[piece.sprite_slug] : null;
+  if (img) {
+    ctx.drawImage(img, x, y, w, h);
+  } else {
+    const hue = (idx * 67) % 360;
+    ctx.fillStyle = opts.bg || `hsl(${hue},40%,28%)`;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = "#e2e8f0"; ctx.font = "11px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+    const lines = wrapTextMemo(String(piece && piece.label || "?"), w - 12, "11px monospace").slice(0, 4);
+    for (let i = 0; i < lines.length; i++) ctx.fillText(lines[i], x + 6, y + 6 + i * 14);
+  }
+  if (opts.border) { ctx.strokeStyle = opts.border; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h); }
+  ctx.textBaseline = "alphabetic";
+}
+
+function drawAssembly() {
+  const mg = currentMinigame;
+  if (!mg) return;
+  const { slots, tray, traySel, feedback, phase, total, placed } = mg;
+  const RW = 720, RH = 560;
+  const rx = (CANVAS_W - RW) / 2, ry = (CANVAS_H - RH) / 2;
+
+  // Title + root
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 15px monospace";
+  ctx.fillText("Diagram Assembly", CANVAS_W / 2, ry + 26);
+  ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
+  ctx.fillText(mg.title || "", CANVAS_W / 2, ry + 46);
+  if (mg.root) {
+    ctx.fillStyle = "#64748b"; ctx.font = "11px monospace";
+    const rl = wrapTextMemo(`Start: ${mg.root}`, RW - 80, "11px monospace").slice(0, 1);
+    ctx.fillText(rl[0] || "", CANVAS_W / 2, ry + 64);
+  }
+
+  // Target slots (ordered layout)
+  ctx.fillStyle = "#64748b"; ctx.font = "bold 11px monospace"; ctx.textAlign = "left";
+  ctx.fillText("LAYOUT", rx + 24, ry + 90);
+  const slotW = 200, slotH = 70, slotGap = 16;
+  const slotsTotalW = total * slotW + (total - 1) * slotGap;
+  const slotStartX = (CANVAS_W - Math.min(slotsTotalW, RW - 48)) / 2;
+  const slotScale = slotsTotalW > RW - 48 ? (RW - 48) / slotsTotalW : 1;
+  const sW = slotW * slotScale, sGap = slotGap * slotScale;
+  const slotY = ry + 102;
+  for (let i = 0; i < total; i++) {
+    const sx = slotStartX + i * (sW + sGap);
+    const piece = slots[i];
+    // slot frame
+    ctx.fillStyle = "rgba(15,23,42,0.7)"; ctx.fillRect(sx, slotY, sW, slotH);
+    let border = "#334155";
+    if (phase === "feedback" && feedback && feedback.slotIdx === i) border = feedback.correct ? "#22c55e" : "#f87171";
+    else if (piece) border = "#22c55e";
+    else if (i === placed && phase === "place") border = "#fde047";   // next slot to fill
+    if (piece) {
+      drawPiece(piece, sx + 2, slotY + 2, sW - 4, slotH - 4, i, { bg: "#14532d", border });
+    } else {
+      ctx.strokeStyle = border; ctx.lineWidth = 2; ctx.strokeRect(sx, slotY, sW, slotH);
+      ctx.fillStyle = "#475569"; ctx.font = "bold 18px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(i + 1), sx + sW / 2, slotY + slotH / 2);
+      ctx.textBaseline = "alphabetic";
+    }
+  }
+
+  // Source tray
+  mg._trayRects = [];
+  if (phase !== "success") {
+    ctx.fillStyle = "#64748b"; ctx.font = "bold 11px monospace"; ctx.textAlign = "left";
+    ctx.fillText("PIECES — pick the next one in order", rx + 24, slotY + slotH + 34);
+    const tn = tray.length;
+    const trayW = 210, trayH = 76, trayGap = 14;
+    const perRow = Math.max(1, Math.floor((RW - 48) / (trayW + trayGap)));
+    const trayStartX = rx + 24;
+    const trayStartY = slotY + slotH + 48;
+    for (let i = 0; i < tn; i++) {
+      const col = i % perRow, row = Math.floor(i / perRow);
+      const tx = trayStartX + col * (trayW + trayGap);
+      const tyy = trayStartY + row * (trayH + 12);
+      const active = i === traySel && phase === "place";
+      const border = active ? "#fde047" : "#334155";
+      drawPiece(tray[i], tx, tyy, trayW, trayH, i + 100, { border });
+      mg._trayRects.push({ x: tx, y: tyy, w: trayW, h: trayH, idx: i });
+    }
+  }
+
+  // Bottom bar
+  const barY = ry + RH - 30;
+  ctx.fillStyle = "#94a3b8"; ctx.font = "11px monospace"; ctx.textAlign = "center";
+  let hint;
+  if (phase === "success") hint = "✓ Assembled!  Press any key to continue";
+  else if (phase === "feedback") hint = feedback && feedback.correct ? "✓ Correct placement" : "✗ Not next in order";
+  else hint = "←→ select piece   Enter/click place   Esc abort";
+  ctx.fillText(hint, CANVAS_W / 2, barY);
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 12px monospace";
+  ctx.fillText(`${placed} / ${total} placed`, CANVAS_W / 2, barY + 16);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+
+// ---------- Timed Recall / Boss gameplay (#030) ----------
+
+function handleTimedKey(k) {
+  const mg = currentMinigame;
+  if (!mg || mg.phase !== "question") return;
+  if (k === "ArrowUp") { mg.sel = (mg.sel - 2 + 4) % 4; sfx.select(); }
+  else if (k === "ArrowDown") { mg.sel = (mg.sel + 2) % 4; sfx.select(); }
+  else if (k === "ArrowLeft") { mg.sel = (mg.sel % 2 === 0) ? mg.sel : mg.sel - 1; sfx.select(); }
+  else if (k === "ArrowRight") { mg.sel = (mg.sel % 2 === 1) ? mg.sel : mg.sel + 1; sfx.select(); }
+  else if (k === "1") { mg.sel = 0; sfx.select(); }
+  else if (k === "2") { mg.sel = 1; sfx.select(); }
+  else if (k === "3") { mg.sel = 2; sfx.select(); }
+  else if (k === "4") { mg.sel = 3; sfx.select(); }
+  else if (k === "Enter" || k === " ") timedAnswer(mg.sel);
+}
+
+function timedAnswer(sel) {
+  const mg = currentMinigame;
+  if (!mg || mg.phase !== "question") return;
+  const item = mg.queue[mg.idx];
+  const correct = sel === item.answerIdx;
+  if (correct) { mg.correct++; sfx.confirm(); } else { sfx.wrong(); }
+  mg.feedback = { correct, chosenIdx: sel, correctIdx: item.answerIdx, until: frame + 45 };
+  mg.phase = "feedback";
+}
+
+function drawTimed() {
+  const mg = currentMinigame;
+  if (!mg) return;
+  const { queue, idx, sel, feedback, phase, correct: correctCount } = mg;
+  const item = queue[idx];
+  const RW = 720, RH = 560;
+  const rx = (CANVAS_W - RW) / 2, ry = (CANVAS_H - RH) / 2;
+
+  // Title + domain + progress
+  ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 15px monospace";
+  ctx.fillText("Timed Recall", CANVAS_W / 2, ry + 24);
+  ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
+  ctx.fillText(`${mg.domainName || ""}  ·  Q ${idx + 1} / ${mg.total}`, CANVAS_W / 2, ry + 44);
+
+  // Countdown bar (Date.now() delta — mirrors the Hard-mode battle timer).
+  const remMs = Math.max(0, mg.timerEnd - Date.now());
+  const secs = Math.ceil(remMs / 1000);
+  const frac = Math.max(0, Math.min(1, remMs / TIMED_RECALL_MS));
+  const low = remMs < 10000;
+  const barW = 260, barH = 12, tcx = CANVAS_W / 2, tby = ry + 56;
+  const col = low ? "#f87171" : "#facc15";
+  ctx.fillStyle = col; ctx.font = "bold 14px monospace"; ctx.textAlign = "center";
+  ctx.fillText(`⏱ ${secs}s`, tcx, tby);
+  ctx.fillStyle = "#0f172a"; ctx.fillRect(tcx - barW / 2, tby + 6, barW, barH);
+  ctx.fillStyle = col; ctx.fillRect(tcx - barW / 2, tby + 6, barW * frac, barH);
+  ctx.strokeStyle = "#334155"; ctx.lineWidth = 1; ctx.strokeRect(tcx - barW / 2, tby + 6, barW, barH);
+
+  // Stem
+  ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 14px monospace";
+  const stemLines = wrapTextMemo(item.stem, RW - 80, "bold 14px monospace").slice(0, 6);
+  const stemStartY = ry + 100;
+  for (let i = 0; i < stemLines.length; i++) {
+    ctx.textAlign = "center";
+    ctx.fillText(stemLines[i], CANVAS_W / 2, stemStartY + i * 20);
+  }
+
+  // 2×2 option grid (mirrors drawCloze)
+  const optW = 310, optH = 56, optGapX = 20, optGapY = 12;
+  const gridW = optW * 2 + optGapX;
+  const gridStartX = (CANVAS_W - gridW) / 2;
+  const gridStartY = ry + 230;
+  mg._optRects = [];
+  for (let i = 0; i < 4; i++) {
+    const colI = i % 2, row = Math.floor(i / 2);
+    const ox = gridStartX + colI * (optW + optGapX);
+    const oy = gridStartY + row * (optH + optGapY);
+    mg._optRects.push([ox, oy, optW, optH]);
+    let bg = "rgba(30,41,59,0.6)", fg = "#e2e8f0";
+    if (phase === "feedback" && feedback) {
+      if (i === feedback.correctIdx) { bg = "#14532d"; fg = "#22c55e"; }
+      else if (i === feedback.chosenIdx && !feedback.correct) { bg = "#450a0a"; fg = "#f87171"; }
+    } else if (i === sel) { bg = "#facc15"; fg = "#0f172a"; }
+    ctx.fillStyle = bg; ctx.fillRect(ox, oy, optW, optH);
+    if (i === sel && phase === "question") {
+      ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2; ctx.strokeRect(ox, oy, optW, optH);
+    }
+    ctx.fillStyle = fg; ctx.font = "bold 12px monospace"; ctx.textAlign = "left";
+    const lab = `${i + 1}. `;
+    ctx.fillText(lab, ox + 8, oy + 18);
+    ctx.font = "12px monospace";
+    const optLines = wrapTextMemo(String(item.opts[i]), optW - 36, "12px monospace").slice(0, 3);
+    ctx.fillText(optLines[0] || "", ox + 8 + ctx.measureText(lab).width, oy + 18);
+    if (optLines[1]) ctx.fillText(optLines[1], ox + 8, oy + 34);
+    if (optLines[2]) ctx.fillText(optLines[2], ox + 8, oy + 48);
+  }
+
+  // Bottom bar
+  const barY = ry + RH - 30;
+  ctx.fillStyle = "#94a3b8"; ctx.font = "11px monospace"; ctx.textAlign = "center";
+  let hint = "↑↓←→ or 1-4 select   Enter/click confirm   Esc abort";
+  if (phase === "feedback" && feedback) hint = feedback.correct ? "✓ Correct!" : "✗ Wrong";
+  ctx.fillText(hint, CANVAS_W / 2, barY);
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 12px monospace";
+  ctx.fillText(`${correctCount} correct`, CANVAS_W / 2, barY + 16);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+
 // ---------- Shared score screen ----------
 
 function drawMinigameScore() {
@@ -1646,13 +2004,22 @@ function drawMinigameScore() {
 
   ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "#facc15"; ctx.font = "bold 20px monospace";
-  ctx.fillText("Round Complete!", CANVAS_W / 2, ry + 100);
+  // Timed Recall distinguishes "ran the clock out" from "answered them all".
+  const header = (mg.type === "timed" && mg.phase === "gameover") ? "Time's up!" : "Round Complete!";
+  ctx.fillText(header, CANVAS_W / 2, ry + 100);
 
-  // Big score
-  const pct = score | 0;
-  const scoreColor = pct >= 80 ? "#22c55e" : pct >= 50 ? "#facc15" : "#f87171";
-  ctx.fillStyle = scoreColor; ctx.font = "bold 48px monospace";
-  ctx.fillText(`${pct}%`, CANVAS_W / 2, ry + 200);
+  // Big score — timed shows a raw correct-count; the others show a percentage.
+  if (mg.type === "timed") {
+    const c = mg.correct || 0;
+    const scoreColor = c >= total * 0.8 ? "#22c55e" : c >= total * 0.5 ? "#facc15" : "#f87171";
+    ctx.fillStyle = scoreColor; ctx.font = "bold 48px monospace";
+    ctx.fillText(`${c} / ${total}`, CANVAS_W / 2, ry + 200);
+  } else {
+    const pct = score | 0;
+    const scoreColor = pct >= 80 ? "#22c55e" : pct >= 50 ? "#facc15" : "#f87171";
+    ctx.fillStyle = scoreColor; ctx.font = "bold 48px monospace";
+    ctx.fillText(`${pct}%`, CANVAS_W / 2, ry + 200);
+  }
 
   // Detail
   ctx.fillStyle = "#e2e8f0"; ctx.font = "13px monospace";
@@ -1660,6 +2027,10 @@ function drawMinigameScore() {
     ctx.fillText(`${mg.matched ? mg.matched.length : 0} / ${total} pairs matched`, CANVAS_W / 2, ry + 250);
   } else if (mg.type === "cloze") {
     ctx.fillText(`${mg.correct || 0} / ${total} correct`, CANVAS_W / 2, ry + 250);
+  } else if (mg.type === "assembly") {
+    ctx.fillText(`${mg.placed || 0} / ${total} pieces placed${mg.mistakes ? `  ·  ${mg.mistakes} misplaced` : ""}`, CANVAS_W / 2, ry + 250);
+  } else if (mg.type === "timed") {
+    ctx.fillText(`${mg.correct || 0} of ${total} answered correctly`, CANVAS_W / 2, ry + 250);
   }
 
   ctx.fillStyle = "#64748b"; ctx.font = "12px monospace";
@@ -1818,20 +2189,17 @@ function drawMinigame() {
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     return;
   }
-  if (phase === "score") { drawMinigameScore(); return; }
+  // Terminal score screens (timed gameover/complete share the shared score screen).
+  if (phase === "score" || phase === "gameover" || phase === "complete") { drawMinigameScore(); return; }
   if (type === "matching") { drawMatching(); return; }
   if (type === "cloze") { drawCloze(); return; }
+  if (type === "assembly") { drawAssembly(); return; }   // handles place / feedback / success
+  if (type === "timed") { drawTimed(); return; }
 
-  // Fallback: original placeholder text (assembly/timed — #030)
+  // Fallback (unknown minigame type) — keep the harness from rendering a blank box.
   ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "#facc15"; ctx.font = "bold 18px monospace";
   ctx.fillText(label || "Study Station", CANVAS_W / 2, ry + 60);
-
-  ctx.fillStyle = "#e2e8f0"; ctx.font = "13px monospace";
-  ctx.fillText("Minigame coming soon — gameplay arrives with the next update.", CANVAS_W / 2, ry + RH / 2 - 10);
-  ctx.fillStyle = "#64748b"; ctx.font = "12px monospace";
-  ctx.fillText(`Score: ${score | 0}`, CANVAS_W / 2, ry + RH / 2 + 16);
-
   ctx.fillStyle = "#64748b"; ctx.font = "11px monospace";
   ctx.fillText("Esc — exit", CANVAS_W / 2, ry + RH - 18);
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
@@ -3033,7 +3401,7 @@ ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets(), loadBooks(), loadPairs(), loadCloze()]).then(() => {
+Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets(), loadBooks(), loadPairs(), loadCloze(), loadDiagrams()]).then(() => {
   officeMapCv = buildMapCanvas();         // reads global map (= OFFICE_MAP) — must run while currentMap is office
   libraryMapCv = buildLibraryMapCanvas(); // reads LIBRARY_MAP directly
   mapCv = officeMapCv;
