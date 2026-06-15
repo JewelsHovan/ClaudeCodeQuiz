@@ -513,6 +513,26 @@ const wrapCache = new Map(); // font|maxW|text -> wrapped lines
 function placeNPCs() {
   const rng = mulberry32(20260610);
   const others = ROSTER.filter(s => s !== player.slug);
+
+  // "Smart" placement: rank candidate cells so NPCs stand BY the furniture (desks, couches,
+  // bar…) and OUT OF the walkways, instead of stranded mid-floor blocking traffic.
+  // Cells orthogonally adjacent to any baked prop footprint read as "at your station".
+  const furnitureAdj = new Set();
+  for (const p of PROP_PLACEMENTS) {
+    const meta = propManifest.find(m => m.slug === p.slug);
+    const tw = (meta && meta.tileW) || 1, th = (meta && meta.tileH) || 1;
+    for (let yy = p.row; yy < p.row + th; yy++)
+      for (let xx = p.col; xx < p.col + tw; xx++)
+        for (const [ax, ay] of [[xx, yy + 1], [xx, yy - 1], [xx - 1, yy], [xx + 1, yy]])
+          furnitureAdj.add(`${ax},${ay}`);
+  }
+  // Main traffic lanes to keep clear: inter-zone aisles (vertical x≈12/24, horizontal y≈11)
+  // and a 2-tile margin around every door (incl. the library warp door at 24,23).
+  const inAisle = (x, y) => (x >= 11 && x <= 13) || (x >= 23 && x <= 25) || (y >= 10 && y <= 12);
+  const nearDoor = (x, y) => DOORS.some(([dx, dy]) => Math.abs(dx - x) + Math.abs(dy - y) <= 2);
+  const score = (x, y) => (furnitureAdj.has(`${x},${y}`) ? 100 : 0)
+    - (inAisle(x, y) ? 60 : 0) - (nearDoor(x, y) ? 80 : 0);
+
   const regions = { AGENT: [], MCP: [], CONFIG: [], PROMPT: [], CONTEXT: [], MIX: [] };
   for (let y = 1; y < MAP_H - 1; y++) for (let x = 1; x < MAP_W - 1; x++) {
     if (SOLID.has(map[y][x])) continue;
@@ -520,17 +540,26 @@ function placeNPCs() {
     if (Math.abs(x - player.x) + Math.abs(y - player.y) <= 2) continue;
     regions[regionOf(x, y)].push([x, y]);
   }
+  // Rank each region's cells best-first (score desc; small rng jitter varies ties so the
+  // layout isn't identical every run while staying deterministic for a given seed).
+  for (const k in regions) {
+    regions[k] = regions[k]
+      .map(([x, y]) => [x, y, score(x, y) + rng() * 5])
+      .sort((a, b) => b[2] - a[2]);
+  }
+
   const order = shuffled(others, rng);
   const perRegion = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
   npcs = [];
   order.forEach((slug, i) => {
     const type = perRegion[i % 6];
-    const spots = shuffled(regions[type], rng);
-    const spot = spots.find(([x, y]) =>
+    // Take the best-ranked spot still ≥3 tiles from every placed NPC (one per workstation).
+    const idx = regions[type].findIndex(([x, y]) =>
       !npcs.some(n => Math.abs(n.x - x) + Math.abs(n.y - y) < 3));
-    if (spot) {
-      npcs.push({ slug, x: spot[0], y: spot[1], type, defeated: defeated.has(slug) });
-      regions[type] = regions[type].filter(([x, y]) => x !== spot[0] || y !== spot[1]);
+    if (idx >= 0) {
+      const [x, y] = regions[type][idx];
+      npcs.push({ slug, x, y, type, defeated: defeated.has(slug) });
+      regions[type].splice(idx, 1);
     }
   });
   rivalTotal = npcs.length; // stable HUD denominator — set after placement completes
