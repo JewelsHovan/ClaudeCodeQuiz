@@ -83,7 +83,7 @@
           "stop_reason={message.stop_reason}\")",
           "print(f\"Cost:",
           "${message.total_cost_usd:.4f}\")",
-          "# ResultMessage IS the termination",
+          "ResultMessage IS the termination",
           "signal — stop here",
           "anyio.run(main)"
         ],
@@ -113,7 +113,7 @@
           "ResultMessage):",
           "if message.stop_reason ==",
           "\"pause_turn\":",
-          "# Re-submit to continue from where",
+          "Re-submit to continue from where",
           "Claude left off",
           "await client.query(\"\") # Empty query",
           "resumes",
@@ -147,18 +147,19 @@
           "completion:",
           "WRONG",
           "if",
-          "message.content[-1].text.endswith(\"Done!\"):",
+          "message.content[-1].text.endswith(\"Don",
+          "e!\"):",
           "break",
           "Correct termination signals:",
           "ResultMessage (SDK level) or hooks",
           "returning continue_: False.",
-          "---",
-          "Multi-Agent — Subagent Configuration"
+          "---"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Multi-Agent — Subagent Configuration",
           "AgentDefinition",
           "from claude_agent_sdk import",
           "ClaudeAgentOptions, AgentDefinition",
@@ -169,13 +170,13 @@
           "description=\"Searches and summarizes",
           "information from docs and web.\",",
           "prompt=\"You are a research specialist.",
-          "Provide citation-backed summaries.\",",
-          "tools=[\"Read\", \"Glob\", \"Grep\"],"
+          "Provide citation-backed summaries.\","
         ],
         "type": "text"
       },
       {
         "lines": [
+          "tools=[\"Read\", \"Glob\", \"Grep\"],",
           "model=\"sonnet\",",
           "),",
           "\"coding-agent\": AgentDefinition(",
@@ -186,13 +187,13 @@
           "engineer. Write clean, typed, tested",
           "code.\",",
           "tools=[\"Read\", \"Write\", \"Edit\",",
-          "\"Bash\"],",
-          "model=\"opus\","
+          "\"Bash\"],"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "model=\"opus\",",
           "),",
           "}",
           ")",
@@ -203,13 +204,13 @@
           "description: Reviews code for quality,",
           "bugs, and security vulnerabilities.",
           "allowed-tools:",
-          "Read",
-          "Grep"
+          "Read"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Grep",
           "Glob",
           "Task # Required if this subagent needs",
           "to spawn its own subagents",
@@ -220,13 +221,13 @@
           "correctness.",
           "Review the provided code changes and",
           "identify issues with specific line",
-          "references.",
-          "Key Rules"
+          "references."
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Key Rules",
           "\"Task\" must be in allowed-tools for",
           "any agent that spawns subagents",
           "Subagents have ISOLATED context —",
@@ -237,13 +238,13 @@
           "result",
           "Multiple Task calls in single response",
           "= parallel execution (up to 10",
-          "concurrent)",
-          "Context Passing Pattern"
+          "concurrent)"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Context Passing Pattern",
           "Coordinator builds rich prompt with",
           "all needed context",
           "subagent_prompt = f\"\"\"",
@@ -254,13 +255,13 @@
           "{diff_text}",
           "Review for security vulnerabilities.",
           "Return JSON with:",
-          "{{\"severity\":",
-          "\"critical|high|medium|low\", \"issues\":"
+          "{{\"severity\":"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "\"critical|high|medium|low\", \"issues\":",
           "[...]}}",
           "\"\"\"",
           "---",
@@ -271,13 +272,13 @@
           "|---|---|---|",
           "| PreToolUse | Before tool executes |",
           "Block, modify input, enforce",
-          "compliance |",
-          "| PostToolUse | After tool succeeds |"
+          "compliance |"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "| PostToolUse | After tool succeeds |",
           "Normalize output, log, inject context",
           "|",
           "| PostToolUseFailure | After tool",
@@ -288,13 +289,13 @@
           "| Stop | Agent stops | Cleanup, state",
           "persistence |",
           "| SubagentStart | Subagent spawns |",
-          "Additional context injection |",
-          "| SubagentStop | Subagent completes |"
+          "Additional context injection |"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "| SubagentStop | Subagent completes |",
           "Track results, aggregate outputs |",
           "| PreCompact | Before context",
           "compaction | Control compaction",
@@ -305,13 +306,13 @@
           "tool_input, session_id, etc.",
           "tool_use_id: str | None, # Present for",
           "tool-related hooks",
-          "context: HookContext, # Future abort",
-          "signal support"
+          "context: HookContext, # Future abort"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "signal support",
           ") -> HookJSONOutput:",
           "...",
           "Hook Output Control Fields",
@@ -322,13 +323,13 @@
           "| stopReason | str | Message when",
           "halting |",
           "| decision | \"block\" | Alternative",
-          "block signal (PreToolUse) |",
-          "| reason | str | Feedback injected"
+          "block signal (PreToolUse) |"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "| reason | str | Feedback injected",
           "back to Claude |",
           "| systemMessage | str | Warning shown",
           "to user |",
@@ -339,13 +340,13 @@
           "continue for CLI.",
           "Example: PreToolUse — Block Refunds",
           "Over $500",
-          "async def",
-          "enforce_refund_limit(input_data,"
+          "async def"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "enforce_refund_limit(input_data,",
           "tool_use_id, context):",
           "tool_name =",
           "input_data.get(\"tool_name\", \"\")",
@@ -356,13 +357,13 @@
           "float(tool_input.get(\"amount\", 0))",
           "if amount > 500:",
           "return {",
-          "\"continue_\": False,",
-          "\"stopReason\": f\"Refund of ${amount}"
+          "\"continue_\": False,"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "\"stopReason\": f\"Refund of ${amount}",
           "exceeds $500 limit\",",
           "\"reason\": \"Refunds over $500 require",
           "human manager approval.\",",
@@ -373,13 +374,13 @@
           "}",
           "return {",
           "\"hookSpecificOutput\": {",
-          "\"hookEventName\": \"PreToolUse\",",
-          "\"permissionDecision\": \"allow\","
+          "\"hookEventName\": \"PreToolUse\","
         ],
         "type": "text"
       },
       {
         "lines": [
+          "\"permissionDecision\": \"allow\",",
           "}",
           "}",
           "Example: PostToolUse — Data",
@@ -390,13 +391,13 @@
           "tool_response =",
           "input_data.get(\"tool_response\", {})",
           "if isinstance(tool_response, dict):",
-          "normalized = {",
-          "**tool_response,"
+          "normalized = {"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "tool_response,",
           "\"email\": tool_response.get(\"email\",",
           "\"\").strip().lower(),",
           "\"phone\": tool_response.get(\"phone\",",
@@ -407,13 +408,13 @@
           "\"hookSpecificOutput\": {",
           "\"hookEventName\": \"PostToolUse\",",
           "\"updatedMCPToolOutput\": normalized, #",
-          "Replaces raw output seen by Claude",
-          "}"
+          "Replaces raw output seen by Claude"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "}",
           "}",
           "return {\"continue_\": True}",
           "Example: SubagentStart — Dynamic",
@@ -424,13 +425,13 @@
           "agent_type =",
           "input_data.get(\"agent_type\", \"\")",
           "if agent_type == \"security-reviewer\":",
-          "return {",
-          "\"continue_\": True,"
+          "return {"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "\"continue_\": True,",
           "\"hookSpecificOutput\": {",
           "\"hookEventName\": \"SubagentStart\",",
           "\"additionalContext\": \"Security policy:",
@@ -441,13 +442,13 @@
           "return {\"continue_\": True}",
           "Registering Hooks",
           "from claude_agent_sdk import",
-          "ClaudeAgentOptions, HookMatcher",
-          "options = ClaudeAgentOptions("
+          "ClaudeAgentOptions, HookMatcher"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "options = ClaudeAgentOptions(",
           "hooks={",
           "\"PreToolUse\": [",
           "HookMatcher(matcher=\"process_refund\",",
@@ -458,13 +459,13 @@
           "\"PostToolUse\": [",
           "HookMatcher(matcher=None,",
           "hooks=[log_all_tools]), # None = all",
-          "tools",
-          "HookMatcher(matcher=\"fetch_customer\","
+          "tools"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "HookMatcher(matcher=\"fetch_customer\",",
           "hooks=[normalize_data]),",
           "],",
           "\"SubagentStart\": [",
@@ -475,13 +476,13 @@
           ")",
           "---",
           "Session Management",
-          "Three Session Continuation Modes",
-          "| Mode | Config | Effect |"
+          "Three Session Continuation Modes"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "| Mode | Config | Effect |",
           "|---|---|---|",
           "| Resume by ID |",
           "resume=\"session-abc-123\" | Continue",
@@ -492,14 +493,15 @@
           "| Fork | resume=\"id\" +",
           "fork_session=True | Branch from",
           "session (new ID, same history) |",
-          "Resume a Session",
-          "options ="
+          "Resume a Session"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "ClaudeAgentOptions(resume=\"session-abc-123\")",
+          "options =",
+          "ClaudeAgentOptions(resume=\"session-abc",
+          "-123\")",
           "async for message in query(\"Continue",
           "where we left off.\", options=options):",
           "... # Claude has FULL context from",
@@ -508,14 +510,14 @@
           "fork_options = ClaudeAgentOptions(",
           "resume=\"session-abc-123\",",
           "fork_session=True, # New ID assigned;",
-          "history copied; both independent",
-          ")",
-          "async for message in query(\"Try a"
+          "history copied; both independent"
         ],
         "type": "text"
       },
       {
         "lines": [
+          ")",
+          "async for message in query(\"Try a",
           "different approach.\",",
           "options=fork_options):",
           "if isinstance(message, ResultMessage):",
@@ -525,65 +527,66 @@
           "async for message in query(\"Start a",
           "project plan.\"):",
           "if isinstance(message, ResultMessage):",
-          "session_id = message.session_id #",
-          "Available on every ResultMessage",
-          "---"
+          "session_id = message.session_id #"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Available on every ResultMessage",
+          "---",
           "Full ClaudeAgentOptions Reference",
           "ClaudeAgentOptions(",
-          "# Model",
+          "Model",
           "model=\"claude-sonnet-4-5\",",
           "fallback_model=\"claude-haiku-4\",",
-          "# System prompt",
+          "System prompt",
           "system_prompt=\"You are a production",
           "assistant.\",",
-          "# OR: system_prompt={\"append\":",
-          "\"Additional instructions\"}",
-          "# Tools",
-          "allowed_tools=[\"Read\", \"Write\","
+          "OR: system_prompt={\"append\":",
+          "\"Additional instructions\"}"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Tools",
+          "allowed_tools=[\"Read\", \"Write\",",
           "\"Bash\", \"Task\"],",
           "disallowed_tools=[\"WebSearch\"],",
-          "# Subagents",
+          "Subagents",
           "agents={\"name\": AgentDefinition(...)},",
-          "# Hooks",
+          "Hooks",
           "hooks={\"PreToolUse\": [...],",
           "\"PostToolUse\": [...]},",
-          "# Sessions",
+          "Sessions",
           "resume=\"session-id\",",
-          "fork_session=True,",
-          "continue_conversation=False,",
-          "# Limits"
+          "fork_session=True,"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "continue_conversation=False,",
+          "Limits",
           "max_turns=20,",
           "max_budget_usd=5.0,",
-          "# Output",
+          "Output",
           "output_format={\"type\": \"object\",",
           "\"properties\": {...}},",
-          "# Permissions",
+          "Permissions",
           "permission_mode=\"acceptEdits\", #",
-          "\"default\"|\"acceptEdits\"|\"plan\"|\"bypassPermissions\"",
-          "# Advanced",
-          "thinking={\"enabled\": True,",
-          "\"budget_tokens\": 5000},",
-          "effort=\"high\", #"
+          "\"default\"|\"acceptEdits\"|\"plan\"|\"bypass",
+          "Permissions\"",
+          "Advanced"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "thinking={\"enabled\": True,",
+          "\"budget_tokens\": 5000},",
+          "effort=\"high\", #",
           "\"low\"|\"medium\"|\"high\"|\"max\"",
           "mcp_servers={\"server\": config},",
           "cwd=\"/path/to/working/dir\",",
@@ -592,15 +595,15 @@
           "---",
           "Exam Traps for Agent SDK",
           "\"Check stop_reason text in the",
-          "response\" — NO. Use ResultMessage as",
-          "the termination signal.",
-          "\"Subagents inherit coordinator",
-          "context\" — NO. Context is isolated."
+          "response\" — NO. Use ResultMessage as"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "the termination signal.",
+          "\"Subagents inherit coordinator",
+          "context\" — NO. Context is isolated.",
           "Must explicitly inject.",
           "\"PostToolUse hook blocks tool",
           "execution\" — NO. PostToolUse fires",
@@ -609,15 +612,15 @@
           "\"Use iteration counts to stop the",
           "loop\" — NO. Use max_turns in options",
           "(semantic), not arbitrary for i in",
-          "range(N).",
-          "\"Prompt instructions guarantee",
-          "compliance\" — NO. Hooks are",
-          "deterministic; prompts are"
+          "range(N)."
         ],
         "type": "text"
       },
       {
         "lines": [
+          "\"Prompt instructions guarantee",
+          "compliance\" — NO. Hooks are",
+          "deterministic; prompts are",
           "probabilistic.",
           "\"Any agent can spawn subagents\" — NO.",
           "\"Task\" must be in allowed-tools."
@@ -1083,19 +1086,21 @@
           "Integration (18%)",
           "MCP Architecture Overview",
           "Core Components",
-          "┌─────────────────────────────────────┐",
+          "┌─────────────────────────────────────",
+          "┐",
           "│ Host (Claude Code/Desktop) │",
           "│ ┌──────────┐ ┌──────────┐ │",
           "│ │ Client 1 │ │ Client 2 │ ... │",
           "│ └────┬─────┘ └────┬─────┘ │",
-          "└───────┼─────────────┼────────────────┘",
-          "│ │",
-          "┌────▼────┐ ┌────▼────────────┐"
+          "└───────┼─────────────┼───────────────",
+          "─┘"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "│ │",
+          "┌────▼────┐ ┌────▼────────────┐",
           "│ Server 1 │ │ Server 2 │",
           "│ (stdio) │ │ (HTTP/SSE) │",
           "└─────────┘ └─────────────────┘",
@@ -1105,14 +1110,14 @@
           "Client: 1:1 with a server. Protocol",
           "negotiation, message routing, security",
           "boundaries.",
-          "Server: Provides capabilities (tools,",
-          "resources, prompts). Isolated — cannot",
-          "see other servers or full"
+          "Server: Provides capabilities (tools,"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "resources, prompts). Isolated — cannot",
+          "see other servers or full",
           "conversation.",
           "Transport Layers",
           "stdio: Server as subprocess. Reads",
@@ -1122,14 +1127,14 @@
           "(replaces legacy SSE). Single endpoint",
           "supporting POST + GET. Best for",
           "remote/network servers.",
-          "Legacy SSE: Deprecated as of",
-          "2025-11-25 spec. Never recommend for",
-          "new implementations."
+          "Legacy SSE: Deprecated as of"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "2025-11-25 spec. Never recommend for",
+          "new implementations.",
           "---",
           "Task 2.1: Design Effective Tool",
           "Interfaces",
@@ -1139,14 +1144,14 @@
           "Minimal descriptions → unreliable",
           "selection.",
           "What Goes Wrong",
-          "Ambiguous/overlapping descriptions",
-          "cause misrouting",
-          "analyze_content vs analyze_document"
+          "Ambiguous/overlapping descriptions"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "cause misrouting",
+          "analyze_content vs analyze_document",
           "with near-identical descriptions →",
           "model can't choose",
           "System prompt keyword-sensitive",
@@ -1156,14 +1161,14 @@
           "Differentiate clearly: Each tool",
           "description should explain purpose,",
           "expected inputs, outputs, and when to",
-          "use it vs alternatives",
-          "Rename to eliminate overlap:",
-          "analyze_content → extract_web_results"
+          "use it vs alternatives"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Rename to eliminate overlap:",
+          "analyze_content → extract_web_results",
           "with web-specific description",
           "Split generic tools: analyze_document",
           "→ extract_data_points,",
@@ -1173,14 +1178,14 @@
           "that might override tool descriptions",
           "Tool Definition Structure",
           "{",
-          "\"name\": \"get_weather\",",
-          "\"description\": \"Get current weather",
-          "for a location. Returns temperature,"
+          "\"name\": \"get_weather\","
         ],
         "type": "text"
       },
       {
         "lines": [
+          "\"description\": \"Get current weather",
+          "for a location. Returns temperature,",
           "conditions, humidity. Use when user",
           "asks about weather for a specific city",
           "or zip code.\",",
@@ -1190,14 +1195,14 @@
           "\"location\": {",
           "\"type\": \"string\",",
           "\"description\": \"City name or zip code\"",
-          "}",
-          "},",
-          "\"required\": [\"location\"]"
+          "}"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "},",
+          "\"required\": [\"location\"]",
           "},",
           "\"annotations\": {",
           "\"readOnlyHint\": true,",
@@ -1207,14 +1212,14 @@
           "}",
           "}",
           "Tool Annotations (Know the Defaults!)",
-          "| Annotation | Default | Meaning |",
-          "|---|---|---|",
-          "| readOnlyHint | false | Tool does NOT"
+          "| Annotation | Default | Meaning |"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "|---|---|---|",
+          "| readOnlyHint | false | Tool does NOT",
           "modify environment |",
           "| destructiveHint | true | Tool MAY",
           "perform destructive updates |",
@@ -1224,14 +1229,14 @@
           "| openWorldHint | true | Interacts",
           "with external entities |",
           "Counterintuitive defaults:",
-          "destructiveHint: true and",
-          "openWorldHint: true — assumes worst",
-          "case by default."
+          "destructiveHint: true and"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "openWorldHint: true — assumes worst",
+          "case by default.",
           "Annotations are hints only — clients",
           "MUST NOT make security-critical",
           "decisions based solely on annotations.",
@@ -1241,14 +1246,14 @@
           "exam)",
           "Layer 1: Protocol Errors (JSON-RPC)",
           "Unknown tools, invalid arguments,",
-          "server failures",
-          "Go in error field of JSON-RPC response",
-          "Model does NOT see these"
+          "server failures"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Go in error field of JSON-RPC response",
+          "Model does NOT see these",
           "Layer 2: Tool Execution Errors",
           "(isError flag)",
           "API failures, business logic errors,",
@@ -1258,14 +1263,14 @@
           "about recovery",
           "// Protocol error — model can't see",
           "this",
-          "{",
-          "\"jsonrpc\": \"2.0\", \"id\": 3,",
-          "\"error\": {\"code\": -32602, \"message\":"
+          "{"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "\"jsonrpc\": \"2.0\", \"id\": 3,",
+          "\"error\": {\"code\": -32602, \"message\":",
           "\"Unknown tool: invalid_tool_name\"}",
           "}",
           "// Tool execution error — model CAN",
@@ -1275,14 +1280,14 @@
           "\"result\": {",
           "\"content\": [{\"type\": \"text\", \"text\":",
           "\"Connection timeout: DB temporarily",
-          "unavailable. Retry in 60s.\"}],",
-          "\"isError\": true",
-          "}"
+          "unavailable. Retry in 60s.\"}],"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "\"isError\": true",
+          "}",
           "}",
           "Structured Error Metadata Pattern",
           "The exam tests returning rich error",
@@ -1292,14 +1297,14 @@
           "\"isError\": true,",
           "\"errorCategory\": \"transient\",",
           "\"isRetryable\": true,",
-          "\"content\": [{",
-          "\"type\": \"text\",",
-          "\"text\": \"Database timeout after 30s."
+          "\"content\": [{"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "\"type\": \"text\",",
+          "\"text\": \"Database timeout after 30s.",
           "Retry in 60s or use cached_results",
           "tool.\"",
           "}]",
@@ -1309,14 +1314,14 @@
           "|----------|----------|------------|",
           "| transient | Network timeout, rate",
           "limit, service unavailable | Yes |",
-          "| validation | Invalid input format,",
-          "missing required field | No (need",
-          "different input) |"
+          "| validation | Invalid input format,"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "missing required field | No (need",
+          "different input) |",
           "| permission | Access denied,",
           "insufficient permissions | No (need",
           "different credentials) |",
@@ -1326,14 +1331,14 @@
           "Anti-Patterns",
           "Generic \"Operation failed\" — prevents",
           "appropriate recovery decisions",
-          "Treating access failures same as valid",
-          "empty results",
-          "Returning retriable: true for business"
+          "Treating access failures same as valid"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "empty results",
+          "Returning retriable: true for business",
           "rule violations",
           "Best Practices",
           "Include isRetryable: false +",
@@ -1343,14 +1348,14 @@
           "for transient failures, propagate only",
           "unresolvable errors",
           "Distinguish access failures (timeout →",
-          "retry decision) from valid empty",
-          "results (query succeeded, no matches)",
-          "---"
+          "retry decision) from valid empty"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "results (query succeeded, no matches)",
+          "---",
           "Task 2.3: Tool Distribution Across",
           "Agents",
           "The Core Rule: 4-5 Tools Per Agent",
@@ -1360,14 +1365,14 @@
           "decision, ~23k tokens consumed per",
           "tool selection",
           "With pre-filtering to 3 tools: 392ms",
-          "response, ~800 tokens — 98% token",
-          "reduction, 8x speed improvement,",
-          "doubled accuracy"
+          "response, ~800 tokens — 98% token"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "reduction, 8x speed improvement,",
+          "doubled accuracy",
           "Why Degradation Happens",
           "Tool schemas consume context tokens,",
           "displacing reasoning capacity",
@@ -1377,14 +1382,14 @@
           "= worse selection",
           "Multi-step tool chains become",
           "exponentially less reliable",
-          "Solution: Scoped Tool Access",
-          "Coordinator Agent:",
-          "[delegate_to_search,"
+          "Solution: Scoped Tool Access"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Coordinator Agent:",
+          "[delegate_to_search,",
           "delegate_to_analysis, summarize]",
           "Search Agent (4): [web_search,",
           "fetch_url, search_papers, search_news]",
@@ -1394,14 +1399,14 @@
           "| Mode | JSON | Use When |",
           "|------|------|----------|",
           "| \"auto\" | {\"type\": \"auto\"} | Default",
-          "— model decides |",
-          "| \"any\" | {\"type\": \"any\"} | Force a",
-          "tool call (model picks which) |"
+          "— model decides |"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "| \"any\" | {\"type\": \"any\"} | Force a",
+          "tool call (model picks which) |",
           "| Forced | {\"type\": \"tool\", \"name\":",
           "\"...\"} | Force specific tool first |",
           "Forced tool use case: Ensure",
@@ -1411,14 +1416,14 @@
           "\"any\" use case: Guarantee structured",
           "output when document type is unknown",
           "but you have multiple extraction",
-          "schemas.",
-          "Replace Generic Tools",
-          "Instead of giving synthesis agent full"
+          "schemas."
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Replace Generic Tools",
+          "Instead of giving synthesis agent full",
           "web search tools, provide a scoped",
           "verify_fact tool for simple lookups.",
           "Route complex verifications through",
@@ -1428,14 +1433,15 @@
           "Claude Code",
           "Three Scopes",
           "| Scope | Location | Shared? | Use",
-          "Case |",
-          "|-------|----------|---------|----------|",
-          "| project | .mcp.json (repo root) |"
+          "Case |"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "|-------|----------|---------|--------",
+          "--|",
+          "| project | .mcp.json (repo root) |",
           "Yes (git-tracked) | Team-shared",
           "servers |",
           "| local (default) | ~/.claude.json",
@@ -1444,15 +1450,15 @@
           "| user | ~/.claude.json (global) | No",
           "| Personal tools across all projects |",
           "Precedence: local > project > user",
-          ".mcp.json with Environment Variable",
-          "Expansion",
-          "{",
-          "\"mcpServers\": {"
+          ".mcp.json with Environment Variable"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Expansion",
+          "{",
+          "\"mcpServers\": {",
           "\"github\": {",
           "\"type\": \"http\",",
           "\"url\":",
@@ -1461,32 +1467,33 @@
           "\"database\": {",
           "\"command\": \"npx\",",
           "\"args\": [\"-y\", \"@bytebase/dbhub\",",
-          "\"--dsn\", \"${DB_CONNECTION_STRING}\"],",
+          "\"--dsn\", \"${DB_CONNECTION_STRING}\"],"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "\"env\": {",
           "\"DB_TIMEOUT\": \"30000\"",
+          "}",
+          "},",
+          "\"api-server\": {",
+          "\"type\": \"http\",",
+          "\"url\":",
+          "\"${API_BASE_URL:-https://api.example.c",
+          "om}/mcp\",",
+          "\"headers\": {",
+          "\"Authorization\": \"Bearer ${API_KEY}\"",
           "}"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "},",
-          "\"api-server\": {",
-          "\"type\": \"http\",",
-          "\"url\":",
-          "\"${API_BASE_URL:-https://api.example.com}/mcp\",",
-          "\"headers\": {",
-          "\"Authorization\": \"Bearer ${API_KEY}\"",
           "}",
           "}",
           "}",
-          "}",
-          "Env var syntax:"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "Env var syntax:",
           "${VAR} — expands to value; fails if",
           "unset",
           "${VAR:-default} — uses default if VAR",
@@ -1494,16 +1501,16 @@
           "Where expansion works: command, args,",
           "env, url, headers",
           "This lets teams share .mcp.json in git",
-          "without hardcoding secrets.",
-          "CLI Commands",
-          "Add project-scoped HTTP server",
-          "claude mcp add --transport http",
-          "--scope project github"
+          "without hardcoding secrets."
         ],
         "type": "text"
       },
       {
         "lines": [
+          "CLI Commands",
+          "Add project-scoped HTTP server",
+          "claude mcp add --transport http",
+          "--scope project github",
           "https://api.githubcopilot.com/mcp/",
           "Add with env vars",
           "claude mcp add --transport stdio --env",
@@ -1511,16 +1518,16 @@
           "-- npx -y airtable-mcp-server",
           "Add user-scoped (all projects)",
           "claude mcp add --transport http",
-          "--scope user hubspot",
-          "https://mcp.hubspot.com/anthropic",
-          "Manage",
-          "claude mcp list",
-          "claude mcp get github"
+          "--scope user hubspot"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "https://mcp.hubspot.com/anthropic",
+          "Manage",
+          "claude mcp list",
+          "claude mcp get github",
           "claude mcp remove github",
           "Multi-Server Simultaneous Access",
           "All configured MCP servers are",
@@ -1528,16 +1535,16 @@
           "available simultaneously. Tools from",
           "different servers appear with",
           "server-namespaced names when needed.",
-          "MCP Resources",
-          "Resources = application-controlled",
-          "data. Tools = model-controlled",
-          "actions.",
-          "Use resources for:"
+          "MCP Resources"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Resources = application-controlled",
+          "data. Tools = model-controlled",
+          "actions.",
+          "Use resources for:",
           "Content catalogs (product SKUs, return",
           "policies)",
           "Documentation hierarchies",
@@ -1545,16 +1552,16 @@
           "resource, query capability as tool)",
           "Reducing exploratory tool calls by",
           "giving visibility into available data",
-          "Community vs Custom MCP Servers",
-          "Use community servers when: Standard",
-          "integrations (GitHub, Jira, Slack,",
-          "PostgreSQL), your needs match common",
-          "case"
+          "Community vs Custom MCP Servers"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Use community servers when: Standard",
+          "integrations (GitHub, Jira, Slack,",
+          "PostgreSQL), your needs match common",
+          "case",
           "Build custom when: Proprietary/niche",
           "internal systems, security/compliance",
           "requirements, custom business logic,",
@@ -1562,16 +1569,16 @@
           "Enhancing MCP Tool Descriptions",
           "When agent prefers built-in tools",
           "(like Grep) over MCP tools → enhance",
-          "MCP tool descriptions to explain",
-          "capabilities and outputs in detail.",
-          "---",
-          "Task 2.5: Built-in Tools",
-          "Tool Selection Guide"
+          "MCP tool descriptions to explain"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "capabilities and outputs in detail.",
+          "---",
+          "Task 2.5: Built-in Tools",
+          "Tool Selection Guide",
           "| Tool | Purpose | Use When |",
           "|------|---------|----------|",
           "| Grep | Content search | Searching",
@@ -1579,16 +1586,16 @@
           "names, error messages, imports) |",
           "| Glob | File path matching | Finding",
           "files by name/extension patterns",
-          "(**/*.test.tsx) |",
-          "| Read | Full file contents | Loading",
-          "complete file for understanding |",
-          "| Write | Full file",
-          "creation/replacement | Creating new"
+          "(/*.test.tsx) |"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "| Read | Full file contents | Loading",
+          "complete file for understanding |",
+          "| Write | Full file",
+          "creation/replacement | Creating new",
           "files or complete rewrites |",
           "| Edit | Targeted modifications |",
           "Changing specific parts using unique",
@@ -1596,16 +1603,16 @@
           "| Bash | Shell commands | System",
           "operations, builds, tests |",
           "When Edit Fails",
-          "If Edit can't find unique anchor text",
-          "→ use Read + Write as fallback for",
-          "reliable modifications.",
-          "Incremental Codebase Understanding",
-          "Start with Grep to find entry points"
+          "If Edit can't find unique anchor text"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "→ use Read + Write as fallback for",
+          "reliable modifications.",
+          "Incremental Codebase Understanding",
+          "Start with Grep to find entry points",
           "Use Read to follow imports and trace",
           "flows",
           "Don't read all files upfront — build",
@@ -1613,7 +1620,12 @@
           "Tracing Function Usage",
           "Identify all exported names from a",
           "module",
-          "Search for each name across the",
+          "Search for each name across the"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "codebase with Grep",
           "Follow through wrapper modules"
         ],
@@ -1749,7 +1761,7 @@
       {
         "lines": [
           "paths:",
-          "\"terraform/**/*\"",
+          "\"terraform//*\"",
           "---",
           "Terraform Conventions",
           "Always use variables for repeated",
@@ -1765,7 +1777,7 @@
       },
       {
         "lines": [
-          "\"**/*.test.tsx\"",
+          "\"/*.test.tsx\"",
           "---",
           "Test Conventions",
           "Use React Testing Library, not Enzyme",
@@ -3079,12 +3091,13 @@
           "no content documented anywhere yet",
           "> ⚠️ Themes 7–8 come from a single",
           "community source",
-          "(paullarionov/claude-certified-architect,"
+          "(paullarionov/claude-certified-archite"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "ct,",
           "> checked 2026-06-10), which states",
           "the draw is 4 of 8 — vs the 4-of-6 our",
           "earlier",
@@ -3095,13 +3108,13 @@
           "no content. Possible pool expansion",
           "after launch.",
           "> Study implication: prepare for all",
-          "themes; theme 7 overlaps heavily with",
-          "Domains 1 & 5."
+          "themes; theme 7 overlaps heavily with"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Domains 1 & 5.",
           "Domains & weights (CONFIRMED — match",
           "this env exactly)",
           "| # | Domain | Weight |",
@@ -3112,13 +3125,13 @@
           "Workflows | 20% |",
           "| 3 | Prompt Engineering & Structured",
           "Output | 20% |",
-          "| 4 | Tool Design & MCP Integration |",
-          "18% |"
+          "| 4 | Tool Design & MCP Integration |"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "18% |",
           "| 5 | Context Management & Reliability",
           "| 15% |",
           "> Note: this env historically ordered",
@@ -3129,13 +3142,13 @@
           "should track the",
           "> weights: Agentic Architecture (27%)",
           "is the single heaviest domain — a",
-          "verified passer",
-          "> confirmed real-exam emphasis tracks"
+          "verified passer"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "> confirmed real-exam emphasis tracks",
           "the published weights.",
           "Content currency (study to 2026",
           "reality)",
@@ -3146,15 +3159,16 @@
           "Claude Opus 4.7 — active (April 16,",
           "2026)",
           "Claude Opus 4.1 — deprecated June 5,",
-          "2026, retires August 5, 2026; migrate",
-          "to Opus 4.8"
+          "2026, retires August 5, 2026; migrate"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "to Opus 4.8",
           "Source:",
-          "platform.claude.com/docs/en/about-claude/model-deprecations",
+          "platform.claude.com/docs/en/about-clau",
+          "de/model-deprecations",
           "(primary)",
           "Claude Code (primary-sourced, but",
           "time-sensitive — changelog moves",
@@ -3162,14 +3176,14 @@
           "Skill/plugin auto-loading: claude",
           "plugin init <name> scaffolds a plugin;",
           "skills in",
-          ".claude/skills dirs auto-load as",
-          "<name>@skills-dir with no marketplace",
-          "or install step (May 2026)."
+          ".claude/skills dirs auto-load as"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "<name>@skills-dir with no marketplace",
+          "or install step (May 2026).",
           "Source:",
           "code.claude.com/docs/en/plugins",
           "Stop / SubagentStop hooks can now",
@@ -3179,188 +3193,199 @@
           "Claude context and keep the turn going",
           "without being labeled a hook error",
           "(v2.1.163, June 2026;",
-          "additionalContext capped at 10,000",
-          "chars). Source:",
-          "code.claude.com/docs/en/changelog"
+          "additionalContext capped at 10,000"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "chars). Source:",
+          "code.claude.com/docs/en/changelog",
           "Practice questions & sample material",
           "> ⚠️ NDA: Real exam questions are",
           "confidential. Everything below is",
-          "**community practice",
-          "> material** — useful for drilling",
+          "community practice",
+          "> material — useful for drilling",
           "concepts, but never assume any item is",
           "an actual exam question.",
           "> The questions in this repo's quiz/",
           "are original, exam-accurate practice",
-          "written to match",
-          "> the blueprint, not reproductions of",
-          "real items."
+          "written to match"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "> the blueprint, not reproductions of",
+          "real items.",
           "No official Anthropic public sample",
           "questions were found outside the gated",
           "Skilljar portal.",
-          "paullarionov/claude-certified-architect",
+          "paullarionov/claude-certified-architec",
+          "t",
           "(GitHub, added 2026-06-10) —",
           "3,400-line study guide",
           "\"based on the official exam guide\",",
           "translated into 10 languages, with 88",
-          "practice questions",
-          "(12 worked examples + 76-question",
-          "practice test w/ interactive HTML",
-          "version), 4 practical"
+          "practice questions"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "(12 worked examples + 76-question",
+          "practice test w/ interactive HTML",
+          "version), 4 practical",
           "exercises, an out-of-scope topic list,",
           "and the official Skilljar",
           "access-request link.",
           "Its 88 questions have been imported",
           "into this repo's quiz/bank/",
           "(\"source\":",
-          "\"paullarionov/claude-certified-architect\"),",
-          "deduplicated against our originals.",
-          "daronyondem/claude-architect-exam-guide",
-          "(GitHub) — strongest community study",
-          "guide;",
-          "explicitly NDA-clean (\"No exam"
+          "\"paullarionov/claude-certified-archite",
+          "ct\"),",
+          "deduplicated against our originals."
         ],
         "type": "text"
       },
       {
         "lines": [
+          "daronyondem/claude-architect-exam-guid",
+          "e",
+          "(GitHub) — strongest community study",
+          "guide;",
+          "explicitly NDA-clean (\"No exam",
           "questions are included, paraphrased,",
           "or hinted at\"); teaches",
           "11 interconnected knowledge areas that",
           "map onto the 5 domains.",
-          "claudecertifications.com/claude-certified-architect/practice-questions",
-          "— community practice",
+          "claudecertifications.com/claude-certif",
+          "ied-architect/practice-questions",
+          "— community practice"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "bank with domain filters.",
           "pub.towardsai.net — a \"60-question",
           "practice exam with explanations\"",
           "(community blog).",
           "Other community repos:",
-          "OlivierAlter/...,"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "OlivierAlter/...,",
           "jamesbuckett/ccaf-...,",
           "dnacenta/claude-certified-architect.",
           "daronyondem's 11 knowledge areas",
           "(useful cross-check against the 5",
           "domains)",
-          "API fundamentals/output control · tool",
+          "API fundamentals/output control · tool"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "interface design · error handling in",
           "agent tools ·",
           "structured data extraction ·",
           "conversation context management ·",
           "system prompt engineering · MCP ·",
-          "agentic patterns/multi-agent ·"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "agentic patterns/multi-agent ·",
           "customer service workflows · Claude",
           "Code & Agent SDK ·",
           "evaluation/batch processing.",
           "Out-of-scope topics (per the",
           "paullarionov guide — don't burn study",
-          "time here)",
+          "time here)"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "Fine-tuning/custom training · API",
           "auth, billing, account management ·",
           "language/framework",
           "implementation details ·",
           "deploying/hosting MCP servers (infra,",
-          "networking, containers) · Claude's"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "networking, containers) · Claude's",
           "internal architecture/training/weights",
           "· Constitutional AI, RLHF,",
           "safety-training methodology ·",
           "embeddings & vector DBs · computer use",
           "· vision/image analysis ·",
-          "streaming/SSE · rate limits,",
+          "streaming/SSE · rate limits,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "quotas, cost math · OAuth/key rotation",
           "· cloud-provider-specific config ·",
           "benchmarks/model",
           "comparisons · prompt-caching internals",
           "(know it exists, nothing more) ·",
-          "tokenization specifics."
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "tokenization specifics.",
           "Tips from people who passed",
           "Kishor Kukreja (Medium) — passed",
           "893/1000; first-hand account confirms",
           "the full",
           "blueprint (5 domains, 27/20/20/18/15,",
-          "720/1000) and that **real emphasis",
-          "tracks the published",
-          "weights** → weight study time toward",
-          "the 27% Agentic Architecture domain.",
-          "See docs/tips-from-passers.md for the",
-          "distilled, actionable tips + study",
-          "plan."
+          "720/1000) and that real emphasis"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "tracks the published",
+          "weights → weight study time toward the",
+          "27% Agentic Architecture domain.",
+          "See docs/tips-from-passers.md for the",
+          "distilled, actionable tips + study",
+          "plan.",
           "Canonical study resources (primary",
           "first)",
           "Anthropic docs (primary):",
           "platform.claude.com/docs (Claude",
           "Developer Platform, prompt",
-          "engineering, models),",
-          "code.claude.com/docs (Claude Code —",
-          "config, plugins, hooks, changelog),",
-          "Agent SDK docs, Model Context Protocol",
-          "spec.",
-          "Anthropic learning:",
-          "anthropic.com/learn (courses +"
+          "engineering, models),"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "code.claude.com/docs (Claude Code —",
+          "config, plugins, hooks, changelog),",
+          "Agent SDK docs, Model Context Protocol",
+          "spec.",
+          "Anthropic learning:",
+          "anthropic.com/learn (courses +",
           "certificates of completion).",
           "Note: anthropic.com/academy returns",
           "404; the live page is /learn.",
           "Official exam guide: gated at",
-          "anthropic.skilljar.com/claude-certified-architect-foundations-access-request.",
+          "anthropic.skilljar.com/claude-certifie",
+          "d-architect-foundations-access-request"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          ".",
           "Free Anthropic Academy courses most",
           "relevant to the blueprint (full",
           "13-course list in the",
           "paullarionov README): *Building with",
           "the Claude API*, *Claude Code in",
           "Action*, *Intro to MCP*,",
-          "*MCP: Advanced Topics*, *Introduction"
+          "*MCP: Advanced Topics*, *Introduction",
+          "to Agent Skills* — all at",
+          "anthropic.skilljar.com.",
+          "Caveats & open questions",
+          "No public Anthropic primary source for"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "to Agent Skills* — all at",
-          "anthropic.skilljar.com.",
-          "Caveats & open questions",
-          "No public Anthropic primary source for",
           "the blueprint — established by strong",
           "cross-source",
           "consensus + one hosted copy of the",
@@ -3368,16 +3393,16 @@
           "percentages as",
           "authoritative-by-consensus.",
           "Cost UNRESOLVED — \"$99\" and \"free for",
-          "first 5,000 partners\" both refuted"
+          "first 5,000 partners\" both refuted",
+          "(0-3). Do not",
+          "state a price. (The paullarionov",
+          "README re-asserts both figures plus",
+          "\"restricted to Anthropic"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "(0-3). Do not",
-          "state a price. (The paullarionov",
-          "README re-asserts both figures plus",
-          "\"restricted to Anthropic",
           "Partner Network members\" as of 2026-06",
           "— still a single community source,",
           "still not Anthropic.)",
@@ -3385,36 +3410,56 @@
           "refuted.",
           "Prerequisites UNRESOLVED — \"6 months",
           "production experience\" refuted;",
-          "whether any"
+          "whether any",
+          "prerequisite exists is unknown.",
+          "Model/tooling currency claims are",
+          "primary-sourced but time-sensitive",
+          "(Opus 4.1 retires"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "prerequisite exists is unknown.",
-          "Model/tooling currency claims are",
-          "primary-sourced but time-sensitive",
-          "(Opus 4.1 retires",
           "Aug 5 2026; Claude Code changelog",
           "moves weekly). Re-verify before each",
           "exam sitting.",
           "Sources (selected)",
-          "https://www.claudecertifiedarchitects.com/cca-exam-guide/",
-          "https://dev.to/aws-builders/the-claude-certified-architect-exam-5-domains-6-scenarios-and-everything-you-need-to-know-4le3",
-          "https://medium.com/@kishorkukreja/i-passed-anthropics-claude-certified-architect-foundations-exam-with-a-score-of-893-1000-2206c27efd6c",
-          "https://github.com/daronyondem/claude-architect-exam-guide"
+          "https://www.claudecertifiedarchitects.",
+          "com/cca-exam-guide/",
+          "https://dev.to/aws-builders/the-claude",
+          "-certified-architect-exam-5-domains-6-",
+          "scenarios-and-everything-you-need-to-k",
+          "now-4le3",
+          "https://medium.com/@kishorkukreja/i-pa",
+          "ssed-anthropics-claude-certified-archi"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "https://github.com/paullarionov/claude-certified-architect",
-          "https://platform.claude.com/docs/en/about-claude/model-deprecations",
-          "https://code.claude.com/docs/en/plugins",
-          "https://code.claude.com/docs/en/changelog",
+          "tect-foundations-exam-with-a-score-of-",
+          "893-1000-2206c27efd6c",
+          "https://github.com/daronyondem/claude-",
+          "architect-exam-guide",
+          "https://github.com/paullarionov/claude",
+          "-certified-architect",
+          "https://platform.claude.com/docs/en/ab",
+          "out-claude/model-deprecations",
+          "https://code.claude.com/docs/en/plugin",
+          "s",
+          "https://code.claude.com/docs/en/change",
+          "log"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "https://www.anthropic.com/learn",
-          "https://claudecertifications.com/claude-certified-architect/practice-questions",
-          "https://www.lowcode.agency/blog/how-to-become-claude-certified-architect"
+          "https://claudecertifications.com/claud",
+          "e-certified-architect/practice-questio",
+          "ns",
+          "https://www.lowcode.agency/blog/how-to",
+          "-become-claude-certified-architect"
         ],
         "type": "text"
       }
@@ -3679,15 +3724,16 @@
           "\"custom-api\": {",
           "\"type\": \"http\",",
           "\"url\":",
-          "\"${API_URL:-https://default.example.com}/mcp\",",
+          "\"${API_URL:-https://default.example.co",
+          "m}/mcp\",",
           "\"headers\": {",
-          "\"Authorization\": \"Bearer ${API_KEY}\"",
-          "}"
+          "\"Authorization\": \"Bearer ${API_KEY}\""
         ],
         "type": "text"
       },
       {
         "lines": [
+          "}",
           "}",
           "}",
           "}",
@@ -3698,15 +3744,16 @@
           "is unset",
           "Works in: command, args, env, url,",
           "headers",
-          "Scope System",
-          "| Scope | Location | Shared? | Use"
+          "Scope System"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "| Scope | Location | Shared? | Use",
           "Case |",
-          "|-------|----------|---------|----------|",
+          "|-------|----------|---------|--------",
+          "--|",
           "| project | .mcp.json | Yes (git) |",
           "Team servers |",
           "| local (default) | ~/.claude.json",
@@ -3714,14 +3761,14 @@
           "Personal/sensitive |",
           "| user | ~/.claude.json (global) | No",
           "| Personal, all projects |",
-          "Precedence: local > project > user",
-          "CLI",
-          "claude mcp add --transport http"
+          "Precedence: local > project > user"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "CLI",
+          "claude mcp add --transport http",
           "--scope project github",
           "https://api.githubcopilot.com/mcp/",
           "claude mcp add --transport stdio --env",
@@ -3731,14 +3778,14 @@
           "claude mcp get github",
           "claude mcp remove github",
           "---",
-          "Resources — The Other Half",
-          "When to Use Resources",
-          "Content catalogs: Product SKUs, return"
+          "Resources — The Other Half"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "When to Use Resources",
+          "Content catalogs: Product SKUs, return",
           "policies, company handbooks",
           "Documentation hierarchies: API docs,",
           "schema references",
@@ -3748,14 +3795,14 @@
           "visibility into available data without",
           "exploratory calls",
           "Resource Structure",
-          "{",
-          "\"uri\": \"file:///project/schema.sql\",",
-          "\"name\": \"Database Schema\","
+          "{"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "\"uri\": \"file:///project/schema.sql\",",
+          "\"name\": \"Database Schema\",",
           "\"mimeType\": \"text/plain\",",
           "\"annotations\": {",
           "\"audience\": [\"assistant\"],",
@@ -3765,14 +3812,14 @@
           "Resources vs Tools Decision",
           "Q: Does the model need this to REASON",
           "from? (read-only reference data)",
-          "→ RESOURCE",
-          "Q: Does the model need to DO",
-          "something? (execute, create, modify)"
+          "→ RESOURCE"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Q: Does the model need to DO",
+          "something? (execute, create, modify)",
           "→ TOOL",
           "---",
           "Tool Distribution (Cross-Cuts with",
@@ -3782,14 +3829,14 @@
           "reliable selection.",
           "18 tools → degraded accuracy, 3+",
           "second decisions, ~23k tokens wasted",
-          "3 tools (pre-filtered) → correct in",
-          "392ms, ~800 tokens, doubled accuracy",
-          "The Pattern"
+          "3 tools (pre-filtered) → correct in"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "392ms, ~800 tokens, doubled accuracy",
+          "The Pattern",
           "Coordinator: [delegate_search,",
           "delegate_analysis, delegate_synthesis]",
           "Search Agent: [web_search, fetch_url,",
@@ -3799,14 +3846,14 @@
           "Synthesis Agent:[compile_report,",
           "verify_fact] ← scoped cross-role tool",
           "Scoped Cross-Role Tools",
-          "Instead of giving synthesis agent all",
-          "web search tools, give it a scoped",
-          "verify_fact tool for the 85% common"
+          "Instead of giving synthesis agent all"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "web search tools, give it a scoped",
+          "verify_fact tool for the 85% common",
           "case (simple lookups). Route complex",
           "verifications through coordinator.",
           "---",
@@ -3816,14 +3863,14 @@
           "Jira, Slack, PostgreSQL, Stripe)",
           "Your needs match the common case",
           "Speed to deployment matters",
-          "Build Custom When",
-          "Proprietary internal systems",
-          "Regulated industries (healthcare,"
+          "Build Custom When"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Proprietary internal systems",
+          "Regulated industries (healthcare,",
           "finance)",
           "Custom business logic, audit",
           "requirements",
@@ -3833,14 +3880,14 @@
           "production use",
           "Be aware of prompt injection risk with",
           "servers that fetch untrusted content",
-          "---",
-          "Exam Traps for MCP",
-          "\"isError goes in the error field\" —"
+          "---"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Exam Traps for MCP",
+          "\"isError goes in the error field\" —",
           "NO. isError: true goes in the result.",
           "Protocol errors go in error.",
           "\"Community MCP server vs custom\" —",
@@ -3850,14 +3897,14 @@
           "\"MCP resources are like tools\" — NO.",
           "Resources = app-controlled read data.",
           "Tools = model-controlled actions.",
-          "\"Add more tools for more capability\" —",
-          "NO. More tools = worse selection.",
-          "Partition into subagents."
+          "\"Add more tools for more capability\" —"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "NO. More tools = worse selection.",
+          "Partition into subagents.",
           "\"Environment variables are insecure in",
           ".mcp.json\" — NO. ${VAR} expansion",
           "means secrets aren't committed.",
@@ -3887,16 +3934,16 @@
           "Grounded in docs/exam-research-2026.md",
           "(compiled 2026-06-08).",
           "> Read that report for citations and",
-          "confidence levels. **Public first-hand",
+          "confidence levels. Public first-hand",
           "passer accounts are"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "> limited** — much of \"what passers",
-          "say\" below rests on one verified",
-          "account (Kishor Kukreja,",
+          "> limited — much of \"what passers say\"",
+          "below rests on one verified account",
+          "(Kishor Kukreja,",
           "> 893/1000) plus strong cross-source",
           "consensus. Re-verify currency before",
           "you sit.",
@@ -3972,8 +4019,8 @@
           "first-hand account",
           "confirms exam emphasis tracks the",
           "27/20/20/18/15 blueprint. So",
-          "**front-load Agentic",
-          "Architecture (27%)**; it's the single"
+          "front-load Agentic",
+          "Architecture (27%); it's the single"
         ],
         "type": "text"
       },
@@ -4082,10 +4129,10 @@
       {
         "lines": [
           "question. 4 scenarios × ~15 questions",
-          "≈ **~30 min per",
-          "scenario**. Glance at the clock at",
-          "each scenario boundary; if you've",
-          "burned 35+ min on one,",
+          "≈ ~30 min per",
+          "scenario. Glance at the clock at each",
+          "scenario boundary; if you've burned",
+          "35+ min on one,",
           "speed up.",
           "Flag and return. If a question isn't",
           "obvious in ~90 seconds, pick your best",
@@ -4138,12 +4185,12 @@
           "must *never* be violated (financial,",
           "identity, security, compliance), the",
           "answer is a",
-          "**deterministic mechanism — hooks,",
+          "deterministic mechanism — hooks,",
           "prerequisite gates, structured output",
           "/ tool_use schema —",
-          "not** \"add an instruction to the",
-          "system prompt\" or \"give a few-shot",
-          "example.\" Prompt"
+          "not \"add an instruction to the system",
+          "prompt\" or \"give a few-shot example.\"",
+          "Prompt"
         ],
         "type": "text"
       },
@@ -4170,11 +4217,11 @@
           "distractor. (Also: 4–5 tools max for",
           "reliable selection; 18+ degrades it.)",
           "Nullable fields for extraction. For",
-          "structured data extraction, **make",
+          "structured data extraction, make",
           "fields that may be",
-          "absent nullable / optional.**",
-          "Requiring a non-nullable field when",
-          "data is sometimes missing",
+          "absent nullable / optional. Requiring",
+          "a non-nullable field when data is",
+          "sometimes missing",
           "*drives hallucination* — the model",
           "invents a value. That's a classic",
           "wrong answer dressed up as"
@@ -4186,12 +4233,12 @@
           "\"strict schema = good.\"",
           "Graceful degradation over hard-fail.",
           "In multi-agent / pipeline scenarios,",
-          "prefer **isolate",
+          "prefer isolate",
           "the failure and continue (partial",
           "results, retry-with-feedback,",
           "fallback) over terminate the",
           "whole workflow on one subagent's",
-          "failure.** Silently swallowing errors",
+          "failure. Silently swallowing errors",
           "(empty result = success)",
           "is *also* wrong — degrade gracefully",
           "*and* surface the error."
@@ -4201,10 +4248,10 @@
       {
         "lines": [
           "Explicit escalation over inferred",
-          "signals. Escalate on **defined rules /",
+          "signals. Escalate on defined rules /",
           "prerequisite",
           "checks, not self-reported confidence",
-          "or sentiment analysis** (poorly",
+          "or sentiment analysis (poorly",
           "calibrated, don't",
           "correlate with complexity).",
           "Provenance & position. Prefer",
@@ -4220,10 +4267,10 @@
           "the middle.",
           "> Pattern to memorize: when two",
           "options both \"work,\" pick the one that",
-          "is **deterministic,",
+          "is deterministic,",
           "> least-privilege, fails gracefully,",
           "and matches the scenario's stated",
-          "constraint.**",
+          "constraint.",
           "---",
           "A study plan (keyed to this repo)",
           "Weighted by domain importance. Repo",
@@ -4254,20 +4301,21 @@
           "roughly in proportion)",
           "| Order | Focus | Repo resource | Why",
           "|",
-          "|-------|-------|---------------|-----|",
+          "|-------|-------|---------------|-----",
+          "|",
           "| 1 | Agentic Architecture (27%) |",
           "docs/domain1-*.md +",
           "agent-sdk-deep-dive.md | Biggest",
           "domain; orchestration, loops,",
           "escalation, multi-agent |",
           "| 2 | Claude Code Config (20%) |",
-          "docs/domain3-*.md | Commands vs",
-          "skills, hooks, CLAUDE.md hierarchy, CI"
+          "docs/domain3-*.md | Commands vs"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "skills, hooks, CLAUDE.md hierarchy, CI",
           "(-p) |",
           "| 3 | Prompt Eng & Structured Output",
           "(20%) | docs/domain4-*.md | tool_use,",
@@ -4278,13 +4326,13 @@
           "Resources vs tools, scopes, least",
           "privilege, community vs custom |",
           "| 5 | Context & Reliability (15%) |",
-          "docs/domain5-*.md | Compaction,",
-          "scratchpads, error categories,"
+          "docs/domain5-*.md | Compaction,"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "scratchpads, error categories,",
           "graceful degradation |",
           "> Note: this repo's *file numbering*",
           "(domain2 = MCP, domain3 = Claude Code)",
@@ -4295,13 +4343,13 @@
           "Weekly rhythm (suggested ~2–3 weeks",
           "out)",
           "Read the domain doc, then drill its",
-          "quiz bank (/quiz filtered to that",
-          "domain, or the"
+          "quiz bank (/quiz filtered to that"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "domain, or the",
           "quiz/bank/domainN.json items).",
           "Run /weak-spots after each domain to",
           "see where you're leaking points; loop",
@@ -4312,13 +4360,13 @@
           "/study for guided, profile-aware",
           "sessions; /save-progress at the end of",
           "every",
-          "session so the profile tracks your",
-          "trend."
+          "session so the profile tracks your"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "trend.",
           "Calibrate with a timed full-length run",
           "Take a timed, 60-question, 4-scenario",
           "mock under real conditions —",
@@ -4329,13 +4377,13 @@
           "one; otherwise chain",
           "quiz/scenario-questions.md +",
           "quiz/practice-questions.md to ~60",
-          "items and",
-          "set a timer). Score it against"
+          "items and"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "set a timer). Score it against",
           "720/1000-equivalent, then send the",
           "misses to /weak-spots. Do this",
           "at least once mid-study and once in",
@@ -4346,13 +4394,13 @@
           "right answer beats the",
           "distractor.",
           "/weak-spots → spend the week's",
-          "remaining time only on red domains.",
-          "Re-read docs/exam-cheat-sheet.md"
+          "remaining time only on red domains."
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Re-read docs/exam-cheat-sheet.md",
           "decision trees daily; they encode the",
           "trap logic in §4.",
           "Confirm you can recite the 6 scenario",
@@ -4363,13 +4411,13 @@
           "Light review only — flashcards +",
           "cheat-sheet skim. No cramming new",
           "material.",
-          "Re-verify currency (model lineup,",
-          "Claude Code features — see Caveats)."
+          "Re-verify currency (model lineup,"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Claude Code features — see Caveats).",
           "Confirm Skilljar logistics: working",
           "webcam/mic, quiet room, ID ready,",
           "stable connection,",
@@ -4380,13 +4428,13 @@
           "---",
           "Canonical resources (primary first)",
           "From docs/exam-research-2026.md:",
-          "Anthropic docs (primary):",
-          "platform.claude.com/docs — Claude"
+          "Anthropic docs (primary):"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "platform.claude.com/docs — Claude",
           "Developer Platform, prompt",
           "engineering, models,",
           "model-deprecations.",
@@ -4397,47 +4445,50 @@
           "Protocol spec.",
           "Anthropic learning:",
           "anthropic.com/learn (courses +",
-          "certificates). *Note:*",
-          "anthropic.com/academy 404s — the live"
+          "certificates). *Note:*"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "anthropic.com/academy 404s — the live",
           "page is /learn.",
           "Official exam guide (gated):",
-          "anthropic.skilljar.com/claude-certified-architect-foundations-access-request.",
+          "anthropic.skilljar.com/claude-certifie",
+          "d-architect-foundations-access-request",
+          ".",
           "Community study guide:",
-          "github.com/daronyondem/claude-architect-exam-guide",
+          "github.com/daronyondem/claude-architec",
+          "t-exam-guide",
           "— strongest",
           "community guide, explicitly NDA-clean",
-          "(\"no exam questions included,",
+          "(\"no exam questions included,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "paraphrased, or",
           "hinted\"); teaches 11 knowledge areas",
           "mapping onto the 5 domains.",
-          "Verified passer write-up: Kishor"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "Verified passer write-up: Kishor",
           "Kukreja's Medium post (893/1000) —",
           "confirms the blueprint",
           "and weight emphasis.",
           "> ⚠️ Real exam questions are under",
           "NDA. This repo's quiz/ items are",
-          "**original, exam-accurate",
-          "> practice** matched to the blueprint",
-          "— never reproductions. Never assume",
-          "any practice item is an",
-          "> actual exam question.",
-          "---",
-          "Caveats (read before you book)"
+          "original, exam-accurate",
+          "> practice matched to the blueprint —",
+          "never reproductions. Never assume any"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "practice item is an",
+          "> actual exam question.",
+          "---",
+          "Caveats (read before you book)",
           "No public Anthropic blueprint exists.",
           "The weights and format are established",
           "by strong",
@@ -4445,16 +4496,16 @@
           "copy of the gated official PDF —",
           "authoritative-by-consensus,",
           "not a citable Anthropic URL.",
-          "Cost is UNCONFIRMED. \"$99\" and \"free",
-          "for first 5,000 partners\" were both",
-          "*refuted*. Do not",
-          "assume a price — check Skilljar at",
-          "registration."
+          "Cost is UNCONFIRMED. \"$99\" and \"free"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "for first 5,000 partners\" were both",
+          "*refuted*. Do not",
+          "assume a price — check Skilljar at",
+          "registration.",
           "Validity period UNCONFIRMED. \"2 years\"",
           "was *refuted*. Don't assume how long",
           "the cert lasts.",
@@ -4462,20 +4513,20 @@
           "production experience\" was *refuted*;",
           "whether any",
           "prerequisite exists at all is unknown.",
-          "Content currency is time-sensitive. As",
-          "of mid-2026: Claude Opus 4.8 is",
-          "flagship; **Opus",
-          "4.1 retires August 5, 2026 (migrate to",
-          "4.8). Claude Code's changelog moves"
+          "Content currency is time-sensitive. As"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "of mid-2026: Claude Opus 4.8 is",
+          "flagship; Opus",
+          "4.1 retires August 5, 2026 (migrate to",
+          "4.8). Claude Code's changelog moves",
           "weekly. Re-verify",
           "the model lineup and current Claude",
-          "Code features before each sitting**",
-          "via the primary docs in",
+          "Code features before each sitting via",
+          "the primary docs in",
           "§6."
         ],
         "type": "text"

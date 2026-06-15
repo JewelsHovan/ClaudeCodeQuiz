@@ -549,32 +549,45 @@ def _cover_slug(domain: int) -> str:
 
 def _line_too_long(line: str) -> bool:
     """
-    Return True iff the line exceeds PAGE_WIDTH AND contains whitespace
-    (single unbreakable tokens like long URLs are allowed to exceed).
+    Return True iff the line exceeds PAGE_WIDTH. The books.json contract requires
+    that NO text line exceed PAGE_WIDTH — wrap_text() now hard-splits long unbreakable
+    tokens, so there is no whitespace exemption.
     """
-    return len(line) > PAGE_WIDTH and (" " in line.strip())
+    return len(line) > PAGE_WIDTH
 
 
 def clean_text_line(line: str) -> str:
     """
     Strip markdown syntax from a single line to produce plain readable text:
-    - Leading heading hashes (e.g. '## Heading')
+    - Leading heading hashes, including indented ones ('   ## Heading' in code fences)
     - Leading list markers ('- ', '* ', '1. ', etc.)
     - Inline **bold** / __bold__ markers
     - Inline `code` backticks
     Returns the result with trailing whitespace stripped.
     Does NOT reflow table rows (| pipes are left alone).
+
+    Bold (**) and backtick markers are removed unconditionally rather than only as
+    matched pairs: lone markers survive otherwise — e.g. glob patterns like
+    `**/*.test.tsx`, or a **bold** span that the source hard-wrapped across two lines.
+    Inner text is preserved in every case. Single '*' (italic emphasis) and '__'
+    (underscore bold — rare, and collides with code identifiers like __init__) are
+    left untouched: the acceptance contract bans only #/**/backtick markers.
     """
-    # Strip heading hashes
-    line = re.sub(r"^#+\s*", "", line)
+    # Strip heading hashes (tolerate leading whitespace — indented comments in fences)
+    line = re.sub(r"^\s*#+\s*", "", line)
     # Strip list markers (unordered and ordered)
     line = re.sub(r"^\s*([-*+]|\d+\.)\s+", "", line)
-    # Strip inline bold/italic markers (**text** and __text__)
-    line = re.sub(r"\*\*(.+?)\*\*", r"\1", line)
+    # Strip matched __bold__ markers (kept as a pair to avoid mangling __identifiers__)
     line = re.sub(r"__(.+?)__", r"\1", line)
-    # Strip inline code backticks (keep the code text)
-    line = re.sub(r"`(.+?)`", r"\1", line)
+    # Remove bold markers and backticks unconditionally (lone-token safe)
+    line = line.replace("**", "")
+    line = line.replace("`", "")
     return line.rstrip()
+
+
+def _split_long_token(token: str) -> list:
+    """Hard-split a token longer than PAGE_WIDTH into PAGE_WIDTH-sized chunks."""
+    return [token[i: i + PAGE_WIDTH] for i in range(0, len(token), PAGE_WIDTH)]
 
 
 def wrap_text(text: str) -> list:
@@ -583,7 +596,10 @@ def wrap_text(text: str) -> list:
 
     - Accumulates whitespace-delimited tokens onto a line.
     - If adding the next token would exceed PAGE_WIDTH, start a new line.
-    - A single token longer than PAGE_WIDTH goes alone on its own line.
+    - A single token longer than PAGE_WIDTH is hard-split into PAGE_WIDTH-sized
+      chunks (each on its own line) so NO output line exceeds PAGE_WIDTH. This is
+      required by the books.json contract; long URLs/identifiers wrap rather than
+      overflow the fixed-width pixel reader.
     - Empty/whitespace-only input returns [].
     """
     if not text or not text.strip():
@@ -594,7 +610,13 @@ def wrap_text(text: str) -> list:
     lines = []
     current = ""
     for token in tokens:
-        if not current:
+        if len(token) > PAGE_WIDTH:
+            # Flush the in-progress line, then emit the over-long token as chunks.
+            if current:
+                lines.append(current)
+                current = ""
+            lines.extend(_split_long_token(token))
+        elif not current:
             current = token
         elif len(current) + 1 + len(token) <= PAGE_WIDTH:
             current += " " + token
@@ -883,7 +905,7 @@ def validate() -> None:
                         elif _line_too_long(ln):
                             errors.append(
                                 f"book {bid} page {pidx} line {lno}: "
-                                f"exceeds PAGE_WIDTH={PAGE_WIDTH} with whitespace: {ln!r}"
+                                f"exceeds PAGE_WIDTH={PAGE_WIDTH}: {ln!r}"
                             )
             elif ptype == "diagram_anchor":
                 if not isinstance(pg.get("slug"), str) or not pg.get("slug"):
