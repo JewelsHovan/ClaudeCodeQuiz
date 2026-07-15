@@ -301,20 +301,24 @@ function loadImages() {
 // AI-generated 4-direction walk-cycle frames (PRD: real walk/run animation). Each animated
 // slug has sprites-walk/<slug>/<dir>_<0..3>.png (dir ∈ down/up/left/right, 4-frame cycle:
 // left contact, passing, right contact, passing). L/R art is baked facing the desired way.
-// Missing files resolve to gaps -> drawCharacter falls back to the spriteMini path, never throws.
-const walkAnim = {};                      // slug -> {down:[img×4], up:[...], left:[...], right:[...]}
-const WALK_SLUGS = ROSTER;               // full roster (batch-generated via tools/gen_walk_assets.py)
+// Only the player uses these frames, so load one slug on demand instead of blocking boot on
+// all 464 PNGs. Missing files leave gaps and drawCharacter falls back safely to spriteMini.
+const walkAnim = {};      // slug -> {down:[img×4], up:[...], left:[...], right:[...]}
+const walkAnimLoads = {}; // slug -> in-flight/completed Promise (deduplicates hover/preload)
 const WALK_DIRS = ["down", "up", "left", "right"];
-function loadWalkAnim() {
-  return Promise.all(WALK_SLUGS.flatMap(slug => {
-    walkAnim[slug] = { down: [], up: [], left: [], right: [] };
-    return WALK_DIRS.flatMap(dir => [0, 1, 2, 3].map(i => new Promise(resolve => {
+function loadWalkAnim(slug) {
+  if (!slug || !ROSTER.includes(slug)) return Promise.resolve();
+  if (walkAnimLoads[slug]) return walkAnimLoads[slug];
+  walkAnim[slug] = { down: [], up: [], left: [], right: [] };
+  walkAnimLoads[slug] = Promise.all(WALK_DIRS.flatMap(dir =>
+    [0, 1, 2, 3].map(i => new Promise(resolve => {
       const img = new Image();
       img.onload = () => { walkAnim[slug][dir][i] = img; resolve(); };
-      img.onerror = () => { resolve(); };   // gap -> spriteMini fallback
+      img.onerror = () => { resolve(); };
       img.src = `sprites-walk/${slug}/${dir}_${i}.png`;
-    })));
-  }));
+    }))
+  ));
+  return walkAnimLoads[slug];
 }
 
 // GBA-style office tiles (32px) -> tileStore, for the tile-based renderer (ticket #003).
@@ -922,11 +926,15 @@ function handleKey(k) {
       const s = getSave();
       if (s) {
         player.slug = s.player;
+        loadWalkAnim(player.slug); // prewarmed at boot; idempotent if already complete
         defeated = new Set(s.defeated);
         placeNPCs();
         if (npcs.every(n => n.defeated)) { state = "victory"; }
         else { state = "overworld"; bufferedDir = null; turnStartMs = null; }
-      } else state = "select";
+      } else {
+        state = "select";
+        loadWalkAnim(ROSTER[selectIdx]);
+      }
     }
     if (k === "r" || k === "R") {
       localStorage.removeItem(SAVE_KEY);
@@ -950,6 +958,7 @@ function handleKey(k) {
     if (k === "Enter" || k === " ") {
       sfx.confirm();
       player.slug = ROSTER[selectIdx];
+      loadWalkAnim(player.slug);
       defeated = new Set();
       player.hp = MAX_HP;
       player.x = player.fx = 18; player.y = player.fy = 16;
@@ -2423,26 +2432,86 @@ function drawTrainer(slug, cx, baseY, h, bobAmp = 0) {
 
 // ---------- Scenes ----------
 function drawTitle() {
-  ctx.fillStyle = "#0f172a"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-  // marching trainer parade
-  const n = ROSTER.length;
-  for (let i = 0; i < n; i++) {
-    const x = ((i * 90 + frame * 0.8) % (CANVAS_W + 80)) - 40;
-    const y = 440 + Math.sin((frame + i * 30) / 20) * 8;
-    const mini = spriteMini(ROSTER[i], 64);
-    if (mini) ctx.drawImage(mini, px(x), px(y), 64, 64);
-    else ctx.drawImage(pixelHead(ROSTER[i], 48), px(x), px(y + 8), 48, 48);
+  const save = getSave();
+  const wins = save?.defeated?.length || 0;
+  const accent = "#fbbf24", coral = "#f9735b", teal = "#2dd4bf";
+
+  // Signature backdrop: the actual playable office as a dim command-centre diorama.
+  ctx.fillStyle = "#050a16"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  if (mapCv) {
+    const targetRatio = CANVAS_W / CANVAS_H;
+    const sw = Math.min(mapCv.width, mapCv.height * targetRatio);
+    const sx = (mapCv.width - sw) / 2;
+    ctx.globalAlpha = 0.48;
+    ctx.drawImage(mapCv, sx, 0, sw, mapCv.height, 0, 0, CANVAS_W, CANVAS_H);
+    ctx.globalAlpha = 1;
   }
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#facc15"; ctx.font = "bold 72px monospace";
-  ctx.fillText("DATAMON", CANVAS_W / 2, 180);
-  ctx.fillStyle = "#94a3b8"; ctx.font = "bold 20px monospace";
-  ctx.fillText("Gotta Cert 'Em All — Claude Code Foundations Edition", CANVAS_W / 2, 220);
-  ctx.fillStyle = "#e2e8f0"; ctx.font = "16px monospace";
-  if (Math.floor(frame / 30) % 2 === 0)
-    ctx.fillText(getSave() ? "Press ENTER to continue your run" : "Press ENTER to start", CANVAS_W / 2, 320);
-  ctx.fillStyle = "#64748b"; ctx.font = "13px monospace";
-  ctx.fillText("Arrows/WASD move · SPACE interact · 1-4 answer · M mute" + (getSave() ? " · R reset save" : ""), CANVAS_W / 2, 560);
+  const veil = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+  veil.addColorStop(0, "rgba(3,8,22,0.94)");
+  veil.addColorStop(0.48, "rgba(3,8,22,0.76)");
+  veil.addColorStop(1, "rgba(3,8,22,0.92)");
+  ctx.fillStyle = veil; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  // Quiet CRT scanlines bind the office art and UI into one 16-bit surface.
+  ctx.fillStyle = "rgba(148,163,184,0.035)";
+  for (let y = 1; y < CANVAS_H; y += 4) ctx.fillRect(0, y, CANVAS_W, 1);
+
+  // League masthead: deliberately asymmetric terminal labels around the centred mark.
+  ctx.textBaseline = "alphabetic";
+  ctx.font = "bold 11px monospace"; ctx.textAlign = "left"; ctx.fillStyle = teal;
+  ctx.fillText("CLAUDE ARCHITECT LEAGUE", 30, 38);
+  ctx.textAlign = "right"; ctx.fillStyle = "#94a3b8";
+  ctx.fillText("FIELD SIMULATION // 2026", CANVAS_W - 30, 38);
+  ctx.fillStyle = "rgba(148,163,184,0.28)"; ctx.fillRect(30, 49, CANVAS_W - 60, 1);
+  ctx.fillStyle = teal; ctx.fillRect(30, 48, 92, 3);
+
+  // Logo with a one-pixel coral registration shadow, like a misaligned print layer.
+  ctx.textAlign = "center"; ctx.font = "bold 76px monospace";
+  ctx.fillStyle = coral; ctx.fillText("DATAMON", CANVAS_W / 2 + 3, 151 + 3);
+  ctx.fillStyle = accent; ctx.fillText("DATAMON", CANVAS_W / 2, 151);
+  ctx.fillStyle = "#f4ead7"; ctx.font = "bold 15px monospace";
+  ctx.fillText("GOTTA CERT 'EM ALL", CANVAS_W / 2, 181);
+  ctx.fillStyle = "#94a3b8"; ctx.font = "11px monospace";
+  ctx.fillText("A CLAUDE CODE FOUNDATIONS FIELD EXERCISE", CANVAS_W / 2, 202);
+
+  // Candidate dossier: progress is part of the world, not a generic percentage card.
+  const bx = 214, by = 234, bw = 372, bh = 102;
+  ctx.fillStyle = "rgba(7,16,35,0.92)"; ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = save ? teal : "#475569"; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+  ctx.fillStyle = save ? teal : accent; ctx.fillRect(bx, by, 7, bh);
+  ctx.textAlign = "left"; ctx.fillStyle = "#94a3b8"; ctx.font = "bold 10px monospace";
+  ctx.fillText(save ? "ACTIVE CANDIDATE DOSSIER" : "NEW CANDIDATE DOSSIER", bx + 22, by + 25);
+  ctx.fillStyle = "#f8fafc"; ctx.font = "bold 16px monospace";
+  ctx.fillText(save ? displayName(save.player) : "UNREGISTERED CONSULTANT", bx + 22, by + 48);
+  ctx.fillStyle = "#17233b"; ctx.fillRect(bx + 22, by + 65, bw - 44, 10);
+  if (save) {
+    ctx.fillStyle = teal; ctx.fillRect(bx + 22, by + 65, (bw - 44) * (wins / Math.max(1, ROSTER.length - 1)), 10);
+  }
+  ctx.fillStyle = "#94a3b8"; ctx.font = "10px monospace";
+  ctx.fillText(save ? `${wins}/${ROSTER.length - 1} CONSULTANTS BESTED` : "FIVE DOMAINS AWAIT CERTIFICATION", bx + 22, by + 91);
+
+  // One orchestrated call-to-action instead of scattered blinking decorations.
+  const pulse = 0.58 + Math.sin(frame / 14) * 0.22;
+  const ctaX = 258, ctaY = 365, ctaW = 284, ctaH = 48;
+  ctx.fillStyle = `rgba(251,191,36,${0.10 + pulse * 0.08})`; ctx.fillRect(ctaX, ctaY, ctaW, ctaH);
+  ctx.globalAlpha = pulse; ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.strokeRect(ctaX, ctaY, ctaW, ctaH); ctx.globalAlpha = 1;
+  ctx.textAlign = "center"; ctx.fillStyle = "#f8fafc"; ctx.font = "bold 14px monospace";
+  ctx.fillText(save ? "ENTER  /  RESUME FIELD RUN" : "ENTER  /  REGISTER CANDIDATE", CANVAS_W / 2, ctaY + 30);
+
+  // Roster rail: a restrained moving cast reveal anchored to a real system label.
+  ctx.fillStyle = "rgba(7,16,35,0.90)"; ctx.fillRect(0, 454, CANVAS_W, 91);
+  ctx.fillStyle = "rgba(148,163,184,0.25)"; ctx.fillRect(0, 453, CANVAS_W, 1);
+  ctx.textAlign = "left"; ctx.fillStyle = coral; ctx.font = "bold 9px monospace";
+  ctx.fillText(`ROSTER LINK // ${ROSTER.length} CONSULTANTS ONLINE`, 18, 468);
+  for (let i = 0; i < ROSTER.length; i++) {
+    const x = ((i * 57 + frame * 0.35) % (CANVAS_W + 70)) - 42;
+    const bob = Math.sin((frame + i * 19) / 17) * 2;
+    const mini = spriteMini(ROSTER[i], 50);
+    if (mini) ctx.drawImage(mini, px(x), px(481 + bob), 50, 50);
+    else ctx.drawImage(pixelHead(ROSTER[i], 40), px(x + 5), px(486 + bob), 40, 40);
+  }
+
+  ctx.fillStyle = "#64748b"; ctx.font = "10px monospace"; ctx.textAlign = "center";
+  ctx.fillText("ARROWS / WASD  MOVE    SPACE  INTERACT    1–4  ANSWER    M  AUDIO" + (save ? "    R  RESET" : ""), CANVAS_W / 2, 580);
 }
 
 // --- Character select: grid left, animated showcase panel right ---
@@ -2454,6 +2523,7 @@ function setSelect(i, silent) {
   if (i === selectIdx) return;
   selectIdx = i;
   selChangedAt = frame;
+  loadWalkAnim(ROSTER[selectIdx]); // browsing doubles as a tiny, deduplicated prefetch
   if (!silent) sfx.select();
 }
 
@@ -2638,7 +2708,7 @@ function drawSelect() {
   ctx.fillText(DIFF_BLURB[difficulty], dx0 + (rects[2][0] + rects[2][2] - dx0) / 2, dyTop + rects[0][3] + 16);
 
   ctx.fillStyle = "#64748b"; ctx.font = "13px monospace"; ctx.textAlign = "center";
-  ctx.fillText("Arrows or mouse to browse · TAB sets difficulty · ENTER / click to pick a rival!",
+  ctx.fillText("Arrows or mouse to browse · TAB sets difficulty · ENTER / click to choose your consultant",
     CANVAS_W / 2, CANVAS_H - 20);
 }
 
@@ -3537,7 +3607,10 @@ ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets(), loadBooks(), loadPairs(), loadCloze(), loadDiagrams(), loadWalkAnim()]).then(() => {
+// Prewarm only the saved player without delaying the title screen. A new run preloads its
+// highlighted character when character select opens.
+loadWalkAnim(getSave()?.player);
+Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets(), loadBooks(), loadPairs(), loadCloze(), loadDiagrams()]).then(() => {
   officeMapCv = buildMapCanvas();         // reads global map (= OFFICE_MAP) — must run while currentMap is office
   libraryMapCv = buildLibraryMapCanvas(); // reads LIBRARY_MAP directly
   mapCv = officeMapCv;

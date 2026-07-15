@@ -212,8 +212,9 @@ output `easy`/`normal`/`hard` (i.e. `medium` → `normal`).
 
 The moving player animates with **real 4-direction walk-cycle frames** in
 `sprites-walk/<slug>/{down,up,left,right}_{0..3}.png` (left contact, passing, right contact, passing),
-generated per character by `tools/gen_walk_assets.py` and loaded for the whole roster at
-boot. `drawCharacter()` picks the sheet by facing and advances it on a dedicated,
+generated per character by `tools/gen_walk_assets.py`. All 29 sets are available, but only
+the selected/saved player's 16 frames are lazy-loaded (rather than blocking boot on 464 PNGs).
+`drawCharacter()` picks the sheet by facing and advances it on a dedicated,
 frame-rate-independent animation clock (**9 FPS walking, 13 FPS running**); idle shows frame
 0, so a standing character is perfectly still. The physical `gaitPhase` remains distance-locked
 for footstep dust, shadows, and the procedural fallback. Frames are HQ-downscaled once per

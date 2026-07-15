@@ -26,6 +26,16 @@ restart: stop play
 status:
     @lsof -i :{{port}} >/dev/null 2>&1 && echo "DATAMON is running at {{url}}" || echo "DATAMON is not running."
 
-# Deploy the game to Cloudflare Pages (https://datamon.pages.dev)
+# Deploy a clean tracked snapshot to Cloudflare Pages (dev => preview, main => production)
 deploy:
-    npx wrangler pages deploy datamon --project-name=datamon --commit-dirty=true
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tmp="$(mktemp -d)"
+    trap 'rm -rf "$tmp"' EXIT
+    git archive HEAD:datamon | tar -x -C "$tmp"
+    npx wrangler pages deploy "$tmp" \
+      --project-name=datamon \
+      --branch="$(git branch --show-current)" \
+      --commit-hash="$(git rev-parse HEAD)" \
+      --commit-message="$(git log -1 --pretty=%s)" \
+      --commit-dirty=false
