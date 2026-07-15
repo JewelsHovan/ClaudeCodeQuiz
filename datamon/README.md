@@ -210,11 +210,44 @@ output `easy`/`normal`/`hard` (i.e. `medium` → `normal`).
 
 ## Overworld walk/run animation
 
-The overworld player animates by **procedurally deforming its own per-character `spriteMini`
-sprite** every frame — there is no shared/generic body rig and no extra art assets. Each
-character keeps its individual pixel art; the motion comes from canvas affine transforms in
-`drawCharacter()`. NPCs (integer-only positions, never `moving`) and the idle player are
-rendered perfectly still (bob=0, sway=0, scaleX=scaleY=1).
+The moving player animates with **real 4-direction walk-cycle frames** in
+`sprites-walk/<slug>/{down,up,left,right}_{0..3}.png` (left contact, passing, right contact, passing),
+generated per character by `tools/gen_walk_assets.py` and loaded for the whole roster at
+boot. `drawCharacter()` picks the sheet by facing and advances it on a dedicated,
+frame-rate-independent animation clock (**9 FPS walking, 13 FPS running**); idle shows frame
+0, so a standing character is perfectly still. The physical `gaitPhase` remains distance-locked
+for footstep dust, shadows, and the procedural fallback. Frames are HQ-downscaled once per
+device size (`walkMini`) so thin legs stay crisp under the nearest-neighbour canvas.
+
+### Regenerating walk frames
+
+```bash
+# One character with the latest configured GPT Image 2 model (3 calls; needs OPENAI_API_KEY):
+uv run --script datamon/tools/gen_walk_assets.py --only <slug> --force --refresh --provider openai
+
+# Everyone missing from sprites-walk/ using the cheaper Gemini route:
+uv run --script datamon/tools/gen_walk_assets.py --gen --provider gemini
+
+# Re-slice/bake from the cached raw sheets in .walk-gen-cache/ (no API):
+uv run --script datamon/tools/gen_walk_assets.py --pipeline-only
+```
+
+Each walk cycle is generated as a **single 4-frame sprite-sheet image** (all frames share
+identity/lighting by construction — separate generations drift), on a magenta bg for keying.
+Three sheets cover four directions: the side sheet walks right; `left_*` is its mirror,
+baked to files because the game loads explicit per-direction frames. The deterministic
+slice step keys the background, strips residual ground lines, finds the four largest complete
+character components across the whole sheet (so wide strides are not clipped at quarter
+boundaries), sorts them left-to-right, and feet-aligns them into 240px-tall cells. Eyeball
+`.walk-gen-cache/<slug>-review.png` after generating; a side sheet that came out walking left
+can be re-baked with `--mirror-side <slug>`.
+
+### Procedural fallback (any slug without frames)
+
+Characters lacking walk frames fall back to **procedurally deforming their own
+per-character `spriteMini` sprite** — no shared body rig. NPCs (integer-only positions,
+never `moving`) and the idle player are rendered perfectly still (bob=0, sway=0,
+scaleX=scaleY=1).
 
 Deformation (moving player only), driven by the gait phase `p = gaitPhase`:
 

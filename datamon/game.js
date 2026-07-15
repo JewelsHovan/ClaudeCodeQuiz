@@ -279,6 +279,7 @@ const sprites = {};     // slug -> generated pixel-art trainer sprite (or null)
 const tileStore = {};   // slug -> 32px office tile HTMLImageElement (or null on error)
 const pixelCache = {};  // slug+size -> canvas
 const miniCache = {};   // slug+size -> downscaled sprite canvas
+const walkMiniCache = {}; // walk-frame key+devicesize -> HQ-downscaled canvas
 
 function loadOne(src, store, slug) {
   return new Promise(resolve => {
@@ -295,6 +296,25 @@ function loadImages() {
     loadOne(`portraits/${slug}.png`, portraits, slug),  // #022: pixel-art bust; falls back to photo
     loadOne(`sprites/${slug}.png`, sprites, slug),
   ]));
+}
+
+// AI-generated 4-direction walk-cycle frames (PRD: real walk/run animation). Each animated
+// slug has sprites-walk/<slug>/<dir>_<0..3>.png (dir ∈ down/up/left/right, 4-frame cycle:
+// left contact, passing, right contact, passing). L/R art is baked facing the desired way.
+// Missing files resolve to gaps -> drawCharacter falls back to the spriteMini path, never throws.
+const walkAnim = {};                      // slug -> {down:[img×4], up:[...], left:[...], right:[...]}
+const WALK_SLUGS = ROSTER;               // full roster (batch-generated via tools/gen_walk_assets.py)
+const WALK_DIRS = ["down", "up", "left", "right"];
+function loadWalkAnim() {
+  return Promise.all(WALK_SLUGS.flatMap(slug => {
+    walkAnim[slug] = { down: [], up: [], left: [], right: [] };
+    return WALK_DIRS.flatMap(dir => [0, 1, 2, 3].map(i => new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => { walkAnim[slug][dir][i] = img; resolve(); };
+      img.onerror = () => { resolve(); };   // gap -> spriteMini fallback
+      img.src = `sprites-walk/${slug}/${dir}_${i}.png`;
+    })));
+  }));
 }
 
 // GBA-style office tiles (32px) -> tileStore, for the tile-based renderer (ticket #003).
@@ -410,6 +430,24 @@ function spriteMini(slug, size) {
   return cv;
 }
 
+// Like spriteMini but for a non-square walk frame: HQ-downscale the high-res frame to the
+// target DEVICE size once, cached. The main ctx (smoothing OFF, for crisp tiles) then blits
+// it at 1:1, so thin legs antialias cleanly instead of breaking up under nearest-neighbour.
+function walkMini(img, key, W, H) {
+  const dw = Math.max(1, Math.round(W * scale));
+  const dh = Math.max(1, Math.round(H * scale));
+  const ck = key + ":" + dw + "x" + dh;
+  if (walkMiniCache[ck]) return walkMiniCache[ck];
+  const cv = document.createElement("canvas");
+  cv.width = dw; cv.height = dh;
+  const c = cv.getContext("2d");
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = "high";
+  c.drawImage(img, 0, 0, dw, dh);
+  walkMiniCache[ck] = cv;
+  return cv;
+}
+
 // Square-crop to n x n. Generated FE-style portraits (#022) are already palette-quantized
 // pixel art and arrive face-framed, so we downscale them with HIGH-QUALITY filtering (a clean
 // miniature; nearest would alias the 256px source into noise) and only a tiny top bias. The
@@ -494,8 +532,10 @@ let officeMapCv = null;  // pre-rendered office map — built once at boot
 let libraryMapCv = null; // pre-rendered library map — built once at boot
 let battleGrad = null; // battle backdrop gradient — built once at boot
 let stepStartFx = 0, stepStartFy = 0, stepT = 1; // eased-step progress (0..1); 1 = idle
-let gaitPhase = 0; // gait cycle phase (radians); advanced by eased travel, reset when idle
+let gaitPhase = 0; // physical gait phase (radians); distance-locked for shadows/dust/fallback
 let prevE = 0;     // previous frame's eased step progress; drives slide-free gait delta
+let walkAnimPhase = 0; // sprite-frame phase in frames; time-based so 4-frame art does not flicker
+const WALK_ANIM_FPS = 9, RUN_ANIM_FPS = 13;
 // Footfall dust (PRD 004 / #017). World-space puffs spawned at each gait contact crossing
 // while the player moves; ticked + pruned every frame so the array never grows unbounded.
 // {x,y in tile coords; dx,dy drift in tiles/frame; life counts down to 0 then pruned}.
@@ -1168,7 +1208,8 @@ function updateOverworld(dt) {
     stepT = Math.min(1, stepT + speed * dt);              // speed=7.5/12.5 → walk/run cadence
     const e = stepT * stepT * (3 - 2 * stepT);            // smoothstep ease-in/out
     const prevGait = gaitPhase;                           // remember phase before advancing
-    gaitPhase += Math.abs(e - prevE) * Math.PI * 2;       // gait tracks eased travel → no foot-slide
+    gaitPhase += Math.abs(e - prevE) * Math.PI * 2;       // physical effects track eased travel
+    walkAnimPhase += dt * (player.running ? RUN_ANIM_FPS : WALK_ANIM_FPS);
     prevE = e;
     // Footfall contact = descending zero-crossing of sin(2*phase) (two per gait cycle = L/R
     // foot). Spawn a small dust burst there: 2 walking, 4 running. World-space, near the feet.
@@ -1193,7 +1234,7 @@ function updateOverworld(dt) {
     }
     return;
   }
-  gaitPhase = 0; prevE = 0;
+  gaitPhase = 0; walkAnimPhase = 0; prevE = 0;
   let dir = null;
   if (keys["ArrowUp"] || keys["w"]) dir = "up";
   else if (keys["ArrowDown"] || keys["s"]) dir = "down";
@@ -2324,6 +2365,27 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove) {
   // covers anything behind it — no clip needed. (The previous clip-to-tile truncated
   // 44–58px sprites to 32px whenever a wall sat above, decapitating them — the
   // "headless legs near walls" bug. Removed.)
+  // Real 4-direction walk/run frames (when available for this slug). The frames ARE the
+  // animation, so skip the procedural squash/sway/bob deform entirely. Sprite playback uses
+  // a capped time-based frame phase (9 FPS walk / 13 FPS run); tying four frames to each
+  // 7.5/12.5 tiles-per-second step made them flash at 30/50 FPS. Idle shows frame 0. Drawn
+  // bottom-centre, feet at footY, preserving the portrait aspect ratio. Player-only for now.
+  const anim = isPlayer ? walkAnim[slug] : null;
+  if (anim) {
+    const frames = (anim[dir] && anim[dir].length === 4) ? anim[dir] : anim.down;
+    if (frames && frames.length) {
+      const fi = player.moving ? (Math.floor(walkAnimPhase) % 4) : 0;
+      const fimg = frames[fi] || frames[0];
+      if (fimg) {
+        const H = baseSize;                          // match overworld character height
+        const W = H * (fimg.width / fimg.height);    // preserve portrait aspect (no stretch)
+        const m = walkMini(fimg, `${slug}:${dir}:${fi}`, W, H);   // HQ downscale (no NN aliasing)
+        ctx.drawImage(m, px(cx - W / 2), px(footY - H), W, H);
+        return;
+      }
+    }
+  }
+
   const mini = spriteMini(slug, baseSize);
   if (mini) {
     // Foot-anchored affine: translate to the feet, scale about that point, draw upward.
@@ -3475,7 +3537,7 @@ ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets(), loadBooks(), loadPairs(), loadCloze(), loadDiagrams()]).then(() => {
+Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets(), loadBooks(), loadPairs(), loadCloze(), loadDiagrams(), loadWalkAnim()]).then(() => {
   officeMapCv = buildMapCanvas();         // reads global map (= OFFICE_MAP) — must run while currentMap is office
   libraryMapCv = buildLibraryMapCanvas(); // reads LIBRARY_MAP directly
   mapCv = officeMapCv;
