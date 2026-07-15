@@ -1,0 +1,292 @@
+[
+  {
+    "slug": "book-domain1",
+    "file": "book-domain1.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "book-domain2",
+    "file": "book-domain2.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "book-domain3",
+    "file": "book-domain3.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "book-domain4",
+    "file": "book-domain4.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "book-domain5",
+    "file": "book-domain5.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "bookshelf",
+    "file": "bookshelf.png",
+    "widthPx": 32,
+    "heightPx": 96,
+    "tileW": 1,
+    "tileH": 3,
+    "anchorX": 0,
+    "anchorY": 64
+  },
+  {
+    "slug": "lib-carrel-assembly",
+    "file": "lib-carrel-assembly.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "lib-carrel-cloze",
+    "file": "lib-carrel-cloze.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "lib-carrel-match",
+    "file": "lib-carrel-match.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "lib-carrel-timed",
+    "file": "lib-carrel-timed.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "lib-diagram-domain1-agentic-architecture-orchestration-1",
+    "file": "lib-diagram-domain1-agentic-architecture-orchestration-1.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-domain1-agentic-architecture-orchestration-2",
+    "file": "lib-diagram-domain1-agentic-architecture-orchestration-2.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-exam-cheat-sheet-1",
+    "file": "lib-diagram-exam-cheat-sheet-1.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-exam-cheat-sheet-2",
+    "file": "lib-diagram-exam-cheat-sheet-2.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-exam-cheat-sheet-3",
+    "file": "lib-diagram-exam-cheat-sheet-3.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-exam-cheat-sheet-4",
+    "file": "lib-diagram-exam-cheat-sheet-4.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-exam-cheat-sheet-5",
+    "file": "lib-diagram-exam-cheat-sheet-5.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-exam-cheat-sheet-6",
+    "file": "lib-diagram-exam-cheat-sheet-6.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-exam-cheat-sheet-7",
+    "file": "lib-diagram-exam-cheat-sheet-7.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-diagram-mcp-deep-dive-1",
+    "file": "lib-diagram-mcp-deep-dive-1.png",
+    "widthPx": 64,
+    "heightPx": 64,
+    "tileW": 2,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 32
+  },
+  {
+    "slug": "lib-door",
+    "file": "lib-door.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "lib-floor-a",
+    "file": "lib-floor-a.png",
+    "widthPx": 32,
+    "heightPx": 32,
+    "tileW": 1,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "lib-floor-b",
+    "file": "lib-floor-b.png",
+    "widthPx": 32,
+    "heightPx": 32,
+    "tileW": 1,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "lib-floor-c",
+    "file": "lib-floor-c.png",
+    "widthPx": 32,
+    "heightPx": 32,
+    "tileW": 1,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "lib-lamp",
+    "file": "lib-lamp.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "lib-plant",
+    "file": "lib-plant.png",
+    "widthPx": 32,
+    "heightPx": 48,
+    "tileW": 1,
+    "tileH": 2,
+    "anchorX": 0,
+    "anchorY": 16
+  },
+  {
+    "slug": "lib-rug",
+    "file": "lib-rug.png",
+    "widthPx": 32,
+    "heightPx": 32,
+    "tileW": 1,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "lib-table",
+    "file": "lib-table.png",
+    "widthPx": 64,
+    "heightPx": 32,
+    "tileW": 2,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  },
+  {
+    "slug": "lib-wall",
+    "file": "lib-wall.png",
+    "widthPx": 32,
+    "heightPx": 32,
+    "tileW": 1,
+    "tileH": 1,
+    "anchorX": 0,
+    "anchorY": 0
+  }
+]
