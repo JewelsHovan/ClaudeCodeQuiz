@@ -358,7 +358,10 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     expect(timing.seeded).toBe(true);
     expect(timing.clock).toEqual({ mocked: true, timestamp: 1000250 });
     expect(timing.dateNow).toBe(1000250);
-    expect(timing.animationTimestamp).toBeGreaterThanOrEqual(timing.performanceBefore);
+    // Browsers may stamp the animation frame just before this task sampled performance.now().
+    // They must remain in the same real monotonic clock domain, not be exactly ordered.
+    expect(timing.animationTimestamp).toBeGreaterThan(0);
+    expect(Math.abs(timing.animationTimestamp - timing.performanceBefore)).toBeLessThan(100);
     expect(timing.frame).toBeGreaterThanOrEqual(0);
 
     await page.evaluate(() => {
