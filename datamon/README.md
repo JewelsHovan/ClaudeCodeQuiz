@@ -328,10 +328,16 @@ just deploy
 The command rejects detached, dirty (including untracked), unpushed, or non-`dev`/`main`
 state; runs the complete check once; verifies the unchanged payload manifest/SHA; deploys
 that exact `dist/`; then smoke-tests the branch alias and expected commit. No deployment is
-performed by `just check`. Public milestone deployment also requires an explicit decision
-about access/privacy for the colleague names and likeness assets currently used by the game.
+performed by `just check`.
 
-An existing artifact can be checked independently:
+DATAMON is an **internal Compass Data + AI application** because it uses colleague names and
+likenesses. Cloudflare Zero Trust Access must protect both `datamon.pages.dev` and wildcard
+preview hosts (`*.datamon.pages.dev`) with the organization employee group. Automation uses
+the service token in `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`. Remote smoke first
+proves an unauthenticated client is challenged, then proves the service token can load the
+expected artifact and title screen; a publicly reachable HTTP 200 fails deployment.
+
+An existing protected artifact can be checked independently:
 
 ```bash
 just remote-smoke https://dev.datamon.pages.dev/ <full-commit-sha>
