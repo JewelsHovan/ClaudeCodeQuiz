@@ -52,17 +52,29 @@ async function fetchMetadata() {
 
 async function verifyRuntimeBytes(metadata) {
   for (const file of RUNTIME_FILES) {
-    const localPath = path.join(DIST, file);
-    if (!fs.existsSync(localPath)) throw new Error(`checked artifact is missing dist/${file}`);
-    const remoteUrl = new URL(file, url);
-    remoteUrl.searchParams.set("artifact", metadata.payloadSha256);
-    const response = await fetch(remoteUrl, { cache: "no-store" });
-    if (!response.ok) throw new Error(`public runtime ${file} returned HTTP ${response.status}`);
-    const remote = Buffer.from(await response.arrayBuffer());
-    const local = fs.readFileSync(localPath);
-    if (!remote.equals(local)) throw new Error(`public runtime ${file} does not match checked dist/${file}`);
+    if (!fs.existsSync(path.join(DIST, file))) throw new Error(`checked artifact is missing dist/${file}`);
   }
-  console.log(`Runtime bytes passed: ${RUNTIME_FILES.length} public files match checked dist/`);
+  let lastError;
+  for (let attempt = 1; attempt <= 8; attempt++) {
+    try {
+      for (const file of RUNTIME_FILES) {
+        const remoteUrl = new URL(file, url);
+        // A unique probe avoids one edge response masking convergence elsewhere.
+        remoteUrl.searchParams.set("artifact", `${metadata.payloadSha256}-${attempt}`);
+        const response = await fetch(remoteUrl, { cache: "no-store" });
+        if (!response.ok) throw new Error(`public runtime ${file} returned HTTP ${response.status}`);
+        const remote = Buffer.from(await response.arrayBuffer());
+        const local = fs.readFileSync(path.join(DIST, file));
+        if (!remote.equals(local)) throw new Error(`public runtime ${file} does not match checked dist/${file}`);
+      }
+      console.log(`Runtime bytes passed: ${RUNTIME_FILES.length} public files match checked dist/`);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 8) await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+    }
+  }
+  throw lastError;
 }
 
 await verifyPublicBoundary();
