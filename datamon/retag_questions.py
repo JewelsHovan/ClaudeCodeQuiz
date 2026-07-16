@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""One-time build script: re-tag datamon/questions.js with a `d` difficulty field.
+"""One-time build script: re-tag datamon/questions.js with a `d` difficulty field
+and validate unique stable `id` fields.
 
 The datamon question bank (`datamon/questions.js`) holds condensed, REWRITTEN
 versions of the source exam questions in `quiz/bank/domain{1..5}.json` — they are
@@ -12,9 +13,11 @@ and defaults to "medium" when no match clears the threshold.
 
 Invariants:
   * Never drops a question (asserts per-category and total counts unchanged).
-  * Preserves the existing q/c/a/x key shape; adds `d` as the last key.
+  * Preserves the existing id/q/c/a/x key shape; adds `d` as the last key.
   * Only the QUESTION_BANK object is rewritten — header comment and the trailing
     MON_NAMES / BATTLE_INTROS / WIN_QUOTES / LOSE_QUOTES blocks are kept verbatim.
+  * IDs are stable and immutable: they do NOT depend on array position.
+    Reordering questions must preserve their IDs unchanged.
 
 Run from repo root:  uv run python datamon/retag_questions.py
 """
@@ -166,6 +169,7 @@ def top_matches(q: dict, bank: list, idf: dict, n: int = 3):
 
 
 def main() -> int:
+    check_mode = "--check" in sys.argv
     dry_run = "--dry-run" in sys.argv
     raw = QUESTIONS_JS.read_text(encoding="utf-8")
 
@@ -191,6 +195,88 @@ def main() -> int:
     for cat, dom in CATEGORY_DOMAIN.items():
         banks[cat] = json.loads((REPO / "quiz" / "bank" / f"{dom}.json").read_text(encoding="utf-8"))
         idfs[cat] = build_idf(banks[cat])
+
+    if check_mode:
+        print("=== retag_questions.py --check ===")
+        errors = 0
+        # Validate IDs: unique category-prefixed ^[a-z]+-[0-9]{3}$ only.
+        # IDs are IMMUTABLE under reorder — position is irrelevant.
+        import re as id_re
+        id_pat = id_re.compile(r"^[a-z]+-[0-9]{3}$")
+        id_set = set()
+        for cat in CATEGORY_ORDER:
+            qs = categories[cat]
+            expected_prefix = cat.lower()
+            for i, q in enumerate(qs):
+                qid = q.get("id", "")
+                if not qid:
+                    print(f"ERROR: {cat}[{i}] missing id")
+                    errors += 1
+                elif not id_pat.match(qid):
+                    print(f"ERROR: {cat}[{i}] invalid id format: {qid} (expected {expected_prefix}-NNN)")
+                    errors += 1
+                elif qid in id_set:
+                    print(f"ERROR: {cat}[{i}] duplicate id: {qid}")
+                    errors += 1
+                else:
+                    id_set.add(qid)
+
+        total = sum(len(categories[c]) for c in CATEGORY_ORDER)
+        if len(id_set) != total:
+            print(f"ERROR: ID count mismatch: {len(id_set)} unique vs {total} questions")
+            errors += 1
+        if total != 120:
+            print(f"ERROR: total question count {total} != 120")
+            errors += 1
+        # Validate category counts
+        for cat in CATEGORY_ORDER:
+            if len(categories[cat]) != 24:
+                print(f"ERROR: {cat} has {len(categories[cat])} questions (expected 24)")
+                errors += 1
+        # Validate all entries have required fields in correct order
+        for cat in CATEGORY_ORDER:
+            for i, q in enumerate(categories[cat]):
+                for field in ("id", "q", "c", "a", "x", "d"):
+                    if field not in q:
+                        print(f"ERROR: {cat}[{i}] missing field {field}")
+                        errors += 1
+                if not isinstance(q.get("c"), list) or len(q.get("c", [])) != 4:
+                    print(f"ERROR: {cat}[{i}] choices must be list of 4")
+                    errors += 1
+                if not isinstance(q.get("a"), int) or not (0 <= q.get("a", -1) < len(q.get("c", []))):
+                    print(f"ERROR: {cat}[{i}] invalid answer index")
+                    errors += 1
+                if q.get("d") not in ("easy", "medium", "hard"):
+                    print(f"ERROR: {cat}[{i}] invalid difficulty: {q.get('d')}")
+                    errors += 1
+
+        if errors:
+            print(f"\n{errors} error(s) found. Run without --check to re-tag.")
+            return 1
+
+        # Reorder-probe: prove IDs are immutable under reorder.
+        # Reverse AGENT array and verify every ID is unchanged.
+        agent_qs = categories["AGENT"]
+        agent_ids_orig = [q.get("id", "") for q in agent_qs]
+        agent_reversed = list(reversed(agent_qs))
+        agent_ids_rev = [q.get("id", "") for q in agent_reversed]
+        agent_ids_expected_rev = list(reversed(agent_ids_orig))
+        if agent_ids_rev != agent_ids_expected_rev:
+            print("ERROR: reorder-probe failed — IDs do not survive reorder")
+            for i, (got, exp) in enumerate(zip(agent_ids_rev, agent_ids_expected_rev)):
+                if got != exp:
+                    print(f"  reversed[{i}]: got {got}, expected {exp}")
+            errors += 1
+        else:
+            print("Reorder-probe passed: IDs are stable under array reorder.")
+            print(f"  AGENT[0] id={agent_ids_orig[0]}, AGENT[23] id={agent_ids_orig[23]}")
+            print(f"  reversed AGENT[0] id={agent_ids_rev[0]} (was AGENT[23])")
+
+        if errors:
+            print(f"\n{errors} error(s) found. Run without --check to re-tag.")
+            return 1
+        print(f"All checks passed: {total} questions, {len(id_set)} unique IDs, 5 categories × 24.")
+        return 0
 
     if dry_run:
         for cat in CATEGORY_ORDER:
@@ -231,9 +317,9 @@ def main() -> int:
     total_out = sum(counts_out.values())
     assert total_in == total_out, "total count drift"
 
-    # Re-emit. Compact one-line-per-entry; key order q,c,a,x,d.
+    # Re-emit. Compact one-line-per-entry; key order id,q,c,a,x,d.
     def emit_entry(q: dict) -> str:
-        ordered = {"q": q["q"], "c": q["c"], "a": q["a"], "x": q.get("x", ""), "d": q["d"]}
+        ordered = {"id": q.get("id", ""), "q": q["q"], "c": q["c"], "a": q["a"], "x": q.get("x", ""), "d": q["d"]}
         return json.dumps(ordered, ensure_ascii=False, separators=(",", ":"))
 
     parts = [head, "const QUESTION_BANK = {\n"]

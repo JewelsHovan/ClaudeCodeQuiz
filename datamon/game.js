@@ -2,13 +2,13 @@
 // DATAMON — a data & AI consulting firm's pokemon-like.
 // CLAUDE CODE FOUNDATIONS EDITION: walk the office, battle
 // colleagues, answer Claude Certified Architect Foundations
-// exam questions to win. Headshots from headshots/ are
-// pixelated at runtime to make the sprites.
+// exam questions to win. Runtime identity art uses packaged
+// pixel portraits or initials; raw headshots are never requested.
 // ============================================================
 
 "use strict";
 
-// ---------- Roster (matches headshots/ and sprites/) ----------
+// ---------- Roster (matches portraits/ and sprites/) ----------
 const ROSTER = [
   "alex-andrianavalontsalama", "antonia-nistor", "aurelien-bouffanais",
   "dana-domanko", "duc-an-nguyen", "emile-moffatt", "ethan-pirso",
@@ -32,6 +32,9 @@ const VIEW_W = 25, VIEW_H = 19;          // tiles visible
 const CANVAS_W = VIEW_W * TILE;          // 800
 const CANVAS_H = VIEW_H * TILE;          // 608
 const HUD_BOTTOM = 72;                    // bottom of the top-left HUD box (8 + 64)
+const MAP_DETAIL_SCALE = (typeof DatamonWorldArt !== "undefined")
+  ? DatamonWorldArt.detailScale(window.devicePixelRatio || 1)
+  : 1;
 // Camera over-scroll: allow the top edge to scroll this many tiles PAST the map so the
 // top row never clamps up under the opaque top-left HUD. Sized to the HUD height (in tiles)
 // so map content always renders at/below the HUD's bottom edge — the exposed top strip is
@@ -273,12 +276,17 @@ const sfx = {
 };
 
 // ---------- Image loading & pixelation ----------
-const headshots = {};   // slug -> real-photo HTMLImageElement (or null on error)
-const portraits = {};   // slug -> generated pixel-art bust portrait (#022) (or null on error)
 const sprites = {};     // slug -> generated pixel-art trainer sprite (or null)
 const tileStore = {};   // slug -> 32px office tile HTMLImageElement (or null on error)
-const pixelCache = {};  // slug+size -> canvas
+const pixelCache = {};  // slug+size -> canvas (initials are invalidated when portrait arrives)
 const miniCache = {};   // slug+size -> downscaled sprite canvas
+if (typeof DatamonWorldArt !== "undefined") {
+  DatamonWorldArt.onPortraitLoaded(function(slug) {
+    for (const key of Object.keys(pixelCache)) {
+      if (key.startsWith(slug + ":")) delete pixelCache[key];
+    }
+  });
+}
 const walkMiniCache = {}; // walk-frame key+devicesize -> HQ-downscaled canvas
 
 function loadOne(src, store, slug) {
@@ -291,30 +299,35 @@ function loadOne(src, store, slug) {
 }
 
 function loadImages() {
-  return Promise.all(ROSTER.flatMap(slug => [
-    loadOne(`headshots/${slug}.png`, headshots, slug),
-    loadOne(`portraits/${slug}.png`, portraits, slug),  // #022: pixel-art bust; falls back to photo
-    loadOne(`sprites/${slug}.png`, sprites, slug),
-  ]));
+  // Headshots are never requested at runtime (privacy/package guard #044).
+  // Portraits are lazy-loaded via DatamonWorldArt on first use.
+  // Sprites remain eager (needed for overworld NPC rendering).
+  return Promise.all(ROSTER.map(slug =>
+    loadOne(`sprites/${slug}.png`, sprites, slug)
+  ));
 }
 
 // AI-generated 4-direction walk-cycle frames (PRD: real walk/run animation). Each animated
 // slug has sprites-walk/<slug>/<dir>_<0..3>.png (dir ∈ down/up/left/right, 4-frame cycle:
 // left contact, passing, right contact, passing). L/R art is baked facing the desired way.
-// Missing files resolve to gaps -> drawCharacter falls back to the spriteMini path, never throws.
-const walkAnim = {};                      // slug -> {down:[img×4], up:[...], left:[...], right:[...]}
-const WALK_SLUGS = ROSTER;               // full roster (batch-generated via tools/gen_walk_assets.py)
+// Only the player uses these frames, so load one slug on demand instead of blocking boot on
+// all 464 PNGs. Missing files leave gaps and drawCharacter falls back safely to spriteMini.
+const walkAnim = {};      // slug -> {down:[img×4], up:[...], left:[...], right:[...]}
+const walkAnimLoads = {}; // slug -> in-flight/completed Promise (deduplicates hover/preload)
 const WALK_DIRS = ["down", "up", "left", "right"];
-function loadWalkAnim() {
-  return Promise.all(WALK_SLUGS.flatMap(slug => {
-    walkAnim[slug] = { down: [], up: [], left: [], right: [] };
-    return WALK_DIRS.flatMap(dir => [0, 1, 2, 3].map(i => new Promise(resolve => {
+function loadWalkAnim(slug) {
+  if (!slug || !ROSTER.includes(slug)) return Promise.resolve();
+  if (walkAnimLoads[slug]) return walkAnimLoads[slug];
+  walkAnim[slug] = { down: [], up: [], left: [], right: [] };
+  walkAnimLoads[slug] = Promise.all(WALK_DIRS.flatMap(dir =>
+    [0, 1, 2, 3].map(i => new Promise(resolve => {
       const img = new Image();
       img.onload = () => { walkAnim[slug][dir][i] = img; resolve(); };
-      img.onerror = () => { resolve(); };   // gap -> spriteMini fallback
+      img.onerror = () => { resolve(); };
       img.src = `sprites-walk/${slug}/${dir}_${i}.png`;
-    })));
-  }));
+    }))
+  ));
+  return walkAnimLoads[slug];
 }
 
 // GBA-style office tiles (32px) -> tileStore, for the tile-based renderer (ticket #003).
@@ -448,29 +461,28 @@ function walkMini(img, key, W, H) {
   return cv;
 }
 
-// Square-crop to n x n. Generated FE-style portraits (#022) are already palette-quantized
-// pixel art and arrive face-framed, so we downscale them with HIGH-QUALITY filtering (a clean
-// miniature; nearest would alias the 256px source into noise) and only a tiny top bias. The
-// real-photo fallback keeps the old nearest-neighbour pixelation. Pass n ≈ the on-screen draw
-// size so the caller's nearest upscale stays ~1:1 and the result reads crisp, not muddy.
+// Square-crop a lazily requested FE-style portrait. First use may return initials; the
+// WorldArt completion listener invalidates only this slug's cached initials on success.
 function pixelHead(slug, n) {
   const key = slug + ":" + n;
   if (pixelCache[key]) return pixelCache[key];
-  // Prefer the generated pixel-art portrait (#022); fall back to the real photo if absent.
-  const portrait = portraits[slug];
-  const img = portrait || headshots[slug];
+  var portrait = null;
+  if (typeof DatamonWorldArt !== "undefined") {
+    portrait = DatamonWorldArt.getPortrait(slug);
+    if (!DatamonWorldArt.isPortraitSettled(slug)) DatamonWorldArt.loadPortrait(slug);
+  }
+
   const cv = document.createElement("canvas");
   cv.width = n; cv.height = n;
   const c = cv.getContext("2d");
-  if (img) {
-    const s = Math.min(img.width, img.height);
-    const sx = (img.width - s) / 2;
-    const sy = (img.height - s) * (portrait ? 0.02 : 0.15); // photos: bias toward faces
-    c.imageSmoothingEnabled = !!portrait;                    // HQ for pixel-art portraits
+  if (portrait) {
+    const s = Math.min(portrait.width, portrait.height);
+    const sx = (portrait.width - s) / 2;
+    const sy = (portrait.height - s) * 0.02;
+    c.imageSmoothingEnabled = true;
     c.imageSmoothingQuality = "high";
-    c.drawImage(img, sx, sy, s, s, 0, 0, n, n);
+    c.drawImage(portrait, sx, sy, s, s, 0, 0, n, n);
   } else {
-    // fallback: colored tile with initials
     c.fillStyle = "#64748b"; c.fillRect(0, 0, n, n);
     c.fillStyle = "#fff"; c.font = `${Math.floor(n / 2)}px monospace`;
     c.textAlign = "center"; c.textBaseline = "middle";
@@ -483,6 +495,8 @@ function pixelHead(slug, n) {
 // ---------- Game state ----------
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+// Display backing scale: canvas physical pixels = CANVAS × scale.
+// MAP_DETAIL_SCALE controls cache detail (may differ from display scale).
 const scale = Math.min(2, window.devicePixelRatio || 1);
 canvas.width  = CANVAS_W * scale;
 canvas.height = CANVAS_H * scale;
@@ -516,8 +530,11 @@ let loadedCloze = [];   // parsed cloze.json array; [] if missing/malformed (#02
 let loadedDiagrams = [];// parsed diagrams.json array; [] if missing/malformed (#030)
 let bookPrompt = null;  // {sel, books} — book-picker modal
 let readerState = null; // {book, page, screens, maxPage} — full-canvas reader
-let questionStats = {};  // "CAT:idx" -> {seen, correct, wrong, lastSeen}
+let questionStats = {};  // "CAT:idx" and canonical ID -> {seen, correct, wrong, lastSeen}
 let seenCounter = 0;    // monotonic draw counter — drives lastSeen recency (no Date.now())
+let _progression = { badges: [], quests: {}, activities: {}, npcDomains: {} };
+let _npcDomains = _progression.npcDomains; // alias into _progression.npcDomains
+let _writeProtectedSave = false; // true when a future-version save blocks writes
 let seenThisRun = {};   // category -> Set<idx> drawn this run (within-run repeat avoidance)
 let coffeeUses = 0;   // coffee heals remaining this run (cap 3); persisted in save
 let difficulty = "normal";   // "easy" | "normal" | "hard" — chosen at select, persisted in save
@@ -592,7 +609,16 @@ function placeNPCs() {
   const perRegion = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
   npcs = [];
   order.forEach((slug, i) => {
-    const type = perRegion[i % 6];
+    // Persist domain identity when a prior assignment exists; otherwise
+    // use the deterministic round-robin result and record it.
+    // Defensive: validate that a persisted domain is a known region;
+    // malformed data cannot index an unknown key.
+    const VALID_DOMAINS = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
+    const freshType = perRegion[i % 6];
+    const persisted = (typeof _npcDomains === "object" && _npcDomains[slug]);
+    const type = (persisted && VALID_DOMAINS.indexOf(persisted) >= 0) ? persisted : freshType;
+    // Record for future sessions (even if unchanged — idempotent).
+    if (typeof _npcDomains === "object") _npcDomains[slug] = type;
     // Take the best-ranked spot still ≥3 tiles from every placed NPC (one per workstation).
     const idx = regions[type].findIndex(([x, y]) =>
       !npcs.some(n => Math.abs(n.x - x) + Math.abs(n.y - y) < 3));
@@ -606,25 +632,89 @@ function placeNPCs() {
 }
 
 // ---------- Save / load ----------
+// Configure DatamonState once QUESTION_BANK is available.
+if (typeof DatamonState !== "undefined") {
+  DatamonState.configure({
+    roster: ROSTER,
+    idMap: DatamonState.buildIdMapFromBank(QUESTION_BANK),
+  });
+}
+
 let saveCache; // undefined = not yet read; null = confirmed empty save
 function save() {
+  if (_writeProtectedSave) return; // future-version save blocks all writes
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ player: player.slug, defeated: [...defeated], questionStats, seenCounter, coffeeUses, difficulty, libraryProgress, minigameScores }));
+    // Sync npcDomains back into _progression before serialising.
+    _progression.npcDomains = _npcDomains || {};
+    // Build v2 state from current globals
+    const st = {
+      schemaVersion: typeof DatamonState !== "undefined" ? DatamonState.CURRENT_SCHEMA : 2,
+      player: player.slug,
+      defeated: [...defeated],
+      questionStats: questionStats,
+      seenCounter: seenCounter,
+      coffeeUses: coffeeUses,
+      difficulty: difficulty,
+      libraryProgress: libraryProgress,
+      minigameScores: minigameScores,
+      progression: _progression,
+    };
+    if (typeof DatamonState !== "undefined") {
+      DatamonState.saveToStorage(st);
+    } else {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ player: player.slug, defeated: [...defeated], questionStats, seenCounter, coffeeUses, difficulty, libraryProgress, minigameScores }));
+    }
   } catch (e) {}
   saveCache = undefined;
 }
 function loadSave() {
   try {
+    if (typeof DatamonState !== "undefined") {
+      const st = DatamonState.loadFromStorage();
+      if (st) {
+        // Future-version save: block writes, load what we can, force new game.
+        if (DatamonState.isWriteProtected(st)) {
+          _writeProtectedSave = true;
+          questionStats = st.questionStats || {};
+          seenCounter = st.seenCounter || 0;
+          coffeeUses = st.coffeeUses;
+          difficulty = st.difficulty || "normal";
+          libraryProgress = st.libraryProgress || {};
+          minigameScores = st.minigameScores || {};
+          if (st.progression && typeof st.progression === "object") {
+            _progression = st.progression;
+            _npcDomains = _progression.npcDomains || {};
+          }
+          return null; // Don't resume; title shows new-game flow
+        }
+        // Normal v2 save with a valid player
+        if (st.player && ROSTER.includes(st.player)) {
+          questionStats = st.questionStats || {};
+          seenCounter = st.seenCounter || 0;
+          coffeeUses = st.coffeeUses;
+          difficulty = st.difficulty || "normal";
+          libraryProgress = st.libraryProgress || {};
+          minigameScores = st.minigameScores || {};
+          if (st.progression && typeof st.progression === "object") {
+            _progression = st.progression;
+            _npcDomains = _progression.npcDomains || {};
+          }
+          return st;
+        }
+      }
+      return null;
+    }
+    // Legacy fallback: direct localStorage parse
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (s && ROSTER.includes(s.player)) {
       questionStats = (s.questionStats && typeof s.questionStats === "object") ? s.questionStats : {};
       seenCounter = typeof s.seenCounter === "number" ? s.seenCounter : 0;
       coffeeUses = typeof s.coffeeUses === "number" ? s.coffeeUses : 0;
-      // Additive migration: old saves lack `difficulty` → default "normal".
       difficulty = (s.difficulty === "easy" || s.difficulty === "hard") ? s.difficulty : "normal";
-      // Additive migration (#028): old saves lack these → default {} (never wipe existing fields).
       libraryProgress = (s.libraryProgress && typeof s.libraryProgress === "object") ? s.libraryProgress : {};
       minigameScores  = (s.minigameScores  && typeof s.minigameScores  === "object") ? s.minigameScores  : {};
+      _progression = { badges: [], quests: {}, activities: {}, npcDomains: {} };
+      _npcDomains = _progression.npcDomains;
       return s;
     }
   } catch (e) {}
@@ -641,8 +731,12 @@ const STAT_FLOOR = 1, NEVER_SEEN_BONUS = 8, MISS_WEIGHT = 4, RECENCY_W = 0.5, RE
 
 // Higher weight = more likely to be drawn. Never-seen and previously-missed score high;
 // recently-drawn-and-correct score near the floor. Floor guarantees nothing is starved.
+// Looks up stats by canonical ID first, falling back to legacy "CAT:index" key.
 function questionWeight(cat, i) {
-  const st = questionStats[cat + ":" + i];
+  const bank = QUESTION_BANK[cat];
+  const canonId = (bank && bank[i] && bank[i].id) ? bank[i].id : null;
+  // Try canonical ID first, then legacy key, then empty.
+  const st = (canonId && questionStats[canonId]) || questionStats[cat + ":" + i];
   if (!st || !st.seen) return STAT_FLOOR + NEVER_SEEN_BONUS;
   const miss = Math.max(0, (st.wrong || 0) - (st.correct || 0));
   const recency = Math.min(RECENCY_CAP, seenCounter - (st.lastSeen || 0)); // larger = longer since drawn
@@ -677,13 +771,17 @@ function drawQuestion(category) {
   let r = Math.random() * total;
   for (let k = 0; k < pool.length; k++) { r -= weights[k]; if (r < 0) { idx = pool[k]; break; } }
   seenThisRun[cat].add(idx);
-  // Record the draw: bump seen + stamp recency. Plumb the stat key to answerQuestion via battle.curKey
-  // (battle is always non-null here — drawQuestion is only called inside an active battle) WITHOUT
-  // changing the returned shape.
-  const key = cat + ":" + idx;
-  const st = questionStats[key] || (questionStats[key] = { seen: 0, correct: 0, wrong: 0, lastSeen: 0 });
+  // Record the draw: bump seen + stamp recency on the canonical ID.
+  // Also ensure the legacy alias exists for rollback compatibility.
+  const canonId = bank[idx].id;
+  const legacyKey = cat + ":" + idx;
+  const st = questionStats[canonId] || (questionStats[canonId] = { seen: 0, correct: 0, wrong: 0, lastSeen: 0 });
   st.seen++; st.lastSeen = ++seenCounter;
-  if (battle) battle.curKey = key;
+  // Keep the rollback alias exactly synchronized with the canonical record.
+  const leg = questionStats[legacyKey] || (questionStats[legacyKey] = { seen: 0, correct: 0, wrong: 0, lastSeen: 0 });
+  leg.seen = st.seen; leg.correct = st.correct; leg.wrong = st.wrong; leg.lastSeen = st.lastSeen;
+  if (battle) battle.curKey = canonId;
+  if (battle) battle.curLegacyKey = legacyKey;
   return { ...QUESTION_BANK[cat][idx], cat };   // shape unchanged (Must Not #3)
 }
 
@@ -722,26 +820,130 @@ function startBattle(npc) {
   const monPool = shuffled(MON_NAMES[npc.type === "MIX" ? weightedDomain() : npc.type],
                            mulberry32(Math.floor(Math.random() * 1e9)));
   const level = Math.max(1, 5 + defeated.size * 2 + (TIER_LEVEL_DELTA[difficulty] || 0));
+  const isAgent = npc.type === "AGENT";
   battle = {
     npc,
     mons: [0, 1].map(i => ({ name: monPool[i % monPool.length], level: level + i, q: null, alive: true })),
     idx: 0,
-    phase: "intro",                 // intro | sendout | question | feedback | win | lose
-    timerMs: HARD_TIMER_MS,          // Hard-mode per-question countdown (only consumed when difficulty==="hard")
-    msg: `${displayName(npc.slug)} ${BATTLE_INTROS[Math.floor(Math.random() * BATTLE_INTROS.length)]}`,
+    phase: "intro", // Agent phase is projected from reducer state before the scene renders
+    timerMs: HARD_TIMER_MS,
+    msg: isAgent
+      ? `${displayName(npc.slug)} challenges you to an Agent Operations duel!`
+      : `${displayName(npc.slug)} ${BATTLE_INTROS[Math.floor(Math.random() * BATTLE_INTROS.length)]}`,
     sel: 0,
     feedback: null,
     shake: 0,
-    startF: frame,                  // entrance slide / white flash
-    msgAt: frame,                   // typewriter anchor
-    sendoutAt: 0,                   // mon scale-in + poof anchor
-    faintAt: 0,                     // mon faint (fall + fade) anchor
-    attackAt: 0,                    // mon lunge + red flash anchor
-    dmgAt: 0,                       // floating damage number anchor
+    startF: frame,
+    msgAt: frame,
+    sendoutAt: 0,
+    faintAt: 0,
+    attackAt: 0,
+    dmgAt: 0,
     poof: [],
   };
+  // Agent Operations: initialise reducer-owned encounter state, presentation arena,
+  // and draw bridge, then route the initial turn through the one adapter.
+  if (isAgent && typeof DatamonBattleOps !== "undefined") {
+    if (typeof AgentArena !== "undefined") {
+      AgentArena.init({ muted: muted, playerSlug: player.slug, npcSlug: npc.slug });
+      AgentArena.setDrawTrainer(drawTrainer);
+    }
+    battle.agentOps = DatamonBattleOps.createEncounter({
+      npc: npc,
+      npcs: npcs,
+      playerHp: player.hp,
+    });
+    battle.agentOpsSel = 0;
+    battle.agentOpsChoiceSel = 0;
+    battle._agentVictoryConsumed = false;
+    battle._agentDefeatConsumed = false;
+    _agentDispatch(battle, { type: "START_TURN", question: drawQuestion(npc.type) });
+  }
   wrapCache.clear();
   state = "battle";
+}
+
+// The sole Agent Operations adapter. Reducer dispatch, state assignment, HP
+// projection, one-shot semantic effects, timer reset, and presentation phase
+// projection all happen here. PLAYER_DAMAGE is deliberately not additive: the
+// reducer owns HP and this adapter idempotently assigns its absolute value.
+function _agentDispatch(b, event) {
+  if (!b || !b.agentOps || !event) return { state: b && b.agentOps, effects: [] };
+  var previous = b.agentOps;
+  var result = DatamonBattleOps.reduce(previous, event);
+  b.agentOps = result.state;
+  player.hp = b.agentOps.playerHp;
+
+  if (event.type === "START_TURN" && b.agentOps !== previous) {
+    b.timerMs = HARD_TIMER_MS;
+  }
+
+  // Present the whole semantic transition exactly once. The arena compares the
+  // immutable before/after reducer snapshots, so it can narrate accepted and
+  // rejected input without drawing code mutating combat state.
+  var effects = result.effects || [];
+  var arenaActive = typeof AgentArena !== "undefined";
+  if (arenaActive) AgentArena.syncTransition(b, previous, event, effects);
+
+  // Consume persistence/game effects once. Legacy sounds are fallback-only;
+  // playing them beside arena cues would double every Agent sound.
+  for (var i = 0; i < effects.length; i++) {
+    var effect = effects[i];
+    switch (effect.type) {
+      case "RECORD_OUTCOME":
+        recordOutcome(effect.correct);
+        break;
+      case "STABILITY_DAMAGE":
+        if (!arenaActive) sfx.correct();
+        break;
+      case "PLAYER_DAMAGE":
+        // HP was already assigned absolutely from reducer state above.
+        if (!arenaActive) sfx.wrong();
+        break;
+      case "GUARDRAIL_BLOCK":
+        if (!arenaActive) sfx.confirm();
+        break;
+      case "INSPECT_ELIMINATED":
+        if (!arenaActive) sfx.select();
+        break;
+      case "PATCH_APPLIED":
+        if (!arenaActive) sfx.confirm();
+        break;
+      case "ACTION_REJECTED":
+        if (!arenaActive) sfx.wrong();
+        showToast(effect.reason === "insufficient_momentum"
+          ? "Not enough Momentum! (need " + effect.needed + ", have " + effect.available + ")"
+          : "Invalid action!");
+        break;
+      case "ESCAPED":
+        if (!arenaActive) sfx.confirm();
+        _agentExitToOverworld(b, "Fled from the Agent Operations duel!");
+        break;
+      case "PHASE_SHIFT":
+        if (!arenaActive) sfx.confirm();
+        break;
+      case "VICTORY":
+        if (!b._agentVictoryConsumed) {
+          b._agentVictoryConsumed = true;
+          b.npc.defeated = true;
+          defeated.add(b.npc.slug);
+          save();
+          if (!arenaActive) sfx.victory();
+        }
+        break;
+      case "DEFEAT":
+        if (!b._agentDefeatConsumed) {
+          b._agentDefeatConsumed = true;
+          if (!arenaActive) sfx.wrong();
+        }
+        break;
+    }
+  }
+
+  // An escape effect removes the encounter immediately. All other accepted
+  // transitions are projected from reducer state; callers never mutate b.phase.
+  if (battle === b && b.agentOps !== previous) _agentSyncPhase(b);
+  return result;
 }
 
 function currentMon() { return battle.mons[battle.idx]; }
@@ -755,8 +957,219 @@ function sendOutCurrentMon(b) {
   spawnPoof(b);
 }
 
+// Advance only reducer-owned non-interactive phases. action/choice input is
+// dispatched by dedicated handlers and cannot be skipped by presentation code.
+function _agentAdvance(b) {
+  var phase = b.agentOps.phase;
+  if (phase === "resolve") {
+    _agentDispatch(b, { type: "RESOLUTION_COMPLETE" });
+  } else if (phase === "feedback" || phase === "phase-shift") {
+    _agentDispatch(b, { type: "START_TURN", question: drawQuestion(b.npc.type) });
+  } else if (phase === "victory") {
+    _agentFinishVictory(b);
+  } else if (phase === "defeat") {
+    _agentFinishDefeat(b);
+  }
+}
+
+function _agentExitToOverworld(b, toastMessage) {
+  if (battle !== b) return;
+  if (typeof AgentArena !== "undefined") AgentArena.reset();
+  wrapCache.clear();
+  battle = null;
+  player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
+  state = "overworld"; bufferedDir = null; turnStartMs = null;
+  if (toastMessage) showToast(toastMessage);
+}
+
+function _agentFinishVictory(b) {
+  if (battle !== b || !b._agentVictoryConsumed) return;
+  if (typeof AgentArena !== "undefined") AgentArena.reset();
+  wrapCache.clear();
+  battle = null;
+  if (npcs.every(function (n) { return n.defeated; })) {
+    state = "victory";
+  } else {
+    player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
+    state = "overworld"; bufferedDir = null; turnStartMs = null;
+  }
+}
+
+function _agentFinishDefeat(b) {
+  if (battle !== b || !b._agentDefeatConsumed) return;
+  if (typeof AgentArena !== "undefined") AgentArena.reset();
+  wrapCache.clear();
+  battle = null;
+  if (currentMap !== "office") { currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv; npcs = officeNpcs; }
+  player.hp = MAX_HP;
+  player.x = player.fx = 18; player.y = player.fy = 16;
+  camFx = camFy = null; stepT = 1; player.moving = false;
+  state = "overworld"; bufferedDir = null; turnStartMs = null;
+  showToast("You respawned in the lounge with a fresh coffee. HP restored!");
+}
+
+// Keyboard input routing for Agent Operations encounters. The global keydown
+// latch rejects held/repeated keys before they reach this phase-specific router.
+function _agentCue(name) {
+  if (typeof AgentArena !== "undefined") AgentArena.playCue(name);
+  else if (name === "navigate") sfx.select();
+  else sfx.confirm();
+}
+
+function _agentHandleKey(b, k) {
+  var phase = b.agentOps.phase;
+  if (phase === "action") {
+    if (k === "ArrowDown" || k === "ArrowRight") {
+      b.agentOpsSel = (b.agentOpsSel + 1) % 4;
+      _agentCue("navigate");
+      if (typeof AgentArena !== "undefined") AgentArena.announceActionFocus(b);
+    } else if (k === "ArrowUp" || k === "ArrowLeft") {
+      b.agentOpsSel = (b.agentOpsSel + 3) % 4;
+      _agentCue("navigate");
+      if (typeof AgentArena !== "undefined") AgentArena.announceActionFocus(b);
+    } else if (["1", "2", "3", "4"].includes(k)) {
+      b.agentOpsSel = parseInt(k) - 1;
+      _agentSelectAction(b, DatamonBattleOps.ACTION_KEYS[b.agentOpsSel]);
+    } else if (k === "Enter" || k === " ") {
+      _agentSelectAction(b, DatamonBattleOps.ACTION_KEYS[b.agentOpsSel]);
+    } else if (k === "r" || k === "R" || k === "Escape") {
+      attemptRun();
+    }
+  } else if (phase === "choice") {
+    var eliminated = b.agentOps.eliminated || [];
+    if (k === "ArrowRight" || k === "ArrowDown") {
+      var next = b.agentOpsChoiceSel;
+      for (var tries = 0; tries < 4; tries++) {
+        next = (next + 1) % 4;
+        if (eliminated.indexOf(next) < 0) break;
+      }
+      if (eliminated.indexOf(next) < 0) {
+        b.agentOpsChoiceSel = next;
+        _agentCue("navigate");
+        if (typeof AgentArena !== "undefined") AgentArena.announceChoiceFocus(b);
+      }
+    } else if (k === "ArrowLeft" || k === "ArrowUp") {
+      var prev = b.agentOpsChoiceSel;
+      for (var tries2 = 0; tries2 < 4; tries2++) {
+        prev = (prev + 3) % 4;
+        if (eliminated.indexOf(prev) < 0) break;
+      }
+      if (eliminated.indexOf(prev) < 0) {
+        b.agentOpsChoiceSel = prev;
+        _agentCue("navigate");
+        if (typeof AgentArena !== "undefined") AgentArena.announceChoiceFocus(b);
+      }
+    } else if (["1", "2", "3", "4"].includes(k)) {
+      answerQuestion(parseInt(k) - 1);
+    } else if (k === "Enter" || k === " ") {
+      answerQuestion(b.agentOpsChoiceSel);
+    } else if (k === "r" || k === "R" || k === "Escape") {
+      attemptRun();
+    }
+  } else if (k === "Enter" || k === " ") {
+    if (Math.floor((frame - b.msgAt + 1) * TEXT_SPEED()) < b.msg.length) {
+      b.msgAt = frame - Math.ceil(b.msg.length / TEXT_SPEED());
+    } else {
+      _agentCue("confirm");
+      advanceBattle();
+    }
+  }
+}
+
+function _agentSelectAction(b, actionName) {
+  _agentDispatch(b, { type: "SELECT_ACTION", action: actionName });
+}
+
+function _agentFirstEnabledChoice(ao) {
+  var count = ao.question && Array.isArray(ao.question.c) ? ao.question.c.length : 0;
+  for (var i = 0; i < count; i++) {
+    if ((ao.eliminated || []).indexOf(i) < 0) return i;
+  }
+  return 0;
+}
+
+// Project reducer state into the legacy battle rendering object. This is the
+// only function allowed to assign an Agent encounter's presentation phase.
+function _agentSyncPhase(b) {
+  var ao = b.agentOps;
+  b.phase = ao.phase;
+  switch (ao.phase) {
+    case "action":
+      b.agentOpsSel = 0;
+      b.agentOpsChoiceSel = 0;
+      b.feedback = null;
+      b.shake = 0;
+      b.attackAt = 0;
+      b.dmgAt = 0;
+      break;
+    case "choice":
+      // Inspect can eliminate index 0, so never initialise the cursor blindly.
+      b.agentOpsChoiceSel = _agentFirstEnabledChoice(ao);
+      break;
+    case "resolve":
+      if (ao.outcome) {
+        var q = ao.question;
+        var correctIndex = q ? (q.correct != null ? q.correct : q.a) : -1;
+        var correctAnswer = q && q.c ? q.c[correctIndex] : "?";
+        if (ao.outcome.correct) {
+          var action = DatamonBattleOps.ACTIONS[ao.selectedAction] || DatamonBattleOps.ACTIONS.query;
+          b.feedback = { correct: true };
+          b.msg = "Correct! " + action.label + " hit for " + action.damage + " Stability." + (q && q.x ? " (" + q.x + ")" : "");
+          b.faintAt = frame;
+          b.shake = 0; b.attackAt = 0; b.dmgAt = 0;
+        } else {
+          b.feedback = { correct: false, blocked: !!ao.outcome.blocked };
+          b.msg = ao.outcome.reason === "timeout"
+            ? "Time's up! The answer was \"" + correctAnswer + "\"."
+            : "Wrong! The answer was \"" + correctAnswer + "\".";
+          if (ao.outcome.blocked) {
+            b.msg += " Guardrail blocked the hit — no HP damage.";
+            b.shake = 0; b.attackAt = 0; b.dmgAt = 0;
+          } else {
+            b.msg += " You took " + WRONG_DMG + " damage!";
+            // Agent presentation owns bounded impact cues; legacy shake/flash state
+            // stays disabled (including under prefers-reduced-motion).
+            b.shake = 0; b.attackAt = 0; b.dmgAt = 0;
+          }
+        }
+        b.msgAt = frame;
+      }
+      break;
+    case "feedback":
+      if (ao.outcome && ao.outcome.correct) {
+        b.feedback = { correct: true };
+        b.msg = "Good hit! " + (ao.boss ? "Boss Stability: " + ao.stability + "/" + ao.maxStability : "Stability: " + ao.stability + "/" + ao.maxStability);
+      } else if (ao.outcome && ao.outcome.blocked) {
+        b.feedback = { correct: false, blocked: true };
+        b.msg = "Guardrail blocked the hit. No HP damage taken.";
+      } else {
+        b.feedback = { correct: false };
+        b.msg = "You took " + WRONG_DMG + " damage!";
+      }
+      b.msgAt = frame;
+      break;
+    case "phase-shift":
+      b.msg = displayName(b.npc.slug) + " shifts stance! Phase " + (ao.bossPhase + 1) + " — Stability " + ao.stability + "/" + ao.maxStability + "!";
+      b.msgAt = frame;
+      break;
+    case "victory":
+      b.msg = "You defeated " + displayName(b.npc.slug) + "! \"" + WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)] + "\"";
+      b.msgAt = frame;
+      break;
+    case "defeat":
+      b.msg = "You blacked out from imposter syndrome... \"" + LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)] + "\"";
+      b.msgAt = frame;
+      break;
+  }
+}
+
 function advanceBattle() {
   const b = battle;
+  // Agent Operations routing
+  if (b.agentOps) {
+    _agentAdvance(b);
+    return;
+  }
   if (b.phase === "intro") {
     sendOutCurrentMon(b);
   } else if (b.phase === "sendout") {
@@ -812,10 +1225,20 @@ function advanceBattle() {
 }
 
 function recordOutcome(correct) {
-  const key = battle && battle.curKey;
-  if (!key) return;
-  const st = questionStats[key] || (questionStats[key] = { seen: 0, correct: 0, wrong: 0, lastSeen: seenCounter });
+  const canonKey = battle && battle.curKey;
+  const legacyKey = battle && battle.curLegacyKey;
+  if (!canonKey) return;
+  // Update canonical ID stat
+  const st = questionStats[canonKey] || (questionStats[canonKey] = { seen: 0, correct: 0, wrong: 0, lastSeen: seenCounter });
   if (correct) st.correct++; else st.wrong++;
+  // Mirror to legacy key for rollback compatibility
+  if (legacyKey) {
+    const leg = questionStats[legacyKey] || (questionStats[legacyKey] = { seen: 0, correct: 0, wrong: 0, lastSeen: seenCounter });
+    leg.correct = st.correct;
+    leg.wrong = st.wrong;
+    leg.seen = st.seen;
+    leg.lastSeen = st.lastSeen;
+  }
   save();   // persist immediately so a single answer lands in localStorage
 }
 
@@ -837,7 +1260,14 @@ function applyWrongHit(b, msg) {
 }
 
 function answerQuestion(i) {
-  const b = battle, q = currentMon().q;
+  const b = battle;
+  // The reducer is the validation boundary for enabled, integer, in-range choices.
+  if (b.agentOps) {
+    _agentDispatch(b, { type: "SUBMIT_ANSWER", index: i });
+    return;
+  }
+  // Classic battle path
+  const q = currentMon().q;
   const correct = i === q.a;
   recordOutcome(correct);
   if (correct) {
@@ -858,14 +1288,28 @@ function answerQuestion(i) {
 // existing advanceBattle feedback→lose branch handles blackout/respawn.
 function timeoutQuestion() {
   const b = battle;
-  if (!b || b.phase !== "question") return;
+  if (!b) return;
+  // Agent Operations routing; reducer phase guards make expiry exact-once.
+  if (b.agentOps) {
+    _agentDispatch(b, { type: "TIMEOUT" });
+    return;
+  }
+  // Classic path
+  if (b.phase !== "question") return;
   recordOutcome(false);
   applyWrongHit(b, `Time's up! It was "${currentMon().q.c[currentMon().q.a]}". ${currentMon().name.toUpperCase()} hits you for ${WRONG_DMG}!`);
 }
 
 function attemptRun() {
   const b = battle;
-  if (!b || b.phase !== "question") return;   // Run is only available during the question phase
+  if (!b) return;
+  // Agent Operations routing: Run always succeeds in reducer-valid phases.
+  if (b.agentOps) {
+    _agentDispatch(b, { type: "RUN" });
+    return;
+  }
+  // Classic path
+  if (b.phase !== "question") return;
   if (Math.random() < FLEE_CHANCE) {
     // SUCCESS — flee to the overworld. Mirrors the advanceBattle() win-branch restore,
     // but deliberately does NOT mark the rival defeated and does NOT call save().
@@ -901,20 +1345,52 @@ function showToast(msg, ms = 2600) { toast = { msg, until: performance.now() + m
 
 // ---------- Input ----------
 const keys = {};
+const agentActivationKeys = new Set();
 window.addEventListener("keydown", e => {
+  // Unlock audio on first user interaction (browser autoplay policy).
+  if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
+  if (typeof DatamonMusic !== "undefined") DatamonMusic.unlock();
+  // M is a global audio control, including while the colleague search field is open.
+  if (state === "search" && (e.key === "m" || e.key === "M")) {
+    e.preventDefault();
+    handleKey(e.key);
+    return;
+  }
   if (state === "search") { e.preventDefault(); handleSearchKey(e); return; }
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
   if (e.key === "Tab" && state === "select") e.preventDefault();   // Tab cycles difficulty, not focus
-  if (e.key === "Escape" && state === "battle" && battle && battle.phase === "question") e.preventDefault();
+  if (e.key === "Escape" && state === "battle" && battle && (battle.phase === "question" || (battle.agentOps && (battle.agentOps.phase === "action" || battle.agentOps.phase === "choice")))) e.preventDefault();
+  const alreadyDown = !!keys[e.key];
+  const agentOwned = agentActivationKeys.has(e.key);
+  const inAgentBattle = state === "battle" && battle && battle.agentOps;
   keys[e.key] = true;
   if (state === "overworld" && player.moving && KEY_DIR[e.key]) bufferedDir = KEY_DIR[e.key];
+  // Agent phases may change on a keydown. Requiring release before another event
+  // prevents a held key (including synthetic repeat:false duplicates) from crossing
+  // action → choice → resolve/feedback or a terminal phase back to the overworld.
+  if ((agentOwned || inAgentBattle) && (e.repeat || alreadyDown)) return;
+  if (inAgentBattle) agentActivationKeys.add(e.key);
   if (e.repeat && (bookPrompt || readerState || state === "minigame")) return; // prevent held-Enter blowing picker→reader or minigame
   handleKey(e.key);
 });
-window.addEventListener("keyup", e => { keys[e.key] = false; });
+window.addEventListener("keyup", e => { keys[e.key] = false; agentActivationKeys.delete(e.key); });
+window.addEventListener("blur", () => {
+  for (const key in keys) keys[key] = false;
+  agentActivationKeys.clear();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && typeof AgentArena !== "undefined") AgentArena.suspend();
+});
 
 function handleKey(k) {
-  if (k === "m" || k === "M") { muted = !muted; showToast(muted ? "Muted" : "Sound on"); return; }
+  if (k === "m" || k === "M") {
+    muted = !muted;
+    if (typeof AgentArena !== "undefined") AgentArena.setMuted(muted);
+    if (typeof DatamonMusic !== "undefined") DatamonMusic.setMuted(muted);
+    showToast(muted ? "Muted" : "Sound on");
+    return;
+  }
 
   if (state === "title") {
     if (k === "Enter" || k === " ") {
@@ -922,14 +1398,23 @@ function handleKey(k) {
       const s = getSave();
       if (s) {
         player.slug = s.player;
+        loadWalkAnim(player.slug); // prewarmed at boot; idempotent if already complete
         defeated = new Set(s.defeated);
         placeNPCs();
         if (npcs.every(n => n.defeated)) { state = "victory"; }
         else { state = "overworld"; bufferedDir = null; turnStartMs = null; }
-      } else state = "select";
+      } else {
+        state = "select";
+        loadWalkAnim(ROSTER[selectIdx]);
+      }
     }
     if (k === "r" || k === "R") {
-      localStorage.removeItem(SAVE_KEY);
+      _writeProtectedSave = false;
+      if (typeof DatamonState !== "undefined") {
+        DatamonState.resetSave();
+      } else {
+        localStorage.removeItem(SAVE_KEY);
+      }
       saveCache = undefined;
       defeated = new Set();
       questionStats = {};
@@ -937,7 +1422,9 @@ function handleKey(k) {
       seenThisRun = {};
       coffeeUses = 3;
       difficulty = "normal";
-      libraryProgress = {}; minigameScores = {}; currentMinigame = null;  // #028 — clear minigame state too
+      libraryProgress = {}; minigameScores = {}; currentMinigame = null;
+      _progression = { badges: [], quests: {}, activities: {}, npcDomains: {} };
+      _npcDomains = _progression.npcDomains;
       showToast("Save cleared!");
     }
   } else if (state === "select") {
@@ -950,10 +1437,13 @@ function handleKey(k) {
     if (k === "Enter" || k === " ") {
       sfx.confirm();
       player.slug = ROSTER[selectIdx];
+      loadWalkAnim(player.slug);
       defeated = new Set();
       player.hp = MAX_HP;
       player.x = player.fx = 18; player.y = player.fy = 16;
       camFx = camFy = null; stepT = 1; player.moving = false;
+      _progression = { badges: [], quests: {}, activities: {}, npcDomains: {} };
+      _npcDomains = _progression.npcDomains;
       placeNPCs();
       coffeeUses = 3;
       libraryProgress = {}; minigameScores = {}; currentMinigame = null;  // #028 — fresh character starts clean
@@ -999,7 +1489,9 @@ function handleKey(k) {
     if (k === " " || k === "Enter" || k === "e" || k === "E") interact();
   } else if (state === "battle") {
     const b = battle;
-    if (b.phase === "question") {
+    if (b.agentOps) {
+      _agentHandleKey(b, k);
+    } else if (b.phase === "question") {
       if (k === "ArrowRight" || k === "ArrowDown") { b.sel = (b.sel + 1) % 4; sfx.select(); }
       if (k === "ArrowLeft" || k === "ArrowUp")    { b.sel = (b.sel + 3) % 4; sfx.select(); }
       if (["1", "2", "3", "4"].includes(k)) answerQuestion(parseInt(k) - 1);
@@ -1064,11 +1556,67 @@ function canvasPos(e) {
 }
 
 canvas.addEventListener("mousemove", e => {
-  if (state !== "select") return;
   const [mx, my] = canvasPos(e);
-  const hit = selectHitTest(mx, my);
-  if (hit >= 0) setSelect(hit, true); // hover browses silently
+  if (state === "select") {
+    const hit = selectHitTest(mx, my);
+    if (hit >= 0) setSelect(hit, true); // hover browses silently
+    return;
+  }
+  if (state === "battle" && battle && battle.agentOps && typeof AgentArena !== "undefined") {
+    const phase = battle.agentOps.phase;
+    if (phase === "action") AgentArena.setHover("action", _agentActionHitTest(mx, my), false);
+    else if (phase === "choice") AgentArena.setHover("choice", _agentChoiceHitTest(mx, my), false);
+    else AgentArena.setHover(null, -1, false);
+  }
 });
+canvas.addEventListener("mouseleave", () => {
+  if (typeof AgentArena !== "undefined") AgentArena.setHover(null, -1, false);
+});
+
+// Agent pointer input is handled on pointerdown and latched until pointerup. The
+// later synthetic click is swallowed below, so one physical press dispatches at
+// most one reducer event even when that event changes the interactive phase.
+const activeAgentPointers = new Set();
+canvas.addEventListener("pointerdown", e => {
+  if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
+  if (typeof DatamonMusic !== "undefined") DatamonMusic.unlock();
+  if (state !== "battle" || !battle || !battle.agentOps) return;
+  if (activeAgentPointers.has(e.pointerId)) return;
+  activeAgentPointers.add(e.pointerId);
+  e.preventDefault();
+  const [mx, my] = canvasPos(e);
+  const b = battle;
+  const phase = b.agentOps.phase;
+  if (phase === "action") {
+    if (_agentRunHitTest(mx, my)) attemptRun();
+    else {
+      const actionIndex = _agentActionHitTest(mx, my);
+      if (typeof AgentArena !== "undefined") AgentArena.setHover("action", actionIndex, true);
+      if (actionIndex >= 0) {
+        b.agentOpsSel = actionIndex;
+        _agentSelectAction(b, DatamonBattleOps.ACTION_KEYS[actionIndex]);
+      }
+    }
+  } else if (phase === "choice") {
+    if (_agentRunHitTest(mx, my)) attemptRun();
+    else {
+      const choiceIndex = _agentChoiceHitTest(mx, my);
+      if (typeof AgentArena !== "undefined") AgentArena.setHover("choice", choiceIndex, true);
+      if (choiceIndex >= 0) answerQuestion(choiceIndex);
+    }
+  } else {
+    _agentHandleKey(b, "Enter");
+  }
+});
+window.addEventListener("pointerup", e => {
+  activeAgentPointers.delete(e.pointerId);
+  if (typeof AgentArena !== "undefined") AgentArena.setHover(null, -1, false);
+});
+window.addEventListener("pointercancel", e => {
+  activeAgentPointers.delete(e.pointerId);
+  if (typeof AgentArena !== "undefined") AgentArena.setHover(null, -1, false);
+});
+window.addEventListener("blur", () => { activeAgentPointers.clear(); });
 
 canvas.addEventListener("click", e => {
   const [mx, my] = canvasPos(e);
@@ -1086,7 +1634,9 @@ canvas.addEventListener("click", e => {
     if (hit >= 0) { setSelect(hit, true); handleKey("Enter"); }
   } else if (state === "battle") {
     const b = battle;
-    if (b.phase === "question") {
+    if (b.agentOps) {
+      return; // pointerdown already consumed this physical Agent activation
+    } else if (b.phase === "question") {
       if (runHitTest(mx, my)) { attemptRun(); return; }
       const hit = choiceHitTest(mx, my);
       if (hit >= 0) answerQuestion(hit);
@@ -1130,7 +1680,11 @@ function interact() {
   const npc = npcs.find(n => n.x === tx && n.y === ty);
   if (npc) {
     if (npc.defeated) showToast(`${firstName(npc.slug)}: "Good battle earlier. Back to my Jira board..."`);
-    else { battleTransition = { npc, t: 0 }; state = "transition"; sfx.battle(); }
+    else if (npc.type === "AGENT" && typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion()) {
+      // Reduced motion skips the triple flash/iris hit-stop entirely.
+      sfx.battle();
+      startBattle(npc);
+    } else { battleTransition = { npc, t: 0 }; state = "transition"; sfx.battle(); }
     return;
   }
   if (map[ty] && map[ty][tx] === "C") {
@@ -1153,27 +1707,68 @@ function interact() {
   }
 }
 
-// ---------- Library warp (#026) ----------
-// Swap the active map, stash/restore NPCs, teleport the player to the entry tile.
-// Called from interact() when facing an "L" door tile in either map.
+// ---------- Library warp (#026/#044) ----------
+// Boot keeps only the manifest + shared door resident. The first interaction starts one
+// deduplicated load/build Promise and that same interaction commits exactly one warp.
+var libraryLoadPromise = null;
+var libraryWarpRequested = false;
+function ensureLibraryLoaded() {
+  if (libraryMapCv) return Promise.resolve(libraryMapCv);
+  if (libraryLoadPromise) return libraryLoadPromise;
+  libraryLoadPromise = Promise.all([
+    Promise.all(libManifest.filter(function(m) { return m.slug !== "lib-door"; }).map(function(m) {
+      return loadOne("library/assets/" + m.file, libStore, m.slug);
+    })),
+    loadBooks(), loadPairs(), loadCloze(), loadDiagrams(),
+    (typeof DatamonWorldArt !== "undefined") ? DatamonWorldArt.loadScene("library") : Promise.resolve([]),
+  ]).catch(function() {
+    // Every individual loader already resolves to a drawn/data fallback. This final guard
+    // handles an unexpected aggregate failure and still builds a usable fallback cache.
+    return [];
+  }).then(function() {
+    if (!libraryMapCv) libraryMapCv = buildLibraryMapCanvas();
+    return libraryMapCv;
+  });
+  return libraryLoadPromise;
+}
+
+function commitLibraryWarp() {
+  if (currentMap !== "office" || !libraryMapCv) return;
+  currentMap = "library"; map = LIBRARY_MAP; mapCv = libraryMapCv;
+  officeNpcs = npcs; npcs = [];
+  player.x = player.fx = LIBRARY_ENTRY[0]; player.y = player.fy = LIBRARY_ENTRY[1];
+  player.dir = "up";
+  libraryWarpRequested = false;
+  if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("library");
+  showToast("Entered the library.");
+  camFx = camFy = null; bufferedDir = null; turnStartMs = null;
+}
+
 function warpToggle() {
-  player.moving = false; stepT = 1;      // resolve any in-progress step
-  coffeePrompt = null; scout = null;     // defensive: clear overworld modals/cinematics
-  bookPrompt = null; readerState = null; // defensive: clear book reader modals (#027)
+  player.moving = false; stepT = 1;
+  coffeePrompt = null; scout = null;
+  bookPrompt = null; readerState = null;
   if (currentMap === "office") {
-    currentMap = "library"; map = LIBRARY_MAP; mapCv = libraryMapCv;
-    officeNpcs = npcs; npcs = [];         // stash office NPCs; library has none
-    player.x = player.fx = LIBRARY_ENTRY[0]; player.y = player.fy = LIBRARY_ENTRY[1];
-    player.dir = "up";
-    showToast("Entered the library.");
-  } else {
-    currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv;
-    npcs = officeNpcs;                    // restore office NPCs
-    player.x = player.fx = OFFICE_ENTRY[0]; player.y = player.fy = OFFICE_ENTRY[1];
-    player.dir = "up";
-    showToast("Back to the office.");
+    if (libraryMapCv) {
+      commitLibraryWarp();
+      return;
+    }
+    libraryWarpRequested = true;
+    showToast(libraryLoadPromise ? "Library loading..." : "Opening library...");
+    ensureLibraryLoaded().then(function() {
+      if (libraryWarpRequested && currentMap === "office") commitLibraryWarp();
+    });
+    return;
   }
-  camFx = camFy = null; bufferedDir = null; turnStartMs = null; // snap camera, clear input buffers
+
+  libraryWarpRequested = false;
+  currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv;
+  npcs = officeNpcs;
+  player.x = player.fx = OFFICE_ENTRY[0]; player.y = player.fy = OFFICE_ENTRY[1];
+  player.dir = "up";
+  if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("office");
+  showToast("Back to the office.");
+  camFx = camFy = null; bufferedDir = null; turnStartMs = null;
 }
 
 function drinkCoffee() {
@@ -2423,26 +3018,87 @@ function drawTrainer(slug, cx, baseY, h, bobAmp = 0) {
 
 // ---------- Scenes ----------
 function drawTitle() {
-  ctx.fillStyle = "#0f172a"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-  // marching trainer parade
-  const n = ROSTER.length;
-  for (let i = 0; i < n; i++) {
-    const x = ((i * 90 + frame * 0.8) % (CANVAS_W + 80)) - 40;
-    const y = 440 + Math.sin((frame + i * 30) / 20) * 8;
-    const mini = spriteMini(ROSTER[i], 64);
-    if (mini) ctx.drawImage(mini, px(x), px(y), 64, 64);
-    else ctx.drawImage(pixelHead(ROSTER[i], 48), px(x), px(y + 8), 48, 48);
+  const save = getSave();
+  const wins = save?.defeated?.length || 0;
+  const accent = "#fbbf24", coral = "#f9735b", teal = "#2dd4bf";
+
+  // Signature backdrop: the actual playable office as a dim command-centre diorama.
+  ctx.fillStyle = "#050a16"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  if (mapCv) {
+    const mcW = mapCv.width, mcH = mapCv.height;
+    const targetRatio = CANVAS_W / CANVAS_H;
+    const sw = Math.min(mcW, mcH * targetRatio);
+    const sx = (mcW - sw) / 2;
+    ctx.globalAlpha = 0.48;
+    ctx.drawImage(mapCv, sx, 0, sw, mcH, 0, 0, CANVAS_W, CANVAS_H);
+    ctx.globalAlpha = 1;
   }
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#facc15"; ctx.font = "bold 72px monospace";
-  ctx.fillText("DATAMON", CANVAS_W / 2, 180);
-  ctx.fillStyle = "#94a3b8"; ctx.font = "bold 20px monospace";
-  ctx.fillText("Gotta Cert 'Em All — Claude Code Foundations Edition", CANVAS_W / 2, 220);
-  ctx.fillStyle = "#e2e8f0"; ctx.font = "16px monospace";
-  if (Math.floor(frame / 30) % 2 === 0)
-    ctx.fillText(getSave() ? "Press ENTER to continue your run" : "Press ENTER to start", CANVAS_W / 2, 320);
-  ctx.fillStyle = "#64748b"; ctx.font = "13px monospace";
-  ctx.fillText("Arrows/WASD move · SPACE interact · 1-4 answer · M mute" + (getSave() ? " · R reset save" : ""), CANVAS_W / 2, 560);
+  const veil = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+  veil.addColorStop(0, "rgba(3,8,22,0.94)");
+  veil.addColorStop(0.48, "rgba(3,8,22,0.76)");
+  veil.addColorStop(1, "rgba(3,8,22,0.92)");
+  ctx.fillStyle = veil; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  // Quiet CRT scanlines bind the office art and UI into one 16-bit surface.
+  ctx.fillStyle = "rgba(148,163,184,0.035)";
+  for (let y = 1; y < CANVAS_H; y += 4) ctx.fillRect(0, y, CANVAS_W, 1);
+
+  // League masthead: deliberately asymmetric terminal labels around the centred mark.
+  ctx.textBaseline = "alphabetic";
+  ctx.font = "bold 11px monospace"; ctx.textAlign = "left"; ctx.fillStyle = teal;
+  ctx.fillText("CLAUDE ARCHITECT LEAGUE", 30, 38);
+  ctx.textAlign = "right"; ctx.fillStyle = "#94a3b8";
+  ctx.fillText("FIELD SIMULATION // 2026", CANVAS_W - 30, 38);
+  ctx.fillStyle = "rgba(148,163,184,0.28)"; ctx.fillRect(30, 49, CANVAS_W - 60, 1);
+  ctx.fillStyle = teal; ctx.fillRect(30, 48, 92, 3);
+
+  // Logo with a one-pixel coral registration shadow, like a misaligned print layer.
+  ctx.textAlign = "center"; ctx.font = "bold 76px monospace";
+  ctx.fillStyle = coral; ctx.fillText("DATAMON", CANVAS_W / 2 + 3, 151 + 3);
+  ctx.fillStyle = accent; ctx.fillText("DATAMON", CANVAS_W / 2, 151);
+  ctx.fillStyle = "#f4ead7"; ctx.font = "bold 15px monospace";
+  ctx.fillText("GOTTA CERT 'EM ALL", CANVAS_W / 2, 181);
+  ctx.fillStyle = "#94a3b8"; ctx.font = "11px monospace";
+  ctx.fillText("A CLAUDE CODE FOUNDATIONS FIELD EXERCISE", CANVAS_W / 2, 202);
+
+  // Candidate dossier: progress is part of the world, not a generic percentage card.
+  const bx = 214, by = 234, bw = 372, bh = 102;
+  ctx.fillStyle = "rgba(7,16,35,0.92)"; ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = save ? teal : "#475569"; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+  ctx.fillStyle = save ? teal : accent; ctx.fillRect(bx, by, 7, bh);
+  ctx.textAlign = "left"; ctx.fillStyle = "#94a3b8"; ctx.font = "bold 10px monospace";
+  ctx.fillText(save ? "ACTIVE CANDIDATE DOSSIER" : "NEW CANDIDATE DOSSIER", bx + 22, by + 25);
+  ctx.fillStyle = "#f8fafc"; ctx.font = "bold 16px monospace";
+  ctx.fillText(save ? displayName(save.player) : "UNREGISTERED CONSULTANT", bx + 22, by + 48);
+  ctx.fillStyle = "#17233b"; ctx.fillRect(bx + 22, by + 65, bw - 44, 10);
+  if (save) {
+    ctx.fillStyle = teal; ctx.fillRect(bx + 22, by + 65, (bw - 44) * (wins / Math.max(1, ROSTER.length - 1)), 10);
+  }
+  ctx.fillStyle = "#94a3b8"; ctx.font = "10px monospace";
+  ctx.fillText(save ? `${wins}/${ROSTER.length - 1} CONSULTANTS BESTED` : "FIVE DOMAINS AWAIT CERTIFICATION", bx + 22, by + 91);
+
+  // One orchestrated call-to-action instead of scattered blinking decorations.
+  const pulse = 0.58 + Math.sin(frame / 14) * 0.22;
+  const ctaX = 258, ctaY = 365, ctaW = 284, ctaH = 48;
+  ctx.fillStyle = `rgba(251,191,36,${0.10 + pulse * 0.08})`; ctx.fillRect(ctaX, ctaY, ctaW, ctaH);
+  ctx.globalAlpha = pulse; ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.strokeRect(ctaX, ctaY, ctaW, ctaH); ctx.globalAlpha = 1;
+  ctx.textAlign = "center"; ctx.fillStyle = "#f8fafc"; ctx.font = "bold 14px monospace";
+  ctx.fillText(save ? "ENTER  /  RESUME FIELD RUN" : "ENTER  /  REGISTER CANDIDATE", CANVAS_W / 2, ctaY + 30);
+
+  // Roster rail: a restrained moving cast reveal anchored to a real system label.
+  ctx.fillStyle = "rgba(7,16,35,0.90)"; ctx.fillRect(0, 454, CANVAS_W, 91);
+  ctx.fillStyle = "rgba(148,163,184,0.25)"; ctx.fillRect(0, 453, CANVAS_W, 1);
+  ctx.textAlign = "left"; ctx.fillStyle = coral; ctx.font = "bold 9px monospace";
+  ctx.fillText(`ROSTER LINK // ${ROSTER.length} CONSULTANTS ONLINE`, 18, 468);
+  for (let i = 0; i < ROSTER.length; i++) {
+    const x = ((i * 57 + frame * 0.35) % (CANVAS_W + 70)) - 42;
+    const bob = Math.sin((frame + i * 19) / 17) * 2;
+    const mini = spriteMini(ROSTER[i], 50);
+    if (mini) ctx.drawImage(mini, px(x), px(481 + bob), 50, 50);
+    else ctx.drawImage(pixelHead(ROSTER[i], 40), px(x + 5), px(486 + bob), 40, 40);
+  }
+
+  ctx.fillStyle = "#64748b"; ctx.font = "10px monospace"; ctx.textAlign = "center";
+  ctx.fillText("ARROWS / WASD  MOVE    SPACE  INTERACT    1–4  ANSWER    M  AUDIO" + (save ? "    R  RESET" : ""), CANVAS_W / 2, 580);
 }
 
 // --- Character select: grid left, animated showcase panel right ---
@@ -2454,6 +3110,7 @@ function setSelect(i, silent) {
   if (i === selectIdx) return;
   selectIdx = i;
   selChangedAt = frame;
+  loadWalkAnim(ROSTER[selectIdx]); // browsing doubles as a tiny, deduplicated prefetch
   if (!silent) sfx.select();
 }
 
@@ -2638,7 +3295,7 @@ function drawSelect() {
   ctx.fillText(DIFF_BLURB[difficulty], dx0 + (rects[2][0] + rects[2][2] - dx0) / 2, dyTop + rects[0][3] + 16);
 
   ctx.fillStyle = "#64748b"; ctx.font = "13px monospace"; ctx.textAlign = "center";
-  ctx.fillText("Arrows or mouse to browse · TAB sets difficulty · ENTER / click to pick a rival!",
+  ctx.fillText("Arrows or mouse to browse · TAB sets difficulty · ENTER / click to choose your consultant",
     CANVAS_W / 2, CANVAS_H - 20);
 }
 
@@ -2674,6 +3331,16 @@ function tileColor(t, x, y) {
 }
 
 function blitTile(c, slug, sx, sy) {
+  // HD entries are additive and zone-scoped; any absent/rejected image falls through to
+  // the unchanged legacy tile store. Natural 2× source pixels map 1:1 into a DPR2 cache.
+  if (typeof DatamonWorldArt !== "undefined") {
+    const hd = DatamonWorldArt.getHDAsset(slug, "tile", "office");
+    const tx = Math.floor(sx / TILE), ty = Math.floor(sy / TILE);
+    if (hd && (!hd.entry.zone || regionOf(tx, ty) === hd.entry.zone)) {
+      c.drawImage(hd.image, sx, sy, TILE, TILE);
+      return true;
+    }
+  }
   if (tileStore[slug]) { c.drawImage(tileStore[slug], sx, sy, TILE, TILE); return true; }
   return false;
 }
@@ -2699,9 +3366,14 @@ function wallSlug(x, y) {
 // floor never repeats and the tile grid disappears. Built once; deterministic (fixed seed) so
 // rebuilds never flicker.
 let floorTex = null;
+let floorTexKey = null;  // detail-scale key for cache invalidation
 function buildFloorTexture() {
-  if (floorTex) return floorTex;
-  const W = MAP_W * TILE, H = MAP_H * TILE;
+  // Keyed by detail scale so DPR1 and DPR2 get distinct grain.
+  var texKey = "floor_" + MAP_DETAIL_SCALE;
+  if (floorTexKey === texKey && floorTex) return floorTex;
+  floorTexKey = texKey;
+  const W = Math.round(MAP_W * TILE * MAP_DETAIL_SCALE);
+  const H = Math.round(MAP_H * TILE * MAP_DETAIL_SCALE);
   const cv = document.createElement("canvas");
   cv.width = W; cv.height = H;
   const c = cv.getContext("2d");
@@ -2709,18 +3381,20 @@ function buildFloorTexture() {
   const rng = mulberry32(0x0FF1CE);
   const rand = (a, b) => a + (b - a) * rng();
 
+  const ds = MAP_DETAIL_SCALE;
   // Warm-oak base wash so any sub-pixel gap reads as floor, never black.
   c.fillStyle = "#b06f33"; c.fillRect(0, 0, W, H);
 
   // Vertical boards laid column-by-column (grain runs vertically, matching the office's
   // original orientation) but as FINITE planks with a random vertical phase per column,
   // so the end-joints stagger and no grain line ever runs unbroken down the map.
+  // All spatial dimensions multiplied by detail scale for sub-logical grain.
   let x = 0;
   while (x < W) {
-    const pw = Math.round(rand(26, 42));           // board width
-    let y = -Math.round(rand(0, 220));             // staggered start => offset joints
+    const pw = Math.round(rand(26, 42) * ds);        // board width
+    let y = -Math.round(rand(0, 220) * ds);          // staggered start => offset joints
     while (y < H) {
-      const ph = Math.round(rand(150, 300));       // board length
+      const ph = Math.round(rand(150, 300) * ds);    // board length
       const top = Math.max(0, y), bot = Math.min(H, y + ph);
       // Warm-oak base with LOW-variance jitter: an organic blend, not three neon stripes.
       c.fillStyle = `hsl(${rand(27, 33)}, ${rand(42, 54)}%, ${rand(40, 50)}%)`;
@@ -2730,12 +3404,12 @@ function buildFloorTexture() {
         const gx = x + rand(2, pw - 2);
         c.fillStyle = rng() < 0.5 ? `rgba(60,35,12,${rand(0.03, 0.06)})`
                                   : `rgba(255,225,180,${rand(0.025, 0.045)})`;
-        c.fillRect(gx, top, rand(0.8, 1.8), bot - top);
+        c.fillRect(gx, top, rand(0.8, 1.8) * ds, bot - top);
       }
       // Soft end-joint: gentle shadow + faint highlight (low alpha — blends, never harsh).
       if (y >= 0) {
-        c.fillStyle = "rgba(45,25,8,0.15)";   c.fillRect(x, y, pw, 1.5);
-        c.fillStyle = "rgba(255,230,190,0.06)"; c.fillRect(x, y + 1.5, pw, 1);
+        c.fillStyle = "rgba(45,25,8,0.15)";   c.fillRect(x, y, pw, 1.5 * ds);
+        c.fillStyle = "rgba(255,230,190,0.06)"; c.fillRect(x, y + 1.5 * ds, pw, 1 * ds);
       }
       y += ph;
     }
@@ -2747,7 +3421,7 @@ function buildFloorTexture() {
 
   // Faint ambient light: a large soft warm gradient so the floor drifts tonally instead of
   // sitting flat — the final touch that makes the whole surface read as one blended wood.
-  const g = c.createRadialGradient(W * 0.35, H * 0.30, 60, W * 0.5, H * 0.5, Math.max(W, H) * 0.8);
+  const g = c.createRadialGradient(W * 0.35, H * 0.30, 60 * ds, W * 0.5, H * 0.5, Math.max(W, H) * 0.8);
   g.addColorStop(0, "rgba(255,238,205,0.10)");
   g.addColorStop(1, "rgba(40,22,8,0.14)");
   c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -2756,20 +3430,169 @@ function buildFloorTexture() {
   return cv;
 }
 
+// ---- Living office identity -----------------------------------------------------------
+// The six domains share walnut, brick, rainy steel and brass, but each zone behaves like
+// a different working instrument. Everything below is baked into the visual cache only:
+// no map cells, collision, placements, NPC routes or interaction coordinates change.
+function drawOfficeZoneIdentity(c, ds) {
+  const hair = 1 / Math.max(1, ds);
+  const wash = (x0, y0, x1, y1, color, cx, cy) => {
+    c.save(); c.beginPath(); c.rect(x0 * TILE, y0 * TILE, (x1 - x0) * TILE, (y1 - y0) * TILE); c.clip();
+    const g = c.createRadialGradient(cx * TILE, cy * TILE, 8, cx * TILE, cy * TILE, 7 * TILE);
+    g.addColorStop(0, color); g.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = g; c.fillRect(x0 * TILE, y0 * TILE, (x1 - x0) * TILE, (y1 - y0) * TILE); c.restore();
+  };
+  const node = (x, y, color) => {
+    c.fillStyle = "rgba(8,20,38,0.64)"; c.fillRect(x * TILE - 3, y * TILE - 3, 6, 6);
+    c.strokeStyle = color; c.lineWidth = hair; c.strokeRect(x * TILE - 2, y * TILE - 2, 4, 4);
+    c.fillStyle = color; c.fillRect(x * TILE - hair / 2, y * TILE - hair / 2, hair, hair);
+  };
+
+  // Practical-light pools are low-contrast so labels, sprites and answer-signposting remain primary.
+  wash(0, 0, 12, 11, "rgba(242,179,93,0.075)", 7, 5);
+  wash(12, 0, 24, 11, "rgba(168,85,247,0.075)", 18, 6);
+  wash(24, 0, 36, 11, "rgba(34,197,94,0.060)", 30, 5);
+  wash(0, 11, 12, 24, "rgba(6,182,212,0.070)", 5, 18);
+  wash(12, 11, 24, 24, "rgba(249,115,22,0.060)", 18, 18);
+  wash(24, 11, 36, 24, "rgba(245,158,11,0.060)", 29, 17);
+
+  c.save(); c.lineCap = "square"; c.lineJoin = "miter";
+  // MCP LAB — a routed tool bus: ports and orthogonal cable traces, not decorative neon.
+  c.strokeStyle = "rgba(168,85,247,0.48)"; c.lineWidth = hair;
+  c.beginPath(); c.moveTo(13 * TILE, 7 * TILE); c.lineTo(22.5 * TILE, 7 * TILE);
+  c.moveTo(15 * TILE, 7 * TILE); c.lineTo(15 * TILE, 5.25 * TILE);
+  c.moveTo(18 * TILE, 7 * TILE); c.lineTo(18 * TILE, 8.5 * TILE);
+  c.moveTo(21 * TILE, 7 * TILE); c.lineTo(21 * TILE, 5.25 * TILE); c.stroke();
+  c.strokeStyle = "rgba(69,215,232,0.34)"; c.beginPath();
+  c.moveTo(13 * TILE, 7 * TILE + 2); c.lineTo(22.5 * TILE, 7 * TILE + 2); c.stroke();
+  for (const p of [[13,7],[15,5.25],[18,8.5],[21,5.25],[22.5,7]]) node(p[0], p[1], "rgba(199,157,255,0.88)");
+
+  // CONFIG BAY — a brass calibration rail with green verified positions.
+  const railY = 8.55 * TILE;
+  c.fillStyle = "rgba(48,34,27,0.52)"; c.fillRect(25 * TILE, railY - 3, 9.5 * TILE, 6);
+  c.fillStyle = "rgba(242,179,93,0.50)"; c.fillRect(25 * TILE, railY - hair / 2, 9.5 * TILE, hair);
+  for (let i = 0; i <= 19; i++) {
+    const x = (25 + i * 0.5) * TILE;
+    c.fillStyle = i % 4 === 0 ? "rgba(34,197,94,0.78)" : "rgba(232,223,200,0.38)";
+    c.fillRect(x, railY - (i % 4 === 0 ? 5 : 3), hair, i % 4 === 0 ? 10 : 6);
+  }
+
+  // CONTEXT CORNER — nested context windows reflected in the glass meeting room.
+  c.strokeStyle = "rgba(174,232,241,0.25)"; c.lineWidth = hair;
+  for (let inset = 0; inset < 3; inset++) {
+    c.strokeRect((1.35 + inset * 0.28) * TILE, (16.1 + inset * 0.28) * TILE,
+                 (7.2 - inset * 0.56) * TILE, (5.5 - inset * 0.56) * TILE);
+  }
+  c.fillStyle = "rgba(6,182,212,0.38)";
+  for (const y of [17.05, 20.85]) c.fillRect(1.65 * TILE, y * TILE, 6.6 * TILE, hair);
+
+  // PROMPT STUDIO — editorial registration frames around four drafting stations.
+  c.strokeStyle = "rgba(249,115,22,0.40)"; c.lineWidth = hair;
+  for (const p of [[13.25,15.15],[19.25,15.15],[13.25,18.15],[19.25,18.15]]) {
+    c.strokeRect(p[0] * TILE, p[1] * TILE, 3.2 * TILE, 2.2 * TILE);
+    c.fillStyle = "rgba(242,179,93,0.54)";
+    c.fillRect(p[0] * TILE, p[1] * TILE, 9, hair); c.fillRect(p[0] * TILE, p[1] * TILE, hair, 9);
+    c.fillRect((p[0] + 3.2) * TILE - 9, (p[1] + 2.2) * TILE - hair, 9, hair);
+  }
+
+  // THE LOUNGE — one restrained certification-compass inlay carries all five domains.
+  const mx = 29 * TILE, my = 12.85 * TILE;
+  c.strokeStyle = "rgba(242,179,93,0.48)"; c.lineWidth = hair;
+  c.beginPath(); c.arc(mx, my, 18, 0, Math.PI * 2); c.stroke();
+  c.beginPath(); c.moveTo(mx, my - 15); c.lineTo(mx + 6, my); c.lineTo(mx, my + 15);
+  c.lineTo(mx - 6, my); c.closePath(); c.stroke();
+  const domainMarks = ["#3b82f6","#a855f7","#22c55e","#f97316","#06b6d4"];
+  for (let i = 0; i < domainMarks.length; i++) {
+    const a = -Math.PI / 2 + i * Math.PI * 2 / domainMarks.length;
+    c.fillStyle = domainMarks[i]; c.fillRect(mx + Math.cos(a) * 22 - 1, my + Math.sin(a) * 22 - 1, 2, 2);
+  }
+  c.restore();
+}
+
+function drawLibraryStoneFloor(c, ds) {
+  const hair = 1 / Math.max(1, ds), rng = mulberry32(0x1B1A44);
+  c.save(); c.fillStyle = "#747984"; c.fillRect(0, 0, MAP_W * TILE, MAP_H * TILE);
+  // Staggered 3×2-tile slate flags remove the old 32px checkerboard while retaining hand-cut joints.
+  const tones = ["#747984","#7c818b","#6d727d","#80858e","#707681"];
+  for (let row = 0, y = 0; y < MAP_H * TILE; row++, y += 2 * TILE) {
+    const offset = row % 2 ? -1.5 * TILE : 0;
+    for (let x = offset; x < MAP_W * TILE; x += 3 * TILE) {
+      c.fillStyle = tones[Math.floor(rng() * tones.length)]; c.fillRect(x, y, 3 * TILE, 2 * TILE);
+      c.fillStyle = "rgba(230,235,240,0.055)"; c.fillRect(x, y, 3 * TILE, hair);
+      c.fillStyle = "rgba(25,30,40,0.18)"; c.fillRect(x, y + 2 * TILE - hair, 3 * TILE, hair);
+      c.fillRect(x + 3 * TILE - hair, y, hair, 2 * TILE);
+    }
+  }
+  // Sparse physical-pixel mineral flecks are true DPR detail, not a scaled legacy texture.
+  for (let i = 0; i < 180; i++) {
+    const x = rng() * MAP_W * TILE, y = rng() * MAP_H * TILE;
+    c.fillStyle = rng() < 0.55 ? "rgba(225,230,236,0.10)" : "rgba(26,31,42,0.16)";
+    c.fillRect(x, y, hair, hair);
+  }
+  const g = c.createRadialGradient(18 * TILE, 10 * TILE, TILE, 18 * TILE, 10 * TILE, 18 * TILE);
+  g.addColorStop(0, "rgba(218,224,230,0.10)"); g.addColorStop(1, "rgba(20,24,34,0.14)");
+  c.fillStyle = g; c.fillRect(0, 0, MAP_W * TILE, MAP_H * TILE); c.restore();
+}
+
+function drawLibraryArchitecture(c, ds) {
+  const hair = 1 / Math.max(1, ds);
+  c.save();
+  // Brass aisle rails organize the continuous slate hall without adding collision.
+  c.strokeStyle = "rgba(176,138,70,0.38)";
+  for (const x of [11.5, 24.5]) { c.beginPath(); c.moveTo(x * TILE, 4 * TILE); c.lineTo(x * TILE, 22.5 * TILE); c.stroke(); }
+
+  // Dark walnut shelf alcoves, with brass cap rails, sit behind the existing bookshelf sprites.
+  for (const box of [[3.45,0.75,11.15,4.35],[25.45,0.75,33.15,4.35]]) {
+    c.fillStyle = "rgba(31,24,25,0.72)"; c.fillRect(box[0] * TILE, box[1] * TILE, (box[2]-box[0]) * TILE, (box[3]-box[1]) * TILE);
+    c.strokeStyle = "rgba(176,138,70,0.66)"; c.strokeRect(box[0] * TILE, box[1] * TILE, (box[2]-box[0]) * TILE, (box[3]-box[1]) * TILE);
+    for (let x = box[0] + 0.5; x < box[2]; x += 1) {
+      c.fillStyle = "rgba(232,223,200,0.10)"; c.fillRect(x * TILE, box[1] * TILE + 3, hair, (box[3]-box[1]) * TILE - 6);
+    }
+  }
+
+  // Warm reading pools are baked once; they never flicker or obscure study text.
+  for (const p of [[14,9.5],[22,9.5],[5,20.5],[33,20.5]]) {
+    const g = c.createRadialGradient(p[0] * TILE, p[1] * TILE, 2, p[0] * TILE, p[1] * TILE, 2.8 * TILE);
+    g.addColorStop(0, "rgba(242,179,93,0.13)"); g.addColorStop(1, "rgba(242,179,93,0)");
+    c.fillStyle = g; c.fillRect((p[0]-3) * TILE, (p[1]-3) * TILE, 6 * TILE, 6 * TILE);
+  }
+
+  // The reading rug's signature is an open-book/compass medallion, not generic ornament.
+  const cx = 17.5 * TILE, cy = 9.7 * TILE;
+  c.strokeStyle = "rgba(232,199,123,0.72)"; c.lineWidth = hair;
+  c.beginPath(); c.arc(cx, cy, 30, 0, Math.PI * 2); c.stroke();
+  c.beginPath(); c.moveTo(cx, cy - 17); c.lineTo(cx, cy + 16);
+  c.moveTo(cx, cy - 13); c.quadraticCurveTo(cx - 16, cy - 20, cx - 23, cy - 7);
+  c.lineTo(cx - 23, cy + 12); c.quadraticCurveTo(cx - 11, cy + 5, cx, cy + 15);
+  c.moveTo(cx, cy - 13); c.quadraticCurveTo(cx + 16, cy - 20, cx + 23, cy - 7);
+  c.lineTo(cx + 23, cy + 12); c.quadraticCurveTo(cx + 11, cy + 5, cx, cy + 15); c.stroke();
+
+  const stationColors = ["#a855f7","#f97316","#3b82f6","#06b6d4"];
+  [7,15,22,30].forEach((x, i) => {
+    c.strokeStyle = stationColors[i] + "88"; c.strokeRect((x - 0.35) * TILE, 13.65 * TILE, 1.7 * TILE, 1.7 * TILE);
+    c.fillStyle = stationColors[i] + "99"; c.fillRect(x * TILE - 1, 13.82 * TILE, 2, 5);
+  });
+  c.restore();
+}
+
 function buildMapCanvas() {
   const cv = document.createElement("canvas");
-  cv.width  = MAP_W * TILE;   // 1152
-  cv.height = MAP_H * TILE;   // 768
+  cv.width  = Math.round(MAP_W * TILE * MAP_DETAIL_SCALE);
+  cv.height = Math.round(MAP_H * TILE * MAP_DETAIL_SCALE);
+  cv.detailScale = MAP_DETAIL_SCALE;  // tag for camera source rect
   const c = cv.getContext("2d");
   c.imageSmoothingEnabled = false;
+  const ds = MAP_DETAIL_SCALE;        // local convenience
+  c.scale(ds, ds);                    // all logical-coord draws scale to detail pixels
   // Warm-hardwood floor base under everything walkable (#021); brick / window / column /
   // duct / glass for structural chars. Each blit falls back to a flat tileColor() fill if
   // its PNG is missing, so a 404 degrades gracefully instead of leaving a black square.
   // Each floor cell is a 1:1 window into the single continuous plank texture (#022) — no
   // tiling, no repeat, no seams. Falls back to a flat warm fill only if texture build fails.
+  // Source rect from detail-scaled texture matches the detail canvas target.
   const tex = buildFloorTexture();
   const floorBase = (sx, sy, x, y) => {
-    if (tex) c.drawImage(tex, sx, sy, TILE, TILE, sx, sy, TILE, TILE);
+    if (tex) c.drawImage(tex, sx * ds, sy * ds, TILE * ds, TILE * ds, sx, sy, TILE, TILE);
     else { c.fillStyle = tileColor("F", x, y); c.fillRect(sx, sy, TILE, TILE); }
   };
   for (let y = 0; y < MAP_H; y++) {
@@ -2822,6 +3645,8 @@ function buildMapCanvas() {
     }
   }
 
+  drawOfficeZoneIdentity(c, ds);
+
   // ---- A3: cosmetic seam runners inlaid along zone boundaries (walkway gaps left open) ----
   // A 2px groove + faint highlight straddling the grid line reads as an inlaid threshold
   // between rooms. Drawn over the floor but BEFORE props, so desks/furniture sit on top.
@@ -2843,16 +3668,27 @@ function buildMapCanvas() {
     }
   }
 
+  // Reviewed practical-light overlay remains optional and placement-bounded.
+  if (typeof DatamonWorldArt !== "undefined") {
+    const light = DatamonWorldArt.getHDAsset("agent-wing-lighting", "overlay", "office");
+    if (light && light.entry.placement) {
+      c.drawImage(light.image, light.entry.placement.col * TILE, light.entry.placement.row * TILE,
+                  light.entry.widthPx, light.entry.heightPx);
+    }
+  }
+
   // ---- Baked prop layer (#021): anchored office cutouts, drawn BEHIND characters ----
-  // (col,row) = footprint top-left; blit at native widthPx×heightPx so the image fills the
-  // tileW×tileH footprint (anchorY = heightPx-32 per #020 — the height already accounts for
-  // the upward extent). Missing PNG → neutral-grey drawn box at the footprint (Must-Not:
-  // never render a black screen / throw when a prop asset is absent).
+  // Reviewed HD cutouts replace only their matching Agent Wing placements. Every missing,
+  // invalid, or unaccepted member resolves through the legacy prop contract.
   for (const p of PROP_PLACEMENTS) {
-    const meta = propManifest.find(m => m.slug === p.slug);
-    if (!meta) continue; // slug not in manifest — skip silently
+    const legacyMeta = propManifest.find(m => m.slug === p.slug);
+    const hd = (typeof DatamonWorldArt !== "undefined")
+      ? DatamonWorldArt.getHDAsset(p.slug, "prop", "office") : null;
+    const useHD = hd && (!hd.entry.zone || regionOf(p.col, p.row) === hd.entry.zone);
+    const meta = useHD ? hd.entry : legacyMeta;
+    if (!meta) continue;
     const dx = p.col * TILE + (meta.anchorX || 0), dy = p.row * TILE;
-    const img = propStore[p.slug];
+    const img = useHD ? hd.image : propStore[p.slug];
     if (img) {
       c.drawImage(img, dx, dy, meta.widthPx, meta.heightPx);
     } else {
@@ -2881,10 +3717,14 @@ function buildMapCanvas() {
 // Explicit fallback fill colors for every cell type — do NOT rely on tileColor() (office-only).
 function buildLibraryMapCanvas() {
   const cv = document.createElement("canvas");
-  cv.width  = MAP_W * TILE; // 1152
-  cv.height = MAP_H * TILE; // 768
+  cv.width  = Math.round(MAP_W * TILE * MAP_DETAIL_SCALE);
+  cv.height = Math.round(MAP_H * TILE * MAP_DETAIL_SCALE);
+  cv.detailScale = MAP_DETAIL_SCALE;  // tag for camera source rect
   const c = cv.getContext("2d");
   c.imageSmoothingEnabled = false;
+  const ds = MAP_DETAIL_SCALE;
+  c.scale(ds, ds);
+  drawLibraryStoneFloor(c, ds);
 
   // Helper: blit a library tile (32×32) from libStore; returns true on success.
   function blitLibTile(slug, sx, sy) {
@@ -2905,20 +3745,18 @@ function buildLibraryMapCanvas() {
         continue;
       }
       const inRug = x >= R.x0 && x <= R.x1 && y >= R.y0 && y <= R.y1;
-      // Integer mix-hash (xorshift-style) so slate accents scatter with no lattice/banding.
-      let hsh = (x * 374761393 + y * 668265263) | 0;
-      hsh = (hsh ^ (hsh >>> 13)) | 0;
-      hsh = (hsh * 1274126177) | 0;
-      const accent = ((hsh >>> 0) % 100) < 14;                         // ~14% slate accents
-      const slug = inRug ? "lib-floor-b"                               // red carpet weave
-        : (accent ? "lib-floor-c" : "lib-floor-a");                    // stone + scattered slate
-      if (!blitLibTile(slug, sx, sy)) { c.fillStyle = "#6b563b"; c.fillRect(sx, sy, TILE, TILE); }
+      // Non-rug cells already expose the continuous deterministic slate floor beneath.
+      // Only the central textile uses a tile texture, bounded by one room-scale brass border.
+      if (inRug && !blitLibTile("lib-floor-b", sx, sy)) {
+        c.fillStyle = "#6b353b"; c.fillRect(sx, sy, TILE, TILE);
+      }
     }
   }
   // Single gold border around the reading-nook rug (drawn once, not per tile).
   c.strokeStyle = "#b08a46"; c.lineWidth = 3;
   c.strokeRect(R.x0 * TILE + 2, R.y0 * TILE + 2,
                (R.x1 - R.x0 + 1) * TILE - 4, (R.y1 - R.y0 + 1) * TILE - 4);
+  drawLibraryArchitecture(c, ds);
 
   // Bake bookshelves (top-anchored 1×3 props) then decor/furniture (bottom-anchored so
   // a 48px sprite sits feet-on-tile, overhanging 16px upward; a 64px table spans 2 cols).
@@ -2951,6 +3789,59 @@ const OVERWORLD_LABELS = [["AGENT WING", 6, 2.6, "AGENT"], ["MCP LAB", 18, 2.6, 
                           // Wayfinding sign floating above the library warp door (OFFICE_DOOR_TILE [24,23]) — SPACE on the door
                           // to enter. Row 19.5 keeps it clear of the player standing at the door (row 22) and above the door sprite.
                           ["LIBRARY ↓", 24, 19.5, "CONTEXT"]];
+const LIBRARY_DUST_POINTS = Object.freeze([[6,7],[11,12],[17,5],[20,17],[25,7],[29,18],[33,10],[15,20]]);
+const PROMPT_CURSOR_POINTS = Object.freeze([[15.2,16.35],[21.2,16.35],[15.2,19.35],[21.2,19.35]]);
+
+// Seven bounded, particle-free living-world loops. They are cosmetic and draw above the
+// cached architecture but below labels/characters. Reduced motion pins every loop to phase 0.
+function drawLivingWorldAmbient() {
+  if (typeof DatamonWorldArt === "undefined") return;
+  const phase = DatamonWorldArt.getAmbientPhase(2400);
+  const sx = x => (x - camFx) * TILE;
+  const sy = y => (y - camFy) * TILE;
+  ctx.save();
+  if (currentMap === "office") {
+    // MCP: five tool-port pips chase along the routed floor bus.
+    for (let i = 0; i < 5; i++) {
+      const active = Math.floor(phase * 5) === i;
+      ctx.fillStyle = active ? "rgba(199,157,255,0.90)" : "rgba(168,85,247,0.32)";
+      ctx.fillRect(sx(14.3 + i * 1.75) - 2, sy(7) - 2, active ? 4 : 3, active ? 4 : 3);
+    }
+    // Config: two restrained coffee-steam filaments rise from the real counter.
+    ctx.strokeStyle = "rgba(232,223,200,0.30)"; ctx.lineWidth = 1;
+    for (let i = 0; i < 2; i++) {
+      const lift = ((phase + i * 0.42) % 1) * 13;
+      const x = sx(31.5) + i * 5, y = sy(2.35) - lift;
+      ctx.beginPath(); ctx.moveTo(x, y + 10); ctx.quadraticCurveTo(x + (i ? -3 : 3), y + 5, x, y); ctx.stroke();
+    }
+    // Context: one glass reflection traverses the meeting-room panes.
+    ctx.save(); ctx.beginPath(); ctx.rect(sx(1), sy(15), 8 * TILE, 8 * TILE); ctx.clip();
+    const glassX = sx(1.2 + phase * 7.4);
+    ctx.strokeStyle = "rgba(207,243,248,0.18)"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(glassX, sy(15.5)); ctx.lineTo(glassX + 38, sy(22.5)); ctx.stroke(); ctx.restore();
+    // Prompt: editorial cursors blink together at the four drafting stations.
+    ctx.fillStyle = phase < 0.52 ? "rgba(255,205,133,0.78)" : "rgba(249,115,22,0.22)";
+    for (const p of PROMPT_CURSOR_POINTS) ctx.fillRect(sx(p[0]), sy(p[1]), 5, 2);
+    // Lounge: the certification-compass inlay breathes once per cycle.
+    ctx.strokeStyle = `rgba(242,179,93,${0.12 + 0.14 * Math.sin(phase * Math.PI)})`;
+    ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(sx(29), sy(12.85), 21 + phase * 5, 0, Math.PI * 2); ctx.stroke();
+  } else if (currentMap === "library") {
+    // Fixed dust positions drift a few pixels; there is no particle allocation or random state.
+    for (let i = 0; i < LIBRARY_DUST_POINTS.length; i++) {
+      const p = LIBRARY_DUST_POINTS[i], local = (phase + i * 0.137) % 1;
+      ctx.fillStyle = `rgba(232,223,200,${0.10 + (i % 3) * 0.035})`;
+      ctx.fillRect(sx(p[0]) + Math.sin(local * Math.PI * 2) * 3, sy(p[1]) - local * 7, i % 2 ? 2 : 1, i % 2 ? 2 : 1);
+    }
+    // Lamp pools breathe by alpha only; phase zero remains a complete static composition.
+    const glow = 0.08 + Math.sin(phase * Math.PI) * 0.045;
+    for (const p of [[4.5,20.2],[32.5,20.2]]) {
+      const g = ctx.createRadialGradient(sx(p[0]), sy(p[1]), 2, sx(p[0]), sy(p[1]), 44);
+      g.addColorStop(0, `rgba(242,179,93,${glow})`); g.addColorStop(1, "rgba(242,179,93,0)");
+      ctx.fillStyle = g; ctx.fillRect(sx(p[0]) - 44, sy(p[1]) - 44, 88, 88);
+    }
+  }
+  ctx.restore();
+}
 
 function drawOverworld() {
   if (!mapCv) return;
@@ -2981,12 +3872,23 @@ function drawOverworld() {
   ctx.fillStyle = "#0f172a"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
   // 9-arg drawImage: source rect from the pre-rendered map, dest = full canvas.
-  // Source offset -Math.round(-cam*TILE) reproduces the old per-tile
-  // px((x-camX)*TILE) rounding EXACTLY (JS rounds half toward +Inf, so
-  // Math.round(cam*TILE) alone would differ by 1px at exact half-pixel values).
-  ctx.drawImage(mapCv,
-    -Math.round(-camFx * TILE), -Math.round(-camFy * TILE), CANVAS_W, CANVAS_H,
-    0, 0, CANVAS_W, CANVAS_H);
+  // When map cache has a detailScale, use DatamonWorldArt.cameraSourceRect for
+  // exact physical-pixel source coordinates.
+  if (typeof DatamonWorldArt !== "undefined" && mapCv.detailScale) {
+    var src = DatamonWorldArt.cameraSourceRect(camFx, camFy, TILE, CANVAS_W, CANVAS_H, mapCv.detailScale);
+    ctx.drawImage(mapCv, src.sx, src.sy, src.sw, src.sh, 0, 0, CANVAS_W, CANVAS_H);
+  } else {
+    ctx.drawImage(mapCv,
+      -Math.round(-camFx * TILE), -Math.round(-camFy * TILE), CANVAS_W, CANVAS_H,
+      0, 0, CANVAS_W, CANVAS_H);
+  }
+
+  // Scene-local weather/display/practical-light loops sit above architecture and below
+  // labels/characters. Missing sheets are simply absent; frame zero is immediate in reduced motion.
+  if (typeof DatamonWorldArt !== "undefined") {
+    DatamonWorldArt.drawAmbient(ctx, currentMap, camFx, camFy, TILE, "back");
+  }
+  drawLivingWorldAmbient();
 
   // room labels — frosted nameplates: a dark rounded pill with a zone-accent underline
   // (same palette as the "!" markers) so each zone name reads as legible signage on top
@@ -3032,10 +3934,27 @@ function drawOverworld() {
     chars.push({ sx, sy, slug: player.slug, dir: player.dir, isPlayer: true, bob: player.moving,
                  tx: Math.round(player.fx), ty: Math.round(player.fy), npc: null });
   }
+  // Visual-only detail entities join the feet-Y sort but never touch map/SOLID collision.
+  if (currentMap === "office" && typeof DatamonWorldArt !== "undefined") {
+    for (const item of DatamonWorldArt.getVisualDetailPlacements("office")) {
+      const p = item.placement, e = item.entry;
+      const sx = (p.col - camFx) * TILE + (e.anchorX || 0);
+      const top = (p.row - camFy) * TILE;
+      chars.push({ worldArt: item, sx, top, sy: top + e.heightPx, tx: p.col, ty: p.row });
+    }
+  }
   chars.sort((a, b) => (a.sy - b.sy) || (a.sx - b.sx));   // back-to-front, tie-break x
 
   for (const c of chars) {
-    drawCharacter(c.sx, c.sy, c.slug, c.dir, c.isPlayer, c.bob, isSolidTile(c.tx, c.ty - 1));
+    if (c.worldArt) {
+      const e = c.worldArt.entry;
+      ctx.drawImage(c.worldArt.image, c.sx, c.top, e.widthPx, e.heightPx);
+      if (e.id === "hd-collaboration-table") {
+        DatamonWorldArt.drawAmbientEntry(ctx, "hd-amb-table", camFx, camFy, TILE);
+      }
+    } else {
+      drawCharacter(c.sx, c.sy, c.slug, c.dir, c.isPlayer, c.bob, isSolidTile(c.tx, c.ty - 1));
+    }
   }
 
   // Footfall dust (PRD 004 / #017): draw each live puff in screen space (camera-relative),
@@ -3137,8 +4056,83 @@ function runHitTest(mx, my) {
   return mx >= x && mx <= x + w && my >= y && my <= y + h;
 }
 
+// ---- Agent Operations drawing helpers ----
+
+// Agent Operations geometry. Action and answer rectangles are intentionally
+// separate, uncached functions; renderer and pointer paths consume these same
+// values so responsive/DPR drawing can never drift from hit-testing.
+function _agentActionRects() {
+  if (typeof AgentArena !== "undefined") return AgentArena.actionRects();
+  return [[24, 466, 368, 56], [408, 466, 368, 56], [24, 532, 368, 56], [408, 532, 368, 56]];
+}
+
+function _agentChoiceRects() {
+  if (typeof AgentArena !== "undefined") return AgentArena.choiceRects();
+  return [[24, 478, 368, 50], [408, 478, 368, 50], [24, 538, 368, 50], [408, 538, 368, 50]];
+}
+
+function _agentRunRect() {
+  return typeof AgentArena !== "undefined" ? AgentArena.runRect() : [700, 408, 76, 26];
+}
+
+function _hitRectList(rects, mx, my) {
+  for (var i = 0; i < rects.length; i++) {
+    var r = rects[i];
+    if (mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + r[3]) return i;
+  }
+  return -1;
+}
+
+function _agentActionHitTest(mx, my) { return _hitRectList(_agentActionRects(), mx, my); }
+function _agentChoiceHitTest(mx, my) { return _hitRectList(_agentChoiceRects(), mx, my); }
+function _agentRunHitTest(mx, my) {
+  var r = _agentRunRect();
+  return mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + r[3];
+}
+
+// Draw Agent Operations encounter with action menu, Momentum/Guardrail/Stability HUD.
+// Agent Operations Incident Command arena renderer.
+// Delegates to AgentArena module; draw is read-only over combat state.
+function _agentDrawBattle(b) {
+  if (typeof AgentArena === "undefined") {
+    // Complete no-module fallback: combat remains keyboard/pointer playable and
+    // every reducer-owned value/question is visible instead of a dead title card.
+    var ao = b.agentOps;
+    ctx.fillStyle = "#081426"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.fillStyle = "#45d7e8"; ctx.font = "bold 18px monospace"; ctx.textAlign = "center";
+    ctx.fillText("AGENT OPERATIONS // PROCEDURAL FALLBACK", CANVAS_W / 2, 36);
+    ctx.fillStyle = "#e8dfc8"; ctx.font = "bold 13px monospace";
+    ctx.fillText("Stability " + ao.stability + "/" + ao.maxStability + " · Momentum " + ao.momentum + "/3 · Guardrail " + (ao.guardrail ? "ACTIVE" : "OFF") + " · HP " + ao.playerHp, CANVAS_W / 2, 66);
+    ctx.textAlign = "left"; ctx.fillStyle = "#f2b35d"; ctx.font = "bold 12px monospace";
+    ctx.fillText((ao.question && ao.question.q || "Question unavailable").slice(0, 105), 24, 430);
+    var rects = ao.phase === "action" ? _agentActionRects() : _agentChoiceRects();
+    if (ao.phase === "action" || ao.phase === "choice") {
+      rects.forEach(function (r, i) {
+        ctx.fillStyle = "#0f1f35"; ctx.fillRect(r[0], r[1], r[2], r[3]);
+        ctx.strokeStyle = "#2f6fed"; ctx.strokeRect(r[0], r[1], r[2], r[3]);
+        ctx.fillStyle = "#e2e8f0"; ctx.font = "11px monospace";
+        var text = ao.phase === "action"
+          ? (i + 1) + ". " + DatamonBattleOps.ACTIONS[DatamonBattleOps.ACTION_KEYS[i]].label + " — " + DatamonBattleOps.ACTIONS[DatamonBattleOps.ACTION_KEYS[i]].desc
+          : (i + 1) + ". " + (ao.question && ao.question.c[i] || "");
+        ctx.fillText(text.slice(0, 52), r[0] + 10, r[1] + 30);
+      });
+    } else {
+      ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 13px monospace";
+      ctx.fillText((b.msg || "Continue").slice(0, 100), 24, 485);
+    }
+    return;
+  }
+
+  ctx.save();
+  AgentArena.draw(b, ctx, frame, dtF);
+  // Agent impact/entrance treatment lives in AgentArena; legacy white/red
+  // full-canvas flashes are intentionally absent for reduced-motion parity.
+  ctx.restore();
+}
+
 function drawBattle() {
   const b = battle;
+  if (b.agentOps) { _agentDrawBattle(b); return; }
   const shakeX = b.shake > 0 ? (Math.random() - 0.5) * b.shake : 0;
   if (b.shake > 0) b.shake = Math.max(0, b.shake - dtF);
 
@@ -3489,6 +4483,24 @@ function drawSearch() {
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 
+// Resolve a small read-only soundtrack snapshot. Music never receives mutable game objects.
+function resolveMusicScene() {
+  if (typeof DatamonMusic === "undefined") return null;
+  const musicBattle = battle ? {
+    phase: battle.agentOps ? battle.agentOps.phase : battle.phase,
+    agentOps: battle.agentOps ? {
+      boss: !!battle.agentOps.boss,
+      bossPhase: battle.agentOps.bossPhase || 0,
+    } : null,
+  } : null;
+  return DatamonMusic.resolveScene({
+    state,
+    currentMap,
+    battle: musicBattle,
+    transitionType: battleTransition && battleTransition.npc ? battleTransition.npc.type : null,
+  });
+}
+
 function loop(t) {
   const dt = Math.min(0.05, (t - lastT) / 1000); // clamp caps tab-refocus dt spikes
   lastT = t;
@@ -3502,10 +4514,20 @@ function loop(t) {
   // Hard-mode question timer: counts down ONLY during the question phase (Invariant 1 —
   // paused during feedback/typewriter/intro/sendout/win/lose). On expiry, route through
   // the shared wrong-answer/timeout flow.
-  if (state === "battle" && battle && battle.phase === "question" && difficulty === "hard") {
-    battle.timerMs -= dt * 1000;
-    if (battle.timerMs <= 0) { battle.timerMs = 0; timeoutQuestion(); }
+  if (state === "battle" && battle && difficulty === "hard") {
+    // Agent Operations: timer runs only during the interactive choice phase
+    if (battle.agentOps && battle.agentOps.phase === "choice") {
+      battle.timerMs -= dt * 1000;
+      if (battle.timerMs <= 0) { battle.timerMs = 0; timeoutQuestion(); }
+    } else if (!battle.agentOps && battle.phase === "question") {
+      // Classic: timer runs during question phase
+      battle.timerMs -= dt * 1000;
+      if (battle.timerMs <= 0) { battle.timerMs = 0; timeoutQuestion(); }
+    }
   }
+  // Scene sync is idempotent; unchanged scenes never restart their scheduler or loop.
+  if (typeof DatamonMusic !== "undefined") DatamonMusic.setScene(resolveMusicScene());
+
   // Minigame update: init on first frame, then tick feedback timers (#029)
   if (state === "minigame" && currentMinigame) {
     if (currentMinigame.phase === "intro") initMinigame();
@@ -3537,9 +4559,40 @@ ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets(), loadBooks(), loadPairs(), loadCloze(), loadDiagrams(), loadWalkAnim()]).then(() => {
+// Initialize presentation systems without creating an AudioContext before user activation.
+if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.init();
+if (typeof DatamonMusic !== "undefined") DatamonMusic.init({ muted: muted, scene: "title" });
+// Load and validate the additive manifest, then request only accepted office/shared HD members.
+// A missing/empty manifest resolves to legacy rendering with zero HD image requests.
+var hdManifestPromise = (typeof DatamonWorldArt !== "undefined")
+  ? DatamonWorldArt.loadManifest() : Promise.resolve([]);
+var hdOfficePromise = hdManifestPromise.then(function() {
+  return (typeof DatamonWorldArt !== "undefined")
+    ? DatamonWorldArt.loadScene("office") : [];
+});
+// Prewarm only the saved player without delaying the title screen. A new run preloads its
+// highlighted character when character select opens.
+loadWalkAnim(getSave()?.player);
+// Boot: load office assets + shared library assets (lib-door) but NOT full library.
+// Full library assets load lazily on first warp.
+Promise.all([
+  loadImages(), loadTiles(), loadProps(),
+  hdOfficePromise,
+  // Load only shared library dependencies needed by the office entrance
+  fetch("library/assets/manifest.json")
+    .then(r => (r.ok ? r.json() : []))
+    .then(list => {
+      libManifest = Array.isArray(list) ? list : [];
+      // Only load lib-door at boot; remaining library art loads on first entry
+      var doorEntry = libManifest.find(function(m) { return m.slug === "lib-door"; });
+      if (doorEntry) return loadOne("library/assets/" + doorEntry.file, libStore, "lib-door");
+      return Promise.resolve();
+    })
+    .catch(function() { libManifest = []; }),
+]).then(function() {
   officeMapCv = buildMapCanvas();         // reads global map (= OFFICE_MAP) — must run while currentMap is office
-  libraryMapCv = buildLibraryMapCanvas(); // reads LIBRARY_MAP directly
+  libraryMapCv = null;                    // first interaction loads data/art and builds once
   mapCv = officeMapCv;
+  if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("office");
   requestAnimationFrame(loop);
 });

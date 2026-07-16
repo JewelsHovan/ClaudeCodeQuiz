@@ -8,7 +8,12 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       height: 100%;
-      background: #020617;
+      background-color: #030713;
+      background-image:
+        radial-gradient(circle at 50% 42%, rgba(45, 212, 191, 0.07), transparent 44%),
+        linear-gradient(rgba(148, 163, 184, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.025) 1px, transparent 1px);
+      background-size: auto, 24px 24px, 24px 24px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -18,18 +23,31 @@
     canvas {
       image-rendering: pixelated;
       image-rendering: crisp-edges;
-      max-width: 98vw;
-      max-height: 98vh;
+      max-width: 97vw;
+      max-height: 97vh;
       aspect-ratio: 800 / 608;
-      border: 4px solid #1e293b;
-      border-radius: 6px;
-      box-shadow: 0 0 60px rgba(59, 130, 246, 0.15);
+      border: 2px solid #334155;
+      border-radius: 0;
+      outline: 1px solid #0b1220;
+      box-shadow:
+        0 0 0 5px #07101f,
+        0 22px 80px rgba(0, 0, 0, 0.58),
+        -18px 0 80px rgba(249, 115, 91, 0.06),
+        18px 0 80px rgba(45, 212, 191, 0.06);
     }
   </style>
 </head>
 <body>
-  <canvas id="game"></canvas>
+  <canvas id="game" tabindex="0" role="img" aria-label="DATAMON, a pixel-art Claude certification study game" aria-describedby="datamon-controls"></canvas>
+  <p id="datamon-controls" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Agent Operations: use arrow keys to focus, number keys 1 through 4 or Enter to select, R to run, and M to mute. Pointer controls match the visible buttons.</p>
+  <div id="datamon-announcer" role="status" aria-live="polite" aria-atomic="true"
+       style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"></div>
+  <script src="state.js"></script>
+  <script src="battle-ops.js"></script>
+  <script src="agent-arena.js"></script>
   <script src="questions.js"></script>
+  <script src="world-art.js"></script>
+  <script src="music.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

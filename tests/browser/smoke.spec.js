@@ -1,0 +1,687 @@
+// @ts-check
+// DATAMON browser smoke test — title → select → overworld → battle.
+// Serves from dist/ (the packaged artifact). Fails on page errors,
+// console errors/asserts, request failures, and HTTP >=400.
+import { test, expect } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
+
+// Read core.js for injection before page scripts load.
+const coreJs = fs.readFileSync(
+  path.resolve(import.meta.dirname, "../../datamon/core.js"),
+  "utf-8"
+);
+
+/**
+ * Helper: inject the test seam, set up error/request collectors,
+ * navigate to the app, and wait for the title screen.
+ */
+async function setupPage(page, { signal } = {}) {
+  const errors = [];
+  const failedRequests = [];
+
+  page.on("pageerror", (err) => errors.push(`pageerror: ${err.message}`));
+  page.on("console", (msg) => {
+    if (msg.type() === "error") errors.push(`console.error: ${msg.text()}`);
+    // console.assert with a falsy first arg fires as type "assert"
+    if (msg.type() === "assert") errors.push(`console.assert: ${msg.text()}`);
+  });
+  page.on("requestfailed", (req) => {
+    failedRequests.push(`requestfailed: ${req.url()} (${req.failure()?.errorText || "unknown"})`);
+  });
+  page.on("response", (res) => {
+    if (res.status() >= 400) {
+      failedRequests.push(`HTTP ${res.status}: ${res.url()}`);
+    }
+  });
+
+  await page.addInitScript(coreJs);
+  await page.goto("/");
+
+  return { errors, failedRequests };
+}
+
+/**
+ * Helper: read the current game state via indirect eval.
+ */
+async function getState(page) {
+  return page.evaluate(() => {
+    try { return eval("state"); } catch (_) { return null; }
+  });
+}
+
+/**
+ * Helper: inspect full game state via the test seam.
+ */
+async function inspectState(page) {
+  return page.evaluate(() => {
+    return window.__DATAMON_TEST__?.inspectState() || null;
+  });
+}
+
+async function startDirectBattle(page, { type, boss = false, difficulty = "normal" }) {
+  await page.waitForFunction(() => { try { return eval("state") === "title"; } catch (_) { return false; } });
+  return page.evaluate(({ requestedType, makeBoss, requestedDifficulty }) => {
+    const ge = (0, eval);
+    const roster = ge("ROSTER");
+    const playerObj = ge("player");
+    playerObj.slug = roster[0];
+    playerObj.hp = ge("MAX_HP");
+    ge(`difficulty = ${JSON.stringify(requestedDifficulty)}`);
+    ge("defeated = new Set()");
+    ge("_progression = { badges: [], quests: {}, activities: {}, npcDomains: {} }");
+    ge("_npcDomains = _progression.npcDomains");
+    ge("placeNPCs")();
+
+    const list = ge("npcs");
+    const candidates = list.filter(npc => npc.type === requestedType);
+    if (!candidates.length) throw new Error(`No ${requestedType} NPC available`);
+    const target = candidates[0];
+    if (makeBoss) {
+      for (const npc of list) {
+        if (npc.type === "AGENT" && npc !== target) {
+          npc.defeated = true;
+          ge("defeated").add(npc.slug);
+        }
+      }
+    }
+    window.TEXT_SPEED_OVERRIDE = 10000;
+    ge("startBattle")(target);
+    return { slug: target.slug, sameObject: ge("npcs").includes(target) };
+  }, { requestedType: type, makeBoss: boss, requestedDifficulty: difficulty });
+}
+
+async function currentCorrectIndex(page) {
+  return page.evaluate(() => {
+    const question = (0, eval)("battle.agentOps.question");
+    return question.correct != null ? question.correct : question.a;
+  });
+}
+
+async function acknowledgeAgentMessage(page) {
+  await page.evaluate(() => { (0, eval)("battle").msgAt = -1e9; });
+  await page.keyboard.press("Enter");
+}
+
+async function playKeyboardQueryTurn(page) {
+  expect((await inspectState(page)).agentOps.phase).toBe("action");
+  await page.keyboard.press("Enter");
+  expect((await inspectState(page)).agentOps.phase).toBe("choice");
+  await page.keyboard.press(String((await currentCorrectIndex(page)) + 1));
+  expect((await inspectState(page)).agentOps.phase).toBe("resolve");
+}
+
+async function canvasClientPoint(page, rectExpression) {
+  return page.evaluate(expression => {
+    const ge = (0, eval);
+    const rect = ge(expression);
+    const canvas = document.getElementById("game");
+    const bounds = canvas.getBoundingClientRect();
+    return {
+      x: bounds.left + ((rect[0] + rect[2] / 2) / ge("CANVAS_W")) * bounds.width,
+      y: bounds.top + ((rect[1] + rect[3] / 2) / ge("CANVAS_H")) * bounds.height,
+    };
+  }, rectExpression);
+}
+
+test.describe("DATAMON smoke test (dist/ artifact)", () => {
+  test("dist/ artifact exists and serves index.html", async ({ page }) => {
+    const res = await page.goto("/");
+    expect(res?.status()).toBe(200);
+    const title = await page.title();
+    expect(title).toContain("DATAMON");
+  });
+
+  test("title screen loads without errors from dist/", async ({ page }) => {
+    const { errors, failedRequests } = await setupPage(page);
+
+    // Verify the canvas is present
+    const canvas = page.locator("#game");
+    await expect(canvas).toBeVisible({ timeout: 10000 });
+
+    // Verify test harness is active
+    const isActive = await page.evaluate(() => window.__DATAMON_TEST__?.isActive());
+    expect(isActive).toBe(true);
+
+    // Wait for the game to render the title screen
+    await page.waitForFunction(() => {
+      try { return eval("state") === "title"; } catch (_) { return false; }
+    }, { timeout: 15000 });
+
+    const state = await getState(page);
+    expect(state).toBe("title");
+
+    // No page errors, console errors, or failed requests
+    expect(errors, `Unexpected errors: ${errors.join("; ")}`).toEqual([]);
+    expect(failedRequests, `Failed requests: ${failedRequests.join("; ")}`).toEqual([]);
+  });
+
+  test("title → select → overworld → battle journey", async ({ page }) => {
+    const { errors, failedRequests } = await setupPage(page);
+
+    // Wait for title screen
+    await page.waitForFunction(() => {
+      try { return eval("state") === "title"; } catch (_) { return false; }
+    }, { timeout: 15000 });
+    expect(await getState(page)).toBe("title");
+
+    // Press ENTER to advance past title to character select
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => {
+      try { return eval("state") === "select"; } catch (_) { return false; }
+    }, { timeout: 10000 });
+    expect(await getState(page)).toBe("select");
+
+    // Select first character (press Enter to confirm default selection)
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => {
+      try { return eval("state") === "overworld"; } catch (_) { return false; }
+    }, { timeout: 10000 });
+    expect(await getState(page)).toBe("overworld");
+
+    // Get NPC positions and find a non-defeated target
+    const info = await inspectState(page);
+    expect(info.player).not.toBeNull();
+    expect(info.player.hp).toBeGreaterThan(0);
+    expect(info.npcs).not.toBeNull();
+    expect(info.npcs.length).toBeGreaterThan(0);
+
+    const targetNpc = info.npcs.find(n => !n.defeated);
+    expect(targetNpc, "No non-defeated NPC found").toBeDefined();
+    console.log(`Target NPC: ${targetNpc.slug} at (${targetNpc.x}, ${targetNpc.y})`);
+
+    // Teleport the player adjacent to the NPC and face them.
+    // The game uses seeded RNG for NPC placement, so positions are deterministic
+    // per boot. We walk the player via direct state manipulation to avoid fragile
+    // keyboard navigation through office furniture.
+    await page.evaluate(({ tx, ty }) => {
+      var ge = (0, eval);
+      var walkableFn = ge("walkable");
+      var playerObj = ge("player");
+
+      // Determine which side of the NPC to stand on.
+      // Try each adjacent tile; prefer the one that's walkable floor.
+      const candidates = [
+        { x: tx, y: ty - 1, dir: "down" },   // above
+        { x: tx, y: ty + 1, dir: "up" },      // below
+        { x: tx - 1, y: ty, dir: "right" },    // left
+        { x: tx + 1, y: ty, dir: "left" },     // right
+      ];
+
+      for (const c of candidates) {
+        if (walkableFn(c.x, c.y)) {
+          playerObj.x = playerObj.fx = c.x;
+          playerObj.y = playerObj.fy = c.y;
+          playerObj.dir = c.dir;
+          playerObj.moving = false;
+          return;
+        }
+      }
+      throw new Error("No walkable tile adjacent to NPC");
+    }, { tx: targetNpc.x, ty: targetNpc.y });
+
+    await page.waitForTimeout(300);
+
+    // Verify we're still in overworld and adjacent to the NPC
+    const preInteractState = await getState(page);
+    expect(preInteractState).toBe("overworld");
+
+    const preInteractInfo = await inspectState(page);
+    const px = preInteractInfo.player.x;
+    const py = preInteractInfo.player.y;
+    const dist = Math.abs(px - targetNpc.x) + Math.abs(py - targetNpc.y);
+    console.log(`Player at (${px}, ${py}), NPC at (${targetNpc.x}, ${targetNpc.y}), distance=${dist}`);
+    expect(dist).toBe(1);
+
+    // Interact to start battle
+    await page.keyboard.press("Space");
+    await page.waitForTimeout(500);
+
+    // Check if we entered battle or transition
+    const stateAfter = await getState(page);
+    console.log(`State after interaction: ${stateAfter}`);
+
+    // The battle may be in "transition" or "battle" state
+    // Wait for battle to fully start (transition plays then enters battle)
+    if (stateAfter === "transition") {
+      await page.waitForFunction(() => {
+        try { return eval("state") === "battle"; } catch (_) { return false; }
+      }, { timeout: 10000 });
+    }
+
+    const battleState = await getState(page);
+    expect(battleState).toBe("battle");
+
+    // Verify the battle has NPC and phase info
+    const battleInfo = await inspectState(page);
+    expect(battleInfo.battle).not.toBeNull();
+    expect(battleInfo.battle.npc).toBe(targetNpc.slug);
+
+    // No page errors or failed requests
+    expect(errors, `Unexpected errors: ${errors.join("; ")}`).toEqual([]);
+    expect(failedRequests, `Failed requests: ${failedRequests.join("; ")}`).toEqual([]);
+  });
+
+  test("required runtime files are served without errors", async ({ page }) => {
+    const { errors, failedRequests } = await setupPage(page);
+
+    await page.waitForFunction(() => {
+      try { return eval("state") === "title"; } catch (_) { return false; }
+    }, { timeout: 15000 });
+
+    // Verify all runtime scripts declared by the packaged page loaded.
+    const scriptsLoaded = await page.evaluate(() => {
+      const scripts = document.querySelectorAll("script[src]");
+      return Array.from(scripts).map(s => ({ src: s.getAttribute("src"), loaded: document.readyState === "complete" }));
+    });
+    for (const s of scriptsLoaded) {
+      expect(s.src).toBeTruthy();
+    }
+
+    expect(errors, `Unexpected errors: ${errors.join("; ")}`).toEqual([]);
+    expect(failedRequests, `Failed requests: ${failedRequests.join("; ")}`).toEqual([]);
+  });
+
+  test("deterministic boot: two page loads produce identical state", async ({ page: page1 }) => {
+    const errors = [];
+    page1.on("pageerror", (err) => errors.push(err.message));
+
+    await page1.addInitScript(coreJs);
+    await page1.goto("/");
+    await page1.waitForFunction(() => {
+      try { return eval("state") === "title"; } catch (_) { return false; }
+    }, { timeout: 15000 });
+
+    const state1 = await page1.evaluate(() => {
+      return window.__DATAMON_TEST__?.inspectState() || null;
+    });
+    expect(state1).not.toBeNull();
+    expect(state1.state).toBe("title");
+
+    const canvasSize1 = await page1.evaluate(() => {
+      const c = document.getElementById("game");
+      return { w: c.width, h: c.height };
+    });
+
+    // Second page load — fresh context
+    const page2 = await page1.context().newPage();
+    page2.on("pageerror", (err) => errors.push(err.message));
+    await page2.addInitScript(coreJs);
+    await page2.goto("/");
+    await page2.waitForFunction(() => {
+      try { return eval("state") === "title"; } catch (_) { return false; }
+    }, { timeout: 15000 });
+
+    const state2 = await page2.evaluate(() => {
+      return window.__DATAMON_TEST__?.inspectState() || null;
+    });
+    expect(state2).not.toBeNull();
+    expect(state2.state).toBe("title");
+
+    const canvasSize2 = await page2.evaluate(() => {
+      const c = document.getElementById("game");
+      return { w: c.width, h: c.height };
+    });
+
+    expect(canvasSize1).toEqual(canvasSize2);
+    expect(errors).toEqual([]);
+  });
+
+  test("legacy save migrates to v2 without losing progress or rollback aliases", async ({ page }) => {
+    const legacy = {
+      player: "alex-andrianavalontsalama",
+      defeated: ["ethan-pirso", "invalid-slug", "alex-andrianavalontsalama", "ethan-pirso"],
+      questionStats: { "AGENT:0": { seen: 2, correct: 1, wrong: 1, lastSeen: 4 } },
+      seenCounter: 4,
+      coffeeUses: 0,
+      difficulty: "hard",
+      libraryProgress: { "agent-sdk-deep-dive": 3 },
+      minigameScores: { "station-match": 70 },
+      progression: {
+        badges: ["agent"],
+        quests: { mentor: "active" },
+        activities: { study: 80 },
+        npcDomains: { "ethan-pirso": "AGENT", "invalid-slug": "MCP" },
+      },
+    };
+    const raw = JSON.stringify(legacy);
+    await page.addInitScript(value => localStorage.setItem("datamon-save-v1", value), raw);
+    const { errors, failedRequests } = await setupPage(page);
+    await page.waitForFunction(() => { try { return eval("state") === "title"; } catch (_) { return false; } });
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => { try { return eval("state") === "overworld"; } catch (_) { return false; } });
+    await page.evaluate(() => eval("save()"));
+
+    const stored = await page.evaluate(() => ({
+      primary: JSON.parse(localStorage.getItem("datamon-save-v1")),
+      backup: localStorage.getItem("datamon-save-v1-backup"),
+      npcTypes: Object.fromEntries(eval("npcs").map(npc => [npc.slug, npc.type])),
+    }));
+    expect(stored.backup).toBe(raw);
+    expect(stored.primary.schemaVersion).toBe(2);
+    expect(stored.primary.coffeeUses).toBe(0);
+    expect(stored.primary.defeated).toEqual(["ethan-pirso"]);
+    expect(stored.primary.questionStats["agent-001"]).toEqual(stored.primary.questionStats["AGENT:0"]);
+    expect(stored.primary.progression.badges).toEqual(["agent"]);
+    expect(stored.primary.progression.quests).toEqual({ mentor: "active" });
+    expect(stored.primary.progression.activities).toEqual({ study: 80 });
+    expect(stored.primary.progression.npcDomains["ethan-pirso"]).toBe("AGENT");
+    expect(stored.primary.progression.npcDomains["invalid-slug"]).toBeUndefined();
+    expect(stored.npcTypes["ethan-pirso"]).toBe("AGENT");
+    expect(errors).toEqual([]);
+    expect(failedRequests).toEqual([]);
+  });
+
+  test("future save stays byte-for-byte unchanged until explicit reset", async ({ page }) => {
+    const raw = JSON.stringify({ schemaVersion: 99, player: "alex-andrianavalontsalama", futureField: { keep: true } });
+    await page.addInitScript(value => localStorage.setItem("datamon-save-v1", value), raw);
+    const { errors, failedRequests } = await setupPage(page);
+    await page.waitForFunction(() => { try { return eval("state") === "title"; } catch (_) { return false; } });
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => { try { return eval("state") === "select"; } catch (_) { return false; } });
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => { try { return eval("state") === "overworld"; } catch (_) { return false; } });
+    expect(await page.evaluate(() => localStorage.getItem("datamon-save-v1"))).toBe(raw);
+    expect(await page.evaluate(() => eval("_writeProtectedSave"))).toBe(true);
+
+    await page.evaluate(() => eval('state = "title"'));
+    await page.keyboard.press("r");
+    expect(await page.evaluate(() => ({
+      primary: localStorage.getItem("datamon-save-v1"),
+      backup: localStorage.getItem("datamon-save-v1-backup"),
+      protected: eval("_writeProtectedSave"),
+    }))).toEqual({ primary: null, backup: null, protected: false });
+    expect(errors).toEqual([]);
+    expect(failedRequests).toEqual([]);
+  });
+
+  test("loopback test seam controls RNG and wall clock without corrupting animation time", async ({ page }) => {
+    await page.addInitScript(coreJs);
+    await page.goto("/");
+    await page.waitForFunction(() => {
+      try { return eval("state") === "title"; } catch (_) { return false; }
+    }, { timeout: 15000 });
+
+    const timing = await page.evaluate(() => new Promise(resolve => {
+      const api = window.__DATAMON_TEST__;
+      const performanceBefore = performance.now();
+      api.seedRNG(42);
+      api.mockClock(1000000);
+      api.advanceClock(250);
+      requestAnimationFrame(timestamp => resolve({
+        active: api.isActive(),
+        seeded: api.getRNGState().seeded,
+        clock: api.getClockState(),
+        dateNow: Date.now(),
+        performanceBefore,
+        animationTimestamp: timestamp,
+        frame: eval("frame"),
+      }));
+    }));
+
+    expect(timing.active).toBe(true);
+    expect(timing.seeded).toBe(true);
+    expect(timing.clock).toEqual({ mocked: true, timestamp: 1000250 });
+    expect(timing.dateNow).toBe(1000250);
+    // Browsers may stamp the animation frame just before this task sampled performance.now().
+    // They must remain in the same real monotonic clock domain, not be exactly ordered.
+    expect(timing.animationTimestamp).toBeGreaterThan(0);
+    expect(Math.abs(timing.animationTimestamp - timing.performanceBefore)).toBeLessThan(100);
+    expect(timing.frame).toBeGreaterThanOrEqual(0);
+
+    await page.evaluate(() => {
+      window.__DATAMON_TEST__.unseedRNG();
+      window.__DATAMON_TEST__.unmockClock();
+    });
+    expect(await page.evaluate(() => window.__DATAMON_TEST__.getRNGState().seeded)).toBe(false);
+  });
+
+  test("regular AGENT encounter completes by keyboard and Inspect starts on an enabled choice", async ({ page }) => {
+    const { errors, failedRequests } = await setupPage(page);
+    const target = await startDirectBattle(page, { type: "AGENT" });
+    expect(target.sameObject).toBe(true);
+    expect((await inspectState(page)).agentOps).toMatchObject({ phase: "action", boss: false, stability: 3 });
+
+    await playKeyboardQueryTurn(page);
+    await acknowledgeAgentMessage(page); // resolve -> feedback
+    await acknowledgeAgentMessage(page); // feedback -> fresh turn
+
+    // Momentum 1 enables Inspect. Its cursor must skip any eliminated index.
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    let info = await inspectState(page);
+    expect(info.agentOps.selectedAction).toBe("inspect");
+    expect(info.agentOps.eliminated).toHaveLength(2);
+    expect(info.agentOps.eliminated).not.toContain(await currentCorrectIndex(page));
+    expect(info.agentOps.eliminated).not.toContain(info.agentOps.choiceCursor);
+    await page.keyboard.press(String((await currentCorrectIndex(page)) + 1));
+    await acknowledgeAgentMessage(page);
+    await acknowledgeAgentMessage(page);
+
+    await playKeyboardQueryTurn(page);
+    await acknowledgeAgentMessage(page);
+    info = await inspectState(page);
+    expect(info.agentOps).toMatchObject({ phase: "victory", stability: 0 });
+    expect(await page.evaluate(slug => (0, eval)("defeated").has(slug), target.slug)).toBe(true);
+    expect(await page.evaluate(() => Object.entries((0, eval)("questionStats"))
+      .filter(([id]) => /^agent-/.test(id))
+      .reduce((sum, [, stat]) => sum + stat.correct, 0))).toBe(3);
+
+    await acknowledgeAgentMessage(page);
+    expect(await getState(page)).toBe("overworld");
+    expect(errors).toEqual([]);
+    expect(failedRequests).toEqual([]);
+  });
+
+  test("final undefeated AGENT traverses all 3 boss phases by keyboard", async ({ page }) => {
+    const { errors, failedRequests } = await setupPage(page);
+    const target = await startDirectBattle(page, { type: "AGENT", boss: true });
+    let info = await inspectState(page);
+    expect(info.agentOps).toMatchObject({ boss: true, bossPhase: 0, maxStability: 3 });
+
+    const shifts = [];
+    let hits = 0;
+    while (hits < 12) {
+      await playKeyboardQueryTurn(page);
+      hits++;
+      await acknowledgeAgentMessage(page);
+      info = await inspectState(page);
+      if (info.agentOps.phase === "phase-shift") {
+        shifts.push([info.agentOps.bossPhase, info.agentOps.stability, info.agentOps.maxStability]);
+      }
+      if (info.agentOps.phase === "victory") break;
+      expect(["feedback", "phase-shift"]).toContain(info.agentOps.phase);
+      await acknowledgeAgentMessage(page);
+      expect((await inspectState(page)).agentOps.phase).toBe("action");
+    }
+
+    expect(hits).toBe(12);
+    expect(shifts).toEqual([[1, 4, 4], [2, 5, 5]]);
+    info = await inspectState(page);
+    expect(info.agentOps).toMatchObject({ phase: "victory", bossPhase: 2, stability: 0 });
+    expect(await page.evaluate(slug => (0, eval)("defeated").has(slug), target.slug)).toBe(true);
+    expect(await page.evaluate(() => Object.entries((0, eval)("questionStats"))
+      .filter(([id]) => /^agent-/.test(id))
+      .reduce((sum, [, stat]) => sum + stat.correct, 0))).toBe(12);
+
+    await acknowledgeAgentMessage(page);
+    expect(await getState(page)).toBe("overworld");
+    expect(errors).toEqual([]);
+    expect(failedRequests).toEqual([]);
+  });
+
+  test("pointer journey selects actions and answers through regular AGENT victory", async ({ page }) => {
+    const { errors, failedRequests } = await setupPage(page);
+    await startDirectBattle(page, { type: "AGENT" });
+    await page.waitForTimeout(50); // allow the first layout pass to populate hit rectangles
+
+    for (let turn = 0; turn < 3; turn++) {
+      const actionPoint = await canvasClientPoint(page, "_agentActionRects()[0]");
+      await page.mouse.click(actionPoint.x, actionPoint.y);
+      expect((await inspectState(page)).agentOps.phase).toBe("choice");
+
+      const correct = await currentCorrectIndex(page);
+      const choicePoint = await canvasClientPoint(page, `_agentChoiceRects()[${correct}]`);
+      await page.mouse.click(choicePoint.x, choicePoint.y);
+      expect((await inspectState(page)).agentOps.phase).toBe("resolve");
+
+      await page.evaluate(() => { (0, eval)("battle").msgAt = -1e9; });
+      await page.locator("#game").click({ position: { x: 5, y: 5 } });
+      const phase = (await inspectState(page)).agentOps.phase;
+      if (phase === "victory") break;
+      expect(phase).toBe("feedback");
+      await page.evaluate(() => { (0, eval)("battle").msgAt = -1e9; });
+      await page.locator("#game").click({ position: { x: 5, y: 5 } });
+      expect((await inspectState(page)).agentOps.phase).toBe("action");
+    }
+
+    expect((await inspectState(page)).agentOps.phase).toBe("victory");
+    await page.evaluate(() => { (0, eval)("battle").msgAt = -1e9; });
+    await page.locator("#game").click({ position: { x: 5, y: 5 } });
+    expect(await getState(page)).toBe("overworld");
+    expect(errors).toEqual([]);
+    expect(failedRequests).toEqual([]);
+  });
+
+  test("Hard timer resets each turn and Guardrail timeout blocks all HP hit presentation", async ({ page }) => {
+    const { errors, failedRequests } = await setupPage(page);
+    await startDirectBattle(page, { type: "AGENT", difficulty: "hard" });
+
+    // Build exactly 2 Momentum with two Query hits, checking START_TURN owns reset.
+    for (let turn = 0; turn < 2; turn++) {
+      expect((await inspectState(page)).battle.timerMs).toBe(30000);
+      await playKeyboardQueryTurn(page);
+      await acknowledgeAgentMessage(page);
+      await page.evaluate(() => { (0, eval)("battle").timerMs = 7; });
+      await acknowledgeAgentMessage(page);
+      expect((await inspectState(page)).battle.timerMs).toBe(30000);
+    }
+    expect((await inspectState(page)).agentOps.momentum).toBe(2);
+
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter"); // Patch
+    let info = await inspectState(page);
+    expect(info.agentOps).toMatchObject({ phase: "choice", selectedAction: "patch", guardrail: 1 });
+    const hpBefore = info.player.hp;
+    await page.evaluate(() => { (0, eval)("battle").timerMs = 1; });
+    await page.waitForFunction(() => window.__DATAMON_TEST__.inspectState().agentOps?.phase === "resolve");
+
+    info = await inspectState(page);
+    expect(info.player.hp).toBe(hpBefore);
+    expect(info.agentOps.playerHp).toBe(hpBefore);
+    expect(info.agentOps.guardrail).toBe(0);
+    expect(info.agentOps.outcome).toMatchObject({ correct: false, reason: "timeout", blocked: true });
+    expect(info.battle.message).toMatch(/Guardrail blocked/i);
+    expect(info.battle.message).not.toMatch(/25/);
+    expect(info.battle.shake).toBe(0);
+    expect(info.battle.attackAt).toBe(0);
+    expect(info.battle.damageAt).toBe(0);
+
+    const missesBeforeDuplicate = await page.evaluate(() => Object.entries((0, eval)("questionStats"))
+      .filter(([id]) => /^agent-/.test(id))
+      .reduce((sum, [, stat]) => sum + stat.wrong, 0));
+    await page.evaluate(() => { (0, eval)("timeoutQuestion")(); (0, eval)("timeoutQuestion")(); });
+    const missesAfterDuplicate = await page.evaluate(() => Object.entries((0, eval)("questionStats"))
+      .filter(([id]) => /^agent-/.test(id))
+      .reduce((sum, [, stat]) => sum + stat.wrong, 0));
+    expect(missesBeforeDuplicate).toBe(1);
+    expect(missesAfterDuplicate).toBe(1);
+    expect(errors).toEqual([]);
+    expect(failedRequests).toEqual([]);
+  });
+
+  test("held keyboard and pointer activation cannot cross Agent phases", async ({ page }) => {
+    const { errors, failedRequests } = await setupPage(page);
+    await startDirectBattle(page, { type: "AGENT" });
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", repeat: true, bubbles: true }));
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect((await inspectState(page)).agentOps.phase).toBe("choice");
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true })));
+
+    const answerKey = String((await currentCorrectIndex(page)) + 1);
+    await page.evaluate(key => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      window.dispatchEvent(new KeyboardEvent("keydown", { key, repeat: true, bubbles: true }));
+      window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      window.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true }));
+    }, answerKey);
+    expect((await inspectState(page)).agentOps.phase).toBe("resolve");
+    expect(await page.evaluate(() => Object.entries((0, eval)("questionStats"))
+      .filter(([id]) => /^agent-/.test(id))
+      .reduce((sum, [, stat]) => sum + stat.correct + stat.wrong, 0))).toBe(1);
+
+    await acknowledgeAgentMessage(page);
+    await acknowledgeAgentMessage(page);
+    await page.waitForTimeout(20);
+    await page.evaluate(() => {
+      const ge = (0, eval);
+      const canvas = document.getElementById("game");
+      const bounds = canvas.getBoundingClientRect();
+      const toClient = rect => ({
+        x: bounds.left + ((rect[0] + rect[2] / 2) / ge("CANVAS_W")) * bounds.width,
+        y: bounds.top + ((rect[1] + rect[3] / 2) / ge("CANVAS_H")) * bounds.height,
+      });
+      const action = toClient(ge("_agentActionRects")()[0]);
+      const question = ge("battle.agentOps.question");
+      const correct = question.correct != null ? question.correct : question.a;
+      const choice = toClient(ge("_agentChoiceRects")()[correct]);
+      const pointerDown = point => canvas.dispatchEvent(new PointerEvent("pointerdown", {
+        pointerId: 77, clientX: point.x, clientY: point.y, bubbles: true,
+      }));
+      pointerDown(action);
+      pointerDown(choice); // same held pointer: must be ignored
+    });
+    expect((await inspectState(page)).agentOps.phase).toBe("choice");
+    await page.evaluate(() => window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 77, bubbles: true })));
+
+    await page.evaluate(() => {
+      const ge = (0, eval);
+      const canvas = document.getElementById("game");
+      const bounds = canvas.getBoundingClientRect();
+      const question = ge("battle.agentOps.question");
+      const correct = question.correct != null ? question.correct : question.a;
+      const rect = ge("_agentChoiceRects")()[correct];
+      const point = {
+        x: bounds.left + ((rect[0] + rect[2] / 2) / ge("CANVAS_W")) * bounds.width,
+        y: bounds.top + ((rect[1] + rect[3] / 2) / ge("CANVAS_H")) * bounds.height,
+      };
+      canvas.dispatchEvent(new PointerEvent("pointerdown", {
+        pointerId: 78, clientX: point.x, clientY: point.y, bubbles: true,
+      }));
+      window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 78, bubbles: true }));
+    });
+    expect((await inspectState(page)).agentOps.phase).toBe("resolve");
+    expect(await page.evaluate(() => Object.entries((0, eval)("questionStats"))
+      .filter(([id]) => /^agent-/.test(id))
+      .reduce((sum, [, stat]) => sum + stat.correct + stat.wrong, 0))).toBe(2);
+    expect(errors).toEqual([]);
+    expect(failedRequests).toEqual([]);
+  });
+
+  test("non-AGENT encounter retains classic intro, sendout, question, and feedback", async ({ page }) => {
+    const { errors, failedRequests } = await setupPage(page);
+    await startDirectBattle(page, { type: "MCP" });
+    let info = await inspectState(page);
+    expect(info.battle.phase).toBe("intro");
+    expect(info.agentOps).toBeUndefined();
+
+    await page.evaluate(() => { (0, eval)("battle").msgAt = -1e9; });
+    await page.keyboard.press("Enter");
+    expect((await inspectState(page)).battle.phase).toBe("sendout");
+    await page.evaluate(() => { (0, eval)("battle").msgAt = -1e9; });
+    await page.keyboard.press("Enter");
+    expect((await inspectState(page)).battle.phase).toBe("question");
+    const correct = await page.evaluate(() => (0, eval)("currentMon().q.a"));
+    await page.keyboard.press(String(correct + 1));
+    info = await inspectState(page);
+    expect(info.battle.phase).toBe("feedback");
+    expect(info.agentOps).toBeUndefined();
+    expect(errors).toEqual([]);
+    expect(failedRequests).toEqual([]);
+  });
+});
