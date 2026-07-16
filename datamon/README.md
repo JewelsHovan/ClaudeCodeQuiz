@@ -80,7 +80,8 @@ localStorage (per browser + port, so stick with one way of serving it).
   24 per exam domain, each with an explanation), mon names, battle quotes
 - `sprites/` — generated GBA-style pixel trainer sprites (transparent 256px PNGs)
 - `portraits/` — curated pixel-art busts, loaded only when first displayed
-- `headshots/` — local/offline identity references; never requested or packaged at runtime
+- `.headshots-offline/` — ignored local identity references for tooling; never requested, tracked, or packaged
+- `headshots/` — verified transparent 1×1 tombstones only, retained to evict stale CDN photo URLs
 - `environment/` — reviewed 2× environment batches plus the atomic active manifest
 - `tiles/` — committed 32×32 RGBA office tileset PNGs: round-1 ("Claude lab") floor
   variants, walls + corners, desk, plant, coffee, rug — plus the PRD 005 office surface
@@ -101,7 +102,8 @@ correct index `a`, one-line explanation `x`). Keep `q` ≤ 150 chars, choices �
 2. Add a 256px transparent pixel-art trainer at `sprites/<slug>.png` and a curated
    bust at `portraits/<slug>.png`. Missing portraits fall back to initials.
 3. If regeneration needs an identity reference, place it locally at
-   `headshots/<slug>.png`; it remains an offline source and is excluded from artifacts.
+   `.headshots-offline/<slug>.png`; it remains ignored and excluded from artifacts. The
+   tracked `headshots/<slug>.png` files are transparent CDN tombstones, not references.
 
 The sprite-generation tooling (Gemini green-screen pipeline) lives in the
 original `ai-gen-playground` repo (`gen-sprite.sh` + `process_sprites.py`).

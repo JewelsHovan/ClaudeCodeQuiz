@@ -49,8 +49,28 @@ const packagedHtml = fs.readFileSync(path.join(DIST, "index.html"), "utf8");
 for (const script of ["state.js", "battle-ops.js", "agent-arena.js", "questions.js", "world-art.js", "music.js", "game.js"]) {
   if (!packagedHtml.includes(`src="${script}"`)) throw new Error(`dist/index.html does not declare ${script}`);
 }
+// Old public headshot URLs intentionally receive one exact transparent 1×1 PNG so
+// Cloudflare evicts stale photos. Any other bytes, dimensions, slug set, or nested path fail.
+const HEADSHOT_TOMBSTONE_SHA256 = "f2bb5bbaca678ecad746b1fa5ecfa2c8a81dd18817be19f0187c036d25326317";
+const portraitSlugs = payload.filter(file => /^portraits\/[^/]+\.png$/.test(file.path))
+  .map(file => path.basename(file.path, ".png")).sort();
+const headshotTombstones = payload.filter(file => /^headshots\/[^/]+\.png$/.test(file.path));
+const tombstoneSlugs = headshotTombstones.map(file => path.basename(file.path, ".png")).sort();
+if (JSON.stringify(tombstoneSlugs) !== JSON.stringify(portraitSlugs)) {
+  throw new Error("Headshot tombstone slugs must exactly match packaged portrait slugs");
+}
+for (const file of headshotTombstones) {
+  const data = fs.readFileSync(path.join(DIST, file.path));
+  const hash = createHash("sha256").update(data).digest("hex");
+  const isOneByOnePng = data.length >= 24 && data.subarray(1, 4).toString("ascii") === "PNG" &&
+    data.readUInt32BE(16) === 1 && data.readUInt32BE(20) === 1;
+  if (hash !== HEADSHOT_TOMBSTONE_SHA256 || !isOneByOnePng) {
+    throw new Error(`Unsafe headshot payload (only exact 1×1 tombstone allowed): dist/${file.path}`);
+  }
+}
+
 const forbiddenSegments = [
-  "headshots/", ".environment-work/", ".gba-gen-cache/", ".walk-gen-cache/",
+  ".headshots-offline/", ".environment-work/", ".gba-gen-cache/", ".walk-gen-cache/",
   ".design/refs/", "/raw/", "/review/", "/history/", "contact-sheet",
 ];
 for (const file of payload) {

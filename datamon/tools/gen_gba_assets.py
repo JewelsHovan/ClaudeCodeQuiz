@@ -47,7 +47,7 @@ from PIL import Image, ImageFilter
 HERE = Path(__file__).resolve().parent
 DATAMON = HERE.parent                     # ClaudeCodeQuiz/datamon
 REPO = DATAMON.parent
-HEADSHOTS = DATAMON / "headshots"
+HEADSHOTS = DATAMON / ".headshots-offline"
 SPRITES = DATAMON / "sprites"
 PORTRAITS_OUT = DATAMON / "portraits"
 OVERWORLD_OUT = DATAMON / "sprites-gba"
