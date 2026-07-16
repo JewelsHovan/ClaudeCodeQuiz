@@ -295,8 +295,16 @@ just preview           # serve verified dist/ at http://localhost:8750/
 
 Tests inject `datamon/core.js` before `game.js`. It activates only on loopback hosts and is
 excluded from the deployed payload. It supplies seeded RNG, a wall-clock mock that leaves
-`performance.now()`/animation timestamps untouched, and bounded state inspection. The
-normal game and save schema are unchanged.
+`performance.now()`/animation timestamps untouched, and bounded state inspection. It does
+not modify production gameplay or saves.
+
+### Save compatibility
+
+`state.js` normalizes the existing `datamon-save-v1` localStorage key into schema v2 while
+retaining every previous top-level field. It adds reserved campaign progression, explicit
+stable question IDs, and persisted NPC domains. Legacy `CAT:index` question telemetry is
+kept alongside canonical IDs for rollback; the original legacy value is backed up once.
+Unknown future schemas are write-protected until the player explicitly resets from title.
 
 ### Fixed performance contract
 

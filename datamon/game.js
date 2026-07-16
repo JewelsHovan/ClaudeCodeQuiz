@@ -520,8 +520,11 @@ let loadedCloze = [];   // parsed cloze.json array; [] if missing/malformed (#02
 let loadedDiagrams = [];// parsed diagrams.json array; [] if missing/malformed (#030)
 let bookPrompt = null;  // {sel, books} — book-picker modal
 let readerState = null; // {book, page, screens, maxPage} — full-canvas reader
-let questionStats = {};  // "CAT:idx" -> {seen, correct, wrong, lastSeen}
+let questionStats = {};  // "CAT:idx" and canonical ID -> {seen, correct, wrong, lastSeen}
 let seenCounter = 0;    // monotonic draw counter — drives lastSeen recency (no Date.now())
+let _progression = { badges: [], quests: {}, activities: {}, npcDomains: {} };
+let _npcDomains = _progression.npcDomains; // alias into _progression.npcDomains
+let _writeProtectedSave = false; // true when a future-version save blocks writes
 let seenThisRun = {};   // category -> Set<idx> drawn this run (within-run repeat avoidance)
 let coffeeUses = 0;   // coffee heals remaining this run (cap 3); persisted in save
 let difficulty = "normal";   // "easy" | "normal" | "hard" — chosen at select, persisted in save
@@ -596,7 +599,16 @@ function placeNPCs() {
   const perRegion = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
   npcs = [];
   order.forEach((slug, i) => {
-    const type = perRegion[i % 6];
+    // Persist domain identity when a prior assignment exists; otherwise
+    // use the deterministic round-robin result and record it.
+    // Defensive: validate that a persisted domain is a known region;
+    // malformed data cannot index an unknown key.
+    const VALID_DOMAINS = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
+    const freshType = perRegion[i % 6];
+    const persisted = (typeof _npcDomains === "object" && _npcDomains[slug]);
+    const type = (persisted && VALID_DOMAINS.indexOf(persisted) >= 0) ? persisted : freshType;
+    // Record for future sessions (even if unchanged — idempotent).
+    if (typeof _npcDomains === "object") _npcDomains[slug] = type;
     // Take the best-ranked spot still ≥3 tiles from every placed NPC (one per workstation).
     const idx = regions[type].findIndex(([x, y]) =>
       !npcs.some(n => Math.abs(n.x - x) + Math.abs(n.y - y) < 3));
@@ -610,25 +622,89 @@ function placeNPCs() {
 }
 
 // ---------- Save / load ----------
+// Configure DatamonState once QUESTION_BANK is available.
+if (typeof DatamonState !== "undefined") {
+  DatamonState.configure({
+    roster: ROSTER,
+    idMap: DatamonState.buildIdMapFromBank(QUESTION_BANK),
+  });
+}
+
 let saveCache; // undefined = not yet read; null = confirmed empty save
 function save() {
+  if (_writeProtectedSave) return; // future-version save blocks all writes
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ player: player.slug, defeated: [...defeated], questionStats, seenCounter, coffeeUses, difficulty, libraryProgress, minigameScores }));
+    // Sync npcDomains back into _progression before serialising.
+    _progression.npcDomains = _npcDomains || {};
+    // Build v2 state from current globals
+    const st = {
+      schemaVersion: typeof DatamonState !== "undefined" ? DatamonState.CURRENT_SCHEMA : 2,
+      player: player.slug,
+      defeated: [...defeated],
+      questionStats: questionStats,
+      seenCounter: seenCounter,
+      coffeeUses: coffeeUses,
+      difficulty: difficulty,
+      libraryProgress: libraryProgress,
+      minigameScores: minigameScores,
+      progression: _progression,
+    };
+    if (typeof DatamonState !== "undefined") {
+      DatamonState.saveToStorage(st);
+    } else {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ player: player.slug, defeated: [...defeated], questionStats, seenCounter, coffeeUses, difficulty, libraryProgress, minigameScores }));
+    }
   } catch (e) {}
   saveCache = undefined;
 }
 function loadSave() {
   try {
+    if (typeof DatamonState !== "undefined") {
+      const st = DatamonState.loadFromStorage();
+      if (st) {
+        // Future-version save: block writes, load what we can, force new game.
+        if (DatamonState.isWriteProtected(st)) {
+          _writeProtectedSave = true;
+          questionStats = st.questionStats || {};
+          seenCounter = st.seenCounter || 0;
+          coffeeUses = st.coffeeUses;
+          difficulty = st.difficulty || "normal";
+          libraryProgress = st.libraryProgress || {};
+          minigameScores = st.minigameScores || {};
+          if (st.progression && typeof st.progression === "object") {
+            _progression = st.progression;
+            _npcDomains = _progression.npcDomains || {};
+          }
+          return null; // Don't resume; title shows new-game flow
+        }
+        // Normal v2 save with a valid player
+        if (st.player && ROSTER.includes(st.player)) {
+          questionStats = st.questionStats || {};
+          seenCounter = st.seenCounter || 0;
+          coffeeUses = st.coffeeUses;
+          difficulty = st.difficulty || "normal";
+          libraryProgress = st.libraryProgress || {};
+          minigameScores = st.minigameScores || {};
+          if (st.progression && typeof st.progression === "object") {
+            _progression = st.progression;
+            _npcDomains = _progression.npcDomains || {};
+          }
+          return st;
+        }
+      }
+      return null;
+    }
+    // Legacy fallback: direct localStorage parse
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (s && ROSTER.includes(s.player)) {
       questionStats = (s.questionStats && typeof s.questionStats === "object") ? s.questionStats : {};
       seenCounter = typeof s.seenCounter === "number" ? s.seenCounter : 0;
       coffeeUses = typeof s.coffeeUses === "number" ? s.coffeeUses : 0;
-      // Additive migration: old saves lack `difficulty` → default "normal".
       difficulty = (s.difficulty === "easy" || s.difficulty === "hard") ? s.difficulty : "normal";
-      // Additive migration (#028): old saves lack these → default {} (never wipe existing fields).
       libraryProgress = (s.libraryProgress && typeof s.libraryProgress === "object") ? s.libraryProgress : {};
       minigameScores  = (s.minigameScores  && typeof s.minigameScores  === "object") ? s.minigameScores  : {};
+      _progression = { badges: [], quests: {}, activities: {}, npcDomains: {} };
+      _npcDomains = _progression.npcDomains;
       return s;
     }
   } catch (e) {}
@@ -645,8 +721,12 @@ const STAT_FLOOR = 1, NEVER_SEEN_BONUS = 8, MISS_WEIGHT = 4, RECENCY_W = 0.5, RE
 
 // Higher weight = more likely to be drawn. Never-seen and previously-missed score high;
 // recently-drawn-and-correct score near the floor. Floor guarantees nothing is starved.
+// Looks up stats by canonical ID first, falling back to legacy "CAT:index" key.
 function questionWeight(cat, i) {
-  const st = questionStats[cat + ":" + i];
+  const bank = QUESTION_BANK[cat];
+  const canonId = (bank && bank[i] && bank[i].id) ? bank[i].id : null;
+  // Try canonical ID first, then legacy key, then empty.
+  const st = (canonId && questionStats[canonId]) || questionStats[cat + ":" + i];
   if (!st || !st.seen) return STAT_FLOOR + NEVER_SEEN_BONUS;
   const miss = Math.max(0, (st.wrong || 0) - (st.correct || 0));
   const recency = Math.min(RECENCY_CAP, seenCounter - (st.lastSeen || 0)); // larger = longer since drawn
@@ -681,13 +761,17 @@ function drawQuestion(category) {
   let r = Math.random() * total;
   for (let k = 0; k < pool.length; k++) { r -= weights[k]; if (r < 0) { idx = pool[k]; break; } }
   seenThisRun[cat].add(idx);
-  // Record the draw: bump seen + stamp recency. Plumb the stat key to answerQuestion via battle.curKey
-  // (battle is always non-null here — drawQuestion is only called inside an active battle) WITHOUT
-  // changing the returned shape.
-  const key = cat + ":" + idx;
-  const st = questionStats[key] || (questionStats[key] = { seen: 0, correct: 0, wrong: 0, lastSeen: 0 });
+  // Record the draw: bump seen + stamp recency on the canonical ID.
+  // Also ensure the legacy alias exists for rollback compatibility.
+  const canonId = bank[idx].id;
+  const legacyKey = cat + ":" + idx;
+  const st = questionStats[canonId] || (questionStats[canonId] = { seen: 0, correct: 0, wrong: 0, lastSeen: 0 });
   st.seen++; st.lastSeen = ++seenCounter;
-  if (battle) battle.curKey = key;
+  // Keep the rollback alias exactly synchronized with the canonical record.
+  const leg = questionStats[legacyKey] || (questionStats[legacyKey] = { seen: 0, correct: 0, wrong: 0, lastSeen: 0 });
+  leg.seen = st.seen; leg.correct = st.correct; leg.wrong = st.wrong; leg.lastSeen = st.lastSeen;
+  if (battle) battle.curKey = canonId;
+  if (battle) battle.curLegacyKey = legacyKey;
   return { ...QUESTION_BANK[cat][idx], cat };   // shape unchanged (Must Not #3)
 }
 
@@ -816,10 +900,20 @@ function advanceBattle() {
 }
 
 function recordOutcome(correct) {
-  const key = battle && battle.curKey;
-  if (!key) return;
-  const st = questionStats[key] || (questionStats[key] = { seen: 0, correct: 0, wrong: 0, lastSeen: seenCounter });
+  const canonKey = battle && battle.curKey;
+  const legacyKey = battle && battle.curLegacyKey;
+  if (!canonKey) return;
+  // Update canonical ID stat
+  const st = questionStats[canonKey] || (questionStats[canonKey] = { seen: 0, correct: 0, wrong: 0, lastSeen: seenCounter });
   if (correct) st.correct++; else st.wrong++;
+  // Mirror to legacy key for rollback compatibility
+  if (legacyKey) {
+    const leg = questionStats[legacyKey] || (questionStats[legacyKey] = { seen: 0, correct: 0, wrong: 0, lastSeen: seenCounter });
+    leg.correct = st.correct;
+    leg.wrong = st.wrong;
+    leg.seen = st.seen;
+    leg.lastSeen = st.lastSeen;
+  }
   save();   // persist immediately so a single answer lands in localStorage
 }
 
@@ -937,7 +1031,12 @@ function handleKey(k) {
       }
     }
     if (k === "r" || k === "R") {
-      localStorage.removeItem(SAVE_KEY);
+      _writeProtectedSave = false;
+      if (typeof DatamonState !== "undefined") {
+        DatamonState.resetSave();
+      } else {
+        localStorage.removeItem(SAVE_KEY);
+      }
       saveCache = undefined;
       defeated = new Set();
       questionStats = {};
@@ -945,7 +1044,9 @@ function handleKey(k) {
       seenThisRun = {};
       coffeeUses = 3;
       difficulty = "normal";
-      libraryProgress = {}; minigameScores = {}; currentMinigame = null;  // #028 — clear minigame state too
+      libraryProgress = {}; minigameScores = {}; currentMinigame = null;
+      _progression = { badges: [], quests: {}, activities: {}, npcDomains: {} };
+      _npcDomains = _progression.npcDomains;
       showToast("Save cleared!");
     }
   } else if (state === "select") {
@@ -963,6 +1064,8 @@ function handleKey(k) {
       player.hp = MAX_HP;
       player.x = player.fx = 18; player.y = player.fy = 16;
       camFx = camFy = null; stepT = 1; player.moving = false;
+      _progression = { badges: [], quests: {}, activities: {}, npcDomains: {} };
+      _npcDomains = _progression.npcDomains;
       placeNPCs();
       coffeeUses = 3;
       libraryProgress = {}; minigameScores = {}; currentMinigame = null;  // #028 — fresh character starts clean

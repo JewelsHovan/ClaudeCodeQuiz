@@ -34,8 +34,10 @@ check:
     echo "=== DATAMON check suite ==="
     node --check datamon/game.js
     node --check datamon/questions.js
+    node --check datamon/state.js
     node --check datamon/core.js
     for file in scripts/*.mjs tests/unit/*.js tests/browser/*.js; do node --check "$file"; done
+    python3 datamon/retag_questions.py --check
     node scripts/validate-content.mjs
     node --test tests/unit/*.test.js
     node scripts/package-datamon.mjs

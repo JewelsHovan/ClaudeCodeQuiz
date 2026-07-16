@@ -31,8 +31,12 @@ const questions = expectedDomains.flatMap(category => {
   return bank[category].map((question, index) => ({ ...question, category, index }));
 });
 assert.equal(questions.length, 120);
+const ids = questions.map(q => q.id);
+assert.equal(ids.filter(Boolean).length, 120, "all 120 questions must have an explicit id");
+unique(ids, "question IDs");
 for (const q of questions) {
   const at = `${q.category}[${q.index}]`;
+  assert.ok(typeof q.id === "string" && /^[a-z]+-\d{3}$/.test(q.id), `${at}.id must match category-NNN pattern`);
   assert.ok(typeof q.q === "string" && q.q.trim(), `${at}.q is required`);
   assert.ok(Array.isArray(q.c) && q.c.length === 4, `${at}.c must contain four choices`);
   assert.ok(q.c.every(choice => typeof choice === "string" && choice.trim()), `${at}.c choices must be text`);

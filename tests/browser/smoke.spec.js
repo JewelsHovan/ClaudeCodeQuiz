@@ -262,6 +262,74 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     expect(errors).toEqual([]);
   });
 
+  test("legacy save migrates to v2 without losing progress or rollback aliases", async ({ page }) => {
+    const legacy = {
+      player: "alex-andrianavalontsalama",
+      defeated: ["ethan-pirso", "invalid-slug", "alex-andrianavalontsalama", "ethan-pirso"],
+      questionStats: { "AGENT:0": { seen: 2, correct: 1, wrong: 1, lastSeen: 4 } },
+      seenCounter: 4,
+      coffeeUses: 0,
+      difficulty: "hard",
+      libraryProgress: { "agent-sdk-deep-dive": 3 },
+      minigameScores: { "station-match": 70 },
+      progression: {
+        badges: ["agent"],
+        quests: { mentor: "active" },
+        activities: { study: 80 },
+        npcDomains: { "ethan-pirso": "AGENT", "invalid-slug": "MCP" },
+      },
+    };
+    const raw = JSON.stringify(legacy);
+    await page.addInitScript(value => localStorage.setItem("datamon-save-v1", value), raw);
+    const { errors, failedRequests } = await setupPage(page);
+    await page.waitForFunction(() => { try { return eval("state") === "title"; } catch (_) { return false; } });
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => { try { return eval("state") === "overworld"; } catch (_) { return false; } });
+    await page.evaluate(() => eval("save()"));
+
+    const stored = await page.evaluate(() => ({
+      primary: JSON.parse(localStorage.getItem("datamon-save-v1")),
+      backup: localStorage.getItem("datamon-save-v1-backup"),
+      npcTypes: Object.fromEntries(eval("npcs").map(npc => [npc.slug, npc.type])),
+    }));
+    expect(stored.backup).toBe(raw);
+    expect(stored.primary.schemaVersion).toBe(2);
+    expect(stored.primary.coffeeUses).toBe(0);
+    expect(stored.primary.defeated).toEqual(["ethan-pirso"]);
+    expect(stored.primary.questionStats["agent-001"]).toEqual(stored.primary.questionStats["AGENT:0"]);
+    expect(stored.primary.progression.badges).toEqual(["agent"]);
+    expect(stored.primary.progression.quests).toEqual({ mentor: "active" });
+    expect(stored.primary.progression.activities).toEqual({ study: 80 });
+    expect(stored.primary.progression.npcDomains["ethan-pirso"]).toBe("AGENT");
+    expect(stored.primary.progression.npcDomains["invalid-slug"]).toBeUndefined();
+    expect(stored.npcTypes["ethan-pirso"]).toBe("AGENT");
+    expect(errors).toEqual([]);
+    expect(failedRequests).toEqual([]);
+  });
+
+  test("future save stays byte-for-byte unchanged until explicit reset", async ({ page }) => {
+    const raw = JSON.stringify({ schemaVersion: 99, player: "alex-andrianavalontsalama", futureField: { keep: true } });
+    await page.addInitScript(value => localStorage.setItem("datamon-save-v1", value), raw);
+    const { errors, failedRequests } = await setupPage(page);
+    await page.waitForFunction(() => { try { return eval("state") === "title"; } catch (_) { return false; } });
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => { try { return eval("state") === "select"; } catch (_) { return false; } });
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => { try { return eval("state") === "overworld"; } catch (_) { return false; } });
+    expect(await page.evaluate(() => localStorage.getItem("datamon-save-v1"))).toBe(raw);
+    expect(await page.evaluate(() => eval("_writeProtectedSave"))).toBe(true);
+
+    await page.evaluate(() => eval('state = "title"'));
+    await page.keyboard.press("r");
+    expect(await page.evaluate(() => ({
+      primary: localStorage.getItem("datamon-save-v1"),
+      backup: localStorage.getItem("datamon-save-v1-backup"),
+      protected: eval("_writeProtectedSave"),
+    }))).toEqual({ primary: null, backup: null, protected: false });
+    expect(errors).toEqual([]);
+    expect(failedRequests).toEqual([]);
+  });
+
   test("loopback test seam controls RNG and wall clock without corrupting animation time", async ({ page }) => {
     await page.addInitScript(coreJs);
     await page.goto("/");
