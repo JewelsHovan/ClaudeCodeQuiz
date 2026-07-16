@@ -38,7 +38,8 @@ localStorage (per browser + port, so stick with one way of serving it).
 | Arrows / WASD | Move |
 | SPACE / ENTER / E | Interact, battle, advance dialog |
 | 1–4 or arrows + ENTER | Answer battle questions |
-| Mouse | Also works everywhere |
+| Mouse / touch | Click once to step or hold toward a direction; select visible controls |
+| Shift + arrows/WASD or R | Run while moving |
 | M | Mute |
 | R (title screen) | Reset save |
 

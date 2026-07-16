@@ -156,6 +156,70 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     expect(failedRequests, `Failed requests: ${failedRequests.join("; ")}`).toEqual([]);
   });
 
+  test("overworld moves with Shift+WASD, physical key codes, arrows, and pointer", async ({ page }) => {
+    const { errors, failedRequests } = await setupPage(page);
+    await page.waitForFunction(() => { try { return eval("state") === "title"; } catch (_) { return false; } });
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => { try { return eval("state") === "overworld"; } catch (_) { return false; } });
+
+    const start = (await inspectState(page)).player;
+    expect({ x: start.x, y: start.y }).toEqual({ x: 18, y: 16 });
+
+    // Shift changes KeyboardEvent.key to uppercase in real browsers; KeyW remains stable.
+    await page.keyboard.down("Shift");
+    await page.keyboard.down("w");
+    await page.waitForTimeout(260);
+    await page.keyboard.up("w");
+    await page.keyboard.up("Shift");
+    await page.waitForTimeout(220);
+    const afterRun = (await inspectState(page)).player;
+    expect(afterRun.y).toBeLessThan(start.y);
+
+    // A physical KeyA must work even if the printable key is layout-dependent (for example Q).
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "q", code: "KeyA" })));
+    await page.waitForTimeout(180);
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keyup", { key: "q", code: "KeyA" })));
+    await page.waitForTimeout(220);
+    const afterCode = (await inspectState(page)).player;
+    expect(afterCode.x).toBeLessThan(afterRun.x);
+
+    // One pointer click away from the player steps once in that direction.
+    const point = await page.evaluate(() => {
+      const ge=(0,eval), p=ge("player"), canvas=document.getElementById("game"), r=canvas.getBoundingClientRect();
+      const sx=(p.fx-ge("camFx"))*ge("TILE")+ge("TILE")/2;
+      const sy=(p.fy-ge("camFy"))*ge("TILE")+ge("TILE")/2+80;
+      return { x:r.left+(sx/ge("CANVAS_W"))*r.width, y:r.top+(sy/ge("CANVAS_H"))*r.height };
+    });
+    await page.mouse.click(point.x, point.y);
+    await page.waitForTimeout(260);
+    const afterPointer = (await inspectState(page)).player;
+    expect(afterPointer.y).toBeGreaterThan(afterCode.y);
+
+    await page.keyboard.down("ArrowRight");
+    await page.waitForTimeout(180);
+    await page.keyboard.up("ArrowRight");
+    await page.waitForTimeout(220);
+    const afterArrow = (await inspectState(page)).player;
+    expect(afterArrow.x).toBeGreaterThan(afterPointer.x);
+
+    // The same normalized input contract must survive the saved-game resume path.
+    await page.reload();
+    await page.waitForFunction(() => { try { return eval("state") === "title"; } catch (_) { return false; } });
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => { try { return eval("state") === "overworld"; } catch (_) { return false; } });
+    const resumedStart = (await inspectState(page)).player;
+    await page.keyboard.down("Shift"); await page.keyboard.down("w");
+    await page.waitForTimeout(220);
+    await page.keyboard.up("w"); await page.keyboard.up("Shift");
+    await page.waitForTimeout(220);
+    const resumedAfter = (await inspectState(page)).player;
+    expect(resumedAfter.y).toBeLessThan(resumedStart.y);
+
+    expect(errors, `Unexpected errors: ${errors.join("; ")}`).toEqual([]);
+    expect(failedRequests, `Failed requests: ${failedRequests.join("; ")}`).toEqual([]);
+  });
+
   test("title → select → overworld → battle journey", async ({ page }) => {
     const { errors, failedRequests } = await setupPage(page);
 
