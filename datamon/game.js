@@ -4031,7 +4031,8 @@ function drawOverworld() {
   // Defeat markers in a separate pass AFTER all characters, so they always render on
   // top regardless of the depth-sort order.
   for (const c of chars) {
-    if (c.isPlayer) continue;
+    // DPR2 world-art details share the depth-sort list but are neither players nor NPCs.
+    if (c.isPlayer || c.worldArt || !c.npc) continue;
     const { sx, sy, npc } = c;
     if (npc.defeated) {
       ctx.fillStyle = "#22c55e"; ctx.font = "bold 14px monospace"; ctx.textAlign = "center";

@@ -71,7 +71,12 @@ await verifyRuntimeBytes(metadata);
 const browser = await chromium.launch({ headless: true });
 const errors = [];
 try {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 960 } });
+  // Match a Retina desktop viewport: DPR2 activates accepted HD detail entities and
+  // guards the production-only depth-sort/render path as well as ordinary movement.
+  const page = await browser.newPage({
+    viewport: { width: 1407, height: 853 },
+    deviceScaleFactor: 2,
+  });
   page.on("pageerror", error => errors.push(`pageerror: ${error.message}`));
   page.on("console", message => {
     if (["error", "assert"].includes(message.type())) errors.push(`console.${message.type()}: ${message.text()}`);
