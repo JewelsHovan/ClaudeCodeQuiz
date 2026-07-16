@@ -1347,8 +1347,15 @@ function showToast(msg, ms = 2600) { toast = { msg, until: performance.now() + m
 const keys = {};
 const agentActivationKeys = new Set();
 window.addEventListener("keydown", e => {
-  // Unlock audio on first user interaction (browser autoplay policy)
+  // Unlock audio on first user interaction (browser autoplay policy).
   if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
+  if (typeof DatamonMusic !== "undefined") DatamonMusic.unlock();
+  // M is a global audio control, including while the colleague search field is open.
+  if (state === "search" && (e.key === "m" || e.key === "M")) {
+    e.preventDefault();
+    handleKey(e.key);
+    return;
+  }
   if (state === "search") { e.preventDefault(); handleSearchKey(e); return; }
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
   if (e.key === "Tab" && state === "select") e.preventDefault();   // Tab cycles difficulty, not focus
@@ -1380,6 +1387,7 @@ function handleKey(k) {
   if (k === "m" || k === "M") {
     muted = !muted;
     if (typeof AgentArena !== "undefined") AgentArena.setMuted(muted);
+    if (typeof DatamonMusic !== "undefined") DatamonMusic.setMuted(muted);
     showToast(muted ? "Muted" : "Sound on");
     return;
   }
@@ -1571,6 +1579,7 @@ canvas.addEventListener("mouseleave", () => {
 const activeAgentPointers = new Set();
 canvas.addEventListener("pointerdown", e => {
   if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
+  if (typeof DatamonMusic !== "undefined") DatamonMusic.unlock();
   if (state !== "battle" || !battle || !battle.agentOps) return;
   if (activeAgentPointers.has(e.pointerId)) return;
   activeAgentPointers.add(e.pointerId);
@@ -4274,6 +4283,24 @@ function drawSearch() {
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 
+// Resolve a small read-only soundtrack snapshot. Music never receives mutable game objects.
+function resolveMusicScene() {
+  if (typeof DatamonMusic === "undefined") return null;
+  const musicBattle = battle ? {
+    phase: battle.agentOps ? battle.agentOps.phase : battle.phase,
+    agentOps: battle.agentOps ? {
+      boss: !!battle.agentOps.boss,
+      bossPhase: battle.agentOps.bossPhase || 0,
+    } : null,
+  } : null;
+  return DatamonMusic.resolveScene({
+    state,
+    currentMap,
+    battle: musicBattle,
+    transitionType: battleTransition && battleTransition.npc ? battleTransition.npc.type : null,
+  });
+}
+
 function loop(t) {
   const dt = Math.min(0.05, (t - lastT) / 1000); // clamp caps tab-refocus dt spikes
   lastT = t;
@@ -4298,6 +4325,9 @@ function loop(t) {
       if (battle.timerMs <= 0) { battle.timerMs = 0; timeoutQuestion(); }
     }
   }
+  // Scene sync is idempotent; unchanged scenes never restart their scheduler or loop.
+  if (typeof DatamonMusic !== "undefined") DatamonMusic.setScene(resolveMusicScene());
+
   // Minigame update: init on first frame, then tick feedback timers (#029)
   if (state === "minigame" && currentMinigame) {
     if (currentMinigame.phase === "intro") initMinigame();
@@ -4329,8 +4359,9 @@ ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
-// Initialize DatamonWorldArt (detail scale, reduced-motion listener, HD manifest).
+// Initialize presentation systems without creating an AudioContext before user activation.
 if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.init();
+if (typeof DatamonMusic !== "undefined") DatamonMusic.init({ muted: muted, scene: "title" });
 // Load and validate the additive manifest, then request only accepted office/shared HD members.
 // A missing/empty manifest resolves to legacy rendering with zero HD image requests.
 var hdManifestPromise = (typeof DatamonWorldArt !== "undefined")

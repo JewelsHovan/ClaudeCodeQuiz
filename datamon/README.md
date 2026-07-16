@@ -63,6 +63,10 @@ localStorage (per browser + port, so stick with one way of serving it).
 - The **coffee machines** (bottom corners) fully restore HP.
 - Defeat all 28 rivals to become a **Claude Certified Architect**.
 - Progress autosaves to localStorage.
+- An original adaptive Web Audio score changes arrangement between title, office,
+  Library, minigames, classic battles, Incident Command, boss phases, victory, and
+  defeat. It begins only after a key/pointer activation; **M** mutes music and SFX
+  everywhere, including colleague search.
 
 ## Files
 
@@ -71,6 +75,7 @@ localStorage (per browser + port, so stick with one way of serving it).
 - `battle-ops.js` — pure Agent Operations reducer and strategic action economy
 - `agent-arena.js` — Incident Command presentation, accessibility, bounded effects/audio
 - `world-art.js` — DPR-aware map caches, accepted HD asset/ambient layer, lazy portraits
+- `music.js` — original deterministic score, scene routing, crossfades, and bounded Web Audio scheduler
 - `questions.js` — 120-question bank (AGENT / MCP / CONFIG / PROMPT / CONTEXT,
   24 per exam domain, each with an explanation), mon names, battle quotes
 - `sprites/` — generated GBA-style pixel trainer sprites (transparent 256px PNGs)

@@ -41,12 +41,12 @@ const expectedManifest = payload.map(file => `${file.path}\t${file.size}`).join(
 const actualManifest = fs.readFileSync(path.join(DIST, "file-manifest.txt"), "utf8");
 const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
 const payloadPaths = new Set(payload.map(file => file.path));
-const requiredRuntime = ["index.html", "state.js", "battle-ops.js", "agent-arena.js", "questions.js", "world-art.js", "game.js"];
+const requiredRuntime = ["index.html", "state.js", "battle-ops.js", "agent-arena.js", "questions.js", "world-art.js", "music.js", "game.js"];
 for (const runtimeFile of requiredRuntime) {
   if (!payloadPaths.has(runtimeFile)) throw new Error(`Missing packaged runtime file: dist/${runtimeFile}`);
 }
 const packagedHtml = fs.readFileSync(path.join(DIST, "index.html"), "utf8");
-for (const script of ["state.js", "battle-ops.js", "agent-arena.js", "questions.js", "world-art.js", "game.js"]) {
+for (const script of ["state.js", "battle-ops.js", "agent-arena.js", "questions.js", "world-art.js", "music.js", "game.js"]) {
   if (!packagedHtml.includes(`src="${script}"`)) throw new Error(`dist/index.html does not declare ${script}`);
 }
 const forbiddenSegments = [

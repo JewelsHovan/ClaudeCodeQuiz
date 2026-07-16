@@ -39,6 +39,7 @@ check:
     node --check datamon/state.js
     node --check datamon/core.js
     node --check datamon/world-art.js
+    node --check datamon/music.js
     for file in scripts/*.mjs tests/unit/*.js tests/browser/*.js; do node --check "$file"; done
     python3 -m py_compile datamon/tools/art_pipeline.py datamon/tools/gen_world_art.py tests/test_art_pipeline.py
     python3 datamon/retag_questions.py --check

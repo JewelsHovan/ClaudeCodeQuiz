@@ -16,7 +16,7 @@ const DATAMON = path.join(ROOT, "datamon");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
 const PAYLOAD_ALLOWLIST = [
   "index.html", "game.js", "battle-ops.js", "agent-arena.js", "questions.js", "state.js",
-  "world-art.js",
+  "world-art.js", "music.js",
   "portraits/*.png", "sprites/*.png", "sprites-walk/**/*.png",
   "tiles/*.png", "props/*.png", "props/manifest.json",
   "library/*.json", "library/assets/*.png", "library/assets/manifest.json",
