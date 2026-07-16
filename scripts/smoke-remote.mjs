@@ -128,8 +128,31 @@ try {
       } catch (_) { return false; }
     }, expected, { timeout: 5000 });
   }
-  if (errors.length) throw new Error(errors.join("\n"));
   console.log(`Public movement passed: W/A/S/D quick taps returned to (${start.x}, ${start.y})`);
+
+  // Exercise the lazy DPR2 architecture path on the public edge, not only office boot.
+  await page.evaluate(() => eval("enterBattleRoom")());
+  await page.waitForFunction(() => {
+    try { return eval("currentMap") === "battleRoom" && eval("battleRoomMapCv") !== null; }
+    catch (_) { return false; }
+  }, null, { timeout: 15000 });
+  const training = await page.evaluate(() => ({
+    rivals: eval("npcs").length,
+    label: eval("locationHudLabel")(),
+    start: { x: eval("player").x, y: eval("player").y },
+  }));
+  if (training.rivals !== 28 || training.label !== "Battle Room") {
+    throw new Error(`public Battle Room contract mismatch: ${JSON.stringify(training)}`);
+  }
+  await page.keyboard.press("w");
+  await page.waitForFunction(start => {
+    try {
+      const current = eval("player");
+      return !current.moving && current.x === start.x && current.y === start.y - 1;
+    } catch (_) { return false; }
+  }, training.start, { timeout: 5000 });
+  if (errors.length) throw new Error(errors.join("\n"));
+  console.log(`Public Battle Room passed: ${training.rivals} repeatable rivals and DPR2 movement`);
 } finally {
   await browser.close();
 }

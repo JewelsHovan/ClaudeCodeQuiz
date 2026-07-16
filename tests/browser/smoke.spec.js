@@ -432,7 +432,10 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     expect(stored.primary.questionStats["agent-001"]).toEqual(stored.primary.questionStats["AGENT:0"]);
     expect(stored.primary.progression.badges).toEqual(["agent"]);
     expect(stored.primary.progression.quests).toEqual({ mentor: "active" });
-    expect(stored.primary.progression.activities).toEqual({ study: 80 });
+    expect(stored.primary.progression.activities).toEqual({
+      study: 80,
+      battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 },
+    });
     expect(stored.primary.progression.npcDomains["ethan-pirso"]).toBe("AGENT");
     expect(stored.primary.progression.npcDomains["invalid-slug"]).toBeUndefined();
     expect(stored.npcTypes["ethan-pirso"]).toBe("AGENT");

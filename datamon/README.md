@@ -52,7 +52,11 @@ localStorage (per browser + port, so stick with one way of serving it).
   | **Prompt Studio** | 4 — Prompt Engineering & Structured Output | 20% |
   | **Context Corner** | 5 — Context Management & Reliability | 15% |
   | **The Lounge** | Mixed, weighted by the real exam percentages | — |
-- A trainer's zone decides their question domain.
+- A trainer's zone decides their question domain. A fixed top-right location instrument
+  names the active room and its purpose without placing labels over the floor.
+- The south wall has distinct framed portals for the **Library** and **Battle Room**.
+  Battle Room rematches restore HP before each encounter, preserve campaign rival progress,
+  continue question-learning telemetry, and track separate current/best training streaks.
 - **Agent Wing battles are strategic Incident Command encounters.** Choose Query,
   Inspect, Patch, or Escalate; build Momentum, deploy a Guardrail, and reduce enemy
   Stability on a service-topology board. The last undefeated Agent rival is a gated
@@ -72,7 +76,7 @@ localStorage (per browser + port, so stick with one way of serving it).
 ## Files
 
 - `index.html` — page shell
-- `game.js` — engine: overworld, character select, battle adapters, Library, and save
+- `game.js` — engine: overworld, character select, battle adapters, Library, Battle Room, and save
 - `battle-ops.js` — pure Agent Operations reducer and strategic action economy
 - `agent-arena.js` — Incident Command presentation, accessibility, bounded effects/audio
 - `world-art.js` — DPR-aware map caches, accepted HD asset/ambient layer, lazy portraits
@@ -89,8 +93,8 @@ localStorage (per browser + port, so stick with one way of serving it).
   set (hardwood, red/white brick, industrial window, wood column, silver ducting).
   Loaded into `tileStore` via `loadTiles()` for the tile-based renderer. The game runs
   fine without them (flat-color fallback) — see regen below.
-- `tools/` — `gen_tiles.py` + `gen_office_tiles.py` (regenerate the tilesets) and
-  `check_tiles.py` (validates round-1)
+- `tools/` — deterministic tile/world generators, including `gen_architecture_assets.py`
+  for reviewed wall caps and framed portals, plus `check_tiles.py` validation
 - `play.sh` — one-command launcher (serve + open browser)
 
 Adding questions: append to `QUESTION_BANK` in `questions.js` (`q`, 4 choices `c`,
@@ -158,9 +162,11 @@ for that slug and the game renders with flat `tileColor()` colors — no crash, 
 ## Reviewed 2× world art
 
 `environment/manifest.json` is an additive, reviewed overlay over the legacy tile/prop
-contracts. At DPR2 the office cache is 2304×1536 while collision, camera destinations,
-and the 32px logical map remain unchanged. The office cache builds at boot; Library art,
-content, and its cache load once on first entry. DPR1/fractional devices retain safe fallbacks.
+contracts. At DPR2 each active map cache is 2304×1536 while collision, camera destinations,
+and the 32px logical map remain unchanged. The office cache builds at boot; Library and
+Battle Room art/caches load on first entry. Inactive destination caches are released when
+switching between Library and Battle Room so no more than two map caches remain resident.
+DPR1/fractional devices retain safe architectural fallbacks.
 
 The accepted Agent Wing pilot contains true 2× brick/window/material art, seven upgraded
 props, a visual-only collaboration table, and four bounded ambient strips. Its reviewed
@@ -168,14 +174,17 @@ brick, rainy-window, and radiator materials are reused office-wide. The other fi
 cache-baked domain instruments (tool bus, calibration rail, context frames, editorial marks,
 and certification compass), while the Library uses continuous staggered slate, brass aisles,
 walnut alcoves, reading pools, and an open-book medallion. Five office and two Library
-procedural loops are fixed/bounded and pin to phase zero under reduced motion. Missing or
-invalid HD members fall back without changing state. The existing portrait set is unchanged.
+procedural loops are fixed/bounded and pin to phase zero under reduced motion. The accepted
+architecture batch adds capped brick/slate/navy walls plus distinct book and training portals;
+the unexplained diagonal Context glass sweep was removed. Missing or invalid HD members fall
+back without changing state. The existing portrait set is unchanged.
 
 The deterministic pipeline never writes generated output directly into accepted runtime art:
 
 ```bash
 # Rebuild the zero-cost pilot into ignored staging and prove deterministic identity
 python3 datamon/tools/gen_world_art.py --validate-twice
+python3 datamon/tools/gen_architecture_assets.py --validate-twice
 # Validate and produce a review sheet
 python3 datamon/tools/art_pipeline.py validate \
   datamon/.environment-work/staging/batch-agent-wing \

@@ -17,6 +17,7 @@
   var _idMap = null; // "CAT:index" -> canonical ID, e.g. "AGENT:0" -> "agent-001"
   var _reverseIdMap = null; // canonical ID -> "CAT:index"
   var VALID_DOMAINS = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
+  var BATTLE_ROOM_DEFAULTS = Object.freeze({ currentStreak: 0, bestStreak: 0, wins: 0 });
 
   function configure(opts) {
     if (opts.roster) _roster = opts.roster.slice();
@@ -64,7 +65,9 @@
       progression: {
         badges: [],
         quests: {},
-        activities: {},
+        activities: {
+          battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 }
+        },
         npcDomains: {}
       }
     };
@@ -186,6 +189,9 @@
       out.progression.activities = (parsed.progression.activities && typeof parsed.progression.activities === "object" && !Array.isArray(parsed.progression.activities))
         ? safeClone(parsed.progression.activities) : {};
 
+      // Sanitise battleRoom activity record (#046). Always populated for v2 saves.
+      out.progression.activities.battleRoom = _normaliseBattleRoomActivity(out.progression.activities.battleRoom);
+
       // Validate npcDomains: keys must be in roster, values in VALID_DOMAINS.
       var rawDomains = parsed.progression.npcDomains;
       if (rawDomains && typeof rawDomains === "object" && !Array.isArray(rawDomains)) {
@@ -205,6 +211,30 @@
     out.questionStats = normaliseStats(parsed.questionStats || {});
 
     return out;
+  }
+
+  // ---- battleRoom activity normalisation (#046) ----
+  function _normaliseBattleRoomActivity(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return { currentStreak: 0, bestStreak: 0, wins: 0 };
+    }
+    function safeNonNegInt(val) {
+      return (typeof val === "number" && isFinite(val)) ? Math.max(0, Math.floor(val)) : 0;
+    }
+    var currentStreak = safeNonNegInt(raw.currentStreak);
+    var bestStreak = safeNonNegInt(raw.bestStreak);
+    var wins = safeNonNegInt(raw.wins);
+    // bestStreak cannot trail currentStreak
+    if (bestStreak < currentStreak) bestStreak = currentStreak;
+    // Preserve unknown activity keys on the source object.
+    var result = {};
+    for (var key in raw) {
+      if (Object.prototype.hasOwnProperty.call(raw, key)) result[key] = raw[key];
+    }
+    result.currentStreak = currentStreak;
+    result.bestStreak = bestStreak;
+    result.wins = wins;
+    return result;
   }
 
   // ---- localStorage I/O ----
@@ -305,6 +335,7 @@
     SAVE_KEY: SAVE_KEY,
     BACKUP_KEY: BACKUP_KEY,
     CURRENT_SCHEMA: CURRENT_SCHEMA,
+    BATTLE_ROOM_DEFAULTS: BATTLE_ROOM_DEFAULTS,
     configure: configure,
     roster: roster,
     idMap: idMap,

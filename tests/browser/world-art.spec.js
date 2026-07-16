@@ -26,6 +26,7 @@ test.describe("HD world-art accepted pilot contracts", () => {
       "hd-agent-wing-lighting", "hd-starry-painting", "hd-tv", "hd-kallax", "hd-couch",
       "hd-arc-lamp", "hd-rug", "hd-radiator", "hd-collaboration-table",
       "hd-amb-windows", "hd-amb-tv", "hd-amb-lamp", "hd-amb-table",
+      "hd-architecture-office-wall", "hd-architecture-library-portal", "hd-architecture-battle-portal",
     ].sort();
     for (const dpr of [1, 1.5, 2]) {
       const context = await browser.newContext({
@@ -120,9 +121,9 @@ test.describe("HD world-art accepted pilot contracts", () => {
     // Repeated input while pending must reuse one Promise and cannot require a second action.
     await page.evaluate(() => {
       const ge = (0, eval);
-      ge("warpToggle")();
+      ge("enterLibrary")();
       window.__firstLibraryPromise = ge("libraryLoadPromise");
-      ge("warpToggle")();
+      ge("enterLibrary")();
       window.__sameLibraryPromise = window.__firstLibraryPromise === ge("libraryLoadPromise");
     });
     await page.waitForFunction(() => (0, eval)("currentMap") === "library");
@@ -150,8 +151,8 @@ test.describe("HD world-art accepted pilot contracts", () => {
     const requestCount = requests.length;
     const reused = await page.evaluate(() => {
       const ge = (0, eval);
-      ge("warpToggle")(); // back to office
-      ge("warpToggle")(); // synchronously reuse built Library
+      ge("returnToOffice")();
+      ge("enterLibrary")(); // synchronously reuse built Library
       return ge("currentMap") === "library" && ge("libraryMapCv") === window.__firstLibraryCache;
     });
     await page.waitForTimeout(50);
@@ -208,26 +209,30 @@ test.describe("HD world-art accepted pilot contracts", () => {
       let transitions = 0;
       for (let x = 1; x < 64; x++) if (row[x * 4] !== row[(x - 1) * 4]) transitions++;
 
-      const office = ge("OFFICE_MAP"), library = ge("LIBRARY_MAP");
+      const office = ge("OFFICE_MAP"), library = ge("LIBRARY_MAP"), battleRoom = ge("BATTLE_ROOM_MAP");
       return {
         officeHash: await digest(office.map(row => row.join("")).join("\n")),
         libraryHash: await digest(library.map(row => row.join("")).join("\n")),
+        battleRoomHash: await digest(battleRoom.map(row => row.join("")).join("\n")),
         placementHash: await digest(JSON.stringify(ge("PROP_PLACEMENTS"))),
         libraryPlacementHash: await digest(JSON.stringify([
           ge("LIBRARY_PROP_PLACEMENTS"), ge("LIBRARY_DECOR"),
         ])),
         officeReach: reachable(office, ge("OFFICE_ENTRY")),
         libraryReach: reachable(library, ge("LIBRARY_ENTRY")),
+        battleRoomReach: reachable(battleRoom, ge("BATTLE_ROOM_ENTRY")),
         placementCount: ge("PROP_PLACEMENTS").length,
         transitions,
       };
     });
-    expect(result.officeHash).toBe("48940fe88298ce2fb65efa6aa3902748449924768a549139c3d166ed77ddf78f");
+    expect(result.officeHash).toBe("5341d5ae064fb9184349fe847908c0dbc87c2b28e655c8ea546c8cb8a233a0c0");
     expect(result.libraryHash).toBe("83c10ea86e53fe0a06f68f9373b40350737634ab87c41b741c8b139dc3e4908a");
+    expect(result.battleRoomHash).toBe("5cce5ea29a100fdd42289607cf2b12abee9cafc37caaab62442991937eadced7");
     expect(result.placementHash).toBe("c875a85f8c8b30be76cc9b25b2762261ce5928685d6df13dd2500ab9d2148444");
     expect(result.libraryPlacementHash).toBe("10fceb41c203e7e5ec32fbb6f8e77c2b15e5be410ecc2bb7aa9ac9dd175f9651");
     expect(result.officeReach).toEqual({ walkable: 684, reached: 684 });
     expect(result.libraryReach).toEqual({ walkable: 710, reached: 710 });
+    expect(result.battleRoomReach).toEqual({ walkable: 748, reached: 748 });
     expect(result.placementCount).toBe(40);
     expect(result.transitions).toBe(63);
   });
