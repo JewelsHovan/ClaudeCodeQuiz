@@ -33,6 +33,7 @@ check:
     set -euo pipefail
     echo "=== DATAMON check suite ==="
     node --check datamon/game.js
+    node --check datamon/battle-ops.js
     node --check datamon/questions.js
     node --check datamon/state.js
     node --check datamon/core.js

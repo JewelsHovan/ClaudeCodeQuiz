@@ -83,7 +83,37 @@
       } catch (_) { result.npcs = null; }
       try {
         const b = globalEval("battle");
-        result.battle = b ? { phase: b.phase, npc: b.npc && b.npc.slug } : null;
+        if (b) {
+          result.battle = {
+            phase: b.phase,
+            npc: b.npc && b.npc.slug,
+            timerMs: typeof b.timerMs === "number" ? b.timerMs : null,
+            message: b.msg || "",
+            shake: b.shake || 0,
+            attackAt: b.attackAt || 0,
+            damageAt: b.dmgAt || 0,
+          };
+          // Agent Operations telemetry: expose reducer state only on loopback hosts.
+          if (b.agentOps) {
+            result.agentOps = {
+              phase: b.agentOps.phase,
+              boss: b.agentOps.boss,
+              bossPhase: b.agentOps.bossPhase,
+              bossPhases: b.agentOps.bossPhases,
+              stability: b.agentOps.stability,
+              maxStability: b.agentOps.maxStability,
+              momentum: b.agentOps.momentum,
+              guardrail: b.agentOps.guardrail,
+              playerHp: b.agentOps.playerHp,
+              selectedAction: b.agentOps.selectedAction,
+              choiceCursor: b.agentOpsChoiceSel,
+              outcome: b.agentOps.outcome ? { ...b.agentOps.outcome } : null,
+              eliminated: b.agentOps.eliminated ? b.agentOps.eliminated.slice() : [],
+            };
+          }
+        } else {
+          result.battle = null;
+        }
       } catch (_) { result.battle = null; }
       try { result.difficulty = globalEval("typeof difficulty !== 'undefined' ? difficulty : null"); } catch (_) { result.difficulty = null; }
       try {

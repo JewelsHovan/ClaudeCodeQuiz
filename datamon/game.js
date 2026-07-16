@@ -810,26 +810,120 @@ function startBattle(npc) {
   const monPool = shuffled(MON_NAMES[npc.type === "MIX" ? weightedDomain() : npc.type],
                            mulberry32(Math.floor(Math.random() * 1e9)));
   const level = Math.max(1, 5 + defeated.size * 2 + (TIER_LEVEL_DELTA[difficulty] || 0));
+  const isAgent = npc.type === "AGENT";
   battle = {
     npc,
     mons: [0, 1].map(i => ({ name: monPool[i % monPool.length], level: level + i, q: null, alive: true })),
     idx: 0,
-    phase: "intro",                 // intro | sendout | question | feedback | win | lose
-    timerMs: HARD_TIMER_MS,          // Hard-mode per-question countdown (only consumed when difficulty==="hard")
-    msg: `${displayName(npc.slug)} ${BATTLE_INTROS[Math.floor(Math.random() * BATTLE_INTROS.length)]}`,
+    phase: "intro", // Agent phase is projected from reducer state before the scene renders
+    timerMs: HARD_TIMER_MS,
+    msg: isAgent
+      ? `${displayName(npc.slug)} challenges you to an Agent Operations duel!`
+      : `${displayName(npc.slug)} ${BATTLE_INTROS[Math.floor(Math.random() * BATTLE_INTROS.length)]}`,
     sel: 0,
     feedback: null,
     shake: 0,
-    startF: frame,                  // entrance slide / white flash
-    msgAt: frame,                   // typewriter anchor
-    sendoutAt: 0,                   // mon scale-in + poof anchor
-    faintAt: 0,                     // mon faint (fall + fade) anchor
-    attackAt: 0,                    // mon lunge + red flash anchor
-    dmgAt: 0,                       // floating damage number anchor
+    startF: frame,
+    msgAt: frame,
+    sendoutAt: 0,
+    faintAt: 0,
+    attackAt: 0,
+    dmgAt: 0,
     poof: [],
   };
+  // Agent Operations: initialise reducer-owned encounter state, then route even
+  // the initial turn through the one adapter used by every later event.
+  if (isAgent && typeof DatamonBattleOps !== "undefined") {
+    battle.agentOps = DatamonBattleOps.createEncounter({
+      npc: npc,
+      npcs: npcs,
+      playerHp: player.hp,
+    });
+    battle.agentOpsSel = 0;
+    battle.agentOpsChoiceSel = 0;
+    battle._agentVictoryConsumed = false;
+    battle._agentDefeatConsumed = false;
+    _agentDispatch(battle, { type: "START_TURN", question: drawQuestion(npc.type) });
+  }
   wrapCache.clear();
   state = "battle";
+}
+
+// The sole Agent Operations adapter. Reducer dispatch, state assignment, HP
+// projection, one-shot semantic effects, timer reset, and presentation phase
+// projection all happen here. PLAYER_DAMAGE is deliberately not additive: the
+// reducer owns HP and this adapter idempotently assigns its absolute value.
+function _agentDispatch(b, event) {
+  if (!b || !b.agentOps || !event) return { state: b && b.agentOps, effects: [] };
+  var previous = b.agentOps;
+  var result = DatamonBattleOps.reduce(previous, event);
+  b.agentOps = result.state;
+  player.hp = b.agentOps.playerHp;
+
+  if (event.type === "START_TURN" && b.agentOps !== previous) {
+    b.timerMs = HARD_TIMER_MS;
+  }
+
+  // Consume each reducer effect only from this dispatch. Terminal guards are a
+  // defensive idempotence belt; normal reducer phase guards emit them once.
+  var effects = result.effects || [];
+  for (var i = 0; i < effects.length; i++) {
+    var effect = effects[i];
+    switch (effect.type) {
+      case "RECORD_OUTCOME":
+        recordOutcome(effect.correct);
+        break;
+      case "STABILITY_DAMAGE":
+        sfx.correct();
+        break;
+      case "PLAYER_DAMAGE":
+        // HP was already assigned absolutely from reducer state above.
+        sfx.wrong();
+        break;
+      case "GUARDRAIL_BLOCK":
+        sfx.confirm();
+        break;
+      case "INSPECT_ELIMINATED":
+        sfx.select();
+        break;
+      case "PATCH_APPLIED":
+        sfx.confirm();
+        break;
+      case "ACTION_REJECTED":
+        sfx.wrong();
+        showToast(effect.reason === "insufficient_momentum"
+          ? "Not enough Momentum! (need " + effect.needed + ", have " + effect.available + ")"
+          : "Invalid action!");
+        break;
+      case "ESCAPED":
+        sfx.confirm();
+        _agentExitToOverworld(b, "Fled from the Agent Operations duel!");
+        break;
+      case "PHASE_SHIFT":
+        sfx.confirm();
+        break;
+      case "VICTORY":
+        if (!b._agentVictoryConsumed) {
+          b._agentVictoryConsumed = true;
+          b.npc.defeated = true;
+          defeated.add(b.npc.slug);
+          save();
+          sfx.victory();
+        }
+        break;
+      case "DEFEAT":
+        if (!b._agentDefeatConsumed) {
+          b._agentDefeatConsumed = true;
+          sfx.wrong();
+        }
+        break;
+    }
+  }
+
+  // An escape effect removes the encounter immediately. All other accepted
+  // transitions are projected from reducer state; callers never mutate b.phase.
+  if (battle === b && b.agentOps !== previous) _agentSyncPhase(b);
+  return result;
 }
 
 function currentMon() { return battle.mons[battle.idx]; }
@@ -843,8 +937,193 @@ function sendOutCurrentMon(b) {
   spawnPoof(b);
 }
 
+// Advance only reducer-owned non-interactive phases. action/choice input is
+// dispatched by dedicated handlers and cannot be skipped by presentation code.
+function _agentAdvance(b) {
+  var phase = b.agentOps.phase;
+  if (phase === "resolve") {
+    _agentDispatch(b, { type: "RESOLUTION_COMPLETE" });
+  } else if (phase === "feedback" || phase === "phase-shift") {
+    _agentDispatch(b, { type: "START_TURN", question: drawQuestion(b.npc.type) });
+  } else if (phase === "victory") {
+    _agentFinishVictory(b);
+  } else if (phase === "defeat") {
+    _agentFinishDefeat(b);
+  }
+}
+
+function _agentExitToOverworld(b, toastMessage) {
+  if (battle !== b) return;
+  wrapCache.clear();
+  battle = null;
+  player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
+  state = "overworld"; bufferedDir = null; turnStartMs = null;
+  if (toastMessage) showToast(toastMessage);
+}
+
+function _agentFinishVictory(b) {
+  if (battle !== b || !b._agentVictoryConsumed) return;
+  wrapCache.clear();
+  battle = null;
+  if (npcs.every(function (n) { return n.defeated; })) {
+    state = "victory";
+  } else {
+    player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
+    state = "overworld"; bufferedDir = null; turnStartMs = null;
+  }
+}
+
+function _agentFinishDefeat(b) {
+  if (battle !== b || !b._agentDefeatConsumed) return;
+  wrapCache.clear();
+  battle = null;
+  if (currentMap !== "office") { currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv; npcs = officeNpcs; }
+  player.hp = MAX_HP;
+  player.x = player.fx = 18; player.y = player.fy = 16;
+  camFx = camFy = null; stepT = 1; player.moving = false;
+  state = "overworld"; bufferedDir = null; turnStartMs = null;
+  showToast("You respawned in the lounge with a fresh coffee. HP restored!");
+}
+
+// Keyboard input routing for Agent Operations encounters. The global keydown
+// latch rejects held/repeated keys before they reach this phase-specific router.
+function _agentHandleKey(b, k) {
+  var phase = b.agentOps.phase;
+  if (phase === "action") {
+    if (k === "ArrowDown" || k === "ArrowRight") {
+      b.agentOpsSel = (b.agentOpsSel + 1) % 4; sfx.select();
+    } else if (k === "ArrowUp" || k === "ArrowLeft") {
+      b.agentOpsSel = (b.agentOpsSel + 3) % 4; sfx.select();
+    } else if (k === "Enter" || k === " ") {
+      _agentSelectAction(b, DatamonBattleOps.ACTION_KEYS[b.agentOpsSel]);
+    } else if (k === "r" || k === "R" || k === "Escape") {
+      attemptRun();
+    }
+  } else if (phase === "choice") {
+    var eliminated = b.agentOps.eliminated || [];
+    if (k === "ArrowRight" || k === "ArrowDown") {
+      var next = b.agentOpsChoiceSel;
+      for (var tries = 0; tries < 4; tries++) {
+        next = (next + 1) % 4;
+        if (eliminated.indexOf(next) < 0) break;
+      }
+      if (eliminated.indexOf(next) < 0) { b.agentOpsChoiceSel = next; sfx.select(); }
+    } else if (k === "ArrowLeft" || k === "ArrowUp") {
+      var prev = b.agentOpsChoiceSel;
+      for (var tries2 = 0; tries2 < 4; tries2++) {
+        prev = (prev + 3) % 4;
+        if (eliminated.indexOf(prev) < 0) break;
+      }
+      if (eliminated.indexOf(prev) < 0) { b.agentOpsChoiceSel = prev; sfx.select(); }
+    } else if (["1", "2", "3", "4"].includes(k)) {
+      answerQuestion(parseInt(k) - 1);
+    } else if (k === "Enter" || k === " ") {
+      answerQuestion(b.agentOpsChoiceSel);
+    } else if (k === "r" || k === "R" || k === "Escape") {
+      attemptRun();
+    }
+  } else if (k === "Enter" || k === " ") {
+    if (Math.floor((frame - b.msgAt + 1) * TEXT_SPEED()) < b.msg.length) {
+      b.msgAt = frame - Math.ceil(b.msg.length / TEXT_SPEED());
+    } else {
+      sfx.confirm();
+      advanceBattle();
+    }
+  }
+}
+
+function _agentSelectAction(b, actionName) {
+  _agentDispatch(b, { type: "SELECT_ACTION", action: actionName });
+}
+
+function _agentFirstEnabledChoice(ao) {
+  var count = ao.question && Array.isArray(ao.question.c) ? ao.question.c.length : 0;
+  for (var i = 0; i < count; i++) {
+    if ((ao.eliminated || []).indexOf(i) < 0) return i;
+  }
+  return 0;
+}
+
+// Project reducer state into the legacy battle rendering object. This is the
+// only function allowed to assign an Agent encounter's presentation phase.
+function _agentSyncPhase(b) {
+  var ao = b.agentOps;
+  b.phase = ao.phase;
+  switch (ao.phase) {
+    case "action":
+      b.agentOpsSel = 0;
+      b.agentOpsChoiceSel = 0;
+      b.feedback = null;
+      b.shake = 0;
+      b.attackAt = 0;
+      b.dmgAt = 0;
+      break;
+    case "choice":
+      // Inspect can eliminate index 0, so never initialise the cursor blindly.
+      b.agentOpsChoiceSel = _agentFirstEnabledChoice(ao);
+      break;
+    case "resolve":
+      if (ao.outcome) {
+        var q = ao.question;
+        var correctIndex = q ? (q.correct != null ? q.correct : q.a) : -1;
+        var correctAnswer = q && q.c ? q.c[correctIndex] : "?";
+        if (ao.outcome.correct) {
+          var action = DatamonBattleOps.ACTIONS[ao.selectedAction] || DatamonBattleOps.ACTIONS.query;
+          b.feedback = { correct: true };
+          b.msg = "Correct! " + action.label + " hit for " + action.damage + " Stability." + (q && q.x ? " (" + q.x + ")" : "");
+          b.faintAt = frame;
+          b.shake = 0; b.attackAt = 0; b.dmgAt = 0;
+        } else {
+          b.feedback = { correct: false, blocked: !!ao.outcome.blocked };
+          b.msg = ao.outcome.reason === "timeout"
+            ? "Time's up! The answer was \"" + correctAnswer + "\"."
+            : "Wrong! The answer was \"" + correctAnswer + "\".";
+          if (ao.outcome.blocked) {
+            b.msg += " Guardrail blocked the hit — no HP damage.";
+            b.shake = 0; b.attackAt = 0; b.dmgAt = 0;
+          } else {
+            b.msg += " You took " + WRONG_DMG + " damage!";
+            b.shake = 14; b.attackAt = frame; b.dmgAt = frame;
+          }
+        }
+        b.msgAt = frame;
+      }
+      break;
+    case "feedback":
+      if (ao.outcome && ao.outcome.correct) {
+        b.feedback = { correct: true };
+        b.msg = "Good hit! " + (ao.boss ? "Boss Stability: " + ao.stability + "/" + ao.maxStability : "Stability: " + ao.stability + "/" + ao.maxStability);
+      } else if (ao.outcome && ao.outcome.blocked) {
+        b.feedback = { correct: false, blocked: true };
+        b.msg = "Guardrail blocked the hit. No HP damage taken.";
+      } else {
+        b.feedback = { correct: false };
+        b.msg = "You took " + WRONG_DMG + " damage!";
+      }
+      b.msgAt = frame;
+      break;
+    case "phase-shift":
+      b.msg = displayName(b.npc.slug) + " shifts stance! Phase " + (ao.bossPhase + 1) + " — Stability " + ao.stability + "/" + ao.maxStability + "!";
+      b.msgAt = frame;
+      break;
+    case "victory":
+      b.msg = "You defeated " + displayName(b.npc.slug) + "! \"" + WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)] + "\"";
+      b.msgAt = frame;
+      break;
+    case "defeat":
+      b.msg = "You blacked out from imposter syndrome... \"" + LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)] + "\"";
+      b.msgAt = frame;
+      break;
+  }
+}
+
 function advanceBattle() {
   const b = battle;
+  // Agent Operations routing
+  if (b.agentOps) {
+    _agentAdvance(b);
+    return;
+  }
   if (b.phase === "intro") {
     sendOutCurrentMon(b);
   } else if (b.phase === "sendout") {
@@ -935,7 +1214,14 @@ function applyWrongHit(b, msg) {
 }
 
 function answerQuestion(i) {
-  const b = battle, q = currentMon().q;
+  const b = battle;
+  // The reducer is the validation boundary for enabled, integer, in-range choices.
+  if (b.agentOps) {
+    _agentDispatch(b, { type: "SUBMIT_ANSWER", index: i });
+    return;
+  }
+  // Classic battle path
+  const q = currentMon().q;
   const correct = i === q.a;
   recordOutcome(correct);
   if (correct) {
@@ -956,14 +1242,28 @@ function answerQuestion(i) {
 // existing advanceBattle feedback→lose branch handles blackout/respawn.
 function timeoutQuestion() {
   const b = battle;
-  if (!b || b.phase !== "question") return;
+  if (!b) return;
+  // Agent Operations routing; reducer phase guards make expiry exact-once.
+  if (b.agentOps) {
+    _agentDispatch(b, { type: "TIMEOUT" });
+    return;
+  }
+  // Classic path
+  if (b.phase !== "question") return;
   recordOutcome(false);
   applyWrongHit(b, `Time's up! It was "${currentMon().q.c[currentMon().q.a]}". ${currentMon().name.toUpperCase()} hits you for ${WRONG_DMG}!`);
 }
 
 function attemptRun() {
   const b = battle;
-  if (!b || b.phase !== "question") return;   // Run is only available during the question phase
+  if (!b) return;
+  // Agent Operations routing: Run always succeeds in reducer-valid phases.
+  if (b.agentOps) {
+    _agentDispatch(b, { type: "RUN" });
+    return;
+  }
+  // Classic path
+  if (b.phase !== "question") return;
   if (Math.random() < FLEE_CHANCE) {
     // SUCCESS — flee to the overworld. Mirrors the advanceBattle() win-branch restore,
     // but deliberately does NOT mark the rival defeated and does NOT call save().
@@ -999,17 +1299,30 @@ function showToast(msg, ms = 2600) { toast = { msg, until: performance.now() + m
 
 // ---------- Input ----------
 const keys = {};
+const agentActivationKeys = new Set();
 window.addEventListener("keydown", e => {
   if (state === "search") { e.preventDefault(); handleSearchKey(e); return; }
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
   if (e.key === "Tab" && state === "select") e.preventDefault();   // Tab cycles difficulty, not focus
-  if (e.key === "Escape" && state === "battle" && battle && battle.phase === "question") e.preventDefault();
+  if (e.key === "Escape" && state === "battle" && battle && (battle.phase === "question" || (battle.agentOps && (battle.agentOps.phase === "action" || battle.agentOps.phase === "choice")))) e.preventDefault();
+  const alreadyDown = !!keys[e.key];
+  const agentOwned = agentActivationKeys.has(e.key);
+  const inAgentBattle = state === "battle" && battle && battle.agentOps;
   keys[e.key] = true;
   if (state === "overworld" && player.moving && KEY_DIR[e.key]) bufferedDir = KEY_DIR[e.key];
+  // Agent phases may change on a keydown. Requiring release before another event
+  // prevents a held key (including synthetic repeat:false duplicates) from crossing
+  // action → choice → resolve/feedback or a terminal phase back to the overworld.
+  if ((agentOwned || inAgentBattle) && (e.repeat || alreadyDown)) return;
+  if (inAgentBattle) agentActivationKeys.add(e.key);
   if (e.repeat && (bookPrompt || readerState || state === "minigame")) return; // prevent held-Enter blowing picker→reader or minigame
   handleKey(e.key);
 });
-window.addEventListener("keyup", e => { keys[e.key] = false; });
+window.addEventListener("keyup", e => { keys[e.key] = false; agentActivationKeys.delete(e.key); });
+window.addEventListener("blur", () => {
+  for (const key in keys) keys[key] = false;
+  agentActivationKeys.clear();
+});
 
 function handleKey(k) {
   if (k === "m" || k === "M") { muted = !muted; showToast(muted ? "Muted" : "Sound on"); return; }
@@ -1111,7 +1424,9 @@ function handleKey(k) {
     if (k === " " || k === "Enter" || k === "e" || k === "E") interact();
   } else if (state === "battle") {
     const b = battle;
-    if (b.phase === "question") {
+    if (b.agentOps) {
+      _agentHandleKey(b, k);
+    } else if (b.phase === "question") {
       if (k === "ArrowRight" || k === "ArrowDown") { b.sel = (b.sel + 1) % 4; sfx.select(); }
       if (k === "ArrowLeft" || k === "ArrowUp")    { b.sel = (b.sel + 3) % 4; sfx.select(); }
       if (["1", "2", "3", "4"].includes(k)) answerQuestion(parseInt(k) - 1);
@@ -1182,6 +1497,41 @@ canvas.addEventListener("mousemove", e => {
   if (hit >= 0) setSelect(hit, true); // hover browses silently
 });
 
+// Agent pointer input is handled on pointerdown and latched until pointerup. The
+// later synthetic click is swallowed below, so one physical press dispatches at
+// most one reducer event even when that event changes the interactive phase.
+const activeAgentPointers = new Set();
+canvas.addEventListener("pointerdown", e => {
+  if (state !== "battle" || !battle || !battle.agentOps) return;
+  if (activeAgentPointers.has(e.pointerId)) return;
+  activeAgentPointers.add(e.pointerId);
+  e.preventDefault();
+  const [mx, my] = canvasPos(e);
+  const b = battle;
+  const phase = b.agentOps.phase;
+  if (phase === "action") {
+    if (runHitTest(mx, my)) attemptRun();
+    else {
+      const actionIndex = _agentActionHitTest(mx, my);
+      if (actionIndex >= 0) {
+        b.agentOpsSel = actionIndex;
+        _agentSelectAction(b, DatamonBattleOps.ACTION_KEYS[actionIndex]);
+      }
+    }
+  } else if (phase === "choice") {
+    if (runHitTest(mx, my)) attemptRun();
+    else {
+      const choiceIndex = choiceHitTest(mx, my);
+      if (choiceIndex >= 0) answerQuestion(choiceIndex);
+    }
+  } else {
+    _agentHandleKey(b, "Enter");
+  }
+});
+window.addEventListener("pointerup", e => { activeAgentPointers.delete(e.pointerId); });
+window.addEventListener("pointercancel", e => { activeAgentPointers.delete(e.pointerId); });
+window.addEventListener("blur", () => { activeAgentPointers.clear(); });
+
 canvas.addEventListener("click", e => {
   const [mx, my] = canvasPos(e);
   if (bookPrompt || readerState) return; // swallow clicks behind book modal (keyboard-only UI)
@@ -1198,7 +1548,9 @@ canvas.addEventListener("click", e => {
     if (hit >= 0) { setSelect(hit, true); handleKey("Enter"); }
   } else if (state === "battle") {
     const b = battle;
-    if (b.phase === "question") {
+    if (b.agentOps) {
+      return; // pointerdown already consumed this physical Agent activation
+    } else if (b.phase === "question") {
       if (runHitTest(mx, my)) { attemptRun(); return; }
       const hit = choiceHitTest(mx, my);
       if (hit >= 0) answerQuestion(hit);
@@ -3310,8 +3662,241 @@ function runHitTest(mx, my) {
   return mx >= x && mx <= x + w && my >= y && my <= y + h;
 }
 
+// ---- Agent Operations drawing helpers ----
+
+// Layout constants for Agent Operations action menu (4 buttons, stacked vertically)
+var AGENT_ACTION_RECTS = null;
+function _agentActionRects() {
+  if (AGENT_ACTION_RECTS) return AGENT_ACTION_RECTS;
+  var { bx, by, bw, bh } = layoutChoices();
+  var btnH = 36, gap = 8, totalH = btnH * 4 + gap * 3;
+  var startY = by + (bh - totalH) / 2;
+  var rects = [];
+  for (var i = 0; i < 4; i++) {
+    rects.push([bx + 30, startY + i * (btnH + gap), bw - 60, btnH]);
+  }
+  AGENT_ACTION_RECTS = rects;
+  return rects;
+}
+
+function _agentActionHitTest(mx, my) {
+  var rects = _agentActionRects();
+  for (var i = 0; i < rects.length; i++) {
+    var r = rects[i];
+    if (mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + r[3]) return i;
+  }
+  return -1;
+}
+
+// Draw Agent Operations encounter with action menu, Momentum/Guardrail/Stability HUD.
+function _agentDrawBattle(b) {
+  var ao = b.agentOps;
+  var shakeX = b.shake > 0 ? (Math.random() - 0.5) * b.shake : 0;
+  if (b.shake > 0) b.shake = Math.max(0, b.shake - dtF);
+
+  ctx.save();
+  ctx.translate(shakeX, 0);
+
+  // Backdrop + trainers (same as classic)
+  ctx.fillStyle = battleGrad; ctx.fillRect(-20, 0, CANVAS_W + 40, CANVAS_H);
+
+  var typeColor = TYPE_COLORS[b.npc.type];
+  var mon = currentMon();
+
+  // Entrance slide
+  var ee = 1 - Math.pow(1 - Math.min(1, (frame - b.startF) / 30), 3);
+  var oppX = CANVAS_W - 200 + (1 - ee) * 280;
+  var plyX = 190 - (1 - ee) * 280;
+
+  // Platforms
+  ctx.fillStyle = "rgba(148,163,184,0.18)";
+  ctx.beginPath(); ctx.ellipse(oppX, 252, 130, 30, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(plyX, 404, 130, 30, 0, 0, 7); ctx.fill();
+
+  drawTrainer(b.npc.slug, oppX, 268, 256, 4);
+  drawTrainer(player.slug, plyX, 420, 192, 0);
+
+  // Opponent info plate (same as classic but with Agent Ops flair)
+  ctx.fillStyle = "rgba(15,23,42,0.9)";
+  ctx.fillRect(36, 36, 330, 84);
+  ctx.strokeStyle = typeColor; ctx.lineWidth = 2; ctx.strokeRect(36, 36, 330, 84);
+  ctx.drawImage(pixelHead(b.npc.slug, 56), 48, 48, 56, 56);
+  ctx.strokeStyle = typeColor; ctx.lineWidth = 2; ctx.strokeRect(48, 48, 56, 56);
+
+  var oTx = 116;
+  ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 16px monospace"; ctx.textAlign = "left";
+  ctx.fillText(displayName(b.npc.slug), oTx, 62);
+  ctx.fillStyle = typeColor; ctx.font = "bold 12px monospace";
+  ctx.fillText(b.npc.type + " TRAINER · " + TYPE_NAMES[b.npc.type], oTx, 82);
+  ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
+  var stabilityText = ao.boss ? "Phase " + (ao.bossPhase + 1) + " · Stability " + ao.stability + "/" + ao.maxStability : "Stability " + ao.stability + "/" + ao.maxStability;
+  ctx.fillText(stabilityText, oTx, 100);
+
+  // Player info plate
+  var pbX = CANVAS_W - 366;
+  ctx.fillStyle = "rgba(15,23,42,0.9)";
+  ctx.fillRect(pbX, 300, 330, 86);
+  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2; ctx.strokeRect(pbX, 300, 330, 86);
+  ctx.drawImage(pixelHead(player.slug, 48), pbX + 8, 312, 48, 48);
+  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2; ctx.strokeRect(pbX + 8, 312, 48, 48);
+
+  var pTx = pbX + 68;
+  ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 15px monospace"; ctx.textAlign = "left";
+  ctx.fillText("YOU (" + firstName(player.slug) + ")", pTx, 324);
+  drawHPBar(pTx, 340, 175, 12, player.dispHp / MAX_HP);
+  ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
+  ctx.fillText(Math.round(player.dispHp) + "/" + MAX_HP, pTx + 182, 351);
+
+  // Momentum bar
+  var momY = 358;
+  ctx.fillStyle = "#facc15"; ctx.font = "bold 11px monospace";
+  ctx.fillText("MOMENTUM", pTx, momY);
+  for (var mi = 0; mi < DatamonBattleOps.MAX_MOMENTUM; mi++) {
+    ctx.fillStyle = mi < ao.momentum ? "#facc15" : "#334155";
+    ctx.fillRect(pTx + 80 + mi * 22, momY - 9, 18, 12);
+  }
+
+  // Guardrail indicator
+  if (ao.guardrail > 0) {
+    ctx.fillStyle = "#22c55e"; ctx.font = "bold 11px monospace";
+    ctx.fillText("GUARDRAIL", pbX + 200, momY);
+    ctx.fillRect(pbX + 280, momY - 9, 18, 12);
+  }
+
+  // Text/question box
+  var { bx, by, bw, bh } = layoutChoices();
+  ctx.fillStyle = "rgba(15,23,42,0.95)";
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 3; ctx.strokeRect(bx, by, bw, bh);
+
+  if (b.phase === "action") {
+    // Draw action selection menu
+    var actions = DatamonBattleOps.ACTION_KEYS;
+    var rects = _agentActionRects();
+    ctx.fillStyle = "#facc15"; ctx.font = "bold 15px monospace"; ctx.textAlign = "center";
+    ctx.fillText("Choose your strategic action:", CANVAS_W / 2, by + 24);
+    ctx.textAlign = "left";
+    for (var ai = 0; ai < actions.length; ai++) {
+      var actionName = actions[ai];
+      var spec = DatamonBattleOps.ACTIONS[actionName];
+      var r = rects[ai];
+      var canAfford = ao.momentum >= spec.cost;
+      var isSel = ai === b.agentOpsSel;
+
+      ctx.fillStyle = isSel ? "#facc15" : canAfford ? "#1e293b" : "#0f172a";
+      ctx.fillRect(r[0], r[1], r[2], r[3]);
+      if (isSel) { ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2; ctx.strokeRect(r[0], r[1], r[2], r[3]); }
+
+      ctx.fillStyle = canAfford ? (isSel ? "#0f172a" : "#e2e8f0") : "#475569";
+      ctx.font = "bold 14px monospace";
+      ctx.fillText(spec.label, r[0] + 14, r[1] + 18);
+      ctx.fillStyle = canAfford ? "#94a3b8" : "#ef4444";
+      ctx.font = "11px monospace";
+      ctx.fillText(spec.desc, r[0] + 14, r[1] + 30);
+    }
+  } else if (b.phase === "choice") {
+    // Draw question and choices (like classic question phase, with Inspect eliminations)
+    var q = ao.question;
+    if (q) {
+      var qFont = "bold 14px monospace", lh = 17, qy = by + 22;
+      var qText = (q.q || "");
+      if (qText.length > 80) { qFont = "bold 12px monospace"; lh = 15; qy = by + 18; }
+      ctx.fillStyle = "#facc15"; ctx.font = qFont; ctx.textAlign = "left";
+      var qLines = wrapTextMemo((q.cat ? "[" + q.cat + "] " : "") + qText, bw - 110, qFont);
+      qLines.slice(0, 3).forEach(function (ln, i) { ctx.fillText(ln, bx + 14, qy + i * lh); });
+
+      var eliminated = ao.eliminated || [];
+      for (var ci = 0; ci < 4; ci++) {
+        var cr = CHOICE_RECTS[ci];
+        var isDisabled = eliminated.indexOf(ci) >= 0;
+        var isChoiceSel = ci === b.agentOpsChoiceSel && !isDisabled;
+
+        ctx.fillStyle = isDisabled ? "#1e1e2e" : isChoiceSel ? "#facc15" : "#1e293b";
+        ctx.fillRect(cr[0], cr[1], cr[2], cr[3]);
+        if (isChoiceSel) { ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2; ctx.strokeRect(cr[0], cr[1], cr[2], cr[3]); }
+        if (isDisabled) {
+          ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.strokeRect(cr[0], cr[1], cr[2], cr[3]);
+          ctx.setLineDash([]);
+        }
+
+        ctx.fillStyle = isDisabled ? "#475569" : isChoiceSel ? "#0f172a" : "#e2e8f0";
+        ctx.font = "13px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        var label = (isDisabled ? "✕ " : "") + (ci + 1) + ". " + (q.c ? q.c[ci] : "");
+        var lines = wrapTextMemo(label, cr[2] - 20, "13px monospace");
+        if (lines.length === 1) ctx.fillText(lines[0], cr[0] + 10, cr[1] + cr[3] / 2);
+        else lines.slice(0, 2).forEach(function (ln, j) { ctx.fillText(ln, cr[0] + 10, cr[1] + cr[3] / 2 + (j - 0.5) * 15); });
+        ctx.textBaseline = "alphabetic";
+      }
+    }
+
+    // Run button
+    var rrx = RUN_RECT[0], rry = RUN_RECT[1], rrw = RUN_RECT[2], rrh = RUN_RECT[3];
+    ctx.fillStyle = "#7f1d1d";
+    ctx.fillRect(rrx, rry, rrw, rrh);
+    ctx.strokeStyle = "#f87171"; ctx.lineWidth = 2; ctx.strokeRect(rrx, rry, rrw, rrh);
+    ctx.fillStyle = "#fecaca"; ctx.font = "bold 13px monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("RUN (R)", rrx + rrw / 2, rry + rrh / 2);
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+
+    // Hard-mode countdown
+    if (difficulty === "hard") {
+      var remMs = Math.max(0, b.timerMs);
+      var secs = Math.ceil(remMs / 1000);
+      var frac = Math.max(0, Math.min(1, remMs / HARD_TIMER_MS));
+      var low = remMs < 10000;
+      var barW = 220, barH = 12, tcx = CANVAS_W / 2, tby = by - 34;
+      var col = low ? "#f87171" : "#facc15";
+      ctx.fillStyle = col; ctx.font = "bold 16px monospace"; ctx.textAlign = "center";
+      ctx.fillText("⏱ " + secs + "s", tcx, tby - 4);
+      ctx.fillStyle = "#0f172a"; ctx.fillRect(tcx - barW / 2, tby + 4, barW, barH);
+      ctx.fillStyle = col; ctx.fillRect(tcx - barW / 2, tby + 4, barW * frac, barH);
+      ctx.strokeStyle = "#334155"; ctx.lineWidth = 1; ctx.strokeRect(tcx - barW / 2, tby + 4, barW, barH);
+      ctx.textAlign = "left";
+    }
+  } else {
+    // Typewriter message for feedback/resolve/phase-shift/victory/defeat
+    var shown = Math.floor((frame - b.msgAt + 1) * TEXT_SPEED());
+    if (!b._cachedMsgLines || b._cachedMsg !== b.msg) {
+      b._cachedMsg = b.msg;
+      b._cachedMsgLines = wrapTextMemo(b.msg, bw - 32, "bold 15px monospace");
+    }
+    var msgColor = "#e2e8f0";
+    if (b.phase === "victory" || (b.phase === "feedback" && b.feedback && b.feedback.correct)) msgColor = "#22c55e";
+    else if ((b.phase === "feedback" && b.feedback && !b.feedback.correct) || b.phase === "defeat") msgColor = "#f87171";
+    else if (b.phase === "phase-shift") msgColor = "#facc15";
+
+    ctx.fillStyle = msgColor; ctx.font = "bold 15px monospace"; ctx.textAlign = "left";
+    typewriterSlice(b._cachedMsgLines, Math.max(0, shown)).slice(0, 5)
+      .forEach(function (ln, i) { ctx.fillText(ln, bx + 16, by + 30 + i * 22); });
+    if (shown >= b.msg.length && Math.floor(frame / 25) % 2 === 0) {
+      ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace"; ctx.textAlign = "right";
+      ctx.fillText("ENTER ▸", bx + bw - 14, by + bh - 12);
+    }
+  }
+
+  // Red flash when you take a hit
+  if (b.attackAt) {
+    var aT = frame - b.attackAt;
+    if (aT < 14) {
+      ctx.fillStyle = "rgba(239,68,68," + (0.32 * (1 - aT / 14)).toFixed(3) + ")";
+      ctx.fillRect(-20, 0, CANVAS_W + 40, CANVAS_H);
+    }
+  }
+  // White flash as the battle scene appears
+  var wT = frame - b.startF;
+  if (wT < 14) {
+    ctx.fillStyle = "rgba(255,255,255," + (1 - wT / 14).toFixed(3) + ")";
+    ctx.fillRect(-20, 0, CANVAS_W + 40, CANVAS_H);
+  }
+  ctx.restore();
+}
+
 function drawBattle() {
   const b = battle;
+  if (b.agentOps) { _agentDrawBattle(b); return; }
   const shakeX = b.shake > 0 ? (Math.random() - 0.5) * b.shake : 0;
   if (b.shake > 0) b.shake = Math.max(0, b.shake - dtF);
 
@@ -3675,9 +4260,16 @@ function loop(t) {
   // Hard-mode question timer: counts down ONLY during the question phase (Invariant 1 —
   // paused during feedback/typewriter/intro/sendout/win/lose). On expiry, route through
   // the shared wrong-answer/timeout flow.
-  if (state === "battle" && battle && battle.phase === "question" && difficulty === "hard") {
-    battle.timerMs -= dt * 1000;
-    if (battle.timerMs <= 0) { battle.timerMs = 0; timeoutQuestion(); }
+  if (state === "battle" && battle && difficulty === "hard") {
+    // Agent Operations: timer runs only during the interactive choice phase
+    if (battle.agentOps && battle.agentOps.phase === "choice") {
+      battle.timerMs -= dt * 1000;
+      if (battle.timerMs <= 0) { battle.timerMs = 0; timeoutQuestion(); }
+    } else if (!battle.agentOps && battle.phase === "question") {
+      // Classic: timer runs during question phase
+      battle.timerMs -= dt * 1000;
+      if (battle.timerMs <= 0) { battle.timerMs = 0; timeoutQuestion(); }
+    }
   }
   // Minigame update: init on first frame, then tick feedback timers (#029)
   if (state === "minigame" && currentMinigame) {
