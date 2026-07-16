@@ -17,7 +17,7 @@ const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
 const PAYLOAD_ALLOWLIST = [
   "index.html", "game.js", "battle-ops.js", "agent-arena.js", "questions.js", "state.js",
   "world-art.js", "music.js",
-  "portraits/*.png", "sprites/*.png", "sprites-walk/**/*.png",
+  "portraits/*.png", "headshots/*.png", "sprites/*.png", "sprites-walk/**/*.png",
   "tiles/*.png", "props/*.png", "props/manifest.json",
   "library/*.json", "library/assets/*.png", "library/assets/manifest.json",
   "environment/manifest.json", "environment/accepted/*/*.png",
@@ -44,7 +44,7 @@ function payloadFiles() {
   // promoted immutable environment batch). Private staging/review/raw paths match no pattern.
   const existing = [];
   const allowedTopDirectories = new Set([
-    "portraits", "sprites", "sprites-walk", "tiles", "props", "library", "environment",
+    "portraits", "headshots", "sprites", "sprites-walk", "tiles", "props", "library", "environment",
   ]);
   function walk(dir, prefix = "") {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -50,7 +50,7 @@ playwright-report/
 
 # Personal identity/reference photos (offline tooling only; never source-controlled/deployed)
 datamon/.design/refs/
-datamon/headshots/
+datamon/.headshots-offline/
 
 # Raw AI image-generator output and deterministic rebake caches
 .claude-images/

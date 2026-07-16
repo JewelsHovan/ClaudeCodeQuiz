@@ -63,7 +63,7 @@ from PIL import Image, ImageOps
 HERE = Path(__file__).resolve().parent
 DATAMON = HERE.parent
 REPO = DATAMON.parent
-HEADSHOTS = DATAMON / "headshots"
+HEADSHOTS = DATAMON / ".headshots-offline"
 SPRITES = DATAMON / "sprites"
 OUT_ROOT = DATAMON / "sprites-walk"
 CACHE = DATAMON / ".walk-gen-cache"
