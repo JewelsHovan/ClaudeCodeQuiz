@@ -365,7 +365,7 @@ Results are written to ignored `test-results/performance.json`. Re-baselining re
 explicit reviewed edit to the committed budget file; checks never derive new limits from
 the run they are judging.
 
-### Guarded Cloudflare deployment
+### Guarded public Cloudflare deployment
 
 ```bash
 just deploy
@@ -376,14 +376,13 @@ state; runs the complete check once; verifies the unchanged payload manifest/SHA
 that exact `dist/`; then smoke-tests the branch alias and expected commit. No deployment is
 performed by `just check`.
 
-DATAMON is an **internal Compass Data + AI application** because it uses colleague names and
-likenesses. Cloudflare Zero Trust Access must protect both `datamon.pages.dev` and wildcard
-preview hosts (`*.datamon.pages.dev`) with the organization employee group. Automation uses
-the service token in `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET`. Remote smoke first
-proves an unauthenticated client is challenged, then proves the service token can load the
-expected artifact and title screen; a publicly reachable HTTP 200 fails deployment.
+DATAMON is intentionally published as a public study tool. The deployed experience includes
+the company roster and curated pixel-art likenesses, but never source headshots, raw generation
+material, or local review/staging files. Remote smoke requires an unauthenticated HTTP 200,
+then proves public metadata and the title screen match the expected commit and payload. An
+Access challenge, redirect, missing metadata, or mismatched artifact fails deployment.
 
-An existing protected artifact can be checked independently:
+An existing public artifact can be checked independently:
 
 ```bash
 just remote-smoke https://dev.datamon.pages.dev/ <full-commit-sha>

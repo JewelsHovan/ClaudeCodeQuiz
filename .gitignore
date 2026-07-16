@@ -48,8 +48,9 @@ dist/
 test-results/
 playwright-report/
 
-# Personal office reference photos (local only; AI concepts are committed)
+# Personal identity/reference photos (offline tooling only; never source-controlled/deployed)
 datamon/.design/refs/
+datamon/headshots/
 
 # Raw AI image-generator output and deterministic rebake caches
 .claude-images/
