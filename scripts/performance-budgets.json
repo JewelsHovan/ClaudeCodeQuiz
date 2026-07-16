@@ -3,5 +3,10 @@
   "requestCount": 194,
   "transferBytes": 3000000,
   "residentWalkSlugs": 0,
-  "residentWalkFrames": 0
+  "residentWalkFrames": 0,
+  "agentArenaFrameP95Ms": 16.7,
+  "agentArenaMaxParticles": 64,
+  "agentArenaMaxVoices": 8,
+  "agentArenaMaxDelayedTones": 16,
+  "agentArenaMaxFrameSamples": 120
 }

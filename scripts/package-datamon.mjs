@@ -15,7 +15,7 @@ const DIST = path.join(ROOT, "dist");
 const DATAMON = path.join(ROOT, "datamon");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
 const PAYLOAD_ALLOWLIST = [
-  "index.html", "game.js", "battle-ops.js", "questions.js", "state.js",
+  "index.html", "game.js", "battle-ops.js", "agent-arena.js", "questions.js", "state.js",
   "headshots/*.png", "portraits/*.png", "sprites/*.png", "sprites-walk/**/*.png",
   "tiles/*.png", "props/*.png", "props/manifest.json",
   "library/*.json", "library/assets/*.png", "library/assets/manifest.json",
@@ -36,8 +36,15 @@ function matches(relPath, pattern) {
 
 function payloadFiles() {
   const output = execFileSync("git", ["ls-files", "-z", "--", "datamon"], { cwd: ROOT });
-  return output.toString("utf8").split("\0").filter(Boolean)
-    .map(repoPath => repoPath.replace(/^datamon\//, ""))
+  const tracked = output.toString("utf8").split("\0").filter(Boolean)
+    .map(repoPath => repoPath.replace(/^datamon\//, ""));
+  // Exact allowlist entries are runtime roots and may be newly created in a dirty
+  // review tree before they are tracked. Include those existing files explicitly
+  // so packaging always exercises the implementation under review.
+  const exactRuntimeRoots = PAYLOAD_ALLOWLIST
+    .filter(pattern => !pattern.includes("*"))
+    .filter(relPath => fs.existsSync(path.join(DATAMON, relPath)));
+  return [...new Set([...tracked, ...exactRuntimeRoots])]
     .filter(relPath => PAYLOAD_ALLOWLIST.some(pattern => matches(relPath, pattern)))
     .sort((a, b) => a.localeCompare(b));
 }

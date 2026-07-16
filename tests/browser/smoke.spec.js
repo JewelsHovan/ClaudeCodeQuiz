@@ -521,7 +521,7 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
       expect((await inspectState(page)).agentOps.phase).toBe("choice");
 
       const correct = await currentCorrectIndex(page);
-      const choicePoint = await canvasClientPoint(page, `CHOICE_RECTS[${correct}]`);
+      const choicePoint = await canvasClientPoint(page, `_agentChoiceRects()[${correct}]`);
       await page.mouse.click(choicePoint.x, choicePoint.y);
       expect((await inspectState(page)).agentOps.phase).toBe("resolve");
 
@@ -629,7 +629,7 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
       const action = toClient(ge("_agentActionRects")()[0]);
       const question = ge("battle.agentOps.question");
       const correct = question.correct != null ? question.correct : question.a;
-      const choice = toClient(ge("CHOICE_RECTS")[correct]);
+      const choice = toClient(ge("_agentChoiceRects")()[correct]);
       const pointerDown = point => canvas.dispatchEvent(new PointerEvent("pointerdown", {
         pointerId: 77, clientX: point.x, clientY: point.y, bubbles: true,
       }));
@@ -645,7 +645,7 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
       const bounds = canvas.getBoundingClientRect();
       const question = ge("battle.agentOps.question");
       const correct = question.correct != null ? question.correct : question.a;
-      const rect = ge("CHOICE_RECTS")[correct];
+      const rect = ge("_agentChoiceRects")()[correct];
       const point = {
         x: bounds.left + ((rect[0] + rect[2] / 2) / ge("CANVAS_W")) * bounds.width,
         y: bounds.top + ((rect[1] + rect[3] / 2) / ge("CANVAS_H")) * bounds.height,

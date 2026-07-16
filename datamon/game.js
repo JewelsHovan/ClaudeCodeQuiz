@@ -831,9 +831,13 @@ function startBattle(npc) {
     dmgAt: 0,
     poof: [],
   };
-  // Agent Operations: initialise reducer-owned encounter state, then route even
-  // the initial turn through the one adapter used by every later event.
+  // Agent Operations: initialise reducer-owned encounter state, presentation arena,
+  // and draw bridge, then route the initial turn through the one adapter.
   if (isAgent && typeof DatamonBattleOps !== "undefined") {
+    if (typeof AgentArena !== "undefined") {
+      AgentArena.init({ muted: muted, playerSlug: player.slug, npcSlug: npc.slug });
+      AgentArena.setDrawTrainer(drawTrainer);
+    }
     battle.agentOps = DatamonBattleOps.createEncounter({
       npc: npc,
       npcs: npcs,
@@ -864,9 +868,15 @@ function _agentDispatch(b, event) {
     b.timerMs = HARD_TIMER_MS;
   }
 
-  // Consume each reducer effect only from this dispatch. Terminal guards are a
-  // defensive idempotence belt; normal reducer phase guards emit them once.
+  // Present the whole semantic transition exactly once. The arena compares the
+  // immutable before/after reducer snapshots, so it can narrate accepted and
+  // rejected input without drawing code mutating combat state.
   var effects = result.effects || [];
+  var arenaActive = typeof AgentArena !== "undefined";
+  if (arenaActive) AgentArena.syncTransition(b, previous, event, effects);
+
+  // Consume persistence/game effects once. Legacy sounds are fallback-only;
+  // playing them beside arena cues would double every Agent sound.
   for (var i = 0; i < effects.length; i++) {
     var effect = effects[i];
     switch (effect.type) {
@@ -874,33 +884,33 @@ function _agentDispatch(b, event) {
         recordOutcome(effect.correct);
         break;
       case "STABILITY_DAMAGE":
-        sfx.correct();
+        if (!arenaActive) sfx.correct();
         break;
       case "PLAYER_DAMAGE":
         // HP was already assigned absolutely from reducer state above.
-        sfx.wrong();
+        if (!arenaActive) sfx.wrong();
         break;
       case "GUARDRAIL_BLOCK":
-        sfx.confirm();
+        if (!arenaActive) sfx.confirm();
         break;
       case "INSPECT_ELIMINATED":
-        sfx.select();
+        if (!arenaActive) sfx.select();
         break;
       case "PATCH_APPLIED":
-        sfx.confirm();
+        if (!arenaActive) sfx.confirm();
         break;
       case "ACTION_REJECTED":
-        sfx.wrong();
+        if (!arenaActive) sfx.wrong();
         showToast(effect.reason === "insufficient_momentum"
           ? "Not enough Momentum! (need " + effect.needed + ", have " + effect.available + ")"
           : "Invalid action!");
         break;
       case "ESCAPED":
-        sfx.confirm();
+        if (!arenaActive) sfx.confirm();
         _agentExitToOverworld(b, "Fled from the Agent Operations duel!");
         break;
       case "PHASE_SHIFT":
-        sfx.confirm();
+        if (!arenaActive) sfx.confirm();
         break;
       case "VICTORY":
         if (!b._agentVictoryConsumed) {
@@ -908,13 +918,13 @@ function _agentDispatch(b, event) {
           b.npc.defeated = true;
           defeated.add(b.npc.slug);
           save();
-          sfx.victory();
+          if (!arenaActive) sfx.victory();
         }
         break;
       case "DEFEAT":
         if (!b._agentDefeatConsumed) {
           b._agentDefeatConsumed = true;
-          sfx.wrong();
+          if (!arenaActive) sfx.wrong();
         }
         break;
     }
@@ -954,6 +964,7 @@ function _agentAdvance(b) {
 
 function _agentExitToOverworld(b, toastMessage) {
   if (battle !== b) return;
+  if (typeof AgentArena !== "undefined") AgentArena.reset();
   wrapCache.clear();
   battle = null;
   player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
@@ -963,6 +974,7 @@ function _agentExitToOverworld(b, toastMessage) {
 
 function _agentFinishVictory(b) {
   if (battle !== b || !b._agentVictoryConsumed) return;
+  if (typeof AgentArena !== "undefined") AgentArena.reset();
   wrapCache.clear();
   battle = null;
   if (npcs.every(function (n) { return n.defeated; })) {
@@ -975,6 +987,7 @@ function _agentFinishVictory(b) {
 
 function _agentFinishDefeat(b) {
   if (battle !== b || !b._agentDefeatConsumed) return;
+  if (typeof AgentArena !== "undefined") AgentArena.reset();
   wrapCache.clear();
   battle = null;
   if (currentMap !== "office") { currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv; npcs = officeNpcs; }
@@ -987,13 +1000,26 @@ function _agentFinishDefeat(b) {
 
 // Keyboard input routing for Agent Operations encounters. The global keydown
 // latch rejects held/repeated keys before they reach this phase-specific router.
+function _agentCue(name) {
+  if (typeof AgentArena !== "undefined") AgentArena.playCue(name);
+  else if (name === "navigate") sfx.select();
+  else sfx.confirm();
+}
+
 function _agentHandleKey(b, k) {
   var phase = b.agentOps.phase;
   if (phase === "action") {
     if (k === "ArrowDown" || k === "ArrowRight") {
-      b.agentOpsSel = (b.agentOpsSel + 1) % 4; sfx.select();
+      b.agentOpsSel = (b.agentOpsSel + 1) % 4;
+      _agentCue("navigate");
+      if (typeof AgentArena !== "undefined") AgentArena.announceActionFocus(b);
     } else if (k === "ArrowUp" || k === "ArrowLeft") {
-      b.agentOpsSel = (b.agentOpsSel + 3) % 4; sfx.select();
+      b.agentOpsSel = (b.agentOpsSel + 3) % 4;
+      _agentCue("navigate");
+      if (typeof AgentArena !== "undefined") AgentArena.announceActionFocus(b);
+    } else if (["1", "2", "3", "4"].includes(k)) {
+      b.agentOpsSel = parseInt(k) - 1;
+      _agentSelectAction(b, DatamonBattleOps.ACTION_KEYS[b.agentOpsSel]);
     } else if (k === "Enter" || k === " ") {
       _agentSelectAction(b, DatamonBattleOps.ACTION_KEYS[b.agentOpsSel]);
     } else if (k === "r" || k === "R" || k === "Escape") {
@@ -1007,14 +1033,22 @@ function _agentHandleKey(b, k) {
         next = (next + 1) % 4;
         if (eliminated.indexOf(next) < 0) break;
       }
-      if (eliminated.indexOf(next) < 0) { b.agentOpsChoiceSel = next; sfx.select(); }
+      if (eliminated.indexOf(next) < 0) {
+        b.agentOpsChoiceSel = next;
+        _agentCue("navigate");
+        if (typeof AgentArena !== "undefined") AgentArena.announceChoiceFocus(b);
+      }
     } else if (k === "ArrowLeft" || k === "ArrowUp") {
       var prev = b.agentOpsChoiceSel;
       for (var tries2 = 0; tries2 < 4; tries2++) {
         prev = (prev + 3) % 4;
         if (eliminated.indexOf(prev) < 0) break;
       }
-      if (eliminated.indexOf(prev) < 0) { b.agentOpsChoiceSel = prev; sfx.select(); }
+      if (eliminated.indexOf(prev) < 0) {
+        b.agentOpsChoiceSel = prev;
+        _agentCue("navigate");
+        if (typeof AgentArena !== "undefined") AgentArena.announceChoiceFocus(b);
+      }
     } else if (["1", "2", "3", "4"].includes(k)) {
       answerQuestion(parseInt(k) - 1);
     } else if (k === "Enter" || k === " ") {
@@ -1026,7 +1060,7 @@ function _agentHandleKey(b, k) {
     if (Math.floor((frame - b.msgAt + 1) * TEXT_SPEED()) < b.msg.length) {
       b.msgAt = frame - Math.ceil(b.msg.length / TEXT_SPEED());
     } else {
-      sfx.confirm();
+      _agentCue("confirm");
       advanceBattle();
     }
   }
@@ -1083,7 +1117,9 @@ function _agentSyncPhase(b) {
             b.shake = 0; b.attackAt = 0; b.dmgAt = 0;
           } else {
             b.msg += " You took " + WRONG_DMG + " damage!";
-            b.shake = 14; b.attackAt = frame; b.dmgAt = frame;
+            // Agent presentation owns bounded impact cues; legacy shake/flash state
+            // stays disabled (including under prefers-reduced-motion).
+            b.shake = 0; b.attackAt = 0; b.dmgAt = 0;
           }
         }
         b.msgAt = frame;
@@ -1301,6 +1337,8 @@ function showToast(msg, ms = 2600) { toast = { msg, until: performance.now() + m
 const keys = {};
 const agentActivationKeys = new Set();
 window.addEventListener("keydown", e => {
+  // Unlock audio on first user interaction (browser autoplay policy)
+  if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
   if (state === "search") { e.preventDefault(); handleSearchKey(e); return; }
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
   if (e.key === "Tab" && state === "select") e.preventDefault();   // Tab cycles difficulty, not focus
@@ -1324,8 +1362,17 @@ window.addEventListener("blur", () => {
   agentActivationKeys.clear();
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && typeof AgentArena !== "undefined") AgentArena.suspend();
+});
+
 function handleKey(k) {
-  if (k === "m" || k === "M") { muted = !muted; showToast(muted ? "Muted" : "Sound on"); return; }
+  if (k === "m" || k === "M") {
+    muted = !muted;
+    if (typeof AgentArena !== "undefined") AgentArena.setMuted(muted);
+    showToast(muted ? "Muted" : "Sound on");
+    return;
+  }
 
   if (state === "title") {
     if (k === "Enter" || k === " ") {
@@ -1491,10 +1538,21 @@ function canvasPos(e) {
 }
 
 canvas.addEventListener("mousemove", e => {
-  if (state !== "select") return;
   const [mx, my] = canvasPos(e);
-  const hit = selectHitTest(mx, my);
-  if (hit >= 0) setSelect(hit, true); // hover browses silently
+  if (state === "select") {
+    const hit = selectHitTest(mx, my);
+    if (hit >= 0) setSelect(hit, true); // hover browses silently
+    return;
+  }
+  if (state === "battle" && battle && battle.agentOps && typeof AgentArena !== "undefined") {
+    const phase = battle.agentOps.phase;
+    if (phase === "action") AgentArena.setHover("action", _agentActionHitTest(mx, my), false);
+    else if (phase === "choice") AgentArena.setHover("choice", _agentChoiceHitTest(mx, my), false);
+    else AgentArena.setHover(null, -1, false);
+  }
+});
+canvas.addEventListener("mouseleave", () => {
+  if (typeof AgentArena !== "undefined") AgentArena.setHover(null, -1, false);
 });
 
 // Agent pointer input is handled on pointerdown and latched until pointerup. The
@@ -1502,6 +1560,7 @@ canvas.addEventListener("mousemove", e => {
 // most one reducer event even when that event changes the interactive phase.
 const activeAgentPointers = new Set();
 canvas.addEventListener("pointerdown", e => {
+  if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
   if (state !== "battle" || !battle || !battle.agentOps) return;
   if (activeAgentPointers.has(e.pointerId)) return;
   activeAgentPointers.add(e.pointerId);
@@ -1510,26 +1569,34 @@ canvas.addEventListener("pointerdown", e => {
   const b = battle;
   const phase = b.agentOps.phase;
   if (phase === "action") {
-    if (runHitTest(mx, my)) attemptRun();
+    if (_agentRunHitTest(mx, my)) attemptRun();
     else {
       const actionIndex = _agentActionHitTest(mx, my);
+      if (typeof AgentArena !== "undefined") AgentArena.setHover("action", actionIndex, true);
       if (actionIndex >= 0) {
         b.agentOpsSel = actionIndex;
         _agentSelectAction(b, DatamonBattleOps.ACTION_KEYS[actionIndex]);
       }
     }
   } else if (phase === "choice") {
-    if (runHitTest(mx, my)) attemptRun();
+    if (_agentRunHitTest(mx, my)) attemptRun();
     else {
-      const choiceIndex = choiceHitTest(mx, my);
+      const choiceIndex = _agentChoiceHitTest(mx, my);
+      if (typeof AgentArena !== "undefined") AgentArena.setHover("choice", choiceIndex, true);
       if (choiceIndex >= 0) answerQuestion(choiceIndex);
     }
   } else {
     _agentHandleKey(b, "Enter");
   }
 });
-window.addEventListener("pointerup", e => { activeAgentPointers.delete(e.pointerId); });
-window.addEventListener("pointercancel", e => { activeAgentPointers.delete(e.pointerId); });
+window.addEventListener("pointerup", e => {
+  activeAgentPointers.delete(e.pointerId);
+  if (typeof AgentArena !== "undefined") AgentArena.setHover(null, -1, false);
+});
+window.addEventListener("pointercancel", e => {
+  activeAgentPointers.delete(e.pointerId);
+  if (typeof AgentArena !== "undefined") AgentArena.setHover(null, -1, false);
+});
 window.addEventListener("blur", () => { activeAgentPointers.clear(); });
 
 canvas.addEventListener("click", e => {
@@ -1594,7 +1661,11 @@ function interact() {
   const npc = npcs.find(n => n.x === tx && n.y === ty);
   if (npc) {
     if (npc.defeated) showToast(`${firstName(npc.slug)}: "Good battle earlier. Back to my Jira board..."`);
-    else { battleTransition = { npc, t: 0 }; state = "transition"; sfx.battle(); }
+    else if (npc.type === "AGENT" && typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion()) {
+      // Reduced motion skips the triple flash/iris hit-stop entirely.
+      sfx.battle();
+      startBattle(npc);
+    } else { battleTransition = { npc, t: 0 }; state = "transition"; sfx.battle(); }
     return;
   }
   if (map[ty] && map[ty][tx] === "C") {
@@ -3664,23 +3735,24 @@ function runHitTest(mx, my) {
 
 // ---- Agent Operations drawing helpers ----
 
-// Layout constants for Agent Operations action menu (4 buttons, stacked vertically)
-var AGENT_ACTION_RECTS = null;
+// Agent Operations geometry. Action and answer rectangles are intentionally
+// separate, uncached functions; renderer and pointer paths consume these same
+// values so responsive/DPR drawing can never drift from hit-testing.
 function _agentActionRects() {
-  if (AGENT_ACTION_RECTS) return AGENT_ACTION_RECTS;
-  var { bx, by, bw, bh } = layoutChoices();
-  var btnH = 36, gap = 8, totalH = btnH * 4 + gap * 3;
-  var startY = by + (bh - totalH) / 2;
-  var rects = [];
-  for (var i = 0; i < 4; i++) {
-    rects.push([bx + 30, startY + i * (btnH + gap), bw - 60, btnH]);
-  }
-  AGENT_ACTION_RECTS = rects;
-  return rects;
+  if (typeof AgentArena !== "undefined") return AgentArena.actionRects();
+  return [[24, 466, 368, 56], [408, 466, 368, 56], [24, 532, 368, 56], [408, 532, 368, 56]];
 }
 
-function _agentActionHitTest(mx, my) {
-  var rects = _agentActionRects();
+function _agentChoiceRects() {
+  if (typeof AgentArena !== "undefined") return AgentArena.choiceRects();
+  return [[24, 478, 368, 50], [408, 478, 368, 50], [24, 538, 368, 50], [408, 538, 368, 50]];
+}
+
+function _agentRunRect() {
+  return typeof AgentArena !== "undefined" ? AgentArena.runRect() : [700, 408, 76, 26];
+}
+
+function _hitRectList(rects, mx, my) {
   for (var i = 0; i < rects.length; i++) {
     var r = rects[i];
     if (mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + r[3]) return i;
@@ -3688,209 +3760,50 @@ function _agentActionHitTest(mx, my) {
   return -1;
 }
 
+function _agentActionHitTest(mx, my) { return _hitRectList(_agentActionRects(), mx, my); }
+function _agentChoiceHitTest(mx, my) { return _hitRectList(_agentChoiceRects(), mx, my); }
+function _agentRunHitTest(mx, my) {
+  var r = _agentRunRect();
+  return mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + r[3];
+}
+
 // Draw Agent Operations encounter with action menu, Momentum/Guardrail/Stability HUD.
+// Agent Operations Incident Command arena renderer.
+// Delegates to AgentArena module; draw is read-only over combat state.
 function _agentDrawBattle(b) {
-  var ao = b.agentOps;
-  var shakeX = b.shake > 0 ? (Math.random() - 0.5) * b.shake : 0;
-  if (b.shake > 0) b.shake = Math.max(0, b.shake - dtF);
+  if (typeof AgentArena === "undefined") {
+    // Complete no-module fallback: combat remains keyboard/pointer playable and
+    // every reducer-owned value/question is visible instead of a dead title card.
+    var ao = b.agentOps;
+    ctx.fillStyle = "#081426"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.fillStyle = "#45d7e8"; ctx.font = "bold 18px monospace"; ctx.textAlign = "center";
+    ctx.fillText("AGENT OPERATIONS // PROCEDURAL FALLBACK", CANVAS_W / 2, 36);
+    ctx.fillStyle = "#e8dfc8"; ctx.font = "bold 13px monospace";
+    ctx.fillText("Stability " + ao.stability + "/" + ao.maxStability + " · Momentum " + ao.momentum + "/3 · Guardrail " + (ao.guardrail ? "ACTIVE" : "OFF") + " · HP " + ao.playerHp, CANVAS_W / 2, 66);
+    ctx.textAlign = "left"; ctx.fillStyle = "#f2b35d"; ctx.font = "bold 12px monospace";
+    ctx.fillText((ao.question && ao.question.q || "Question unavailable").slice(0, 105), 24, 430);
+    var rects = ao.phase === "action" ? _agentActionRects() : _agentChoiceRects();
+    if (ao.phase === "action" || ao.phase === "choice") {
+      rects.forEach(function (r, i) {
+        ctx.fillStyle = "#0f1f35"; ctx.fillRect(r[0], r[1], r[2], r[3]);
+        ctx.strokeStyle = "#2f6fed"; ctx.strokeRect(r[0], r[1], r[2], r[3]);
+        ctx.fillStyle = "#e2e8f0"; ctx.font = "11px monospace";
+        var text = ao.phase === "action"
+          ? (i + 1) + ". " + DatamonBattleOps.ACTIONS[DatamonBattleOps.ACTION_KEYS[i]].label + " — " + DatamonBattleOps.ACTIONS[DatamonBattleOps.ACTION_KEYS[i]].desc
+          : (i + 1) + ". " + (ao.question && ao.question.c[i] || "");
+        ctx.fillText(text.slice(0, 52), r[0] + 10, r[1] + 30);
+      });
+    } else {
+      ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 13px monospace";
+      ctx.fillText((b.msg || "Continue").slice(0, 100), 24, 485);
+    }
+    return;
+  }
 
   ctx.save();
-  ctx.translate(shakeX, 0);
-
-  // Backdrop + trainers (same as classic)
-  ctx.fillStyle = battleGrad; ctx.fillRect(-20, 0, CANVAS_W + 40, CANVAS_H);
-
-  var typeColor = TYPE_COLORS[b.npc.type];
-  var mon = currentMon();
-
-  // Entrance slide
-  var ee = 1 - Math.pow(1 - Math.min(1, (frame - b.startF) / 30), 3);
-  var oppX = CANVAS_W - 200 + (1 - ee) * 280;
-  var plyX = 190 - (1 - ee) * 280;
-
-  // Platforms
-  ctx.fillStyle = "rgba(148,163,184,0.18)";
-  ctx.beginPath(); ctx.ellipse(oppX, 252, 130, 30, 0, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(plyX, 404, 130, 30, 0, 0, 7); ctx.fill();
-
-  drawTrainer(b.npc.slug, oppX, 268, 256, 4);
-  drawTrainer(player.slug, plyX, 420, 192, 0);
-
-  // Opponent info plate (same as classic but with Agent Ops flair)
-  ctx.fillStyle = "rgba(15,23,42,0.9)";
-  ctx.fillRect(36, 36, 330, 84);
-  ctx.strokeStyle = typeColor; ctx.lineWidth = 2; ctx.strokeRect(36, 36, 330, 84);
-  ctx.drawImage(pixelHead(b.npc.slug, 56), 48, 48, 56, 56);
-  ctx.strokeStyle = typeColor; ctx.lineWidth = 2; ctx.strokeRect(48, 48, 56, 56);
-
-  var oTx = 116;
-  ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 16px monospace"; ctx.textAlign = "left";
-  ctx.fillText(displayName(b.npc.slug), oTx, 62);
-  ctx.fillStyle = typeColor; ctx.font = "bold 12px monospace";
-  ctx.fillText(b.npc.type + " TRAINER · " + TYPE_NAMES[b.npc.type], oTx, 82);
-  ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
-  var stabilityText = ao.boss ? "Phase " + (ao.bossPhase + 1) + " · Stability " + ao.stability + "/" + ao.maxStability : "Stability " + ao.stability + "/" + ao.maxStability;
-  ctx.fillText(stabilityText, oTx, 100);
-
-  // Player info plate
-  var pbX = CANVAS_W - 366;
-  ctx.fillStyle = "rgba(15,23,42,0.9)";
-  ctx.fillRect(pbX, 300, 330, 86);
-  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2; ctx.strokeRect(pbX, 300, 330, 86);
-  ctx.drawImage(pixelHead(player.slug, 48), pbX + 8, 312, 48, 48);
-  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2; ctx.strokeRect(pbX + 8, 312, 48, 48);
-
-  var pTx = pbX + 68;
-  ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 15px monospace"; ctx.textAlign = "left";
-  ctx.fillText("YOU (" + firstName(player.slug) + ")", pTx, 324);
-  drawHPBar(pTx, 340, 175, 12, player.dispHp / MAX_HP);
-  ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
-  ctx.fillText(Math.round(player.dispHp) + "/" + MAX_HP, pTx + 182, 351);
-
-  // Momentum bar
-  var momY = 358;
-  ctx.fillStyle = "#facc15"; ctx.font = "bold 11px monospace";
-  ctx.fillText("MOMENTUM", pTx, momY);
-  for (var mi = 0; mi < DatamonBattleOps.MAX_MOMENTUM; mi++) {
-    ctx.fillStyle = mi < ao.momentum ? "#facc15" : "#334155";
-    ctx.fillRect(pTx + 80 + mi * 22, momY - 9, 18, 12);
-  }
-
-  // Guardrail indicator
-  if (ao.guardrail > 0) {
-    ctx.fillStyle = "#22c55e"; ctx.font = "bold 11px monospace";
-    ctx.fillText("GUARDRAIL", pbX + 200, momY);
-    ctx.fillRect(pbX + 280, momY - 9, 18, 12);
-  }
-
-  // Text/question box
-  var { bx, by, bw, bh } = layoutChoices();
-  ctx.fillStyle = "rgba(15,23,42,0.95)";
-  ctx.fillRect(bx, by, bw, bh);
-  ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 3; ctx.strokeRect(bx, by, bw, bh);
-
-  if (b.phase === "action") {
-    // Draw action selection menu
-    var actions = DatamonBattleOps.ACTION_KEYS;
-    var rects = _agentActionRects();
-    ctx.fillStyle = "#facc15"; ctx.font = "bold 15px monospace"; ctx.textAlign = "center";
-    ctx.fillText("Choose your strategic action:", CANVAS_W / 2, by + 24);
-    ctx.textAlign = "left";
-    for (var ai = 0; ai < actions.length; ai++) {
-      var actionName = actions[ai];
-      var spec = DatamonBattleOps.ACTIONS[actionName];
-      var r = rects[ai];
-      var canAfford = ao.momentum >= spec.cost;
-      var isSel = ai === b.agentOpsSel;
-
-      ctx.fillStyle = isSel ? "#facc15" : canAfford ? "#1e293b" : "#0f172a";
-      ctx.fillRect(r[0], r[1], r[2], r[3]);
-      if (isSel) { ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2; ctx.strokeRect(r[0], r[1], r[2], r[3]); }
-
-      ctx.fillStyle = canAfford ? (isSel ? "#0f172a" : "#e2e8f0") : "#475569";
-      ctx.font = "bold 14px monospace";
-      ctx.fillText(spec.label, r[0] + 14, r[1] + 18);
-      ctx.fillStyle = canAfford ? "#94a3b8" : "#ef4444";
-      ctx.font = "11px monospace";
-      ctx.fillText(spec.desc, r[0] + 14, r[1] + 30);
-    }
-  } else if (b.phase === "choice") {
-    // Draw question and choices (like classic question phase, with Inspect eliminations)
-    var q = ao.question;
-    if (q) {
-      var qFont = "bold 14px monospace", lh = 17, qy = by + 22;
-      var qText = (q.q || "");
-      if (qText.length > 80) { qFont = "bold 12px monospace"; lh = 15; qy = by + 18; }
-      ctx.fillStyle = "#facc15"; ctx.font = qFont; ctx.textAlign = "left";
-      var qLines = wrapTextMemo((q.cat ? "[" + q.cat + "] " : "") + qText, bw - 110, qFont);
-      qLines.slice(0, 3).forEach(function (ln, i) { ctx.fillText(ln, bx + 14, qy + i * lh); });
-
-      var eliminated = ao.eliminated || [];
-      for (var ci = 0; ci < 4; ci++) {
-        var cr = CHOICE_RECTS[ci];
-        var isDisabled = eliminated.indexOf(ci) >= 0;
-        var isChoiceSel = ci === b.agentOpsChoiceSel && !isDisabled;
-
-        ctx.fillStyle = isDisabled ? "#1e1e2e" : isChoiceSel ? "#facc15" : "#1e293b";
-        ctx.fillRect(cr[0], cr[1], cr[2], cr[3]);
-        if (isChoiceSel) { ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2; ctx.strokeRect(cr[0], cr[1], cr[2], cr[3]); }
-        if (isDisabled) {
-          ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 1;
-          ctx.setLineDash([3, 3]);
-          ctx.strokeRect(cr[0], cr[1], cr[2], cr[3]);
-          ctx.setLineDash([]);
-        }
-
-        ctx.fillStyle = isDisabled ? "#475569" : isChoiceSel ? "#0f172a" : "#e2e8f0";
-        ctx.font = "13px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-        var label = (isDisabled ? "✕ " : "") + (ci + 1) + ". " + (q.c ? q.c[ci] : "");
-        var lines = wrapTextMemo(label, cr[2] - 20, "13px monospace");
-        if (lines.length === 1) ctx.fillText(lines[0], cr[0] + 10, cr[1] + cr[3] / 2);
-        else lines.slice(0, 2).forEach(function (ln, j) { ctx.fillText(ln, cr[0] + 10, cr[1] + cr[3] / 2 + (j - 0.5) * 15); });
-        ctx.textBaseline = "alphabetic";
-      }
-    }
-
-    // Run button
-    var rrx = RUN_RECT[0], rry = RUN_RECT[1], rrw = RUN_RECT[2], rrh = RUN_RECT[3];
-    ctx.fillStyle = "#7f1d1d";
-    ctx.fillRect(rrx, rry, rrw, rrh);
-    ctx.strokeStyle = "#f87171"; ctx.lineWidth = 2; ctx.strokeRect(rrx, rry, rrw, rrh);
-    ctx.fillStyle = "#fecaca"; ctx.font = "bold 13px monospace";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("RUN (R)", rrx + rrw / 2, rry + rrh / 2);
-    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-
-    // Hard-mode countdown
-    if (difficulty === "hard") {
-      var remMs = Math.max(0, b.timerMs);
-      var secs = Math.ceil(remMs / 1000);
-      var frac = Math.max(0, Math.min(1, remMs / HARD_TIMER_MS));
-      var low = remMs < 10000;
-      var barW = 220, barH = 12, tcx = CANVAS_W / 2, tby = by - 34;
-      var col = low ? "#f87171" : "#facc15";
-      ctx.fillStyle = col; ctx.font = "bold 16px monospace"; ctx.textAlign = "center";
-      ctx.fillText("⏱ " + secs + "s", tcx, tby - 4);
-      ctx.fillStyle = "#0f172a"; ctx.fillRect(tcx - barW / 2, tby + 4, barW, barH);
-      ctx.fillStyle = col; ctx.fillRect(tcx - barW / 2, tby + 4, barW * frac, barH);
-      ctx.strokeStyle = "#334155"; ctx.lineWidth = 1; ctx.strokeRect(tcx - barW / 2, tby + 4, barW, barH);
-      ctx.textAlign = "left";
-    }
-  } else {
-    // Typewriter message for feedback/resolve/phase-shift/victory/defeat
-    var shown = Math.floor((frame - b.msgAt + 1) * TEXT_SPEED());
-    if (!b._cachedMsgLines || b._cachedMsg !== b.msg) {
-      b._cachedMsg = b.msg;
-      b._cachedMsgLines = wrapTextMemo(b.msg, bw - 32, "bold 15px monospace");
-    }
-    var msgColor = "#e2e8f0";
-    if (b.phase === "victory" || (b.phase === "feedback" && b.feedback && b.feedback.correct)) msgColor = "#22c55e";
-    else if ((b.phase === "feedback" && b.feedback && !b.feedback.correct) || b.phase === "defeat") msgColor = "#f87171";
-    else if (b.phase === "phase-shift") msgColor = "#facc15";
-
-    ctx.fillStyle = msgColor; ctx.font = "bold 15px monospace"; ctx.textAlign = "left";
-    typewriterSlice(b._cachedMsgLines, Math.max(0, shown)).slice(0, 5)
-      .forEach(function (ln, i) { ctx.fillText(ln, bx + 16, by + 30 + i * 22); });
-    if (shown >= b.msg.length && Math.floor(frame / 25) % 2 === 0) {
-      ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace"; ctx.textAlign = "right";
-      ctx.fillText("ENTER ▸", bx + bw - 14, by + bh - 12);
-    }
-  }
-
-  // Red flash when you take a hit
-  if (b.attackAt) {
-    var aT = frame - b.attackAt;
-    if (aT < 14) {
-      ctx.fillStyle = "rgba(239,68,68," + (0.32 * (1 - aT / 14)).toFixed(3) + ")";
-      ctx.fillRect(-20, 0, CANVAS_W + 40, CANVAS_H);
-    }
-  }
-  // White flash as the battle scene appears
-  var wT = frame - b.startF;
-  if (wT < 14) {
-    ctx.fillStyle = "rgba(255,255,255," + (1 - wT / 14).toFixed(3) + ")";
-    ctx.fillRect(-20, 0, CANVAS_W + 40, CANVAS_H);
-  }
+  AgentArena.draw(b, ctx, frame, dtF);
+  // Agent impact/entrance treatment lives in AgentArena; legacy white/red
+  // full-canvas flashes are intentionally absent for reduced-motion parity.
   ctx.restore();
 }
 
