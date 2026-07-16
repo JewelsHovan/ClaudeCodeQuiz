@@ -1367,7 +1367,15 @@ window.addEventListener("keydown", e => {
   keys[e.key] = true;
   if (code) keys[code] = true; // physical key codes survive Shift/Caps Lock/layout changes
   const pressedDir = KEY_DIR[e.key] || KEY_DIR[code];
-  if (state === "overworld" && player.moving && pressedDir) bufferedDir = pressedDir;
+  if (state === "overworld" && pressedDir && !coffeePrompt && !bookPrompt && !readerState && !scout) {
+    if (player.moving) bufferedDir = pressedDir;
+    else {
+      // A quick tap must move—not merely turn. Holding/repeat continues through the normal loop.
+      player.dir = pressedDir;
+      turnStartMs = null;
+      tryStep(pressedDir);
+    }
+  }
   // Agent phases may change on a keydown. Requiring release before another event
   // prevents a held key (including synthetic repeat:false duplicates) from crossing
   // action → choice → resolve/feedback or a terminal phase back to the overworld.
@@ -1375,12 +1383,12 @@ window.addEventListener("keydown", e => {
   if (inAgentBattle) agentActivationKeys.add(e.key);
   if (e.repeat && (bookPrompt || readerState || state === "minigame")) return; // prevent held-Enter blowing picker→reader or minigame
   handleKey(e.key);
-});
+}, true);
 window.addEventListener("keyup", e => {
   keys[e.key] = false;
   if (e.code) keys[e.code] = false;
   agentActivationKeys.delete(e.key);
-});
+}, true);
 window.addEventListener("blur", () => {
   for (const key in keys) keys[key] = false;
   agentActivationKeys.clear();
@@ -1601,6 +1609,7 @@ canvas.addEventListener("mouseleave", () => {
 // most one reducer event even when that event changes the interactive phase.
 const activeAgentPointers = new Set();
 canvas.addEventListener("pointerdown", e => {
+  try { canvas.focus({ preventScroll: true }); } catch (_) { canvas.focus(); }
   if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
   if (typeof DatamonMusic !== "undefined") DatamonMusic.unlock();
   if (state === "overworld" && !coffeePrompt && !bookPrompt && !readerState && !scout) {

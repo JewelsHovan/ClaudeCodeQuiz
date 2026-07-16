@@ -166,15 +166,21 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     const start = (await inspectState(page)).player;
     expect({ x: start.x, y: start.y }).toEqual({ x: 18, y: 16 });
 
+    // A quick tap must move immediately; it must never be consumed as turn-only.
+    await page.keyboard.press("w");
+    await page.waitForTimeout(220);
+    const afterTap = (await inspectState(page)).player;
+    expect(afterTap.y).toBeLessThan(start.y);
+
     // Shift changes KeyboardEvent.key to uppercase in real browsers; KeyW remains stable.
     await page.keyboard.down("Shift");
     await page.keyboard.down("w");
-    await page.waitForTimeout(260);
+    await page.waitForTimeout(220);
     await page.keyboard.up("w");
     await page.keyboard.up("Shift");
     await page.waitForTimeout(220);
     const afterRun = (await inspectState(page)).player;
-    expect(afterRun.y).toBeLessThan(start.y);
+    expect(afterRun.y).toBeLessThan(afterTap.y);
 
     // A physical KeyA must work even if the printable key is layout-dependent (for example Q).
     await page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "q", code: "KeyA" })));
@@ -209,9 +215,7 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     await page.keyboard.press("Enter");
     await page.waitForFunction(() => { try { return eval("state") === "overworld"; } catch (_) { return false; } });
     const resumedStart = (await inspectState(page)).player;
-    await page.keyboard.down("Shift"); await page.keyboard.down("w");
-    await page.waitForTimeout(220);
-    await page.keyboard.up("w"); await page.keyboard.up("Shift");
+    await page.keyboard.press("w");
     await page.waitForTimeout(220);
     const resumedAfter = (await inspectState(page)).player;
     expect(resumedAfter.y).toBeLessThan(resumedStart.y);
