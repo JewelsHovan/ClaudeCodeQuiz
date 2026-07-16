@@ -42,7 +42,7 @@ const MAP_DETAIL_SCALE = (typeof DatamonWorldArt !== "undefined")
 const CAM_PAD_TOP = HUD_BOTTOM / TILE;    // 2.25 tiles
 // Collision set. Office floor plan (#021): # brick wall, D desk, P plant, C coffee counter,
 // W window (top wall), O wood column, G glass wall, F solid-furniture footprint, U overhead duct.
-const SOLID = new Set(["#", "D", "P", "C", "W", "O", "G", "F", "U", "B", "S", "L"]);
+const SOLID = new Set(["#", "D", "P", "C", "W", "O", "G", "F", "U", "B", "S", "L", "A"]);
 const TYPE_COLORS = { AGENT: "#3b82f6", MCP: "#a855f7", CONFIG: "#22c55e", PROMPT: "#f97316", CONTEXT: "#06b6d4", MIX: "#f59e0b" };
 const TYPE_NAMES  = { AGENT: "Agent Wing", MCP: "MCP Lab", CONFIG: "Config Bay", PROMPT: "Prompt Studio", CONTEXT: "Context Corner", MIX: "The Lounge" };
 // Exam domains + their weight on the real exam (drives the MIX deck).
@@ -93,7 +93,7 @@ function shuffled(arr, rng) {
 // Legend: # brick wall · W window · O wood column · G glass wall · D desk · P plant ·
 //         C coffee counter (heal) · F solid-furniture footprint (prop baked on top) ·
 //         U overhead duct · ~ rug · . hardwood floor
-const DOORS = [[7, 15], [24, 23]]; // glass meeting-room entrance + library door approach
+const DOORS = [[7, 15], [11, 23], [24, 23]]; // meeting room + Battle Room + Library approaches
 
 // Baked decoration layer (#021): {slug, col, row} where (col,row) is the prop's footprint
 // TOP-LEFT tile. Drawn behind characters in buildMapCanvas() (see the prop-bake loop there).
@@ -154,8 +154,6 @@ const LIBRARY_DECOR = [
 // tileable) + a single gold border drawn around the whole area, so it reads as one rug
 // rather than a grid of bordered boxes. Walkable (cells stay floor in the map grid).
 const LIBRARY_RUG = { x0: 12, y0: 8, x1: 23, y1: 11 };
-// Library room label (single zone — CONTEXT type for cyan accent)
-const LIBRARY_LABELS = [["THE LIBRARY", 18, 6.6, "CONTEXT"]];
 
 function buildMap() {
   const g = Array.from({ length: MAP_H }, () => Array(MAP_W).fill("."));
@@ -200,8 +198,57 @@ function buildMap() {
   for (const [x, y] of furniture) g[y][x] = "F";
 
   g[23][24] = "L"; // library door in south wall (OFFICE_DOOR_TILE) — hardcoded to avoid TDZ
+  g[23][11] = "A"; // Battle Room portal in south wall (OFFICE_BATTLE_DOOR_TILE) — #046
 
   return g;
+}
+
+// ---------- Battle Room map (#046) ----------
+// 36×24 training arena. All 28 non-player colleagues arranged in a perimeter ring:
+// north (y=3), south (y=19), west (x=3), east (x=32). The return door [18,23]
+// leads back to the office.
+function buildBattleRoomMap() {
+  const g = Array.from({ length: MAP_H }, () => Array(MAP_W).fill("."));
+  // Brick perimeter
+  for (let x = 0; x < MAP_W; x++) { g[0][x] = "#"; g[MAP_H - 1][x] = "#"; }
+  for (let y = 0; y < MAP_H; y++) { g[y][0] = "#"; g[y][MAP_W - 1] = "#"; }
+  // Return door on south wall (maps to office return portal)
+  g[23][18] = "A";
+  return g;
+}
+
+const BATTLE_ROOM_MAP = buildBattleRoomMap();
+
+// Deterministic ring placement for all non-player roster members.
+// North/south rows at y=3,19 with x=[4,8,12,16,20,24,28]
+// West/east columns at x=3,32 with y=[5,7,9,11,13,15,17]
+function buildBattleRoomNPCs(playerSlug) {
+  const northX = [4, 8, 12, 16, 20, 24, 28];
+  const southX = [4, 8, 12, 16, 20, 24, 28];
+  const westY  = [5, 7, 9, 11, 13, 15, 17];
+  const eastY  = [5, 7, 9, 11, 13, 15, 17];
+  const others = ROSTER.filter(function(s) { return s !== playerSlug; });
+  const domains = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
+  const npcs = [];
+  var idx = 0;
+  function add(slug, x, y, fallbackType) {
+    var persisted = _npcDomains && _npcDomains[slug];
+    var type = domains.indexOf(persisted) >= 0 ? persisted : fallbackType;
+    npcs.push({ slug: slug, x: x, y: y, type: type, defeated: false, training: true });
+  }
+  for (var i = 0; i < northX.length && idx < others.length; i++, idx++) {
+    add(others[idx], northX[i], 3, domains[idx % domains.length]);
+  }
+  for (var j = 0; j < southX.length && idx < others.length; j++, idx++) {
+    add(others[idx], southX[j], 19, domains[idx % domains.length]);
+  }
+  for (var k = 0; k < westY.length && idx < others.length; k++, idx++) {
+    add(others[idx], 3, westY[k], domains[idx % domains.length]);
+  }
+  for (var m = 0; m < eastY.length && idx < others.length; m++, idx++) {
+    add(others[idx], 32, eastY[m], domains[idx % domains.length]);
+  }
+  return npcs;
 }
 
 function buildLibraryMap() {
@@ -506,14 +553,19 @@ ctx.imageSmoothingEnabled = false; // must follow resize — resize resets all c
 let map = buildMap();
 const OFFICE_MAP = map;                  // stable office grid for warp-back
 const LIBRARY_MAP = buildLibraryMap();   // pure data; function is hoisted
-let currentMap = "office";               // "office" | "library"
-let officeNpcs = [];                     // stash for office NPCs while in library
+let currentMap = "office";               // "office" | "library" | "battleRoom"
+let officeNpcs = [];                     // stash for office NPCs while in library/battleRoom
+let battleRoomNpcs = [];                 // training NPCs built once per visit
 // Warp geometry — door tiles are SOLID (face-to-interact); entry cells are walkable floor.
 // Hardcoded coords are the source of truth (buildMap/buildLibraryMap also use literals).
-const OFFICE_DOOR_TILE  = [24, 23];      // "L" in office south wall
-const OFFICE_ENTRY      = [24, 22];      // land here returning to office (must be floor)
-const LIBRARY_DOOR_TILE = [18, 23];      // "L" in library south wall
-const LIBRARY_ENTRY     = [18, 22];      // land here entering library (must be floor)
+const OFFICE_DOOR_TILE         = [24, 23];      // "L" in office south wall (library)
+const OFFICE_ENTRY             = [24, 22];      // land here returning to office
+const OFFICE_BATTLE_DOOR_TILE  = [11, 23];      // "A" in office south wall (battle room) — #046
+const OFFICE_BATTLE_ENTRY      = [11, 22];      // land here returning to office from battle room
+const LIBRARY_DOOR_TILE        = [18, 23];      // "L" in library south wall
+const LIBRARY_ENTRY            = [18, 22];      // land here entering library
+const BATTLE_ROOM_DOOR_TILE    = [18, 23];      // "A" in battle room south wall
+const BATTLE_ROOM_ENTRY        = [18, 22];      // land here entering battle room
 let state = "title";    // title | select | overworld | battle | victory | search | minigame
 let selectIdx = 0;
 let player = { slug: null, x: 18, y: 16, fx: 18, fy: 16, dir: "down", moving: false, hp: MAX_HP, dispHp: MAX_HP };
@@ -532,7 +584,10 @@ let bookPrompt = null;  // {sel, books} — book-picker modal
 let readerState = null; // {book, page, screens, maxPage} — full-canvas reader
 let questionStats = {};  // "CAT:idx" and canonical ID -> {seen, correct, wrong, lastSeen}
 let seenCounter = 0;    // monotonic draw counter — drives lastSeen recency (no Date.now())
-let _progression = { badges: [], quests: {}, activities: {}, npcDomains: {} };
+function freshProgression() {
+  return { badges: [], quests: {}, activities: { battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 } }, npcDomains: {} };
+}
+let _progression = freshProgression();
 let _npcDomains = _progression.npcDomains; // alias into _progression.npcDomains
 let _writeProtectedSave = false; // true when a future-version save blocks writes
 let seenThisRun = {};   // category -> Set<idx> drawn this run (within-run repeat avoidance)
@@ -544,9 +599,10 @@ let libraryProgress = {};    // bookId -> pageReached; persisted now, written by
 let minigameScores = {};     // stationId -> best score (higher is better; 0 = not attempted)
 let frame = 0;
 let dtF = 1;           // logical 60Hz frames this tick
-let mapCv = null;        // active pre-rendered map (points to officeMapCv or libraryMapCv)
+let mapCv = null;        // active pre-rendered map (points to officeMapCv or libraryMapCv or battleRoomMapCv)
 let officeMapCv = null;  // pre-rendered office map — built once at boot
 let libraryMapCv = null; // pre-rendered library map — built once at boot
+let battleRoomMapCv = null; // pre-rendered battle room map — built on first entry (#046)
 let battleGrad = null; // battle backdrop gradient — built once at boot
 let stepStartFx = 0, stepStartFy = 0, stepT = 1; // eased-step progress (0..1); 1 = idle
 let gaitPhase = 0; // physical gait phase (radians); distance-locked for shadows/dust/fallback
@@ -713,7 +769,7 @@ function loadSave() {
       difficulty = (s.difficulty === "easy" || s.difficulty === "hard") ? s.difficulty : "normal";
       libraryProgress = (s.libraryProgress && typeof s.libraryProgress === "object") ? s.libraryProgress : {};
       minigameScores  = (s.minigameScores  && typeof s.minigameScores  === "object") ? s.minigameScores  : {};
-      _progression = { badges: [], quests: {}, activities: {}, npcDomains: {} };
+      _progression = freshProgression();
       _npcDomains = _progression.npcDomains;
       return s;
     }
@@ -821,8 +877,12 @@ function startBattle(npc) {
                            mulberry32(Math.floor(Math.random() * 1e9)));
   const level = Math.max(1, 5 + defeated.size * 2 + (TIER_LEVEL_DELTA[difficulty] || 0));
   const isAgent = npc.type === "AGENT";
+  // Training mode (#046): restore HP before battle, tag encounter for isolation.
+  var training = currentMap === "battleRoom";
+  if (training) player.hp = MAX_HP;
   battle = {
     npc,
+    training: training,
     mons: [0, 1].map(i => ({ name: monPool[i % monPool.length], level: level + i, q: null, alive: true })),
     idx: 0,
     phase: "intro", // Agent phase is projected from reducer state before the scene renders
@@ -917,7 +977,13 @@ function _agentDispatch(b, event) {
         break;
       case "ESCAPED":
         if (!arenaActive) sfx.confirm();
-        _agentExitToOverworld(b, "Fled from the Agent Operations duel!");
+        if (b.training) {
+          // Training flee: reset current streak, return to Battle Room.
+          _trainingLoss(b);
+          _agentExitToOverworld(b, "Fled from training! Streak reset.");
+        } else {
+          _agentExitToOverworld(b, "Fled from the Agent Operations duel!");
+        }
         break;
       case "PHASE_SHIFT":
         if (!arenaActive) sfx.confirm();
@@ -925,15 +991,21 @@ function _agentDispatch(b, event) {
       case "VICTORY":
         if (!b._agentVictoryConsumed) {
           b._agentVictoryConsumed = true;
-          b.npc.defeated = true;
-          defeated.add(b.npc.slug);
-          save();
+          if (b.training) {
+            // Training: record streak, never mark campaign defeat.
+            _trainingWin(b);
+          } else {
+            b.npc.defeated = true;
+            defeated.add(b.npc.slug);
+            save();
+          }
           if (!arenaActive) sfx.victory();
         }
         break;
       case "DEFEAT":
         if (!b._agentDefeatConsumed) {
           b._agentDefeatConsumed = true;
+          if (b.training) _trainingLoss(b);
           if (!arenaActive) sfx.wrong();
         }
         break;
@@ -987,6 +1059,12 @@ function _agentFinishVictory(b) {
   if (typeof AgentArena !== "undefined") AgentArena.reset();
   wrapCache.clear();
   battle = null;
+  if (b.training) {
+    // Training: always return to Battle Room, never trigger campaign victory.
+    player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
+    state = "overworld"; bufferedDir = null; turnStartMs = null;
+    return;
+  }
   if (npcs.every(function (n) { return n.defeated; })) {
     state = "victory";
   } else {
@@ -997,6 +1075,17 @@ function _agentFinishVictory(b) {
 
 function _agentFinishDefeat(b) {
   if (battle !== b || !b._agentDefeatConsumed) return;
+  if (b.training) {
+    // Training defeat: no campaign respawn; stay in Battle Room.
+    if (typeof AgentArena !== "undefined") AgentArena.reset();
+    wrapCache.clear();
+    battle = null;
+    player.hp = MAX_HP;
+    player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
+    state = "overworld"; bufferedDir = null; turnStartMs = null;
+    showToast("Training defeat — HP restored. Try again!");
+    return;
+  }
   if (typeof AgentArena !== "undefined") AgentArena.reset();
   wrapCache.clear();
   battle = null;
@@ -1200,27 +1289,41 @@ function advanceBattle() {
       b.timerMs = HARD_TIMER_MS;     // (re)start the Hard-mode countdown for the next question
     }
   } else if (b.phase === "win") {
-    b.npc.defeated = true;
-    defeated.add(b.npc.slug);
-    save();
-    wrapCache.clear();
-    battle = null;
-    if (npcs.every(n => n.defeated)) { state = "victory"; sfx.victory(); }
-    else {
-      // resolve any step that was mid-slide when SPACE triggered the battle (win keeps you in place)
+    if (b.training) {
+      _trainingWin(b);
+      wrapCache.clear();
+      battle = null;
       player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
       state = "overworld"; bufferedDir = null; turnStartMs = null;
+    } else {
+      b.npc.defeated = true;
+      defeated.add(b.npc.slug);
+      save();
+      wrapCache.clear();
+      battle = null;
+      if (npcs.every(n => n.defeated)) { state = "victory"; sfx.victory(); }
+      else {
+        player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
+        state = "overworld"; bufferedDir = null; turnStartMs = null;
+      }
     }
   } else if (b.phase === "lose") {
     wrapCache.clear();
     battle = null;
-    // Safety belt: battles can only start in the office; ensure we warp back if somehow in library
-    if (currentMap !== "office") { currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv; npcs = officeNpcs; }
-    player.hp = MAX_HP;
-    player.x = player.fx = 18; player.y = player.fy = 16;
-    camFx = camFy = null; stepT = 1; player.moving = false;
-    state = "overworld"; bufferedDir = null; turnStartMs = null;
-    showToast("You respawned in the lounge with a fresh coffee. HP restored!");
+    if (b.training) {
+      _trainingLoss(b);
+      player.hp = MAX_HP;
+      player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
+      state = "overworld"; bufferedDir = null; turnStartMs = null;
+      showToast("Training defeat — HP restored. Try again!");
+    } else {
+      if (currentMap !== "office") { currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv; npcs = officeNpcs; }
+      player.hp = MAX_HP;
+      player.x = player.fx = 18; player.y = player.fy = 16;
+      camFx = camFy = null; stepT = 1; player.moving = false;
+      state = "overworld"; bufferedDir = null; turnStartMs = null;
+      showToast("You respawned in the lounge with a fresh coffee. HP restored!");
+    }
   }
 }
 
@@ -1311,14 +1414,17 @@ function attemptRun() {
   // Classic path
   if (b.phase !== "question") return;
   if (Math.random() < FLEE_CHANCE) {
-    // SUCCESS — flee to the overworld. Mirrors the advanceBattle() win-branch restore,
-    // but deliberately does NOT mark the rival defeated and does NOT call save().
+    // SUCCESS — flee to the overworld.
     sfx.confirm();
     wrapCache.clear();
     battle = null;
+    if (b.training) {
+      _trainingLoss(b);
+      player.hp = MAX_HP;
+    }
     player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
     state = "overworld"; bufferedDir = null; turnStartMs = null;
-    showToast("Got away safely!");
+    showToast(b.training ? "Fled from training! Streak reset." : "Got away safely!");
   } else {
     // FAILURE — same attack path as a wrong answer (damage + shake + hit animation).
     sfx.wrong();
@@ -1342,6 +1448,125 @@ function attemptRun() {
 
 // ---------- Toast ----------
 function showToast(msg, ms = 2600) { toast = { msg, until: performance.now() + ms }; }
+
+// ---------- Training streak helpers (#046) ----------
+// Centralised exact-once completion for classic and Agent training encounters.
+// Isolates campaign progression and mutates only _progression.activities.battleRoom.
+function _trainingWin(b) {
+  if (b && b._trainingOutcomeConsumed) return;
+  if (b) b._trainingOutcomeConsumed = true;
+  if (!_progression || !_progression.activities) return;
+  var br = _progression.activities.battleRoom;
+  if (!br || typeof br !== "object") {
+    br = { currentStreak: 0, bestStreak: 0, wins: 0 };
+    _progression.activities.battleRoom = br;
+  }
+  br.currentStreak = (typeof br.currentStreak === "number" ? br.currentStreak : 0) + 1;
+  br.wins = (typeof br.wins === "number" ? br.wins : 0) + 1;
+  if (br.currentStreak > (typeof br.bestStreak === "number" ? br.bestStreak : 0)) {
+    br.bestStreak = br.currentStreak;
+  }
+  save();
+  showToast("Training win! Streak: " + br.currentStreak + " (best: " + br.bestStreak + ", wins: " + br.wins + ")");
+}
+
+function _trainingLoss(b) {
+  if (b && b._trainingOutcomeConsumed) return;
+  if (b) b._trainingOutcomeConsumed = true;
+  if (!_progression || !_progression.activities) return;
+  var br = _progression.activities.battleRoom;
+  if (!br || typeof br !== "object") {
+    br = { currentStreak: 0, bestStreak: 0, wins: 0 };
+    _progression.activities.battleRoom = br;
+  }
+  br.currentStreak = 0;
+  save();
+}
+
+// ---------- Location HUD (#046) ----------
+// Fixed top-right 286×52 instrument; replaces floating floor plaques.
+// Derived from committed player tile for office, map identity for Library and Battle Room.
+var _lastLocationKey = null;
+var _locationPoliteEl = null;
+const LOCATION_PURPOSES = Object.freeze({
+  AGENT: "Agent design & strategy",
+  MCP: "MCP integration & tooling",
+  CONFIG: "Configuration & deployment",
+  PROMPT: "Prompt engineering & design",
+  CONTEXT: "Context design & retrieval",
+  MIX: "Mixed-domain certification",
+});
+
+function locationHudLabel() {
+  if (currentMap === "library") return "The Library";
+  if (currentMap === "battleRoom") return "Battle Room";
+  // Office: derive from committed player tile via regionOf
+  var region = regionOf(player.x, player.y);
+  return (TYPE_NAMES[region] || "Office");
+}
+
+function locationHudPurpose() {
+  if (currentMap === "library") return "Browse knowledge & study";
+  if (currentMap === "battleRoom") return "Train against colleagues";
+  var region = regionOf(player.x, player.y);
+  return LOCATION_PURPOSES[region] || "Office workspace";
+}
+
+function locationHudAccent() {
+  if (currentMap === "library") return TYPE_COLORS["CONTEXT"];
+  if (currentMap === "battleRoom") return "#ef4444";
+  return TYPE_COLORS[regionOf(player.x, player.y)] || "#94a3b8";
+}
+
+function announceLocation(label, purpose, force) {
+  if (!force && _lastLocationKey === currentMap + ":" + (label || "")) return;
+  _lastLocationKey = currentMap + ":" + (label || "");
+  // Use the existing polite live-region for assistive technology.
+  if (typeof document !== "undefined") {
+    if (!_locationPoliteEl) {
+      _locationPoliteEl = document.getElementById("datamon-announcer");
+    }
+    if (_locationPoliteEl) {
+      var text = (label || "") + ". " + (purpose || "");
+      _locationPoliteEl.textContent = "";
+      // Re-setting after a microtask lets screen readers re-read.
+      setTimeout(function() { if (_locationPoliteEl) _locationPoliteEl.textContent = text; }, 0);
+    }
+  }
+}
+
+function drawLocationHUD() {
+  var hudX = CANVAS_W - 294, hudY = 8, hudW = 286, hudH = 52;
+  var label = locationHudLabel();
+  var purpose = locationHudPurpose();
+  var accent = locationHudAccent();
+
+  ctx.fillStyle = "rgba(15,23,42,0.85)";
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(hudX, hudY, hudW, hudH, 6);
+  else ctx.fillRect(hudX, hudY, hudW, hudH);
+  ctx.fill();
+
+  // Accent left border
+  ctx.fillStyle = accent;
+  ctx.fillRect(hudX, hudY + 6, 3, hudH - 12);
+
+  // "LOCATION" utility label
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "9px monospace";
+  ctx.textAlign = "left";
+  ctx.fillText("LOCATION", hudX + 12, hudY + 16);
+
+  // Room name in accent color
+  ctx.fillStyle = accent;
+  ctx.font = "bold 13px monospace";
+  ctx.fillText(label, hudX + 12, hudY + 32);
+
+  // Purpose line
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "10px monospace";
+  ctx.fillText(purpose, hudX + 12, hudY + 46);
+}
 
 // ---------- Input ----------
 const keys = {};
@@ -1438,7 +1663,7 @@ function handleKey(k) {
       coffeeUses = 3;
       difficulty = "normal";
       libraryProgress = {}; minigameScores = {}; currentMinigame = null;
-      _progression = { badges: [], quests: {}, activities: {}, npcDomains: {} };
+      _progression = freshProgression();
       _npcDomains = _progression.npcDomains;
       showToast("Save cleared!");
     }
@@ -1457,7 +1682,7 @@ function handleKey(k) {
       player.hp = MAX_HP;
       player.x = player.fx = 18; player.y = player.fy = 16;
       camFx = camFy = null; stepT = 1; player.moving = false;
-      _progression = { badges: [], quests: {}, activities: {}, npcDomains: {} };
+      _progression = freshProgression();
       _npcDomains = _progression.npcDomains;
       placeNPCs();
       coffeeUses = 3;
@@ -1616,6 +1841,17 @@ canvas.addEventListener("pointerdown", e => {
     const [mx, my] = canvasPos(e);
     const dir = pointerDirection(mx, my);
     if (dir) {
+      // Adjacent pointer interaction (#046): if the tapped direction leads to an
+      // adjacent NPC or interactive door tile, face-and-interact instead of stepping.
+      player.dir = dir;
+      var ft = facingTile();
+      var adjacentNpc = npcs.find(function(n) { return n.x === ft[0] && n.y === ft[1]; });
+      var adjacentPortal = map[ft[1]] && (map[ft[1]][ft[0]] === "L" || map[ft[1]][ft[0]] === "A");
+      if (!player.moving && (adjacentNpc || adjacentPortal)) {
+        interact();
+        e.preventDefault();
+        return;
+      }
       pointerMoveId = e.pointerId;
       pointerMoveDir = dir;
       player.dir = dir;
@@ -1748,7 +1984,15 @@ function interact() {
   }
   if (map[ty] && map[ty][tx] === "D") showToast("A standing desk. Someone left 47 Chrome tabs open.");
   if (map[ty] && map[ty][tx] === "P") showToast("An office plant. It has seen things.");
-  if (map[ty] && map[ty][tx] === "L") { warpToggle(); return; }
+  if (map[ty] && map[ty][tx] === "L") {
+    if (currentMap === "office") { enterLibrary(); return; }
+    if (currentMap === "library") { returnToOffice(); return; }
+  }
+  if (map[ty] && map[ty][tx] === "A") {
+    if (currentMap === "office") { enterBattleRoom(); return; }
+    // Library door is "L", Battle Room and return doors are "A"
+    if (currentMap === "battleRoom") { returnToOffice(OFFICE_BATTLE_ENTRY[0], OFFICE_BATTLE_ENTRY[1]); return; }
+  }
   if (map[ty] && map[ty][tx] === "B") { openBookPicker(); return; }                          // book reader — ticket #027
   if (map[ty] && map[ty][tx] === "S") {                                                       // study station → minigame (#028)
     const st = STUDY_STATIONS[`${tx},${ty}`];
@@ -1758,14 +2002,20 @@ function interact() {
   }
 }
 
-// ---------- Library warp (#026/#044) ----------
+// ---------- Warp routing (#026/#044/#046) ----------
 // Boot keeps only the manifest + shared door resident. The first interaction starts one
 // deduplicated load/build Promise and that same interaction commits exactly one warp.
 var libraryLoadPromise = null;
 var libraryWarpRequested = false;
+var libraryLoadGeneration = 0;
+var battleRoomLoadPromise = null;
+var battleRoomWarpRequested = false;
+var battleRoomLoadGeneration = 0;
+
 function ensureLibraryLoaded() {
   if (libraryMapCv) return Promise.resolve(libraryMapCv);
   if (libraryLoadPromise) return libraryLoadPromise;
+  var generation = libraryLoadGeneration;
   libraryLoadPromise = Promise.all([
     Promise.all(libManifest.filter(function(m) { return m.slug !== "lib-door"; }).map(function(m) {
       return loadOne("library/assets/" + m.file, libStore, m.slug);
@@ -1773,10 +2023,12 @@ function ensureLibraryLoaded() {
     loadBooks(), loadPairs(), loadCloze(), loadDiagrams(),
     (typeof DatamonWorldArt !== "undefined") ? DatamonWorldArt.loadScene("library") : Promise.resolve([]),
   ]).catch(function() {
-    // Every individual loader already resolves to a drawn/data fallback. This final guard
-    // handles an unexpected aggregate failure and still builds a usable fallback cache.
     return [];
   }).then(function() {
+    if (generation !== libraryLoadGeneration) {
+      if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene(currentMap);
+      return null;
+    }
     if (!libraryMapCv) libraryMapCv = buildLibraryMapCanvas();
     return libraryMapCv;
   });
@@ -1791,19 +2043,21 @@ function commitLibraryWarp() {
   player.dir = "up";
   libraryWarpRequested = false;
   if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("library");
-  showToast("Entered the library.");
+  announceLocation("The Library", "Browse knowledge & study");
+  showToast("Entered the Library.");
   camFx = camFy = null; bufferedDir = null; turnStartMs = null;
 }
 
-function warpToggle() {
+function enterLibrary() {
   player.moving = false; stepT = 1;
   coffeePrompt = null; scout = null;
   bookPrompt = null; readerState = null;
+  battleRoomWarpRequested = false;
   if (currentMap === "office") {
-    if (libraryMapCv) {
-      commitLibraryWarp();
-      return;
-    }
+    // Keep at most two DPR-aware world caches resident (office + active destination).
+    battleRoomLoadGeneration++;
+    battleRoomMapCv = null; battleRoomLoadPromise = null;
+    if (libraryMapCv) { commitLibraryWarp(); return; }
     libraryWarpRequested = true;
     showToast(libraryLoadPromise ? "Library loading..." : "Opening library...");
     ensureLibraryLoaded().then(function() {
@@ -1811,14 +2065,71 @@ function warpToggle() {
     });
     return;
   }
+}
 
+function ensureBattleRoomLoaded() {
+  if (battleRoomMapCv) return Promise.resolve(battleRoomMapCv);
+  if (battleRoomLoadPromise) return battleRoomLoadPromise;
+  var generation = battleRoomLoadGeneration;
+  battleRoomLoadPromise = ((typeof DatamonWorldArt !== "undefined")
+    ? DatamonWorldArt.loadScene("battleRoom") : Promise.resolve([]))
+    .catch(function() { return []; })
+    .then(function() {
+      if (generation !== battleRoomLoadGeneration) {
+        if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene(currentMap);
+        return null;
+      }
+      if (!battleRoomMapCv) battleRoomMapCv = buildBattleRoomMapCanvas();
+      return battleRoomMapCv;
+    });
+  return battleRoomLoadPromise;
+}
+
+function commitBattleRoomWarp() {
+  if (currentMap !== "office" || !battleRoomMapCv) return;
+  currentMap = "battleRoom"; map = BATTLE_ROOM_MAP; mapCv = battleRoomMapCv;
+  officeNpcs = npcs;
+  battleRoomNpcs = buildBattleRoomNPCs(player.slug);
+  npcs = battleRoomNpcs;
+  player.x = player.fx = BATTLE_ROOM_ENTRY[0]; player.y = player.fy = BATTLE_ROOM_ENTRY[1];
+  player.dir = "up";
+  battleRoomWarpRequested = false;
+  if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("battleRoom");
+  announceLocation("Battle Room", "Train against colleagues");
+  showToast("Entered the Battle Room.");
+  camFx = camFy = null; bufferedDir = null; turnStartMs = null;
+}
+
+function enterBattleRoom() {
+  player.moving = false; stepT = 1;
+  coffeePrompt = null; scout = null;
+  bookPrompt = null; readerState = null;
   libraryWarpRequested = false;
+  if (currentMap !== "office") return;
+  // Releasing an inactive Library cache caps DPR2 map memory at two resident scenes.
+  libraryLoadGeneration++;
+  libraryMapCv = null; libraryLoadPromise = null;
+  battleRoomWarpRequested = true;
+  showToast(battleRoomLoadPromise ? "Battle Room loading..." : "Opening Battle Room...");
+  ensureBattleRoomLoaded().then(function() {
+    if (battleRoomWarpRequested && currentMap === "office") commitBattleRoomWarp();
+  });
+}
+
+function returnToOffice(entryX, entryY, toastMsg) {
+  libraryWarpRequested = false;
+  battleRoomWarpRequested = false;
   currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv;
   npcs = officeNpcs;
-  player.x = player.fx = OFFICE_ENTRY[0]; player.y = player.fy = OFFICE_ENTRY[1];
+  battleRoomNpcs = [];
+  var ex = typeof entryX === "number" ? entryX : OFFICE_ENTRY[0];
+  var ey = typeof entryY === "number" ? entryY : OFFICE_ENTRY[1];
+  player.x = player.fx = ex; player.y = player.fy = ey;
   player.dir = "up";
   if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("office");
-  showToast("Back to the office.");
+  var msg = typeof toastMsg === "string" ? toastMsg : "Back to the office.";
+  announceLocation(locationHudLabel(), locationHudPurpose());
+  showToast(msg);
   camFx = camFy = null; bufferedDir = null; turnStartMs = null;
 }
 
@@ -3402,6 +3713,32 @@ function blitTile(c, slug, sx, sy) {
   if (tileStore[slug]) { c.drawImage(tileStore[slug], sx, sy, TILE, TILE); return true; }
   return false;
 }
+function architectureAsset(slug, kind, scene) {
+  return (typeof DatamonWorldArt !== "undefined")
+    ? DatamonWorldArt.getHDAsset(slug, kind, scene) : null;
+}
+
+function drawArchitecturePortal(c, slug, col, row) {
+  var asset = architectureAsset(slug, "prop", "office");
+  if (!asset) return false;
+  c.drawImage(asset.image,
+    col * TILE + (asset.entry.anchorX || 0),
+    (row + 1) * TILE - asset.entry.heightPx,
+    asset.entry.widthPx, asset.entry.heightPx);
+  return true;
+}
+
+function drawWallRelief(c, sx, sy, horizontal, light, dark) {
+  if (horizontal) {
+    c.fillStyle = light; c.fillRect(sx, sy, TILE, 3);
+    c.fillStyle = dark; c.fillRect(sx, sy + TILE - 4, TILE, 4);
+    c.fillStyle = "rgba(8,20,38,0.34)"; c.fillRect(sx + 2, sy + 5, 2, TILE - 10);
+  } else {
+    c.fillStyle = light; c.fillRect(sx, sy, 3, TILE);
+    c.fillStyle = dark; c.fillRect(sx + TILE - 4, sy, 4, TILE);
+  }
+}
+
 function wallSlug(x, y) {
   const isWall = (cx, cy) => (cy < 0 || cy >= MAP_H || cx < 0 || cx >= MAP_W) ? false : map[cy][cx] === "#";
   const T = isWall(x, y - 1), B = isWall(x, y + 1), L = isWall(x - 1, y), R = isWall(x + 1, y);
@@ -3658,10 +3995,17 @@ function buildMapCanvas() {
       const sx = x * TILE, sy = y * TILE;
       const t = map[y][x];
       if (t === "#") {
-        const brick = (x % 6 === 0 || y % 6 === 0) ? "brick-white" : "brick-red";
-        if (!blitTile(c, brick, sx, sy) && !blitTile(c, wallSlug(x, y), sx, sy)) {
-          c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE);
-          c.fillStyle = "#1e293b"; c.fillRect(sx, sy + TILE - 6, TILE, 6);
+        const horizontalWall = y === 0 || y === MAP_H - 1;
+        const architecture = horizontalWall
+          ? architectureAsset("architecture-office-wall", "tile", "office") : null;
+        if (architecture) {
+          c.drawImage(architecture.image, sx, sy, TILE, TILE);
+        } else {
+          const brick = (x % 6 === 0 || y % 6 === 0) ? "brick-white" : "brick-red";
+          if (!blitTile(c, brick, sx, sy) && !blitTile(c, wallSlug(x, y), sx, sy)) {
+            c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE);
+          }
+          drawWallRelief(c, sx, sy, horizontalWall, "rgba(232,223,200,0.72)", "rgba(15,23,42,0.72)");
         }
       } else if (t === "W") {
         if (!blitTile(c, "window-h", sx, sy)) { c.fillStyle = tileColor(t, x, y); c.fillRect(sx, sy, TILE, TILE); }
@@ -3761,10 +4105,23 @@ function buildMapCanvas() {
   // south-wall tile, overhanging upward. Falls back to the plain floor gap if the asset is absent.
   {
     const [dcol, drow] = OFFICE_DOOR_TILE;
-    const dmeta = libManifest.find(m => m.slug === "lib-door");
-    const dimg = libStore["lib-door"];
-    if (dimg && dmeta) {
-      c.drawImage(dimg, dcol * TILE, (drow + 1) * TILE - dmeta.heightPx, dmeta.widthPx, dmeta.heightPx);
+    if (!drawArchitecturePortal(c, "architecture-library-portal", dcol, drow)) {
+      const dmeta = libManifest.find(m => m.slug === "lib-door");
+      const dimg = libStore["lib-door"];
+      if (dimg && dmeta) {
+        c.drawImage(dimg, dcol * TILE, (drow + 1) * TILE - dmeta.heightPx, dmeta.widthPx, dmeta.heightPx);
+      }
+    }
+  }
+
+  // Battle Room entrance: accepted 2× portal at Retina scale, bounded procedural fallback otherwise.
+  {
+    var bcol = OFFICE_BATTLE_DOOR_TILE[0], brow = OFFICE_BATTLE_DOOR_TILE[1];
+    if (!drawArchitecturePortal(c, "architecture-battle-portal", bcol, brow)) {
+      var bx = bcol * TILE, by = brow * TILE;
+      c.fillStyle = "#1e2838"; c.fillRect(bx + 2, by - 14, TILE - 4, TILE + 12);
+      c.strokeStyle = "#c89940"; c.lineWidth = 2; c.strokeRect(bx + 2, by - 14, TILE - 4, TILE + 12);
+      c.fillStyle = "#ef4444"; c.fillRect(bx + 8, by + 12, 16, 3);
     }
   }
   return cv;
@@ -3799,7 +4156,14 @@ function buildLibraryMapCanvas() {
     for (let x = 0; x < MAP_W; x++) {
       const sx = x * TILE, sy = y * TILE;
       if (LIBRARY_MAP[y][x] === "#") {
-        if (!blitLibTile("lib-wall", sx, sy)) { c.fillStyle = "#3b2f24"; c.fillRect(sx, sy, TILE, TILE); }
+        const horizontalWall = y === 0 || y === MAP_H - 1;
+        const architecture = horizontalWall
+          ? architectureAsset("architecture-library-wall", "tile", "library") : null;
+        if (architecture) c.drawImage(architecture.image, sx, sy, TILE, TILE);
+        else {
+          if (!blitLibTile("lib-wall", sx, sy)) { c.fillStyle = "#3b2f24"; c.fillRect(sx, sy, TILE, TILE); }
+          drawWallRelief(c, sx, sy, horizontalWall, "rgba(232,223,200,0.66)", "rgba(15,23,42,0.64)");
+        }
         continue;
       }
       const inRug = x >= R.x0 && x <= R.x1 && y >= R.y0 && y <= R.y1;
@@ -3834,19 +4198,95 @@ function buildLibraryMapCanvas() {
       c.fillStyle = "#7a5a36"; c.fillRect(p.col * TILE, p.row * TILE, TILE, TILE);   // drawn fallback
     }
   }
+  // The accepted portal deliberately overlays the legacy door only at DPR2.
+  drawArchitecturePortal(c, "architecture-library-portal", LIBRARY_DOOR_TILE[0], LIBRARY_DOOR_TILE[1]);
 
   return cv;
 }
 
-// Zone labels centered on the new 3×2 office partition (see regionOf()).
-// [text, tileX-center, tileY, zone-type]. Y sits near the top of each 3×2 band (top
-// row ≈2.6, bottom row just below the y=11 divider) so names read as room headers
-// above the characters rather than behind them. Type keys the accent color.
-const OVERWORLD_LABELS = [["AGENT WING", 6, 2.6, "AGENT"], ["MCP LAB", 18, 2.6, "MCP"], ["CONFIG BAY", 29, 2.6, "CONFIG"],
-                          ["CONTEXT CORNER", 6, 11.6, "CONTEXT"], ["PROMPT STUDIO", 18, 11.6, "PROMPT"], ["THE LOUNGE", 29, 11.6, "MIX"],
-                          // Wayfinding sign floating above the library warp door (OFFICE_DOOR_TILE [24,23]) — SPACE on the door
-                          // to enter. Row 19.5 keeps it clear of the player standing at the door (row 22) and above the door sprite.
-                          ["LIBRARY ↓", 24, 19.5, "CONTEXT"]];
+// ---------- Battle Room map canvas (#046) ----------
+// Renders BATTLE_ROOM_MAP to a detail-scaled canvas. Navy/accented training arena
+// with central compass floor motif and perimeter ring.
+function buildBattleRoomMapCanvas() {
+  var cv = document.createElement("canvas");
+  cv.width  = Math.round(MAP_W * TILE * MAP_DETAIL_SCALE);
+  cv.height = Math.round(MAP_H * TILE * MAP_DETAIL_SCALE);
+  cv.detailScale = MAP_DETAIL_SCALE;
+  var c = cv.getContext("2d");
+  c.imageSmoothingEnabled = false;
+  var ds = MAP_DETAIL_SCALE;
+  c.scale(ds, ds);
+
+  // Dark training floor with subtle grid.
+  for (var y = 0; y < MAP_H; y++) {
+    for (var x = 0; x < MAP_W; x++) {
+      var sx = x * TILE, sy = y * TILE;
+      var t = BATTLE_ROOM_MAP[y][x];
+      if (t === "#") {
+        var horizontalWall = y === 0 || y === MAP_H - 1;
+        var architecture = horizontalWall
+          ? architectureAsset("architecture-battle-wall", "tile", "battleRoom") : null;
+        if (architecture) c.drawImage(architecture.image, sx, sy, TILE, TILE);
+        else {
+          c.fillStyle = "#1a2740"; c.fillRect(sx, sy, TILE, TILE);
+          c.fillStyle = "#0c1a30"; c.fillRect(sx + TILE / 2 - 1, sy, 2, TILE);
+          drawWallRelief(c, sx, sy, horizontalWall, "rgba(200,208,224,0.76)", "rgba(8,20,38,0.82)");
+        }
+      } else if (t === "A") {
+        // Return door — slate inset with gold frame
+        c.fillStyle = "#1e2838";
+        c.fillRect(sx, sy, TILE, TILE);
+        c.strokeStyle = "#c89940";
+        c.lineWidth = 2;
+        c.strokeRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
+        c.fillStyle = "#c89940";
+        c.font = "9px monospace";
+        c.textAlign = "center";
+        c.fillText("EXIT", sx + TILE / 2, sy + TILE / 2 + 3);
+      } else {
+        // Training floor — dark grey with subtle centre-line grid
+        c.fillStyle = "#2a3040";
+        c.fillRect(sx, sy, TILE, TILE);
+        if ((x + y) % 2 === 0) {
+          c.fillStyle = "#2d3444";
+          c.fillRect(sx, sy, TILE, TILE);
+        }
+      }
+    }
+  }
+
+  // Central training compass motif
+  var cx = 18 * TILE, cy = 12 * TILE;
+  c.strokeStyle = "rgba(200,153,64,0.35)";
+  c.lineWidth = 2;
+  c.beginPath();
+  c.arc(cx, cy, 3 * TILE, 0, Math.PI * 2);
+  c.stroke();
+  c.strokeStyle = "rgba(200,153,64,0.18)";
+  c.beginPath();
+  c.arc(cx, cy, 4.5 * TILE, 0, Math.PI * 2);
+  c.stroke();
+  // Cardinal direction marks
+  c.fillStyle = "rgba(200,153,64,0.30)";
+  c.font = "bold 11px monospace";
+  c.textAlign = "center";
+  c.fillText("N", cx, cy - 3.5 * TILE + 4);
+  c.fillText("S", cx, cy + 3.5 * TILE + 4);
+  c.fillText("E", cx + 3.5 * TILE, cy + 4);
+  c.fillText("W", cx - 3.5 * TILE, cy + 4);
+
+  // Perimeter training ring marker
+  c.strokeStyle = "rgba(239,68,68,0.12)";
+  c.lineWidth = 1;
+  var margin = 2.2;
+  c.strokeRect(margin * TILE, margin * TILE,
+    (MAP_W - margin * 2) * TILE, (MAP_H - margin * 2) * TILE);
+  drawArchitecturePortal(c, "architecture-battle-portal", BATTLE_ROOM_DOOR_TILE[0], BATTLE_ROOM_DOOR_TILE[1]);
+
+  return cv;
+}
+
+// World-space room plaques were removed in favor of the fixed location HUD (#046).
 const LIBRARY_DUST_POINTS = Object.freeze([[6,7],[11,12],[17,5],[20,17],[25,7],[29,18],[33,10],[15,20]]);
 const PROMPT_CURSOR_POINTS = Object.freeze([[15.2,16.35],[21.2,16.35],[15.2,19.35],[21.2,19.35]]);
 
@@ -3872,11 +4312,6 @@ function drawLivingWorldAmbient() {
       const x = sx(31.5) + i * 5, y = sy(2.35) - lift;
       ctx.beginPath(); ctx.moveTo(x, y + 10); ctx.quadraticCurveTo(x + (i ? -3 : 3), y + 5, x, y); ctx.stroke();
     }
-    // Context: one glass reflection traverses the meeting-room panes.
-    ctx.save(); ctx.beginPath(); ctx.rect(sx(1), sy(15), 8 * TILE, 8 * TILE); ctx.clip();
-    const glassX = sx(1.2 + phase * 7.4);
-    ctx.strokeStyle = "rgba(207,243,248,0.18)"; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(glassX, sy(15.5)); ctx.lineTo(glassX + 38, sy(22.5)); ctx.stroke(); ctx.restore();
     // Prompt: editorial cursors blink together at the four drafting stations.
     ctx.fillStyle = phase < 0.52 ? "rgba(255,205,133,0.78)" : "rgba(249,115,22,0.22)";
     for (const p of PROMPT_CURSOR_POINTS) ctx.fillRect(sx(p[0]), sy(p[1]), 5, 2);
@@ -3897,6 +4332,18 @@ function drawLivingWorldAmbient() {
       g.addColorStop(0, `rgba(242,179,93,${glow})`); g.addColorStop(1, "rgba(242,179,93,0)");
       ctx.fillStyle = g; ctx.fillRect(sx(p[0]) - 44, sy(p[1]) - 44, 88, 88);
     }
+  } else if (currentMap === "battleRoom") {
+    // Training floor: subtle pulsing compass ring and perimeter glow.
+    var ringGlow = 0.12 + Math.sin(phase * Math.PI * 2) * 0.05;
+    ctx.strokeStyle = "rgba(200,153,64," + ringGlow + ")";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(sx(18), sy(12), 3 * TILE, 0, Math.PI * 2);
+    ctx.stroke();
+    // Faint red perimeter pulse
+    var perimeterGlow = 0.06 + Math.sin(phase * Math.PI * 1.5) * 0.04;
+    ctx.strokeStyle = "rgba(239,68,68," + perimeterGlow + ")";
+    ctx.strokeRect(sx(2.2), sy(2.2), (MAP_W - 4.4) * TILE, (MAP_H - 4.4) * TILE);
   }
   ctx.restore();
 }
@@ -3947,29 +4394,6 @@ function drawOverworld() {
     DatamonWorldArt.drawAmbient(ctx, currentMap, camFx, camFy, TILE, "back");
   }
   drawLivingWorldAmbient();
-
-  // room labels — frosted nameplates: a dark rounded pill with a zone-accent underline
-  // (same palette as the "!" markers) so each zone name reads as legible signage on top
-  // of the busy floor instead of low-contrast text getting lost in the planks.
-  const labels = currentMap === "office" ? OVERWORLD_LABELS : LIBRARY_LABELS;
-  ctx.font = "bold 13px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  for (const [txt, lx, ly, type] of labels) {
-    const sx = px((lx - camFx) * TILE), sy = px((ly - camFy) * TILE);
-    const tw = ctx.measureText(txt).width;
-    const padX = 14, h = 26, w = tw + padX * 2;
-    const bx = px(sx - w / 2), by = px(sy - h / 2);
-    const accent = TYPE_COLORS[type] || "#94a3b8";
-    ctx.fillStyle = "rgba(15,23,42,0.74)";
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(bx, by, w, h, 7); else ctx.rect(bx, by, w, h);
-    ctx.fill();
-    ctx.lineWidth = 1; ctx.strokeStyle = "rgba(148,163,184,0.22)"; ctx.stroke();
-    ctx.fillStyle = accent;                                  // accent underline
-    ctx.fillRect(bx + padX, by + h - 6, w - padX * 2, 2);
-    ctx.fillStyle = "rgba(241,245,249,0.96)";                // light label text
-    ctx.fillText(txt, sx, sy - 1);
-  }
-  ctx.textBaseline = "alphabetic";
 
   // Painter's algorithm: collect every on-screen character (NPCs + player) into one
   // list, sort back-to-front by feet-Y (tie-break x), and draw in that order so a
@@ -4071,16 +4495,34 @@ function drawOverworld() {
   ctx.drawImage(pixelHead(player.slug, 48), 16, 16, 48, 48);
   drawHPBar(66, 38, 140, 10, player.dispHp / MAX_HP, firstName(player.slug) + "  HP " + player.hp + "/" + MAX_HP);
   ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace"; ctx.textAlign = "left";
-  ctx.fillText(`Rivals bested: ${defeated.size}/${rivalTotal}`, 66, 62);
+  if (currentMap === "battleRoom") {
+    // Show training streak stats in the Battle Room.
+    var brActivity = (_progression && _progression.activities && _progression.activities.battleRoom)
+      ? _progression.activities.battleRoom : null;
+    var str = brActivity ? brActivity.currentStreak || 0 : 0;
+    var bst = brActivity ? brActivity.bestStreak || 0 : 0;
+    ctx.fillText("Training streak: " + str + " (best: " + bst + ")", 66, 56);
+    ctx.fillStyle = "#64748b"; ctx.font = "10px monospace";
+    ctx.fillText("Wins: " + (brActivity ? brActivity.wins || 0 : 0) + "  |  Unlimited rematches", 66, 68);
+  } else {
+    ctx.fillText("Rivals bested: " + defeated.size + "/" + rivalTotal, 66, 62);
+  }
+
+  // Draw fixed navigation chrome after world entities so no sprite can cover it.
+  drawLocationHUD();
+  announceLocation(locationHudLabel(), locationHudPurpose());
+
   ctx.fillStyle = "rgba(148,163,184,0.55)"; ctx.font = "11px monospace"; ctx.textAlign = "left";
   ctx.fillText("/  find a colleague", 12, CANVAS_H - 14);
 
   // facing hint
   const [tx, ty] = facingTile();
   const target = npcs.find(n => n.x === tx && n.y === ty && !n.defeated);
+  // In the Battle Room, all NPCs are always challengeable (defeated=false).
   if (target && !scout) {
     ctx.fillStyle = "rgba(15,23,42,0.85)";
-    const msg = `SPACE: battle ${displayName(target.slug)} [${target.type}]`;
+    var actionVerb = currentMap === "battleRoom" ? "train against" : "battle";
+    var msg = "SPACE: " + actionVerb + " " + displayName(target.slug) + " [" + target.type + "]";
     ctx.font = "bold 14px monospace";
     const w = ctx.measureText(msg).width + 24;
     ctx.fillRect(CANVAS_W / 2 - w / 2, CANVAS_H - 44, w, 30);

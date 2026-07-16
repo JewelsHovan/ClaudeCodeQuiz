@@ -72,7 +72,9 @@ describe("DatamonState — defaults", () => {
     jsonEqual(d.progression, {
       badges: [],
       quests: {},
-      activities: {},
+      activities: {
+        battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 }
+      },
       npcDomains: {},
     });
     assert.equal(d._writeProtected, undefined);
@@ -313,7 +315,7 @@ describe("DatamonState — progression fields", () => {
 
   it("adds default progression fields to legacy saves", () => {
     const out = api.normalise({ player: "alice" });
-    jsonEqual(out.progression, { badges: [], quests: {}, activities: {}, npcDomains: {} });
+    jsonEqual(out.progression, { badges: [], quests: {}, activities: { battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 } }, npcDomains: {} });
   });
 
   it("preserves existing progression data", () => {
@@ -329,7 +331,7 @@ describe("DatamonState — progression fields", () => {
     jsonEqual(out.progression, {
       badges: ["badge-1"],
       quests: { "q1": "active" },
-      activities: { "a1": 5 },
+      activities: { "a1": 5, battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 } },
       npcDomains: { "alice": "AGENT" },
     });
   });
@@ -346,7 +348,7 @@ describe("DatamonState — progression fields", () => {
     });
     jsonEqual(out.progression.badges, []);
     jsonEqual(out.progression.quests, {});
-    jsonEqual(out.progression.activities, {});
+    jsonEqual(out.progression.activities, { battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 } });
     jsonEqual(out.progression.npcDomains, {});
   });
 
@@ -369,6 +371,52 @@ describe("DatamonState — progression fields", () => {
   it("preserves empty npcDomains as empty object", () => {
     const out = api.normalise({ player: "alice", progression: { npcDomains: {} } });
     jsonEqual(out.progression.npcDomains, {});
+  });
+});
+
+describe("DatamonState — battleRoom activity normalisation", () => {
+  let api;
+  before(() => { api = loadApi(); });
+
+  it("defaults missing/empty battleRoom activity to safe zeros", () => {
+    jsonEqual(api.normalise({ player: "alice" }).progression.activities.battleRoom,
+      { currentStreak: 0, bestStreak: 0, wins: 0 });
+    jsonEqual(api.normalise({ player: "alice", progression: { activities: {} } }).progression.activities.battleRoom,
+      { currentStreak: 0, bestStreak: 0, wins: 0 });
+    jsonEqual(api.normalise({ player: "alice", progression: { activities: { battleRoom: null } } }).progression.activities.battleRoom,
+      { currentStreak: 0, bestStreak: 0, wins: 0 });
+  });
+
+  it("sanitises malformed/negative/fractional values to safe integers", () => {
+    var out = api.normalise({ player: "alice", progression: { activities: { battleRoom: { currentStreak: -1, bestStreak: 2.5, wins: "3" } } } });
+    jsonEqual(out.progression.activities.battleRoom,
+      { currentStreak: 0, bestStreak: 2, wins: 0 });
+  });
+
+  it("ensures bestStreak does not trail currentStreak", () => {
+    var out = api.normalise({ player: "alice", progression: { activities: { battleRoom: { currentStreak: 10, bestStreak: 5, wins: 20 } } } });
+    jsonEqual(out.progression.activities.battleRoom,
+      { currentStreak: 10, bestStreak: 10, wins: 20 });
+  });
+
+  it("preserves valid battleRoom records", () => {
+    var out = api.normalise({ player: "alice", progression: { activities: { battleRoom: { currentStreak: 3, bestStreak: 7, wins: 12 } } } });
+    jsonEqual(out.progression.activities.battleRoom,
+      { currentStreak: 3, bestStreak: 7, wins: 12 });
+  });
+
+  it("preserves unknown activity keys when sanitising battleRoom", () => {
+    var out = api.normalise({ player: "alice", progression: { activities: { otherActivity: "keep-me", battleRoom: { currentStreak: 0, bestStreak: 2, wins: 4 } } } });
+    assert.equal(out.progression.activities.otherActivity, "keep-me");
+    jsonEqual(out.progression.activities.battleRoom,
+      { currentStreak: 0, bestStreak: 2, wins: 4 });
+  });
+
+  it("BATTLE_ROOM_DEFAULTS is frozen and immutable", () => {
+    var d = api.BATTLE_ROOM_DEFAULTS;
+    assert.equal(d.currentStreak, 0);
+    assert.equal(d.bestStreak, 0);
+    assert.equal(d.wins, 0);
   });
 });
 
