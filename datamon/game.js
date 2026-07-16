@@ -3430,6 +3430,151 @@ function buildFloorTexture() {
   return cv;
 }
 
+// ---- Living office identity -----------------------------------------------------------
+// The six domains share walnut, brick, rainy steel and brass, but each zone behaves like
+// a different working instrument. Everything below is baked into the visual cache only:
+// no map cells, collision, placements, NPC routes or interaction coordinates change.
+function drawOfficeZoneIdentity(c, ds) {
+  const hair = 1 / Math.max(1, ds);
+  const wash = (x0, y0, x1, y1, color, cx, cy) => {
+    c.save(); c.beginPath(); c.rect(x0 * TILE, y0 * TILE, (x1 - x0) * TILE, (y1 - y0) * TILE); c.clip();
+    const g = c.createRadialGradient(cx * TILE, cy * TILE, 8, cx * TILE, cy * TILE, 7 * TILE);
+    g.addColorStop(0, color); g.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = g; c.fillRect(x0 * TILE, y0 * TILE, (x1 - x0) * TILE, (y1 - y0) * TILE); c.restore();
+  };
+  const node = (x, y, color) => {
+    c.fillStyle = "rgba(8,20,38,0.64)"; c.fillRect(x * TILE - 3, y * TILE - 3, 6, 6);
+    c.strokeStyle = color; c.lineWidth = hair; c.strokeRect(x * TILE - 2, y * TILE - 2, 4, 4);
+    c.fillStyle = color; c.fillRect(x * TILE - hair / 2, y * TILE - hair / 2, hair, hair);
+  };
+
+  // Practical-light pools are low-contrast so labels, sprites and answer-signposting remain primary.
+  wash(0, 0, 12, 11, "rgba(242,179,93,0.075)", 7, 5);
+  wash(12, 0, 24, 11, "rgba(168,85,247,0.075)", 18, 6);
+  wash(24, 0, 36, 11, "rgba(34,197,94,0.060)", 30, 5);
+  wash(0, 11, 12, 24, "rgba(6,182,212,0.070)", 5, 18);
+  wash(12, 11, 24, 24, "rgba(249,115,22,0.060)", 18, 18);
+  wash(24, 11, 36, 24, "rgba(245,158,11,0.060)", 29, 17);
+
+  c.save(); c.lineCap = "square"; c.lineJoin = "miter";
+  // MCP LAB — a routed tool bus: ports and orthogonal cable traces, not decorative neon.
+  c.strokeStyle = "rgba(168,85,247,0.48)"; c.lineWidth = hair;
+  c.beginPath(); c.moveTo(13 * TILE, 7 * TILE); c.lineTo(22.5 * TILE, 7 * TILE);
+  c.moveTo(15 * TILE, 7 * TILE); c.lineTo(15 * TILE, 5.25 * TILE);
+  c.moveTo(18 * TILE, 7 * TILE); c.lineTo(18 * TILE, 8.5 * TILE);
+  c.moveTo(21 * TILE, 7 * TILE); c.lineTo(21 * TILE, 5.25 * TILE); c.stroke();
+  c.strokeStyle = "rgba(69,215,232,0.34)"; c.beginPath();
+  c.moveTo(13 * TILE, 7 * TILE + 2); c.lineTo(22.5 * TILE, 7 * TILE + 2); c.stroke();
+  for (const p of [[13,7],[15,5.25],[18,8.5],[21,5.25],[22.5,7]]) node(p[0], p[1], "rgba(199,157,255,0.88)");
+
+  // CONFIG BAY — a brass calibration rail with green verified positions.
+  const railY = 8.55 * TILE;
+  c.fillStyle = "rgba(48,34,27,0.52)"; c.fillRect(25 * TILE, railY - 3, 9.5 * TILE, 6);
+  c.fillStyle = "rgba(242,179,93,0.50)"; c.fillRect(25 * TILE, railY - hair / 2, 9.5 * TILE, hair);
+  for (let i = 0; i <= 19; i++) {
+    const x = (25 + i * 0.5) * TILE;
+    c.fillStyle = i % 4 === 0 ? "rgba(34,197,94,0.78)" : "rgba(232,223,200,0.38)";
+    c.fillRect(x, railY - (i % 4 === 0 ? 5 : 3), hair, i % 4 === 0 ? 10 : 6);
+  }
+
+  // CONTEXT CORNER — nested context windows reflected in the glass meeting room.
+  c.strokeStyle = "rgba(174,232,241,0.25)"; c.lineWidth = hair;
+  for (let inset = 0; inset < 3; inset++) {
+    c.strokeRect((1.35 + inset * 0.28) * TILE, (16.1 + inset * 0.28) * TILE,
+                 (7.2 - inset * 0.56) * TILE, (5.5 - inset * 0.56) * TILE);
+  }
+  c.fillStyle = "rgba(6,182,212,0.38)";
+  for (const y of [17.05, 20.85]) c.fillRect(1.65 * TILE, y * TILE, 6.6 * TILE, hair);
+
+  // PROMPT STUDIO — editorial registration frames around four drafting stations.
+  c.strokeStyle = "rgba(249,115,22,0.40)"; c.lineWidth = hair;
+  for (const p of [[13.25,15.15],[19.25,15.15],[13.25,18.15],[19.25,18.15]]) {
+    c.strokeRect(p[0] * TILE, p[1] * TILE, 3.2 * TILE, 2.2 * TILE);
+    c.fillStyle = "rgba(242,179,93,0.54)";
+    c.fillRect(p[0] * TILE, p[1] * TILE, 9, hair); c.fillRect(p[0] * TILE, p[1] * TILE, hair, 9);
+    c.fillRect((p[0] + 3.2) * TILE - 9, (p[1] + 2.2) * TILE - hair, 9, hair);
+  }
+
+  // THE LOUNGE — one restrained certification-compass inlay carries all five domains.
+  const mx = 29 * TILE, my = 12.85 * TILE;
+  c.strokeStyle = "rgba(242,179,93,0.48)"; c.lineWidth = hair;
+  c.beginPath(); c.arc(mx, my, 18, 0, Math.PI * 2); c.stroke();
+  c.beginPath(); c.moveTo(mx, my - 15); c.lineTo(mx + 6, my); c.lineTo(mx, my + 15);
+  c.lineTo(mx - 6, my); c.closePath(); c.stroke();
+  const domainMarks = ["#3b82f6","#a855f7","#22c55e","#f97316","#06b6d4"];
+  for (let i = 0; i < domainMarks.length; i++) {
+    const a = -Math.PI / 2 + i * Math.PI * 2 / domainMarks.length;
+    c.fillStyle = domainMarks[i]; c.fillRect(mx + Math.cos(a) * 22 - 1, my + Math.sin(a) * 22 - 1, 2, 2);
+  }
+  c.restore();
+}
+
+function drawLibraryStoneFloor(c, ds) {
+  const hair = 1 / Math.max(1, ds), rng = mulberry32(0x1B1A44);
+  c.save(); c.fillStyle = "#747984"; c.fillRect(0, 0, MAP_W * TILE, MAP_H * TILE);
+  // Staggered 3×2-tile slate flags remove the old 32px checkerboard while retaining hand-cut joints.
+  const tones = ["#747984","#7c818b","#6d727d","#80858e","#707681"];
+  for (let row = 0, y = 0; y < MAP_H * TILE; row++, y += 2 * TILE) {
+    const offset = row % 2 ? -1.5 * TILE : 0;
+    for (let x = offset; x < MAP_W * TILE; x += 3 * TILE) {
+      c.fillStyle = tones[Math.floor(rng() * tones.length)]; c.fillRect(x, y, 3 * TILE, 2 * TILE);
+      c.fillStyle = "rgba(230,235,240,0.055)"; c.fillRect(x, y, 3 * TILE, hair);
+      c.fillStyle = "rgba(25,30,40,0.18)"; c.fillRect(x, y + 2 * TILE - hair, 3 * TILE, hair);
+      c.fillRect(x + 3 * TILE - hair, y, hair, 2 * TILE);
+    }
+  }
+  // Sparse physical-pixel mineral flecks are true DPR detail, not a scaled legacy texture.
+  for (let i = 0; i < 180; i++) {
+    const x = rng() * MAP_W * TILE, y = rng() * MAP_H * TILE;
+    c.fillStyle = rng() < 0.55 ? "rgba(225,230,236,0.10)" : "rgba(26,31,42,0.16)";
+    c.fillRect(x, y, hair, hair);
+  }
+  const g = c.createRadialGradient(18 * TILE, 10 * TILE, TILE, 18 * TILE, 10 * TILE, 18 * TILE);
+  g.addColorStop(0, "rgba(218,224,230,0.10)"); g.addColorStop(1, "rgba(20,24,34,0.14)");
+  c.fillStyle = g; c.fillRect(0, 0, MAP_W * TILE, MAP_H * TILE); c.restore();
+}
+
+function drawLibraryArchitecture(c, ds) {
+  const hair = 1 / Math.max(1, ds);
+  c.save();
+  // Brass aisle rails organize the continuous slate hall without adding collision.
+  c.strokeStyle = "rgba(176,138,70,0.38)";
+  for (const x of [11.5, 24.5]) { c.beginPath(); c.moveTo(x * TILE, 4 * TILE); c.lineTo(x * TILE, 22.5 * TILE); c.stroke(); }
+
+  // Dark walnut shelf alcoves, with brass cap rails, sit behind the existing bookshelf sprites.
+  for (const box of [[3.45,0.75,11.15,4.35],[25.45,0.75,33.15,4.35]]) {
+    c.fillStyle = "rgba(31,24,25,0.72)"; c.fillRect(box[0] * TILE, box[1] * TILE, (box[2]-box[0]) * TILE, (box[3]-box[1]) * TILE);
+    c.strokeStyle = "rgba(176,138,70,0.66)"; c.strokeRect(box[0] * TILE, box[1] * TILE, (box[2]-box[0]) * TILE, (box[3]-box[1]) * TILE);
+    for (let x = box[0] + 0.5; x < box[2]; x += 1) {
+      c.fillStyle = "rgba(232,223,200,0.10)"; c.fillRect(x * TILE, box[1] * TILE + 3, hair, (box[3]-box[1]) * TILE - 6);
+    }
+  }
+
+  // Warm reading pools are baked once; they never flicker or obscure study text.
+  for (const p of [[14,9.5],[22,9.5],[5,20.5],[33,20.5]]) {
+    const g = c.createRadialGradient(p[0] * TILE, p[1] * TILE, 2, p[0] * TILE, p[1] * TILE, 2.8 * TILE);
+    g.addColorStop(0, "rgba(242,179,93,0.13)"); g.addColorStop(1, "rgba(242,179,93,0)");
+    c.fillStyle = g; c.fillRect((p[0]-3) * TILE, (p[1]-3) * TILE, 6 * TILE, 6 * TILE);
+  }
+
+  // The reading rug's signature is an open-book/compass medallion, not generic ornament.
+  const cx = 17.5 * TILE, cy = 9.7 * TILE;
+  c.strokeStyle = "rgba(232,199,123,0.72)"; c.lineWidth = hair;
+  c.beginPath(); c.arc(cx, cy, 30, 0, Math.PI * 2); c.stroke();
+  c.beginPath(); c.moveTo(cx, cy - 17); c.lineTo(cx, cy + 16);
+  c.moveTo(cx, cy - 13); c.quadraticCurveTo(cx - 16, cy - 20, cx - 23, cy - 7);
+  c.lineTo(cx - 23, cy + 12); c.quadraticCurveTo(cx - 11, cy + 5, cx, cy + 15);
+  c.moveTo(cx, cy - 13); c.quadraticCurveTo(cx + 16, cy - 20, cx + 23, cy - 7);
+  c.lineTo(cx + 23, cy + 12); c.quadraticCurveTo(cx + 11, cy + 5, cx, cy + 15); c.stroke();
+
+  const stationColors = ["#a855f7","#f97316","#3b82f6","#06b6d4"];
+  [7,15,22,30].forEach((x, i) => {
+    c.strokeStyle = stationColors[i] + "88"; c.strokeRect((x - 0.35) * TILE, 13.65 * TILE, 1.7 * TILE, 1.7 * TILE);
+    c.fillStyle = stationColors[i] + "99"; c.fillRect(x * TILE - 1, 13.82 * TILE, 2, 5);
+  });
+  c.restore();
+}
+
 function buildMapCanvas() {
   const cv = document.createElement("canvas");
   cv.width  = Math.round(MAP_W * TILE * MAP_DETAIL_SCALE);
@@ -3499,6 +3644,8 @@ function buildMapCanvas() {
       }
     }
   }
+
+  drawOfficeZoneIdentity(c, ds);
 
   // ---- A3: cosmetic seam runners inlaid along zone boundaries (walkway gaps left open) ----
   // A 2px groove + faint highlight straddling the grid line reads as an inlaid threshold
@@ -3577,6 +3724,7 @@ function buildLibraryMapCanvas() {
   c.imageSmoothingEnabled = false;
   const ds = MAP_DETAIL_SCALE;
   c.scale(ds, ds);
+  drawLibraryStoneFloor(c, ds);
 
   // Helper: blit a library tile (32×32) from libStore; returns true on success.
   function blitLibTile(slug, sx, sy) {
@@ -3597,20 +3745,18 @@ function buildLibraryMapCanvas() {
         continue;
       }
       const inRug = x >= R.x0 && x <= R.x1 && y >= R.y0 && y <= R.y1;
-      // Integer mix-hash (xorshift-style) so slate accents scatter with no lattice/banding.
-      let hsh = (x * 374761393 + y * 668265263) | 0;
-      hsh = (hsh ^ (hsh >>> 13)) | 0;
-      hsh = (hsh * 1274126177) | 0;
-      const accent = ((hsh >>> 0) % 100) < 14;                         // ~14% slate accents
-      const slug = inRug ? "lib-floor-b"                               // red carpet weave
-        : (accent ? "lib-floor-c" : "lib-floor-a");                    // stone + scattered slate
-      if (!blitLibTile(slug, sx, sy)) { c.fillStyle = "#6b563b"; c.fillRect(sx, sy, TILE, TILE); }
+      // Non-rug cells already expose the continuous deterministic slate floor beneath.
+      // Only the central textile uses a tile texture, bounded by one room-scale brass border.
+      if (inRug && !blitLibTile("lib-floor-b", sx, sy)) {
+        c.fillStyle = "#6b353b"; c.fillRect(sx, sy, TILE, TILE);
+      }
     }
   }
   // Single gold border around the reading-nook rug (drawn once, not per tile).
   c.strokeStyle = "#b08a46"; c.lineWidth = 3;
   c.strokeRect(R.x0 * TILE + 2, R.y0 * TILE + 2,
                (R.x1 - R.x0 + 1) * TILE - 4, (R.y1 - R.y0 + 1) * TILE - 4);
+  drawLibraryArchitecture(c, ds);
 
   // Bake bookshelves (top-anchored 1×3 props) then decor/furniture (bottom-anchored so
   // a 48px sprite sits feet-on-tile, overhanging 16px upward; a 64px table spans 2 cols).
@@ -3643,6 +3789,59 @@ const OVERWORLD_LABELS = [["AGENT WING", 6, 2.6, "AGENT"], ["MCP LAB", 18, 2.6, 
                           // Wayfinding sign floating above the library warp door (OFFICE_DOOR_TILE [24,23]) — SPACE on the door
                           // to enter. Row 19.5 keeps it clear of the player standing at the door (row 22) and above the door sprite.
                           ["LIBRARY ↓", 24, 19.5, "CONTEXT"]];
+const LIBRARY_DUST_POINTS = Object.freeze([[6,7],[11,12],[17,5],[20,17],[25,7],[29,18],[33,10],[15,20]]);
+const PROMPT_CURSOR_POINTS = Object.freeze([[15.2,16.35],[21.2,16.35],[15.2,19.35],[21.2,19.35]]);
+
+// Seven bounded, particle-free living-world loops. They are cosmetic and draw above the
+// cached architecture but below labels/characters. Reduced motion pins every loop to phase 0.
+function drawLivingWorldAmbient() {
+  if (typeof DatamonWorldArt === "undefined") return;
+  const phase = DatamonWorldArt.getAmbientPhase(2400);
+  const sx = x => (x - camFx) * TILE;
+  const sy = y => (y - camFy) * TILE;
+  ctx.save();
+  if (currentMap === "office") {
+    // MCP: five tool-port pips chase along the routed floor bus.
+    for (let i = 0; i < 5; i++) {
+      const active = Math.floor(phase * 5) === i;
+      ctx.fillStyle = active ? "rgba(199,157,255,0.90)" : "rgba(168,85,247,0.32)";
+      ctx.fillRect(sx(14.3 + i * 1.75) - 2, sy(7) - 2, active ? 4 : 3, active ? 4 : 3);
+    }
+    // Config: two restrained coffee-steam filaments rise from the real counter.
+    ctx.strokeStyle = "rgba(232,223,200,0.30)"; ctx.lineWidth = 1;
+    for (let i = 0; i < 2; i++) {
+      const lift = ((phase + i * 0.42) % 1) * 13;
+      const x = sx(31.5) + i * 5, y = sy(2.35) - lift;
+      ctx.beginPath(); ctx.moveTo(x, y + 10); ctx.quadraticCurveTo(x + (i ? -3 : 3), y + 5, x, y); ctx.stroke();
+    }
+    // Context: one glass reflection traverses the meeting-room panes.
+    ctx.save(); ctx.beginPath(); ctx.rect(sx(1), sy(15), 8 * TILE, 8 * TILE); ctx.clip();
+    const glassX = sx(1.2 + phase * 7.4);
+    ctx.strokeStyle = "rgba(207,243,248,0.18)"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(glassX, sy(15.5)); ctx.lineTo(glassX + 38, sy(22.5)); ctx.stroke(); ctx.restore();
+    // Prompt: editorial cursors blink together at the four drafting stations.
+    ctx.fillStyle = phase < 0.52 ? "rgba(255,205,133,0.78)" : "rgba(249,115,22,0.22)";
+    for (const p of PROMPT_CURSOR_POINTS) ctx.fillRect(sx(p[0]), sy(p[1]), 5, 2);
+    // Lounge: the certification-compass inlay breathes once per cycle.
+    ctx.strokeStyle = `rgba(242,179,93,${0.12 + 0.14 * Math.sin(phase * Math.PI)})`;
+    ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(sx(29), sy(12.85), 21 + phase * 5, 0, Math.PI * 2); ctx.stroke();
+  } else if (currentMap === "library") {
+    // Fixed dust positions drift a few pixels; there is no particle allocation or random state.
+    for (let i = 0; i < LIBRARY_DUST_POINTS.length; i++) {
+      const p = LIBRARY_DUST_POINTS[i], local = (phase + i * 0.137) % 1;
+      ctx.fillStyle = `rgba(232,223,200,${0.10 + (i % 3) * 0.035})`;
+      ctx.fillRect(sx(p[0]) + Math.sin(local * Math.PI * 2) * 3, sy(p[1]) - local * 7, i % 2 ? 2 : 1, i % 2 ? 2 : 1);
+    }
+    // Lamp pools breathe by alpha only; phase zero remains a complete static composition.
+    const glow = 0.08 + Math.sin(phase * Math.PI) * 0.045;
+    for (const p of [[4.5,20.2],[32.5,20.2]]) {
+      const g = ctx.createRadialGradient(sx(p[0]), sy(p[1]), 2, sx(p[0]), sy(p[1]), 44);
+      g.addColorStop(0, `rgba(242,179,93,${glow})`); g.addColorStop(1, "rgba(242,179,93,0)");
+      ctx.fillStyle = g; ctx.fillRect(sx(p[0]) - 44, sy(p[1]) - 44, 88, 88);
+    }
+  }
+  ctx.restore();
+}
 
 function drawOverworld() {
   if (!mapCv) return;
@@ -3689,6 +3888,7 @@ function drawOverworld() {
   if (typeof DatamonWorldArt !== "undefined") {
     DatamonWorldArt.drawAmbient(ctx, currentMap, camFx, camFy, TILE, "back");
   }
+  drawLivingWorldAmbient();
 
   // room labels — frosted nameplates: a dark rounded pill with a zone-accent underline
   // (same palette as the "!" markers) so each zone name reads as legible signage on top

@@ -213,6 +213,15 @@
     return Math.floor(elapsed / (1000 / rate)) % frameCount;
   };
 
+  // Smooth, deterministic phase for the seven procedural living-world loops. These
+  // loops allocate no particles/assets and pin to phase zero under reduced motion.
+  API.ambientPhase = function (elapsedMs, periodMs, reduced) {
+    if (reduced) return 0;
+    var period = Math.max(250, Number(periodMs) || 1000);
+    var elapsed = Math.max(0, Number(elapsedMs) || 0);
+    return (elapsed % period) / period;
+  };
+
   // ---- Runtime state ----------------------------------------------------
   var initialized = false;
   var detailScaleActive = 1;
@@ -231,6 +240,7 @@
   var diagFrameSamples = [];
   var diagAmbientInstances = 0;
   var diagRejectedAssets = [];
+  var PROCEDURAL_AMBIENT_COUNTS = Object.freeze({ office: 5, library: 2 });
 
   function setReducedMotion(matches) {
     reducedMotion = !!matches;
@@ -412,7 +422,7 @@
     });
     diagAmbientInstances = activeAmbientEntries.reduce(function (count, entry) {
       return count + Math.max(1, entryPlacements(entry).length);
-    }, 0);
+    }, PROCEDURAL_AMBIENT_COUNTS[scene] || 0);
     if (diagAmbientInstances > 64) diagAmbientInstances = 64;
     ambientStartMs = nowMs();
   };
@@ -422,6 +432,10 @@
     if (!entry || !entry.animation) return 0;
     return API.animationFrame(nowMs() - ambientStartMs, entry.animation.fps,
       entry.animation.frames, reducedMotion);
+  };
+
+  API.getAmbientPhase = function (periodMs) {
+    return API.ambientPhase(nowMs() - ambientStartMs, periodMs, reducedMotion);
   };
 
   function drawAmbientPlacement(context, entry, image, placement, camX, camY, tile) {

@@ -307,6 +307,20 @@ describe("DatamonWorldArt — animationFrame", () => {
   });
 });
 
+describe("DatamonWorldArt — procedural ambient phase", () => {
+  it("loops deterministically and pins reduced motion to zero", () => {
+    assert.equal(api.ambientPhase(0, 2400, false), 0);
+    assert.equal(api.ambientPhase(600, 2400, false), 0.25);
+    assert.equal(api.ambientPhase(3000, 2400, false), 0.25);
+    assert.equal(api.ambientPhase(1900, 2400, true), 0);
+  });
+
+  it("clamps invalid or tiny periods to a safe bounded cycle", () => {
+    assert.equal(api.ambientPhase(125, 0, false), 0.125);
+    assert.equal(api.ambientPhase(-10, 2400, false), 0);
+  });
+});
+
 describe("DatamonWorldArt — detailScaling round-trip", () => {
   it("logical-to-physical conversion is consistent at scale 2", () => {
     const r = api.cameraSourceRect(5.25, 3.5, 32, 800, 608, 2);

@@ -56,6 +56,12 @@ test.describe("HD world-art accepted pilot contracts", () => {
           camera: window.DatamonWorldArt.cameraSourceRect(5.25, 3.5, 32, 800, 608, 2),
           budget: window.DatamonWorldArt.cacheMetrics(36, 24, 32, 2, 2).totalMiB,
           diagnostics: window.DatamonWorldArt.getDiagnostics(),
+          sharedMaterialZones: ["brick-red", "brick-white", "window-h"].map(slug => {
+            const entry = window.DatamonWorldArt.findEntry(slug, "tile", "office");
+            return entry && entry.zone || null;
+          }),
+          sharedRadiatorZone: (window.DatamonWorldArt.findEntry("radiator", "prop", "office") || {}).zone || null,
+          agentLightPlacement: (window.DatamonWorldArt.findEntry("agent-wing-lighting", "overlay", "office") || {}).placement,
         };
       });
       expect(result.mapScale).toBe(dpr);
@@ -70,6 +76,10 @@ test.describe("HD world-art accepted pilot contracts", () => {
       expect(result.budget).toBeLessThanOrEqual(32);
       const expectedIds = dpr >= 2 ? acceptedIds : [];
       expect(result.diagnostics.loadedAssetIds.slice().sort()).toEqual(expectedIds);
+      expect(result.diagnostics.ambientInstances).toBe(dpr >= 2 ? 9 : 5);
+      expect(result.sharedMaterialZones).toEqual([null, null, null]);
+      expect(result.sharedRadiatorZone).toBe(null);
+      expect(result.agentLightPlacement).toEqual({ col: 1, row: 1, layer: "back" });
       const environmentRequests = requests.filter(path => path.startsWith("/environment/accepted/") && path.endsWith(".png"));
       expect(environmentRequests).toHaveLength(expectedIds.length);
       expect(new Set(environmentRequests).size).toBe(environmentRequests.length);
@@ -213,9 +223,11 @@ test.describe("HD world-art accepted pilot contracts", () => {
     });
     await page.waitForTimeout(150);
     expect(await page.evaluate(() => window.DatamonWorldArt.getAmbientFrame("test-loop"))).toBeGreaterThan(0);
+    expect(await page.evaluate(() => window.DatamonWorldArt.getAmbientPhase(1000))).toBeGreaterThan(0);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.waitForFunction(() => window.DatamonWorldArt.isReducedMotion());
     expect(await page.evaluate(() => window.DatamonWorldArt.getAmbientFrame("test-loop"))).toBe(0);
+    expect(await page.evaluate(() => window.DatamonWorldArt.getAmbientPhase(1000))).toBe(0);
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.waitForFunction(() => !window.DatamonWorldArt.isReducedMotion());
     expect(await page.evaluate(() => window.DatamonWorldArt.getAmbientFrame("test-loop"))).toBe(0);

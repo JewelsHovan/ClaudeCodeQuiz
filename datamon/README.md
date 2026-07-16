@@ -160,8 +160,13 @@ and the 32px logical map remain unchanged. The office cache builds at boot; Libr
 content, and its cache load once on first entry. DPR1/fractional devices retain safe fallbacks.
 
 The accepted Agent Wing pilot contains true 2× brick/window/material art, seven upgraded
-props, a visual-only collaboration table, and four bounded ambient strips. Reduced motion
-pins every strip to frame zero. Missing or invalid members fall back without changing state.
+props, a visual-only collaboration table, and four bounded ambient strips. Its reviewed
+brick, rainy-window, and radiator materials are reused office-wide. The other five zones add
+cache-baked domain instruments (tool bus, calibration rail, context frames, editorial marks,
+and certification compass), while the Library uses continuous staggered slate, brass aisles,
+walnut alcoves, reading pools, and an open-book medallion. Five office and two Library
+procedural loops are fixed/bounded and pin to phase zero under reduced motion. Missing or
+invalid HD members fall back without changing state. The existing portrait set is unchanged.
 
 The deterministic pipeline never writes generated output directly into accepted runtime art:
 
