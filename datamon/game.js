@@ -2,13 +2,13 @@
 // DATAMON — a data & AI consulting firm's pokemon-like.
 // CLAUDE CODE FOUNDATIONS EDITION: walk the office, battle
 // colleagues, answer Claude Certified Architect Foundations
-// exam questions to win. Headshots from headshots/ are
-// pixelated at runtime to make the sprites.
+// exam questions to win. Runtime identity art uses packaged
+// pixel portraits or initials; raw headshots are never requested.
 // ============================================================
 
 "use strict";
 
-// ---------- Roster (matches headshots/ and sprites/) ----------
+// ---------- Roster (matches portraits/ and sprites/) ----------
 const ROSTER = [
   "alex-andrianavalontsalama", "antonia-nistor", "aurelien-bouffanais",
   "dana-domanko", "duc-an-nguyen", "emile-moffatt", "ethan-pirso",
@@ -32,6 +32,9 @@ const VIEW_W = 25, VIEW_H = 19;          // tiles visible
 const CANVAS_W = VIEW_W * TILE;          // 800
 const CANVAS_H = VIEW_H * TILE;          // 608
 const HUD_BOTTOM = 72;                    // bottom of the top-left HUD box (8 + 64)
+const MAP_DETAIL_SCALE = (typeof DatamonWorldArt !== "undefined")
+  ? DatamonWorldArt.detailScale(window.devicePixelRatio || 1)
+  : 1;
 // Camera over-scroll: allow the top edge to scroll this many tiles PAST the map so the
 // top row never clamps up under the opaque top-left HUD. Sized to the HUD height (in tiles)
 // so map content always renders at/below the HUD's bottom edge — the exposed top strip is
@@ -273,12 +276,17 @@ const sfx = {
 };
 
 // ---------- Image loading & pixelation ----------
-const headshots = {};   // slug -> real-photo HTMLImageElement (or null on error)
-const portraits = {};   // slug -> generated pixel-art bust portrait (#022) (or null on error)
 const sprites = {};     // slug -> generated pixel-art trainer sprite (or null)
 const tileStore = {};   // slug -> 32px office tile HTMLImageElement (or null on error)
-const pixelCache = {};  // slug+size -> canvas
+const pixelCache = {};  // slug+size -> canvas (initials are invalidated when portrait arrives)
 const miniCache = {};   // slug+size -> downscaled sprite canvas
+if (typeof DatamonWorldArt !== "undefined") {
+  DatamonWorldArt.onPortraitLoaded(function(slug) {
+    for (const key of Object.keys(pixelCache)) {
+      if (key.startsWith(slug + ":")) delete pixelCache[key];
+    }
+  });
+}
 const walkMiniCache = {}; // walk-frame key+devicesize -> HQ-downscaled canvas
 
 function loadOne(src, store, slug) {
@@ -291,11 +299,12 @@ function loadOne(src, store, slug) {
 }
 
 function loadImages() {
-  return Promise.all(ROSTER.flatMap(slug => [
-    loadOne(`headshots/${slug}.png`, headshots, slug),
-    loadOne(`portraits/${slug}.png`, portraits, slug),  // #022: pixel-art bust; falls back to photo
-    loadOne(`sprites/${slug}.png`, sprites, slug),
-  ]));
+  // Headshots are never requested at runtime (privacy/package guard #044).
+  // Portraits are lazy-loaded via DatamonWorldArt on first use.
+  // Sprites remain eager (needed for overworld NPC rendering).
+  return Promise.all(ROSTER.map(slug =>
+    loadOne(`sprites/${slug}.png`, sprites, slug)
+  ));
 }
 
 // AI-generated 4-direction walk-cycle frames (PRD: real walk/run animation). Each animated
@@ -452,29 +461,28 @@ function walkMini(img, key, W, H) {
   return cv;
 }
 
-// Square-crop to n x n. Generated FE-style portraits (#022) are already palette-quantized
-// pixel art and arrive face-framed, so we downscale them with HIGH-QUALITY filtering (a clean
-// miniature; nearest would alias the 256px source into noise) and only a tiny top bias. The
-// real-photo fallback keeps the old nearest-neighbour pixelation. Pass n ≈ the on-screen draw
-// size so the caller's nearest upscale stays ~1:1 and the result reads crisp, not muddy.
+// Square-crop a lazily requested FE-style portrait. First use may return initials; the
+// WorldArt completion listener invalidates only this slug's cached initials on success.
 function pixelHead(slug, n) {
   const key = slug + ":" + n;
   if (pixelCache[key]) return pixelCache[key];
-  // Prefer the generated pixel-art portrait (#022); fall back to the real photo if absent.
-  const portrait = portraits[slug];
-  const img = portrait || headshots[slug];
+  var portrait = null;
+  if (typeof DatamonWorldArt !== "undefined") {
+    portrait = DatamonWorldArt.getPortrait(slug);
+    if (!DatamonWorldArt.isPortraitSettled(slug)) DatamonWorldArt.loadPortrait(slug);
+  }
+
   const cv = document.createElement("canvas");
   cv.width = n; cv.height = n;
   const c = cv.getContext("2d");
-  if (img) {
-    const s = Math.min(img.width, img.height);
-    const sx = (img.width - s) / 2;
-    const sy = (img.height - s) * (portrait ? 0.02 : 0.15); // photos: bias toward faces
-    c.imageSmoothingEnabled = !!portrait;                    // HQ for pixel-art portraits
+  if (portrait) {
+    const s = Math.min(portrait.width, portrait.height);
+    const sx = (portrait.width - s) / 2;
+    const sy = (portrait.height - s) * 0.02;
+    c.imageSmoothingEnabled = true;
     c.imageSmoothingQuality = "high";
-    c.drawImage(img, sx, sy, s, s, 0, 0, n, n);
+    c.drawImage(portrait, sx, sy, s, s, 0, 0, n, n);
   } else {
-    // fallback: colored tile with initials
     c.fillStyle = "#64748b"; c.fillRect(0, 0, n, n);
     c.fillStyle = "#fff"; c.font = `${Math.floor(n / 2)}px monospace`;
     c.textAlign = "center"; c.textBaseline = "middle";
@@ -487,6 +495,8 @@ function pixelHead(slug, n) {
 // ---------- Game state ----------
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+// Display backing scale: canvas physical pixels = CANVAS × scale.
+// MAP_DETAIL_SCALE controls cache detail (may differ from display scale).
 const scale = Math.min(2, window.devicePixelRatio || 1);
 canvas.width  = CANVAS_W * scale;
 canvas.height = CANVAS_H * scale;
@@ -1688,27 +1698,68 @@ function interact() {
   }
 }
 
-// ---------- Library warp (#026) ----------
-// Swap the active map, stash/restore NPCs, teleport the player to the entry tile.
-// Called from interact() when facing an "L" door tile in either map.
+// ---------- Library warp (#026/#044) ----------
+// Boot keeps only the manifest + shared door resident. The first interaction starts one
+// deduplicated load/build Promise and that same interaction commits exactly one warp.
+var libraryLoadPromise = null;
+var libraryWarpRequested = false;
+function ensureLibraryLoaded() {
+  if (libraryMapCv) return Promise.resolve(libraryMapCv);
+  if (libraryLoadPromise) return libraryLoadPromise;
+  libraryLoadPromise = Promise.all([
+    Promise.all(libManifest.filter(function(m) { return m.slug !== "lib-door"; }).map(function(m) {
+      return loadOne("library/assets/" + m.file, libStore, m.slug);
+    })),
+    loadBooks(), loadPairs(), loadCloze(), loadDiagrams(),
+    (typeof DatamonWorldArt !== "undefined") ? DatamonWorldArt.loadScene("library") : Promise.resolve([]),
+  ]).catch(function() {
+    // Every individual loader already resolves to a drawn/data fallback. This final guard
+    // handles an unexpected aggregate failure and still builds a usable fallback cache.
+    return [];
+  }).then(function() {
+    if (!libraryMapCv) libraryMapCv = buildLibraryMapCanvas();
+    return libraryMapCv;
+  });
+  return libraryLoadPromise;
+}
+
+function commitLibraryWarp() {
+  if (currentMap !== "office" || !libraryMapCv) return;
+  currentMap = "library"; map = LIBRARY_MAP; mapCv = libraryMapCv;
+  officeNpcs = npcs; npcs = [];
+  player.x = player.fx = LIBRARY_ENTRY[0]; player.y = player.fy = LIBRARY_ENTRY[1];
+  player.dir = "up";
+  libraryWarpRequested = false;
+  if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("library");
+  showToast("Entered the library.");
+  camFx = camFy = null; bufferedDir = null; turnStartMs = null;
+}
+
 function warpToggle() {
-  player.moving = false; stepT = 1;      // resolve any in-progress step
-  coffeePrompt = null; scout = null;     // defensive: clear overworld modals/cinematics
-  bookPrompt = null; readerState = null; // defensive: clear book reader modals (#027)
+  player.moving = false; stepT = 1;
+  coffeePrompt = null; scout = null;
+  bookPrompt = null; readerState = null;
   if (currentMap === "office") {
-    currentMap = "library"; map = LIBRARY_MAP; mapCv = libraryMapCv;
-    officeNpcs = npcs; npcs = [];         // stash office NPCs; library has none
-    player.x = player.fx = LIBRARY_ENTRY[0]; player.y = player.fy = LIBRARY_ENTRY[1];
-    player.dir = "up";
-    showToast("Entered the library.");
-  } else {
-    currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv;
-    npcs = officeNpcs;                    // restore office NPCs
-    player.x = player.fx = OFFICE_ENTRY[0]; player.y = player.fy = OFFICE_ENTRY[1];
-    player.dir = "up";
-    showToast("Back to the office.");
+    if (libraryMapCv) {
+      commitLibraryWarp();
+      return;
+    }
+    libraryWarpRequested = true;
+    showToast(libraryLoadPromise ? "Library loading..." : "Opening library...");
+    ensureLibraryLoaded().then(function() {
+      if (libraryWarpRequested && currentMap === "office") commitLibraryWarp();
+    });
+    return;
   }
-  camFx = camFy = null; bufferedDir = null; turnStartMs = null; // snap camera, clear input buffers
+
+  libraryWarpRequested = false;
+  currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv;
+  npcs = officeNpcs;
+  player.x = player.fx = OFFICE_ENTRY[0]; player.y = player.fy = OFFICE_ENTRY[1];
+  player.dir = "up";
+  if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("office");
+  showToast("Back to the office.");
+  camFx = camFy = null; bufferedDir = null; turnStartMs = null;
 }
 
 function drinkCoffee() {
@@ -2965,11 +3016,12 @@ function drawTitle() {
   // Signature backdrop: the actual playable office as a dim command-centre diorama.
   ctx.fillStyle = "#050a16"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   if (mapCv) {
+    const mcW = mapCv.width, mcH = mapCv.height;
     const targetRatio = CANVAS_W / CANVAS_H;
-    const sw = Math.min(mapCv.width, mapCv.height * targetRatio);
-    const sx = (mapCv.width - sw) / 2;
+    const sw = Math.min(mcW, mcH * targetRatio);
+    const sx = (mcW - sw) / 2;
     ctx.globalAlpha = 0.48;
-    ctx.drawImage(mapCv, sx, 0, sw, mapCv.height, 0, 0, CANVAS_W, CANVAS_H);
+    ctx.drawImage(mapCv, sx, 0, sw, mcH, 0, 0, CANVAS_W, CANVAS_H);
     ctx.globalAlpha = 1;
   }
   const veil = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
@@ -3270,6 +3322,16 @@ function tileColor(t, x, y) {
 }
 
 function blitTile(c, slug, sx, sy) {
+  // HD entries are additive and zone-scoped; any absent/rejected image falls through to
+  // the unchanged legacy tile store. Natural 2× source pixels map 1:1 into a DPR2 cache.
+  if (typeof DatamonWorldArt !== "undefined") {
+    const hd = DatamonWorldArt.getHDAsset(slug, "tile", "office");
+    const tx = Math.floor(sx / TILE), ty = Math.floor(sy / TILE);
+    if (hd && (!hd.entry.zone || regionOf(tx, ty) === hd.entry.zone)) {
+      c.drawImage(hd.image, sx, sy, TILE, TILE);
+      return true;
+    }
+  }
   if (tileStore[slug]) { c.drawImage(tileStore[slug], sx, sy, TILE, TILE); return true; }
   return false;
 }
@@ -3295,9 +3357,14 @@ function wallSlug(x, y) {
 // floor never repeats and the tile grid disappears. Built once; deterministic (fixed seed) so
 // rebuilds never flicker.
 let floorTex = null;
+let floorTexKey = null;  // detail-scale key for cache invalidation
 function buildFloorTexture() {
-  if (floorTex) return floorTex;
-  const W = MAP_W * TILE, H = MAP_H * TILE;
+  // Keyed by detail scale so DPR1 and DPR2 get distinct grain.
+  var texKey = "floor_" + MAP_DETAIL_SCALE;
+  if (floorTexKey === texKey && floorTex) return floorTex;
+  floorTexKey = texKey;
+  const W = Math.round(MAP_W * TILE * MAP_DETAIL_SCALE);
+  const H = Math.round(MAP_H * TILE * MAP_DETAIL_SCALE);
   const cv = document.createElement("canvas");
   cv.width = W; cv.height = H;
   const c = cv.getContext("2d");
@@ -3305,18 +3372,20 @@ function buildFloorTexture() {
   const rng = mulberry32(0x0FF1CE);
   const rand = (a, b) => a + (b - a) * rng();
 
+  const ds = MAP_DETAIL_SCALE;
   // Warm-oak base wash so any sub-pixel gap reads as floor, never black.
   c.fillStyle = "#b06f33"; c.fillRect(0, 0, W, H);
 
   // Vertical boards laid column-by-column (grain runs vertically, matching the office's
   // original orientation) but as FINITE planks with a random vertical phase per column,
   // so the end-joints stagger and no grain line ever runs unbroken down the map.
+  // All spatial dimensions multiplied by detail scale for sub-logical grain.
   let x = 0;
   while (x < W) {
-    const pw = Math.round(rand(26, 42));           // board width
-    let y = -Math.round(rand(0, 220));             // staggered start => offset joints
+    const pw = Math.round(rand(26, 42) * ds);        // board width
+    let y = -Math.round(rand(0, 220) * ds);          // staggered start => offset joints
     while (y < H) {
-      const ph = Math.round(rand(150, 300));       // board length
+      const ph = Math.round(rand(150, 300) * ds);    // board length
       const top = Math.max(0, y), bot = Math.min(H, y + ph);
       // Warm-oak base with LOW-variance jitter: an organic blend, not three neon stripes.
       c.fillStyle = `hsl(${rand(27, 33)}, ${rand(42, 54)}%, ${rand(40, 50)}%)`;
@@ -3326,12 +3395,12 @@ function buildFloorTexture() {
         const gx = x + rand(2, pw - 2);
         c.fillStyle = rng() < 0.5 ? `rgba(60,35,12,${rand(0.03, 0.06)})`
                                   : `rgba(255,225,180,${rand(0.025, 0.045)})`;
-        c.fillRect(gx, top, rand(0.8, 1.8), bot - top);
+        c.fillRect(gx, top, rand(0.8, 1.8) * ds, bot - top);
       }
       // Soft end-joint: gentle shadow + faint highlight (low alpha — blends, never harsh).
       if (y >= 0) {
-        c.fillStyle = "rgba(45,25,8,0.15)";   c.fillRect(x, y, pw, 1.5);
-        c.fillStyle = "rgba(255,230,190,0.06)"; c.fillRect(x, y + 1.5, pw, 1);
+        c.fillStyle = "rgba(45,25,8,0.15)";   c.fillRect(x, y, pw, 1.5 * ds);
+        c.fillStyle = "rgba(255,230,190,0.06)"; c.fillRect(x, y + 1.5 * ds, pw, 1 * ds);
       }
       y += ph;
     }
@@ -3343,7 +3412,7 @@ function buildFloorTexture() {
 
   // Faint ambient light: a large soft warm gradient so the floor drifts tonally instead of
   // sitting flat — the final touch that makes the whole surface read as one blended wood.
-  const g = c.createRadialGradient(W * 0.35, H * 0.30, 60, W * 0.5, H * 0.5, Math.max(W, H) * 0.8);
+  const g = c.createRadialGradient(W * 0.35, H * 0.30, 60 * ds, W * 0.5, H * 0.5, Math.max(W, H) * 0.8);
   g.addColorStop(0, "rgba(255,238,205,0.10)");
   g.addColorStop(1, "rgba(40,22,8,0.14)");
   c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -3354,18 +3423,22 @@ function buildFloorTexture() {
 
 function buildMapCanvas() {
   const cv = document.createElement("canvas");
-  cv.width  = MAP_W * TILE;   // 1152
-  cv.height = MAP_H * TILE;   // 768
+  cv.width  = Math.round(MAP_W * TILE * MAP_DETAIL_SCALE);
+  cv.height = Math.round(MAP_H * TILE * MAP_DETAIL_SCALE);
+  cv.detailScale = MAP_DETAIL_SCALE;  // tag for camera source rect
   const c = cv.getContext("2d");
   c.imageSmoothingEnabled = false;
+  const ds = MAP_DETAIL_SCALE;        // local convenience
+  c.scale(ds, ds);                    // all logical-coord draws scale to detail pixels
   // Warm-hardwood floor base under everything walkable (#021); brick / window / column /
   // duct / glass for structural chars. Each blit falls back to a flat tileColor() fill if
   // its PNG is missing, so a 404 degrades gracefully instead of leaving a black square.
   // Each floor cell is a 1:1 window into the single continuous plank texture (#022) — no
   // tiling, no repeat, no seams. Falls back to a flat warm fill only if texture build fails.
+  // Source rect from detail-scaled texture matches the detail canvas target.
   const tex = buildFloorTexture();
   const floorBase = (sx, sy, x, y) => {
-    if (tex) c.drawImage(tex, sx, sy, TILE, TILE, sx, sy, TILE, TILE);
+    if (tex) c.drawImage(tex, sx * ds, sy * ds, TILE * ds, TILE * ds, sx, sy, TILE, TILE);
     else { c.fillStyle = tileColor("F", x, y); c.fillRect(sx, sy, TILE, TILE); }
   };
   for (let y = 0; y < MAP_H; y++) {
@@ -3439,16 +3512,27 @@ function buildMapCanvas() {
     }
   }
 
+  // Reviewed practical-light overlay remains optional and placement-bounded.
+  if (typeof DatamonWorldArt !== "undefined") {
+    const light = DatamonWorldArt.getHDAsset("agent-wing-lighting", "overlay", "office");
+    if (light && light.entry.placement) {
+      c.drawImage(light.image, light.entry.placement.col * TILE, light.entry.placement.row * TILE,
+                  light.entry.widthPx, light.entry.heightPx);
+    }
+  }
+
   // ---- Baked prop layer (#021): anchored office cutouts, drawn BEHIND characters ----
-  // (col,row) = footprint top-left; blit at native widthPx×heightPx so the image fills the
-  // tileW×tileH footprint (anchorY = heightPx-32 per #020 — the height already accounts for
-  // the upward extent). Missing PNG → neutral-grey drawn box at the footprint (Must-Not:
-  // never render a black screen / throw when a prop asset is absent).
+  // Reviewed HD cutouts replace only their matching Agent Wing placements. Every missing,
+  // invalid, or unaccepted member resolves through the legacy prop contract.
   for (const p of PROP_PLACEMENTS) {
-    const meta = propManifest.find(m => m.slug === p.slug);
-    if (!meta) continue; // slug not in manifest — skip silently
+    const legacyMeta = propManifest.find(m => m.slug === p.slug);
+    const hd = (typeof DatamonWorldArt !== "undefined")
+      ? DatamonWorldArt.getHDAsset(p.slug, "prop", "office") : null;
+    const useHD = hd && (!hd.entry.zone || regionOf(p.col, p.row) === hd.entry.zone);
+    const meta = useHD ? hd.entry : legacyMeta;
+    if (!meta) continue;
     const dx = p.col * TILE + (meta.anchorX || 0), dy = p.row * TILE;
-    const img = propStore[p.slug];
+    const img = useHD ? hd.image : propStore[p.slug];
     if (img) {
       c.drawImage(img, dx, dy, meta.widthPx, meta.heightPx);
     } else {
@@ -3477,10 +3561,13 @@ function buildMapCanvas() {
 // Explicit fallback fill colors for every cell type — do NOT rely on tileColor() (office-only).
 function buildLibraryMapCanvas() {
   const cv = document.createElement("canvas");
-  cv.width  = MAP_W * TILE; // 1152
-  cv.height = MAP_H * TILE; // 768
+  cv.width  = Math.round(MAP_W * TILE * MAP_DETAIL_SCALE);
+  cv.height = Math.round(MAP_H * TILE * MAP_DETAIL_SCALE);
+  cv.detailScale = MAP_DETAIL_SCALE;  // tag for camera source rect
   const c = cv.getContext("2d");
   c.imageSmoothingEnabled = false;
+  const ds = MAP_DETAIL_SCALE;
+  c.scale(ds, ds);
 
   // Helper: blit a library tile (32×32) from libStore; returns true on success.
   function blitLibTile(slug, sx, sy) {
@@ -3577,12 +3664,22 @@ function drawOverworld() {
   ctx.fillStyle = "#0f172a"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
   // 9-arg drawImage: source rect from the pre-rendered map, dest = full canvas.
-  // Source offset -Math.round(-cam*TILE) reproduces the old per-tile
-  // px((x-camX)*TILE) rounding EXACTLY (JS rounds half toward +Inf, so
-  // Math.round(cam*TILE) alone would differ by 1px at exact half-pixel values).
-  ctx.drawImage(mapCv,
-    -Math.round(-camFx * TILE), -Math.round(-camFy * TILE), CANVAS_W, CANVAS_H,
-    0, 0, CANVAS_W, CANVAS_H);
+  // When map cache has a detailScale, use DatamonWorldArt.cameraSourceRect for
+  // exact physical-pixel source coordinates.
+  if (typeof DatamonWorldArt !== "undefined" && mapCv.detailScale) {
+    var src = DatamonWorldArt.cameraSourceRect(camFx, camFy, TILE, CANVAS_W, CANVAS_H, mapCv.detailScale);
+    ctx.drawImage(mapCv, src.sx, src.sy, src.sw, src.sh, 0, 0, CANVAS_W, CANVAS_H);
+  } else {
+    ctx.drawImage(mapCv,
+      -Math.round(-camFx * TILE), -Math.round(-camFy * TILE), CANVAS_W, CANVAS_H,
+      0, 0, CANVAS_W, CANVAS_H);
+  }
+
+  // Scene-local weather/display/practical-light loops sit above architecture and below
+  // labels/characters. Missing sheets are simply absent; frame zero is immediate in reduced motion.
+  if (typeof DatamonWorldArt !== "undefined") {
+    DatamonWorldArt.drawAmbient(ctx, currentMap, camFx, camFy, TILE, "back");
+  }
 
   // room labels — frosted nameplates: a dark rounded pill with a zone-accent underline
   // (same palette as the "!" markers) so each zone name reads as legible signage on top
@@ -3628,10 +3725,27 @@ function drawOverworld() {
     chars.push({ sx, sy, slug: player.slug, dir: player.dir, isPlayer: true, bob: player.moving,
                  tx: Math.round(player.fx), ty: Math.round(player.fy), npc: null });
   }
+  // Visual-only detail entities join the feet-Y sort but never touch map/SOLID collision.
+  if (currentMap === "office" && typeof DatamonWorldArt !== "undefined") {
+    for (const item of DatamonWorldArt.getVisualDetailPlacements("office")) {
+      const p = item.placement, e = item.entry;
+      const sx = (p.col - camFx) * TILE + (e.anchorX || 0);
+      const top = (p.row - camFy) * TILE;
+      chars.push({ worldArt: item, sx, top, sy: top + e.heightPx, tx: p.col, ty: p.row });
+    }
+  }
   chars.sort((a, b) => (a.sy - b.sy) || (a.sx - b.sx));   // back-to-front, tie-break x
 
   for (const c of chars) {
-    drawCharacter(c.sx, c.sy, c.slug, c.dir, c.isPlayer, c.bob, isSolidTile(c.tx, c.ty - 1));
+    if (c.worldArt) {
+      const e = c.worldArt.entry;
+      ctx.drawImage(c.worldArt.image, c.sx, c.top, e.widthPx, e.heightPx);
+      if (e.id === "hd-collaboration-table") {
+        DatamonWorldArt.drawAmbientEntry(ctx, "hd-amb-table", camFx, camFy, TILE);
+      }
+    } else {
+      drawCharacter(c.sx, c.sy, c.slug, c.dir, c.isPlayer, c.bob, isSolidTile(c.tx, c.ty - 1));
+    }
   }
 
   // Footfall dust (PRD 004 / #017): draw each live puff in screen space (camera-relative),
@@ -4215,12 +4329,39 @@ ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
 battleGrad.addColorStop(0, "#1e293b");
 battleGrad.addColorStop(1, "#0f172a");
+// Initialize DatamonWorldArt (detail scale, reduced-motion listener, HD manifest).
+if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.init();
+// Load and validate the additive manifest, then request only accepted office/shared HD members.
+// A missing/empty manifest resolves to legacy rendering with zero HD image requests.
+var hdManifestPromise = (typeof DatamonWorldArt !== "undefined")
+  ? DatamonWorldArt.loadManifest() : Promise.resolve([]);
+var hdOfficePromise = hdManifestPromise.then(function() {
+  return (typeof DatamonWorldArt !== "undefined")
+    ? DatamonWorldArt.loadScene("office") : [];
+});
 // Prewarm only the saved player without delaying the title screen. A new run preloads its
 // highlighted character when character select opens.
 loadWalkAnim(getSave()?.player);
-Promise.all([loadImages(), loadTiles(), loadProps(), loadLibraryAssets(), loadBooks(), loadPairs(), loadCloze(), loadDiagrams()]).then(() => {
+// Boot: load office assets + shared library assets (lib-door) but NOT full library.
+// Full library assets load lazily on first warp.
+Promise.all([
+  loadImages(), loadTiles(), loadProps(),
+  hdOfficePromise,
+  // Load only shared library dependencies needed by the office entrance
+  fetch("library/assets/manifest.json")
+    .then(r => (r.ok ? r.json() : []))
+    .then(list => {
+      libManifest = Array.isArray(list) ? list : [];
+      // Only load lib-door at boot; remaining library art loads on first entry
+      var doorEntry = libManifest.find(function(m) { return m.slug === "lib-door"; });
+      if (doorEntry) return loadOne("library/assets/" + doorEntry.file, libStore, "lib-door");
+      return Promise.resolve();
+    })
+    .catch(function() { libManifest = []; }),
+]).then(function() {
   officeMapCv = buildMapCanvas();         // reads global map (= OFFICE_MAP) — must run while currentMap is office
-  libraryMapCv = buildLibraryMapCanvas(); // reads LIBRARY_MAP directly
+  libraryMapCv = null;                    // first interaction loads data/art and builds once
   mapCv = officeMapCv;
+  if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("office");
   requestAnimationFrame(loop);
 });

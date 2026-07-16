@@ -16,9 +16,11 @@ const DATAMON = path.join(ROOT, "datamon");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
 const PAYLOAD_ALLOWLIST = [
   "index.html", "game.js", "battle-ops.js", "agent-arena.js", "questions.js", "state.js",
-  "headshots/*.png", "portraits/*.png", "sprites/*.png", "sprites-walk/**/*.png",
+  "world-art.js",
+  "portraits/*.png", "sprites/*.png", "sprites-walk/**/*.png",
   "tiles/*.png", "props/*.png", "props/manifest.json",
   "library/*.json", "library/assets/*.png", "library/assets/manifest.json",
+  "environment/manifest.json", "environment/accepted/*/*.png",
 ];
 
 function git(args) {
@@ -38,13 +40,22 @@ function payloadFiles() {
   const output = execFileSync("git", ["ls-files", "-z", "--", "datamon"], { cwd: ROOT });
   const tracked = output.toString("utf8").split("\0").filter(Boolean)
     .map(repoPath => repoPath.replace(/^datamon\//, ""));
-  // Exact allowlist entries are runtime roots and may be newly created in a dirty
-  // review tree before they are tracked. Include those existing files explicitly
-  // so packaging always exercises the implementation under review.
-  const exactRuntimeRoots = PAYLOAD_ALLOWLIST
-    .filter(pattern => !pattern.includes("*"))
-    .filter(relPath => fs.existsSync(path.join(DATAMON, relPath)));
-  return [...new Set([...tracked, ...exactRuntimeRoots])]
+  // Include allowlisted untracked runtime files in a dirty review tree (notably a newly
+  // promoted immutable environment batch). Private staging/review/raw paths match no pattern.
+  const existing = [];
+  const allowedTopDirectories = new Set([
+    "portraits", "sprites", "sprites-walk", "tiles", "props", "library", "environment",
+  ]);
+  function walk(dir, prefix = "") {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!prefix && entry.isDirectory() && !allowedTopDirectories.has(entry.name)) continue;
+      const relPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) walk(path.join(dir, entry.name), relPath);
+      else if (PAYLOAD_ALLOWLIST.some(pattern => matches(relPath, pattern))) existing.push(relPath);
+    }
+  }
+  walk(DATAMON);
+  return [...new Set([...tracked, ...existing])]
     .filter(relPath => PAYLOAD_ALLOWLIST.some(pattern => matches(relPath, pattern)))
     .sort((a, b) => a.localeCompare(b));
 }

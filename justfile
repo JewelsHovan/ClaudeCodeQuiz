@@ -38,9 +38,13 @@ check:
     node --check datamon/questions.js
     node --check datamon/state.js
     node --check datamon/core.js
+    node --check datamon/world-art.js
     for file in scripts/*.mjs tests/unit/*.js tests/browser/*.js; do node --check "$file"; done
+    python3 -m py_compile datamon/tools/art_pipeline.py datamon/tools/gen_world_art.py tests/test_art_pipeline.py
     python3 datamon/retag_questions.py --check
     node scripts/validate-content.mjs
+    python3 -m unittest tests/test_art_pipeline.py
+    if [[ -f datamon/.environment-work/staging/batch-agent-wing/manifest.json ]]; then python3 datamon/tools/art_pipeline.py validate datamon/.environment-work/staging/batch-agent-wing datamon/.environment-work/staging/batch-agent-wing/manifest.json; fi
     node --test tests/unit/*.test.js
     node scripts/package-datamon.mjs
     node scripts/verify-artifact.mjs

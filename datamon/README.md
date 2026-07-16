@@ -3,9 +3,9 @@
 A Pokemon-style pixel game for the team — and a study tool for the
 **Claude Certified Architect Foundations** exam. Walk around the office,
 challenge your colleagues to battle, and answer exam questions across the five
-official domains to win. Every teammate headshot in `headshots/` is pixelated
-at runtime into a sprite — pick yourself as the player and everyone else
-becomes a rival trainer.
+official domains to win. Pick yourself as the player and everyone else becomes
+a rival trainer. Runtime identity uses curated pixel sprites and lazily loaded pixel-art
+portraits; source headshots remain offline tooling inputs and are excluded from deployments.
 
 The 120-question bank was sourced from this repo's study materials
 (domain docs, practice questions, scenario questions, and flashcards),
@@ -52,12 +52,13 @@ localStorage (per browser + port, so stick with one way of serving it).
   | **Context Corner** | 5 — Context Management & Reliability | 15% |
   | **The Lounge** | Mixed, weighted by the real exam percentages | — |
 - A trainer's zone decides their question domain.
-- Each rival throws 2 "mons" at you (Rogue Subagent, Schema Mismatch, Context
-  Rot...) — procedurally generated pixel beasts that poof in on send-out, lunge
-  at you when you miss, and faint when you're right. A correct answer faints the
-  mon; a wrong answer costs you 25 HP — and both outcomes show a one-line
-  explanation of the right answer (typewriter text; ENTER skips, ENTER again
-  advances).
+- **Agent Wing battles are strategic Incident Command encounters.** Choose Query,
+  Inspect, Patch, or Escalate; build Momentum, deploy a Guardrail, and reduce enemy
+  Stability on a service-topology board. The last undefeated Agent rival is a gated
+  three-phase boss with 3/4/5 Stability.
+- Other domains retain the classic two-mon flow for now: a correct answer faints the
+  mon; a wrong answer costs 25 HP. Every outcome shows the expected answer and a
+  one-line explanation (ENTER skips the typewriter, then advances).
 - HP at 0 = blackout from imposter syndrome; you respawn in the lounge.
 - The **coffee machines** (bottom corners) fully restore HP.
 - Defeat all 28 rivals to become a **Claude Certified Architect**.
@@ -66,12 +67,16 @@ localStorage (per browser + port, so stick with one way of serving it).
 ## Files
 
 - `index.html` — page shell
-- `game.js` — engine: overworld, character select, battles, pixelation, save
+- `game.js` — engine: overworld, character select, battle adapters, Library, and save
+- `battle-ops.js` — pure Agent Operations reducer and strategic action economy
+- `agent-arena.js` — Incident Command presentation, accessibility, bounded effects/audio
+- `world-art.js` — DPR-aware map caches, accepted HD asset/ambient layer, lazy portraits
 - `questions.js` — 120-question bank (AGENT / MCP / CONFIG / PROMPT / CONTEXT,
   24 per exam domain, each with an explanation), mon names, battle quotes
 - `sprites/` — generated GBA-style pixel trainer sprites (transparent 256px PNGs)
-- `headshots/` — 128px teammate headshots, pixelated at runtime (sprite fallback
-  + character-select portraits)
+- `portraits/` — curated pixel-art busts, loaded only when first displayed
+- `headshots/` — local/offline identity references; never requested or packaged at runtime
+- `environment/` — reviewed 2× environment batches plus the atomic active manifest
 - `tiles/` — committed 32×32 RGBA office tileset PNGs: round-1 ("Claude lab") floor
   variants, walls + corners, desk, plant, coffee, rug — plus the PRD 005 office surface
   set (hardwood, red/white brick, industrial window, wood column, silver ducting).
@@ -87,10 +92,11 @@ correct index `a`, one-line explanation `x`). Keep `q` ≤ 150 chars, choices �
 
 ## Adding a new teammate
 
-1. Drop a square-ish photo at `headshots/<slug>.png` (128px is plenty) and add
-   the slug to `ROSTER` in `game.js`.
-2. Optionally add a 256px transparent pixel-art sprite at `sprites/<slug>.png`.
-   If it's missing, the game falls back to the pixelated headshot automatically.
+1. Add the slug to `ROSTER` in `game.js`.
+2. Add a 256px transparent pixel-art trainer at `sprites/<slug>.png` and a curated
+   bust at `portraits/<slug>.png`. Missing portraits fall back to initials.
+3. If regeneration needs an identity reference, place it locally at
+   `headshots/<slug>.png`; it remains an offline source and is excluded from artifacts.
 
 The sprite-generation tooling (Gemini green-screen pipeline) lives in the
 original `ai-gen-playground` repo (`gen-sprite.sh` + `process_sprites.py`).
@@ -140,6 +146,36 @@ and downscale to 32×32 with **nearest-neighbor** (not bilinear) to keep crisp p
 
 **Fallback safety:** if `tiles/` is missing or any PNG 404s, `loadTiles()` stores `null`
 for that slug and the game renders with flat `tileColor()` colors — no crash, no error.
+
+## Reviewed 2× world art
+
+`environment/manifest.json` is an additive, reviewed overlay over the legacy tile/prop
+contracts. At DPR2 the office cache is 2304×1536 while collision, camera destinations,
+and the 32px logical map remain unchanged. The office cache builds at boot; Library art,
+content, and its cache load once on first entry. DPR1/fractional devices retain safe fallbacks.
+
+The accepted Agent Wing pilot contains true 2× brick/window/material art, seven upgraded
+props, a visual-only collaboration table, and four bounded ambient strips. Reduced motion
+pins every strip to frame zero. Missing or invalid members fall back without changing state.
+
+The deterministic pipeline never writes generated output directly into accepted runtime art:
+
+```bash
+# Rebuild the zero-cost pilot into ignored staging and prove deterministic identity
+python3 datamon/tools/gen_world_art.py --validate-twice
+# Validate and produce a review sheet
+python3 datamon/tools/art_pipeline.py validate \
+  datamon/.environment-work/staging/batch-agent-wing \
+  datamon/.environment-work/staging/batch-agent-wing/manifest.json
+python3 datamon/tools/art_pipeline.py contact-sheet \
+  datamon/.environment-work/staging/batch-agent-wing \
+  datamon/.environment-work/staging/batch-agent-wing/manifest.json
+```
+
+Promotion requires a review record tied to the exact contact-sheet SHA. `accept` installs
+immutable assets first and swaps the active manifest last; injected-failure tests prove the
+previous accepted state is restored. Raw/staging/review/history paths are ignored and excluded
+from deployment artifacts. No image API is invoked by this recipe.
 
 ## Library assets regen
 

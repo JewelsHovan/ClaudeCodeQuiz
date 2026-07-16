@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
+import { inflateSync } from "node:zlib";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const fromRoot = rel => path.join(ROOT, rel);
@@ -21,6 +22,60 @@ function loadQuestionBank() {
     filename: "datamon/questions.js",
   });
   return context.__QUESTION_BANK__;
+}
+
+function loadWorldArtValidator() {
+  const source = fs.readFileSync(fromRoot("datamon/world-art.js"), "utf8");
+  const context = { window: {}, console, Math, Uint8ClampedArray };
+  vm.runInNewContext(source, context, { filename: "datamon/world-art.js" });
+  return context.window.DatamonWorldArt;
+}
+
+function paeth(a, b, c) {
+  const p = a + b - c;
+  const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+  return pa <= pb && pa <= pc ? a : (pb <= pc ? b : c);
+}
+
+// Decode the deliberately constrained accepted HD PNG contract (8-bit RGBA, non-interlaced)
+// so the JS validator independently enforces alpha and non-trivial source detail.
+function decodeRgbaPng(file) {
+  const bytes = fs.readFileSync(file);
+  assert.ok(bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])), `${file} is not PNG`);
+  let offset = 8, width = 0, height = 0, bitDepth = 0, colorType = -1, interlace = -1;
+  const idat = [];
+  while (offset < bytes.length) {
+    const length = bytes.readUInt32BE(offset); offset += 4;
+    const type = bytes.toString("ascii", offset, offset + 4); offset += 4;
+    const data = bytes.subarray(offset, offset + length); offset += length + 4; // skip CRC
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0); height = data.readUInt32BE(4);
+      bitDepth = data[8]; colorType = data[9]; interlace = data[12];
+    } else if (type === "IDAT") idat.push(data);
+    else if (type === "IEND") break;
+  }
+  assert.equal(bitDepth, 8, `${file} must be 8-bit PNG`);
+  assert.equal(colorType, 6, `${file} must be RGBA PNG`);
+  assert.equal(interlace, 0, `${file} must be non-interlaced PNG`);
+  const raw = inflateSync(Buffer.concat(idat));
+  const stride = width * 4;
+  assert.equal(raw.length, (stride + 1) * height, `${file} scanline length mismatch`);
+  const pixels = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)];
+    assert.ok(filter >= 0 && filter <= 4, `${file} invalid PNG filter ${filter}`);
+    for (let x = 0; x < stride; x++) {
+      const value = raw[y * (stride + 1) + 1 + x];
+      const at = y * stride + x;
+      const left = x >= 4 ? pixels[at - 4] : 0;
+      const up = y > 0 ? pixels[at - stride] : 0;
+      const upLeft = y > 0 && x >= 4 ? pixels[at - stride - 4] : 0;
+      const predictor = filter === 0 ? 0 : filter === 1 ? left : filter === 2 ? up
+        : filter === 3 ? Math.floor((left + up) / 2) : paeth(left, up, upLeft);
+      pixels[at] = (value + predictor) & 255;
+    }
+  }
+  return { width, height, pixels };
 }
 
 const bank = loadQuestionBank();
@@ -51,6 +106,8 @@ const cloze = readJson("datamon/library/cloze.json");
 const diagrams = readJson("datamon/library/diagrams.json");
 const propManifest = readJson("datamon/props/manifest.json");
 const libraryManifest = readJson("datamon/library/assets/manifest.json");
+let envManifest = [];
+try { envManifest = readJson("datamon/environment/manifest.json"); } catch (_) { /* optional */ }
 
 for (const [label, items] of [["books", books], ["pairs", pairs], ["cloze", cloze], ["diagrams", diagrams]]) {
   assert.ok(Array.isArray(items) && items.length > 0, `${label} must be a non-empty array`);
@@ -93,6 +150,24 @@ const librarySlugs = new Set(libraryManifest.map(item => item.slug));
 for (const book of books) assert.ok(librarySlugs.has(book.cover_slug), `missing cover slug: ${book.cover_slug}`);
 for (const diagram of diagrams) {
   if (diagram.sprite_slug) assert.ok(librarySlugs.has(diagram.sprite_slug), `missing diagram sprite: ${diagram.sprite_slug}`);
+}
+
+// The additive manifest may be empty before G1, but any active member must pass the same
+// exact sourceScale/frame/alpha/detail contract in JavaScript as it does in Python.
+assert.ok(Array.isArray(envManifest), "environment manifest must be an array");
+if (envManifest.length > 0) {
+  const worldArt = loadWorldArtValidator();
+  const normalized = worldArt.normalizeManifest(envManifest);
+  assert.equal(normalized.length, envManifest.length, "environment manifest schema/dimensions are invalid");
+  for (const item of normalized) {
+    assert.equal(item.reviewState, "accepted", `active environment member ${item.id} is not accepted`);
+    const envFile = fromRoot(`datamon/environment/accepted/${item.batchId}/${item.file}`);
+    assert.ok(fs.existsSync(envFile), `environment missing accepted file: ${envFile}`);
+    const decoded = decodeRgbaPng(envFile);
+    const result = worldArt.validatePixels(item, decoded.pixels, decoded.width, decoded.height);
+    assert.ok(result.valid, `environment member ${item.id} failed pixel validation: ${result.reason}`);
+  }
+  console.log(`Environment manifest: ${envManifest.length} accepted entries.`);
 }
 
 console.log(`Content valid: ${questions.length} questions, ${books.length} books, ${pairs.length} pairs, ${cloze.length} cloze prompts, ${diagrams.length} diagrams.`);

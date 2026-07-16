@@ -55,3 +55,6 @@ datamon/.design/refs/
 .claude-images/
 datamon/.gba-gen-cache/
 datamon/.walk-gen-cache/
+
+# Environment art pipeline staging, review, and history (#044)
+datamon/.environment-work/
