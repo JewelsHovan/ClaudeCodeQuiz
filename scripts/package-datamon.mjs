@@ -14,6 +14,7 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
 const DATAMON = path.join(ROOT, "datamon");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
+const RUNTIME_SCRIPTS = ["state.js", "battle-ops.js", "agent-arena.js", "questions.js", "world-art.js", "music.js", "game.js"];
 const PAYLOAD_ALLOWLIST = [
   "index.html", "game.js", "battle-ops.js", "agent-arena.js", "questions.js", "state.js",
   "world-art.js", "music.js",
@@ -60,6 +61,19 @@ function payloadFiles() {
     .sort((a, b) => a.localeCompare(b));
 }
 
+function versionRuntimeScripts() {
+  const indexPath = path.join(DIST, "index.html");
+  let html = fs.readFileSync(indexPath, "utf8");
+  for (const script of RUNTIME_SCRIPTS) {
+    const bytes = fs.readFileSync(path.join(DIST, script));
+    const version = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
+    const plain = `src="${script}"`;
+    if (!html.includes(plain)) throw new Error(`datamon/index.html does not declare ${script}`);
+    html = html.replace(plain, `src="${script}?v=${version}"`);
+  }
+  fs.writeFileSync(indexPath, html);
+}
+
 function digest(files) {
   const hash = createHash("sha256");
   for (const file of files) {
@@ -87,6 +101,9 @@ function build() {
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.copyFileSync(source, destination);
   }
+  // Content-addressed script URLs prevent Cloudflare from mixing new HTML/metadata with
+  // a stale unversioned runtime during edge convergence. Source remains plain for `just play`.
+  versionRuntimeScripts();
 
   const totalBytes = files.reduce((sum, file) => sum + fs.statSync(path.join(DIST, file)).size, 0);
   const payloadSha256 = digest(files);
