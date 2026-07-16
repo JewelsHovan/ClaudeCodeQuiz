@@ -8,6 +8,7 @@ import path from "node:path";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
+const RUNTIME_SCRIPTS = ["state.js", "battle-ops.js", "agent-arena.js", "questions.js", "world-art.js", "music.js", "game.js"];
 
 function walk(dir, sub = "", result = []) {
   const current = path.join(dir, sub);
@@ -46,8 +47,15 @@ for (const runtimeFile of requiredRuntime) {
   if (!payloadPaths.has(runtimeFile)) throw new Error(`Missing packaged runtime file: dist/${runtimeFile}`);
 }
 const packagedHtml = fs.readFileSync(path.join(DIST, "index.html"), "utf8");
-for (const script of ["state.js", "battle-ops.js", "agent-arena.js", "questions.js", "world-art.js", "music.js", "game.js"]) {
-  if (!packagedHtml.includes(`src="${script}"`)) throw new Error(`dist/index.html does not declare ${script}`);
+for (const script of RUNTIME_SCRIPTS) {
+  const version = createHash("sha256").update(fs.readFileSync(path.join(DIST, script))).digest("hex").slice(0, 16);
+  const declaration = `src="${script}?v=${version}"`;
+  if (!packagedHtml.includes(declaration)) {
+    throw new Error(`dist/index.html does not declare content-addressed ${declaration}`);
+  }
+  if (packagedHtml.includes(`src="${script}"`)) {
+    throw new Error(`dist/index.html contains unsafe unversioned runtime reference: ${script}`);
+  }
 }
 // Old public headshot URLs intentionally receive one exact transparent 1×1 PNG so
 // Cloudflare evicts stale photos. Any other bytes, dimensions, slug set, or nested path fail.
