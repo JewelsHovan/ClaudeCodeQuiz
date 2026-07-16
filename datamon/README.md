@@ -265,3 +265,75 @@ when idle and at each step start.
 
 **Hold R (or Shift) to run.** While held, `player.running` switches to the punchier run
 params (sq=0.12, stride=0.11) and movement speeds up from 7.5 to 12.5 tiles/sec.
+
+## Testing & Deployment
+
+### Bootstrap a clean clone
+
+```bash
+just bootstrap   # npm ci + pinned Playwright Chromium
+just check       # complete local quality gate
+```
+
+`just check` runs JavaScript syntax checks, structural validation of all question/Library
+content, unit tests against the production test helper, two-build payload determinism and
+integrity checks, a Chromium journey from title → select → overworld → real battle, and
+three uncached performance runs. Browser checks serve `dist/`, not the source directory,
+and fail on page errors, console errors/assertions, failed requests, or HTTP errors.
+
+Useful focused commands:
+
+```bash
+just package           # build and verify dist/
+npm run test:unit      # loopback/RNG/clock helper tests
+npm run test:browser   # package, then browser journey
+just perf-baseline     # package, then enforce three cold-title runs
+just preview           # serve verified dist/ at http://localhost:8750/
+```
+
+### Deterministic test seam
+
+Tests inject `datamon/core.js` before `game.js`. It activates only on loopback hosts and is
+excluded from the deployed payload. It supplies seeded RNG, a wall-clock mock that leaves
+`performance.now()`/animation timestamps untouched, and bounded state inspection. The
+normal game and save schema are unchanged.
+
+### Fixed performance contract
+
+Budgets live in `scripts/performance-budgets.json` and are enforced by `just check`:
+
+- cold title ready: **≤ 2500 ms**
+- requests: **≤ 194**
+- response payload: **≤ 3,000,000 bytes**
+- resident walk sets/frames on a fresh title: **0 / 0**
+
+Results are written to ignored `test-results/performance.json`. Re-baselining requires an
+explicit reviewed edit to the committed budget file; checks never derive new limits from
+the run they are judging.
+
+### Guarded Cloudflare deployment
+
+```bash
+just deploy
+```
+
+The command rejects detached, dirty (including untracked), unpushed, or non-`dev`/`main`
+state; runs the complete check once; verifies the unchanged payload manifest/SHA; deploys
+that exact `dist/`; then smoke-tests the branch alias and expected commit. No deployment is
+performed by `just check`. Public milestone deployment also requires an explicit decision
+about access/privacy for the colleague names and likeness assets currently used by the game.
+
+An existing artifact can be checked independently:
+
+```bash
+just remote-smoke https://dev.datamon.pages.dev/ <full-commit-sha>
+```
+
+Rollback inventory:
+
+```bash
+just rollback
+npx wrangler pages deployment list --project-name=datamon
+```
+
+Then select the previous deployment in Cloudflare Pages and roll it back.

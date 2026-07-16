@@ -1,41 +1,94 @@
-# DATAMON — Pokemon-style study game
+# DATAMON — Pokémon-style study game
 # Run `just` to list available commands.
 
 port := "8741"
 url := "http://localhost:" + port + "/"
 
-# List available commands
 default:
     @just --list
 
-# Start the DATAMON server (background) and open the game in your browser
+# Install pinned JavaScript dependencies and Chromium for browser checks
+bootstrap:
+    npm ci
+    npx playwright install chromium
+
+# Start DATAMON locally
 play:
     @lsof -i :{{port}} >/dev/null 2>&1 || (cd datamon && python3 -m http.server {{port}} >/dev/null 2>&1 &)
     @sleep 1
     @open "{{url}}" 2>/dev/null || xdg-open "{{url}}" 2>/dev/null || true
     @echo "DATAMON serving at {{url}}"
 
-# Stop the DATAMON server
 stop:
     @lsof -ti :{{port}} | xargs kill 2>/dev/null && echo "DATAMON server stopped." || echo "No server running on port {{port}}."
 
-# Restart the server
 restart: stop play
 
-# Show whether the server is running
 status:
     @lsof -i :{{port}} >/dev/null 2>&1 && echo "DATAMON is running at {{url}}" || echo "DATAMON is not running."
 
-# Deploy a clean tracked snapshot to Cloudflare Pages (dev => preview, main => production)
+# Validate syntax/content, unit behavior, deterministic artifact, browser journey, and budgets
+check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "=== DATAMON check suite ==="
+    node --check datamon/game.js
+    node --check datamon/questions.js
+    node --check datamon/core.js
+    for file in scripts/*.mjs tests/unit/*.js tests/browser/*.js; do node --check "$file"; done
+    node scripts/validate-content.mjs
+    node --test tests/unit/*.test.js
+    node scripts/package-datamon.mjs
+    node scripts/verify-artifact.mjs
+    npx playwright test tests/browser/ --project=chromium
+    node scripts/perf-baseline.mjs --runs 3
+    echo "=== DATAMON checks passed ==="
+
+# Build dist/ twice and verify the deterministic tracked runtime payload
+package:
+    node scripts/package-datamon.mjs
+    node scripts/verify-artifact.mjs
+
+# Re-run the fixed cold-title performance contract against dist/
+perf-baseline: package
+    node scripts/perf-baseline.mjs --runs 3
+
+# Serve the exact packaged artifact
+preview: package
+    @echo "Serving dist/ artifact at http://localhost:8750/"
+    @cd dist && python3 -m http.server 8750
+
+# Smoke an existing deployed artifact and optionally require its commit
+remote-smoke target expected_commit="":
+    node scripts/smoke-remote.mjs "{{target}}" "{{expected_commit}}"
+
+# Check the clean/upstream state, test once, then deploy that unchanged artifact
+# (dev => preview alias, main => production). No public deploy is run automatically.
 deploy:
     #!/usr/bin/env bash
     set -euo pipefail
-    tmp="$(mktemp -d)"
-    trap 'rm -rf "$tmp"' EXIT
-    git archive HEAD:datamon | tar -x -C "$tmp"
-    npx wrangler pages deploy "$tmp" \
+    branch="$(git branch --show-current)"
+    [[ -n "$branch" ]] || { echo "ERROR: detached HEAD"; exit 1; }
+    [[ "$branch" == "dev" || "$branch" == "main" ]] || { echo "ERROR: deploy only supports dev/main"; exit 1; }
+    [[ -z "$(git status --porcelain --untracked-files=all)" ]] || { echo "ERROR: working tree contains tracked or untracked changes"; git status --short; exit 1; }
+    upstream="$(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null)" || { echo "ERROR: no upstream"; exit 1; }
+    [[ "$(git rev-parse HEAD)" == "$(git rev-parse '@{upstream}')" ]] || { echo "ERROR: HEAD differs from $upstream; push first"; exit 1; }
+
+    just check
+    node scripts/verify-artifact.mjs
+    commit="$(git rev-parse HEAD)"
+    payload="$(node -e "console.log(JSON.parse(require('fs').readFileSync('dist/artifact-metadata.json')).payloadSha256)")"
+    echo "Deploying checked payload $payload from $branch@$commit"
+    npx wrangler pages deploy dist \
       --project-name=datamon \
-      --branch="$(git branch --show-current)" \
-      --commit-hash="$(git rev-parse HEAD)" \
+      --branch="$branch" \
+      --commit-hash="$commit" \
       --commit-message="$(git log -1 --pretty=%s)" \
       --commit-dirty=false
+
+    if [[ "$branch" == "main" ]]; then target="https://datamon.pages.dev/"; else target="https://dev.datamon.pages.dev/"; fi
+    node scripts/smoke-remote.mjs "$target" "$commit"
+
+rollback:
+    @echo "Cloudflare dashboard: Workers & Pages > datamon > Deployments > Rollback"
+    @echo "CLI inventory: npx wrangler pages deployment list --project-name=datamon"
