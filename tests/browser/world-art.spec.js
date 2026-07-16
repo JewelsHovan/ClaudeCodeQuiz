@@ -88,6 +88,24 @@ test.describe("HD world-art accepted pilot contracts", () => {
       expect(requests.filter(path => path.startsWith("/library/assets/") && path.endsWith(".png")))
         .toEqual(["/library/assets/lib-door.png"]);
       expect(requests.some(path => /^\/library\/(books|pairs|cloze|diagrams)\.json$/.test(path))).toBe(false);
+
+      // At DPR2, visual-detail furniture joins the character depth-sort list. Rendering
+      // and a quick movement tap must not treat those presentation entries as NPCs.
+      if (dpr === 2) {
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Enter");
+        await page.waitForFunction(() => {
+          try { return (0, eval)("state") === "overworld"; } catch (_) { return false; }
+        });
+        const startY = await page.evaluate(() => (0, eval)("player").y);
+        await page.keyboard.press("w");
+        await page.waitForFunction(expectedY => {
+          try {
+            const player = (0, eval)("player");
+            return !player.moving && player.y === expectedY;
+          } catch (_) { return false; }
+        }, startY - 1);
+      }
       expect(errors).toEqual([]);
       await context.close();
     }
