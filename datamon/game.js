@@ -1360,11 +1360,14 @@ window.addEventListener("keydown", e => {
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
   if (e.key === "Tab" && state === "select") e.preventDefault();   // Tab cycles difficulty, not focus
   if (e.key === "Escape" && state === "battle" && battle && (battle.phase === "question" || (battle.agentOps && (battle.agentOps.phase === "action" || battle.agentOps.phase === "choice")))) e.preventDefault();
-  const alreadyDown = !!keys[e.key];
+  const code = e.code || "";
+  const alreadyDown = !!keys[e.key] || !!(code && keys[code]);
   const agentOwned = agentActivationKeys.has(e.key);
   const inAgentBattle = state === "battle" && battle && battle.agentOps;
   keys[e.key] = true;
-  if (state === "overworld" && player.moving && KEY_DIR[e.key]) bufferedDir = KEY_DIR[e.key];
+  if (code) keys[code] = true; // physical key codes survive Shift/Caps Lock/layout changes
+  const pressedDir = KEY_DIR[e.key] || KEY_DIR[code];
+  if (state === "overworld" && player.moving && pressedDir) bufferedDir = pressedDir;
   // Agent phases may change on a keydown. Requiring release before another event
   // prevents a held key (including synthetic repeat:false duplicates) from crossing
   // action → choice → resolve/feedback or a terminal phase back to the overworld.
@@ -1373,7 +1376,11 @@ window.addEventListener("keydown", e => {
   if (e.repeat && (bookPrompt || readerState || state === "minigame")) return; // prevent held-Enter blowing picker→reader or minigame
   handleKey(e.key);
 });
-window.addEventListener("keyup", e => { keys[e.key] = false; agentActivationKeys.delete(e.key); });
+window.addEventListener("keyup", e => {
+  keys[e.key] = false;
+  if (e.code) keys[e.code] = false;
+  agentActivationKeys.delete(e.key);
+});
 window.addEventListener("blur", () => {
   for (const key in keys) keys[key] = false;
   agentActivationKeys.clear();
@@ -1555,6 +1562,22 @@ function canvasPos(e) {
           (e.clientY - r.top) * (CANVAS_H / r.height)];
 }
 
+function pointerDirection(mx, my) {
+  if (camFx === null || camFy === null) return null;
+  const playerSx = (player.fx - camFx) * TILE + TILE / 2;
+  const playerSy = (player.fy - camFy) * TILE + TILE / 2;
+  const dx = mx - playerSx, dy = my - playerSy;
+  if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return null;
+  return Math.abs(dx) >= Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "up" : "down");
+}
+
+function releasePointerMovement(pointerId) {
+  if (pointerMoveId !== pointerId) return;
+  if (bufferedDir === pointerMoveDir) bufferedDir = null;
+  pointerMoveId = null;
+  pointerMoveDir = null;
+}
+
 canvas.addEventListener("mousemove", e => {
   const [mx, my] = canvasPos(e);
   if (state === "select") {
@@ -1580,6 +1603,20 @@ const activeAgentPointers = new Set();
 canvas.addEventListener("pointerdown", e => {
   if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
   if (typeof DatamonMusic !== "undefined") DatamonMusic.unlock();
+  if (state === "overworld" && !coffeePrompt && !bookPrompt && !readerState && !scout) {
+    const [mx, my] = canvasPos(e);
+    const dir = pointerDirection(mx, my);
+    if (dir) {
+      pointerMoveId = e.pointerId;
+      pointerMoveDir = dir;
+      player.dir = dir;
+      if (player.moving) bufferedDir = dir;
+      else tryStep(dir); // a click steps once; holding continues in updateOverworld()
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault();
+    }
+    return;
+  }
   if (state !== "battle" || !battle || !battle.agentOps) return;
   if (activeAgentPointers.has(e.pointerId)) return;
   activeAgentPointers.add(e.pointerId);
@@ -1609,14 +1646,19 @@ canvas.addEventListener("pointerdown", e => {
   }
 });
 window.addEventListener("pointerup", e => {
+  releasePointerMovement(e.pointerId);
   activeAgentPointers.delete(e.pointerId);
   if (typeof AgentArena !== "undefined") AgentArena.setHover(null, -1, false);
 });
 window.addEventListener("pointercancel", e => {
+  releasePointerMovement(e.pointerId);
   activeAgentPointers.delete(e.pointerId);
   if (typeof AgentArena !== "undefined") AgentArena.setHover(null, -1, false);
 });
-window.addEventListener("blur", () => { activeAgentPointers.clear(); });
+window.addEventListener("blur", () => {
+  pointerMoveId = null; pointerMoveDir = null;
+  activeAgentPointers.clear();
+});
 
 canvas.addEventListener("click", e => {
   const [mx, my] = canvasPos(e);
@@ -1781,10 +1823,15 @@ function drinkCoffee() {
 }
 
 const TAP_TURN_MS = 80;
-const KEY_DIR = { ArrowUp: "up", w: "up", ArrowDown: "down", s: "down",
-                  ArrowLeft: "left", a: "left", ArrowRight: "right", d: "right" };
+const KEY_DIR = {
+  ArrowUp: "up", w: "up", W: "up", KeyW: "up",
+  ArrowDown: "down", s: "down", S: "down", KeyS: "down",
+  ArrowLeft: "left", a: "left", A: "left", KeyA: "left",
+  ArrowRight: "right", d: "right", D: "right", KeyD: "right",
+};
 let turnStartMs = null;  // wall-clock when tap-to-turn window opened; null when closed
 let bufferedDir = null;  // direction pressed mid-slide; consumed at slide end
+let pointerMoveId = null, pointerMoveDir = null; // click steps once; pointer hold walks continuously
 function updateOverworld(dt) {
   // Footfall dust: drift + age every particle, then prune the dead ones. Runs every frame
   // (moving OR idle) so the array is always bounded — idle simply spawns nothing below.
@@ -1797,7 +1844,8 @@ function updateOverworld(dt) {
   if (scout) return;          // search pan-to-person cinematic — freeze movement
 
   const WALK_SPEED = 7.5, RUN_SPEED = 12.5; // tiles/sec
-  player.running = !!(keys["r"] || keys["R"] || keys["Shift"]);
+  player.running = !!(keys["r"] || keys["R"] || keys["KeyR"] ||
+    keys["Shift"] || keys["ShiftLeft"] || keys["ShiftRight"]);
   if (player.moving) {
     const speed = player.running ? RUN_SPEED : WALK_SPEED;
     stepT = Math.min(1, stepT + speed * dt);              // speed=7.5/12.5 → walk/run cadence
@@ -1831,10 +1879,11 @@ function updateOverworld(dt) {
   }
   gaitPhase = 0; walkAnimPhase = 0; prevE = 0;
   let dir = null;
-  if (keys["ArrowUp"] || keys["w"]) dir = "up";
-  else if (keys["ArrowDown"] || keys["s"]) dir = "down";
-  else if (keys["ArrowLeft"] || keys["a"]) dir = "left";
-  else if (keys["ArrowRight"] || keys["d"]) dir = "right";
+  if (dirHeld("up")) dir = "up";
+  else if (dirHeld("down")) dir = "down";
+  else if (dirHeld("left")) dir = "left";
+  else if (dirHeld("right")) dir = "right";
+  else if (pointerMoveDir) dir = pointerMoveDir;
   if (!dir) { turnStartMs = null; return; }
   if (dir !== player.dir) { player.dir = dir; turnStartMs = performance.now(); return; }
   // tap window open: released before TAP_TURN_MS means turn-only
