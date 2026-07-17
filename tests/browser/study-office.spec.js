@@ -95,10 +95,180 @@ test.describe("Sittable study office and Certification Console", () => {
     await context.close();
   });
 
+  test("compact seated rendering stays lower, occluded, and non-walking at DPR1/DPR2", async ({ browser }) => {
+    for (const deviceScaleFactor of [1, 2]) {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor });
+      const page = await context.newPage();
+      const { errors, failedRequests } = await setup(page);
+      await page.waitForFunction(() => {
+        const ge=(0,eval), npc=ge("npcs").find(value => value._seated), frames=npc && ge("getSitFrames")(npc.slug);
+        return !!(frames && frames.idle_0 && frames.idle_1 && ge('propStore["office-chair"]'));
+      });
+
+      const result = await page.evaluate(() => {
+        const ge=(0,eval), ctx=ge("ctx"), canvas=ge("canvas"), scale=ge("scale");
+        const npc=ge("npcs").find(value => value._seated), slug=npc.slug;
+        const frames=ge("getSitFrames")(slug), chair=ge('propStore["office-chair"]');
+        const geometry=ge("SEATED_DRAW_GEOMETRY"), cx=320, cy=240;
+
+        function clearCanvas() {
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        }
+        function alphaBounds() {
+          const pixels=ctx.getImageData(0, 0, canvas.width, canvas.height), data=pixels.data;
+          let minX=canvas.width, minY=canvas.height, maxX=-1, maxY=-1;
+          for (let offset=3, pixel=0; offset<data.length; offset+=4, pixel++) if (data[offset]) {
+            const x=pixel%canvas.width, y=Math.floor(pixel/canvas.width);
+            minX=Math.min(minX,x); minY=Math.min(minY,y); maxX=Math.max(maxX,x); maxY=Math.max(maxY,y);
+          }
+          if (maxX < 0) return null;
+          return {
+            top:minY/scale-cy, bottom:(maxY+1)/scale-cy,
+            height:(maxY-minY+1)/scale, width:(maxX-minX+1)/scale,
+          };
+        }
+        function render(seated, fallback) {
+          const saved0=frames.idle_0, saved1=frames.idle_1;
+          if (fallback) { frames.idle_0=null; frames.idle_1=null; }
+          clearCanvas();
+          if (seated) ctx.drawImage(chair, cx-16, cy-16, 32, 32);
+          ge("drawCharacter")(cx,cy,slug,"up",false,false,false,seated);
+          const bounds=alphaBounds();
+          frames.idle_0=saved0; frames.idle_1=saved1;
+          return bounds;
+        }
+        function captureCalls(draw) {
+          const calls=[], nativeDrawImage=ctx.drawImage;
+          ctx.drawImage=function(...args) { calls.push(args); return nativeDrawImage.apply(this,args); };
+          try { draw(); } finally { ctx.drawImage=nativeDrawImage; }
+          return calls;
+        }
+        function sourceAlphaBounds(image) {
+          const cv=document.createElement("canvas"); cv.width=64; cv.height=64;
+          const c=cv.getContext("2d"); c.drawImage(image,0,0,64,64);
+          const data=c.getImageData(0,0,64,64).data;
+          let minX=64,minY=64,maxX=-1,maxY=-1;
+          for (let offset=3,pixel=0;offset<data.length;offset+=4,pixel++) if (data[offset]) {
+            const x=pixel%64,y=Math.floor(pixel/64); minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);
+          }
+          return {left:minX,top:minY,right:maxX+1,bottom:maxY+1,width:maxX-minX+1,height:maxY-minY+1};
+        }
+
+        const standing=render(false,false), seated=render(true,false), fallback=render(true,true);
+        const chairCalls=captureCalls(() => ge("drawCharacter")(cx,cy,slug,"up",false,false,false,true));
+        const foreground=chairCalls.find(args => args[0]===chair && args.length===9);
+
+        const saved0=frames.idle_0, saved1=frames.idle_1;
+        ge("_sitAnimPhase = 90");
+        const originalReduced=window.AgentArena.prefersReducedMotion;
+        window.AgentArena.prefersReducedMotion=()=>true;
+        const reducedCalls=captureCalls(() => ge("drawCharacter")(cx,cy,slug,"up",false,false,false,true));
+        window.AgentArena.prefersReducedMotion=()=>false;
+        frames.idle_1=null;
+        const partialCalls=captureCalls(() => ge("drawCharacter")(cx,cy,slug,"up",false,false,false,true));
+        frames.idle_0=null;
+        const fallbackCalls=captureCalls(() => ge("drawCharacter")(cx,cy,slug,"up",false,false,false,true));
+        frames.idle_0=saved0; frames.idle_1=saved1;
+        window.AgentArena.prefersReducedMotion=originalReduced;
+
+        return {
+          geometry:{...geometry}, standing, seated, fallback,
+          assetBounds:sourceAlphaBounds(saved0),
+          foreground:foreground ? {
+            source:foreground.slice(1,5), destination:[foreground[5]-cx,foreground[6]-cy,foreground[7],foreground[8]],
+          } : null,
+          reducedUsesFrame0:reducedCalls.some(args => args[0]===saved0),
+          reducedUsesFrame1:reducedCalls.some(args => args[0]===saved1),
+          partialUsesFrame0:partialCalls.some(args => args[0]===saved0),
+          fallbackNonChairImageCalls:fallbackCalls.filter(args => args[0]!==chair).length,
+          frameIndexes:[
+            ge("seatedFrameIndex")(0,false), ge("seatedFrameIndex")(59.9,false),
+            ge("seatedFrameIndex")(60,false), ge("seatedFrameIndex")(119.9,false),
+            ge("seatedFrameIndex")(90,true),
+          ],
+        };
+      });
+
+      expect(result.geometry).toMatchObject({
+        poseSize:64, feetOffsetY:16, frameHoldTicks:60,
+        chairForegroundSourceY:7, chairForegroundHeight:25,
+        fallbackHeadWidth:18, fallbackHeadHeight:17, fallbackHeadTopOffsetY:-34,
+      });
+      expect(result.assetBounds.top).toBeGreaterThanOrEqual(13);
+      expect(result.assetBounds.bottom).toBeLessThanOrEqual(50);
+      expect(result.assetBounds.height).toBeLessThanOrEqual(37);
+      expect(result.seated.top).toBeGreaterThan(result.standing.top);
+      expect(result.seated.height).toBeLessThan(result.standing.height);
+      expect(result.fallback.top).toBeGreaterThan(result.standing.top);
+      expect(result.fallback.height).toBeLessThan(result.standing.height);
+      expect(result.seated.bottom).toBe(result.fallback.bottom); // fixed chair/seat anchor
+      expect(result.foreground).toEqual({source:[0,7,32,25],destination:[-16,-9,32,25]});
+      expect(result.assetBounds.bottom - 48).toBeGreaterThan(-9); // pose overlaps foreground crop
+      expect(result.frameIndexes).toEqual([0,0,1,1,0]);
+      expect(result.reducedUsesFrame0).toBe(true);
+      expect(result.reducedUsesFrame1).toBe(false);
+      expect(result.partialUsesFrame0).toBe(true);
+      expect(result.fallbackNonChairImageCalls).toBe(0); // no standing mini or front-facing portrait
+      expect(errors).toEqual([]);
+      expect(failedRequests).toEqual([]);
+      await context.close();
+    }
+  });
+
+  test("pending and failed sitting requests keep the compact procedural rear fallback", async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2 });
+    const page = await context.newPage();
+    const { errors, failedRequests } = await setup(page);
+    const slug = await page.evaluate(() => (0,eval)("player.slug"));
+    await page.route(`**/sprites-sit/${slug}/idle_*.png`, async route => {
+      await new Promise(resolve => setTimeout(resolve, 60));
+      await route.abort("failed");
+    });
+
+    const pending = await page.evaluate(() => {
+      const ge=(0,eval), slug=ge("player.slug"), ctx=ge("ctx"), chair=ge('propStore["office-chair"]');
+      ge("_sittingLoaded").delete(slug); delete ge("_sittingAssetStore")[slug];
+      ge("loadSitAsset")(slug);
+      const calls=[], nativeDrawImage=ctx.drawImage;
+      ctx.drawImage=function(...args) { calls.push(args); return nativeDrawImage.apply(this,args); };
+      try { ge("drawCharacter")(320,240,slug,"up",true,false,false,true); }
+      finally { ctx.drawImage=nativeDrawImage; }
+      return {
+        requested:ge("_sittingLoaded").has(slug),
+        nonChairImages:calls.filter(args => args[0]!==chair).length,
+        chairForeground:calls.some(args => args[0]===chair && args.length===9),
+      };
+    });
+    expect(pending).toEqual({ requested:true, nonChairImages:0, chairForeground:true });
+    await expect.poll(() => failedRequests.filter(value => value.includes(`/sprites-sit/${slug}/`)).length).toBe(2);
+
+    const failed = await page.evaluate(() => {
+      const ge=(0,eval), slug=ge("player.slug"), ctx=ge("ctx"), chair=ge('propStore["office-chair"]');
+      const entry=ge("_sittingAssetStore")[slug], calls=[], nativeDrawImage=ctx.drawImage;
+      ctx.drawImage=function(...args) { calls.push(args); return nativeDrawImage.apply(this,args); };
+      try { ge("drawCharacter")(320,240,slug,"up",true,false,false,true); }
+      finally { ctx.drawImage=nativeDrawImage; }
+      return {
+        pending:entry.pending,
+        failedFrames:[entry.idle_0,entry.idle_1],
+        nonChairImages:calls.filter(args => args[0]!==chair).length,
+        chairForeground:calls.some(args => args[0]===chair && args.length===9),
+      };
+    });
+    expect(failed).toEqual({ pending:0, failedFrames:[null,null], nonChairImages:0, chairForeground:true });
+    expect(errors).toHaveLength(2);
+    expect(errors.every(value => value === "error: Failed to load resource: net::ERR_FAILED")).toBe(true);
+    expect(failedRequests).toHaveLength(2);
+    await context.close();
+  });
+
   test("keyboard/pointer seating restores the approach tile and console reports real evidence", async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 1407, height: 853 }, deviceScaleFactor: 2 });
     const page = await context.newPage();
-    const { errors, failedRequests } = await setup(page);
+    const { errors, failedRequests, requests } = await setup(page);
 
     await page.evaluate(() => {
       const ge=(0,eval), p=ge("player");
@@ -164,6 +334,9 @@ test.describe("Sittable study office and Certification Console", () => {
     await page.mouse.click(closePoint.x, closePoint.y);
     expect(await page.evaluate(() => (0,eval)("certConsoleOpen"))).toBe(false);
 
+    const sittingRequests = countPaths(requests, "/sprites-sit/");
+    expect(sittingRequests).toHaveLength(14); // six NPC slugs + one player slug, two frames each
+    expect(new Set(sittingRequests).size).toBe(sittingRequests.length);
     expect(errors).toEqual([]);
     expect(failedRequests).toEqual([]);
     await context.close();
