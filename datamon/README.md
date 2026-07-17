@@ -36,24 +36,28 @@ localStorage (per browser + port, so stick with one way of serving it).
 | Input | Action |
 |---|---|
 | Arrows / WASD | Move |
-| SPACE / ENTER / E | Interact, sit/stand, open the Certification Console, battle, advance dialog |
-| 1–4 or arrows + ENTER | Answer battle questions |
+| SPACE / ENTER / E | Interact, sit/stand, enter portals, open the Console, battle, or review with a mentor |
+| 1–4 or arrows + ENTER | Answer battle and mentor-review questions |
 | Mouse / touch | Click once to step or hold toward a direction; select visible controls |
 | Shift + arrows/WASD or R | Run while moving |
 | M | Mute |
 | R (title screen) | Reset save |
 
 - The office has six zones mapped to the exam domains:
-  | Zone | Exam domain | Weight |
-  |---|---|---|
-  | **Agent Wing** | 1 — Agentic Architecture & Orchestration | 27% |
-  | **MCP Lab** | 2 — Tool Design & MCP Integration | 18% |
-  | **Config Bay** | 3 — Claude Code Configuration & Workflows | 20% |
-  | **Prompt Studio** | 4 — Prompt Engineering & Structured Output | 20% |
-  | **Context Corner** | 5 — Context Management & Reliability | 15% |
-  | **The Lounge** | Mixed, weighted by the real exam percentages | — |
-- A trainer's zone decides their question domain. A fixed top-right location instrument
-  names the active room and its purpose without placing labels over the floor.
+  | Zone | Exam domain | Weight | After defeating a mentor |
+  |---|---|---:|---|
+  | **Agent Wing** | Agentic Architecture & Orchestration | 27% | Orchestration debrief |
+  | **MCP Lab** | Tool Design & MCP Integration | 18% | Interface review |
+  | **Config Bay** | Claude Code Configuration & Workflows | 20% | Settings audit |
+  | **Prompt Studio** | Prompt Engineering & Structured Output | 20% | Prompt critique |
+  | **Context Corner** | Context Management & Reliability | 15% | Reliability triage |
+  | **The Lounge** | Mixed, blueprint-weighted | — | Recommended weak-domain review |
+- A trainer's zone decides their question domain. The office's **Certification Spine**,
+  cross-office Commons, and south Portal Gallery keep the Console and destinations on clear
+  sightlines. Shape-coded wall friezes identify domains without floor labels.
+- Face an entrance to preview its destination and purpose in the existing Location instrument:
+  **Reliability Triage** reviews Context with mentors, the **Library** is for Learn & Rehearse,
+  and the **Battle Room** is for Test & Retain.
 - The compact **Evidence** strip reports accumulated study evidence and the next recommended
   domain. Evidence is coverage × answer accuracy, weighted by the real exam blueprint; it is
   intentionally not presented as a pass prediction.
@@ -62,19 +66,29 @@ localStorage (per browser + port, so stick with one way of serving it).
 - Office chairs are real seats rather than walkable decoration. Six colleagues work seated at
   domain-matched desks, four chairs remain available to the player, and movement or interaction
   stands safely back on the approach tile.
-- The south wall has distinct framed portals for the **Library** and **Battle Room**.
-  Battle Room rematches restore HP before each encounter, preserve campaign rival progress,
+- The cyan stacked-window, red shield, and walnut open-book surrounds make the Context,
+  Battle Room, and Library thresholds visually distinct. Their transparent centers never add
+  collision; map symbols remain authoritative.
+- Interact with a defeated office colleague for one untimed mentor review. Reviews select real
+  **due → unseen → refresh** material from that domain, show the canonical explanation, and
+  update the same question telemetry as battles. They never change HP, campaign wins, or training streaks.
+- Battle Room rematches restore HP before each encounter, preserve campaign rival progress,
   continue question-learning telemetry, and track separate current/best training streaks.
 - **Agent Wing battles are strategic Incident Command encounters.** Choose Query,
   Inspect, Patch, or Escalate; build Momentum, deploy a Guardrail, and reduce enemy
   Stability on a service-topology board. The last undefeated Agent rival is a gated
   three-phase boss with 3/4/5 Stability.
-- Other domains retain the classic two-mon flow for now: a correct answer faints the
-  mon; a wrong answer costs 25 HP. Every outcome shows the expected answer and a
-  one-line explanation (ENTER skips the typewriter, then advances).
-- HP at 0 = blackout from imposter syndrome; you respawn in the lounge.
+- Character attributes now drive a bounded, symmetric matchup without changing which answer
+  is correct or how learning telemetry works: **Caffeine** adjusts movement and the Hard timer,
+  **Debugging** adjusts miss damage (15–35), **Vibes** sets player max HP (90–110) and classic
+  opponent team size (1–3), and **Jargon** restores 0–8 HP after a correct answer. The battle
+  intro toast and persistent HUD expose the resolved values.
+- In classic battles a correct answer faints the current mon; a wrong answer applies the
+  matchup's miss damage. Every outcome still shows the expected answer and a one-line
+  explanation (ENTER skips the typewriter, then advances).
+- HP at 0 = blackout from imposter syndrome; you respawn in the lounge at attribute-derived max HP.
 - The **coffee machines** (bottom corners) fully restore HP.
-- Defeat all 28 rivals to become a **Claude Certified Architect**.
+- Defeat all 36 rivals to become a **Claude Certified Architect**.
 - Progress autosaves to localStorage.
 - An original adaptive Web Audio score changes arrangement between title, office,
   Library, minigames, classic battles, Incident Command, boss phases, victory, and
@@ -85,7 +99,8 @@ localStorage (per browser + port, so stick with one way of serving it).
 
 - `index.html` — page shell
 - `game.js` — engine: overworld, seating, Certification Console, character select, battle adapters, Library, Battle Room, and save
-- `progress.js` — pure canonical-only exam coverage/accuracy/evidence and recommendation model
+- `attributes.js` — pure bounded Caffeine/Debugging/Vibes/Jargon matchup rules
+- `progress.js` — pure canonical evidence/recommendation plus mentor-review selection and telemetry reducer
 - `dialogue.js` — deterministic domain-aware challenge, outcome, rematch, and mentor dialogue
 - `battle-ops.js` — pure Agent Operations reducer and strategic action economy
 - `agent-arena.js` — Incident Command presentation, accessibility, bounded effects/audio
@@ -95,7 +110,8 @@ localStorage (per browser + port, so stick with one way of serving it).
   24 per exam domain, each with an explanation), mon names, battle quotes
 - `sprites/` — generated GBA-style pixel trainer sprites (transparent 256px PNGs)
 - `sprites-sit/` — two deterministic rear-facing sitting frames per roster member, loaded only for active seated characters
-- `props-study/` — accepted true-2× local Pillow study-life batch and manifest (console, readiness board, desk kits, task lamp, screen strip)
+- `props-study/` — accepted true-2× local Pillow study-life batch (Console, desk kits, task lamp, screen strip)
+- `props-wayfinding/` — accepted true-2× domain friezes and Context/Battle/Library surrounds
 - `portraits/` — curated pixel-art busts, loaded only when first displayed
 - `.headshots-offline/` — ignored local identity references for tooling; never requested, tracked, or packaged
 - `headshots/` — verified transparent 1×1 tombstones only, retained to evict stale CDN photo URLs
@@ -115,15 +131,34 @@ correct index `a`, one-line explanation `x`). Keep `q` ≤ 150 chars, choices �
 
 ## Adding a new teammate
 
-1. Add the slug to `ROSTER` in `game.js`.
-2. Add a 256px transparent pixel-art trainer at `sprites/<slug>.png` and a curated
-   bust at `portraits/<slug>.png`. Missing portraits fall back to initials.
-3. If regeneration needs an identity reference, place it locally at
-   `.headshots-offline/<slug>.png`; it remains ignored and excluded from artifacts. The
-   tracked `headshots/<slug>.png` files are transparent CDN tombstones, not references.
+1. Add the slug to `ROSTER` and `CURATED_STATS` in `game.js`, then to the canonical
+   roster in `tools/gen_sitting_assets.py`. Attributes are bounded 0–100 values ordered as
+   Caffeine, Debugging, Vibes, and Jargon; `attributes.js` defines their symmetric gameplay mapping.
+2. Put the teammate's identity reference at `.headshots-offline/<slug>.png`; it remains
+   ignored and excluded from artifacts.
+3. Estimate cost and obtain explicit approval before any external generation. Then generate
+   the runtime trainer and portrait and review both outputs. `--gen` is an explicit billable
+   opt-in; without it the script only reprocesses local cache. Keep the optional Fire Emblem
+   style reference under ignored `.design/refs/`.
 
-The sprite-generation tooling (Gemini green-screen pipeline) lives in the
-original `ai-gen-playground` repo (`gen-sprite.sh` + `process_sprites.py`).
+   ```bash
+   uv run --with pillow python datamon/tools/gen_gba_assets.py --gen --only <slug> --kind runtime \
+     --style-ref datamon/.design/refs/fire-emblem-portrait-style.png
+   ```
+
+4. Generate and review the four-direction walk sheet, then rebuild deterministic sitting art:
+
+   ```bash
+   uv run --script datamon/tools/gen_walk_assets.py --only <slug> --provider gemini
+   python3 datamon/tools/gen_sitting_assets.py --validate-twice
+   ```
+
+5. Copy any existing tracked `headshots/*.png` file to `headshots/<slug>.png`. These are
+   exact transparent 1×1 CDN tombstones, never identity references.
+
+Runtime output is `sprites/<slug>.png`, `portraits/<slug>.png`, sixteen files under
+`sprites-walk/<slug>/`, and two files under `sprites-sit/<slug>/`. Packaging verifies that
+all four public asset sets exactly match the roster; missing portraits still fall back to initials.
 
 ## Tileset regen
 
@@ -180,18 +215,18 @@ Battle Room art/caches load on first entry. Inactive destination caches are rele
 switching between Library and Battle Room so no more than two map caches remain resident.
 DPR1/fractional devices retain safe architectural fallbacks.
 
-The accepted Agent Wing pilot contains true 2× brick/window/material art, seven upgraded
-props, a visual-only collaboration table, and four bounded ambient strips. The zero-cost
-study-life batch adds the Certification Console, readiness wall, desk study kits, task light,
-and a reduced-motion-safe console telemetry strip. Its reviewed
-brick, rainy-window, and radiator materials are reused office-wide. The other five zones add
-cache-baked domain instruments (tool bus, calibration rail, context frames, editorial marks,
-and certification compass), while the Library uses continuous staggered slate, brass aisles,
-walnut alcoves, reading pools, and an open-book medallion. Five office and two Library
-procedural loops are fixed/bounded and pin to phase zero under reduced motion. The accepted
-architecture batch adds capped brick/slate/navy walls plus distinct book and training portals;
-the unexplained diagonal Context glass sweep was removed. Missing or invalid HD members fall
-back without changing state. The existing portrait set is unchanged.
+The accepted Agent Wing pilot supplies true 2× brick/window/material art and functional lounge
+props. Its old collision-free collaboration-table presentation is intentionally disabled. The
+zero-cost study-life batch adds the Certification Console, desk kits, task light, and a
+reduced-motion-safe Console telemetry strip. The Certification Spine batch adds six static
+shape-coded wall friezes plus cyan stacked-window, red shield, and walnut open-book surrounds.
+Quiet material washes and matte/brass path inlays replace the old seam runners, tool bus,
+calibration rail, nested floor frames, editorial boxes, and compass pulse. The Library retains
+continuous staggered slate, brass aisles, walnut alcoves, reading pools, and an open-book
+medallion. The accepted architecture batch still provides capped brick/slate/navy walls and
+inner book/training portals. Missing or invalid art fails to bounded procedural silhouettes
+without changing collision or state. Character portraits use a separate, consistent GBA
+Fire Emblem dialogue style and are not coupled to world-art batch promotion.
 
 The deterministic pipeline never writes generated output directly into accepted runtime art:
 
@@ -201,6 +236,7 @@ python3 datamon/tools/gen_world_art.py --validate-twice
 python3 datamon/tools/gen_architecture_assets.py --validate-twice
 python3 datamon/tools/gen_sitting_assets.py --validate-twice
 python3 datamon/tools/gen_study_assets.py --validate-twice
+python3 datamon/tools/gen_wayfinding_assets.py --validate-twice
 # Validate and produce a review sheet
 python3 datamon/tools/art_pipeline.py validate \
   datamon/.environment-work/staging/batch-agent-wing \
@@ -286,8 +322,8 @@ output `easy`/`normal`/`hard` (i.e. `medium` → `normal`).
 
 The moving player animates with **real 4-direction walk-cycle frames** in
 `sprites-walk/<slug>/{down,up,left,right}_{0..3}.png` (left contact, passing, right contact, passing),
-generated per character by `tools/gen_walk_assets.py`. All 29 sets are available, but only
-the selected/saved player's 16 frames are lazy-loaded (rather than blocking boot on 464 PNGs).
+generated per character by `tools/gen_walk_assets.py`. All 37 sets are available, but only
+the selected/saved player's 16 frames are lazy-loaded (rather than blocking boot on 592 PNGs).
 `drawCharacter()` picks the sheet by facing and advances it on a dedicated,
 frame-rate-independent animation clock (**9 FPS walking, 13 FPS running**); idle shows frame
 0, so a standing character is perfectly still. The physical `gaitPhase` remains distance-locked

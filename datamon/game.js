@@ -10,14 +10,16 @@
 
 // ---------- Roster (matches portraits/ and sprites/) ----------
 const ROSTER = [
-  "alex-andrianavalontsalama", "antonia-nistor", "aurelien-bouffanais",
-  "dana-domanko", "duc-an-nguyen", "emile-moffatt", "ethan-pirso",
-  "felicia-gorgacheva", "francesco-finn", "guillaume-delmas-frenette",
-  "guillaume-pregent", "jerry-zhu", "jonah-lee", "jonathan-kim",
-  "julien-hovan", "logan-labossiere", "megane-darnaud", "pentcho-tchomakov",
-  "philippe-miranda-jean", "richard-el-chaar", "sarah-kotb", "scott-carr",
-  "stephanie-fontaine", "tabarek-al-khalidi", "tyler-nagano",
-  "veronica-marallag", "victor-desautels", "vincent-anctil", "william-chan",
+  "alex-andrianavalontsalama", "andrea-vreugdenhil", "antonia-nistor",
+  "aurelien-bouffanais", "dana-domanko", "duc-an-nguyen", "elina-gu",
+  "emile-moffatt", "ethan-pirso", "felicia-gorgacheva", "francesco-finn",
+  "guillaume-delmas-frenette", "guillaume-pregent", "jerry-zhu", "jewoo-lee",
+  "jonah-lee", "jonathan-kim", "julien-hovan", "logan-labossiere",
+  "megane-darnaud", "milen-thomas", "minh-ngoc-do", "oyku-cildir",
+  "pentcho-tchomakov", "philippe-miranda-jean", "richard-el-chaar",
+  "sarah-kotb", "saransh-padhy", "scott-carr", "stephanie-fontaine",
+  "tabarek-al-khalidi", "tyler-nagano", "veronica-marallag",
+  "victor-desautels", "vincent-anctil", "wild-guevera", "william-chan",
 ];
 
 function displayName(slug) {
@@ -114,7 +116,6 @@ const PROP_PLACEMENTS = [
   { slug: "stool", col: 28, row: 6 }, { slug: "stool", col: 29, row: 6 }, { slug: "stool", col: 30, row: 6 },
   { slug: "radiator", col: 25, row: 1 },
   // Glass meeting room — Context Corner (bottom-left)
-  { slug: "compass-sign", col: 2, row: 15 },
   { slug: "glass-wall", col: 9, row: 16 }, { slug: "glass-wall", col: 9, row: 19 },
   { slug: "desk", col: 3, row: 18 }, { slug: "desk", col: 3, row: 19 },
   { slug: "office-chair", col: 2, row: 18 }, { slug: "office-chair", col: 6, row: 18 },
@@ -129,7 +130,6 @@ const PROP_PLACEMENTS = [
   { slug: "desk", col: 26, row: 19 }, { slug: "office-chair", col: 26, row: 20 },
   { slug: "desk", col: 31, row: 19 }, { slug: "office-chair", col: 31, row: 20 },
   // Radiators along the bottom wall
-  { slug: "radiator", col: 16, row: 22 }, { slug: "radiator", col: 29, row: 22 },
 ];
 
 // ---- Seat registry (#047): office-chair placements become explicit interactable seats ----
@@ -148,6 +148,24 @@ const NPC_SEAT_ASSIGNMENTS = new Map([
 // Player-available seats (4 total): remaining chairs not in NPC_SEAT_ASSIGNMENTS
 const PLAYER_SEAT_KEYS = ["14,20", "20,20", "26,20", "31,20"];
 
+// ---- Certification Spine path mask (#049) ----
+// Union of four reserved negative-space routes: no standing NPC placement or decorative collision.
+// These paths connect the Console, all domain areas, Context doorway, Battle Room, and Library.
+const OFFICE_PATH_MASK = (function () {
+  var mask = new Set();
+  var addRect = function (x0, y0, x1, y1) {
+    for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) mask.add(x + "," + y);
+  };
+  addRect(17, 5, 19, 22);  // Certification Spine (north-south)
+  addRect(2, 10, 33, 12);  // Commons (east-west cross)
+  addRect(10, 21, 33, 22); // Portal Gallery (south spine connector)
+  addRect(6, 12, 8, 14);   // Context Spur
+  return mask;
+})();
+function isPathMaskCell(x, y) {
+  return OFFICE_PATH_MASK.has(x + "," + y);
+}
+
 // ---- Certification Console geometry (#047) ----
 // Solid console at [17,4] and [18,4] with approach at row 5.
 const CONSOLE_CELLS = [[17, 4], [18, 4]];
@@ -155,7 +173,6 @@ const CONSOLE_CELLS = [[17, 4], [18, 4]];
 // ---- Study-life prop placements (#047) ----
 const STUDY_PROP_PLACEMENTS = [
   { slug: "certification-console", col: 17, row: 4 },
-  { slug: "readiness-board", col: 15, row: 0 },
   { slug: "desk-study-kit", col: 14, row: 16 },
   { slug: "desk-study-kit", col: 20, row: 16 },
   { slug: "desk-study-kit", col: 26, row: 15 },
@@ -204,7 +221,7 @@ function buildMap() {
   for (const [x, y] of [[3, 18], [4, 18], [3, 19], [4, 19]]) g[y][x] = "D"; // conference table
 
   // Wood column pillars dotting the open floor
-  for (const [x, y] of [[11, 5], [23, 5], [12, 13], [18, 13], [24, 13], [30, 13]]) g[y][x] = "O";
+  for (const [x, y] of [[11, 5], [23, 5], [12, 13], [24, 13], [30, 13]]) g[y][x] = "O";
 
   // Coffee counter (interact to heal) in the kitchen
   g[2][31] = "C";
@@ -217,7 +234,7 @@ function buildMap() {
   for (const [x, y] of desks) g[y][x] = "D";
 
   // Plants
-  for (const [x, y] of [[11, 11], [1, 12], [24, 12], [34, 12], [34, 21], [13, 3], [22, 3]]) g[y][x] = "P";
+  for (const [x, y] of [[1, 12], [34, 12], [34, 21], [13, 3], [22, 3]]) g[y][x] = "P";
 
   // Solid-furniture footprints (floor base; the matching prop bakes on top in buildMapCanvas)
   const furniture = [
@@ -239,9 +256,8 @@ function buildMap() {
 }
 
 // ---------- Battle Room map (#046) ----------
-// 36×24 training arena. All 28 non-player colleagues arranged in a perimeter ring:
-// north (y=3), south (y=19), west (x=3), east (x=32). The return door [18,23]
-// leads back to the office.
+// 36×24 training arena. Every non-player colleague is arranged in a perimeter ring.
+// The return door [18,23] leads back to the office.
 function buildBattleRoomMap() {
   const g = Array.from({ length: MAP_H }, () => Array(MAP_W).fill("."));
   // Brick perimeter
@@ -254,36 +270,36 @@ function buildBattleRoomMap() {
 
 const BATTLE_ROOM_MAP = buildBattleRoomMap();
 
-// Deterministic ring placement for all non-player roster members.
-// North/south rows at y=3,19 with x=[4,8,12,16,20,24,28]
-// West/east columns at x=3,32 with y=[5,7,9,11,13,15,17]
+// Deterministic ring placement for all non-player roster members. Slots alternate
+// between edges so the room stays visually balanced as the roster grows. Ten slots
+// fit each long edge and eight fit each short edge without blocking the south entry.
 function buildBattleRoomNPCs(playerSlug) {
-  const northX = [4, 8, 12, 16, 20, 24, 28];
-  const southX = [4, 8, 12, 16, 20, 24, 28];
-  const westY  = [5, 7, 9, 11, 13, 15, 17];
-  const eastY  = [5, 7, 9, 11, 13, 15, 17];
+  const horizontalX = [4, 7, 10, 13, 16, 19, 22, 25, 28, 31];
+  const verticalY = [4, 6, 8, 10, 12, 14, 16, 18];
+  const edges = [
+    horizontalX.map(function(x) { return [x, 3]; }),
+    horizontalX.map(function(x) { return [x, 20]; }),
+    verticalY.map(function(y) { return [3, y]; }),
+    verticalY.map(function(y) { return [32, y]; }),
+  ];
+  const slots = [];
+  for (var slotIndex = 0; slotIndex < horizontalX.length; slotIndex++) {
+    for (var edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
+      if (edges[edgeIndex][slotIndex]) slots.push(edges[edgeIndex][slotIndex]);
+    }
+  }
+
   const others = ROSTER.filter(function(s) { return s !== playerSlug; });
   const domains = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
-  const npcs = [];
-  var idx = 0;
-  function add(slug, x, y, fallbackType) {
+  console.assert(others.length <= slots.length, "Battle Room perimeter capacity exceeded");
+  return others.slice(0, slots.length).map(function(slug, index) {
     var persisted = _npcDomains && _npcDomains[slug];
-    var type = domains.indexOf(persisted) >= 0 ? persisted : fallbackType;
-    npcs.push({ slug: slug, x: x, y: y, type: type, defeated: false, training: true });
-  }
-  for (var i = 0; i < northX.length && idx < others.length; i++, idx++) {
-    add(others[idx], northX[i], 3, domains[idx % domains.length]);
-  }
-  for (var j = 0; j < southX.length && idx < others.length; j++, idx++) {
-    add(others[idx], southX[j], 19, domains[idx % domains.length]);
-  }
-  for (var k = 0; k < westY.length && idx < others.length; k++, idx++) {
-    add(others[idx], 3, westY[k], domains[idx % domains.length]);
-  }
-  for (var m = 0; m < eastY.length && idx < others.length; m++, idx++) {
-    add(others[idx], 32, eastY[m], domains[idx % domains.length]);
-  }
-  return npcs;
+    var type = domains.indexOf(persisted) >= 0 ? persisted : domains[index % domains.length];
+    return {
+      slug: slug, x: slots[index][0], y: slots[index][1],
+      type: type, defeated: false, training: true,
+    };
+  });
 }
 
 function buildLibraryMap() {
@@ -324,13 +340,6 @@ function regionOf(x, y) {
   if (y < 11) { if (x < 12) return "AGENT"; if (x < 24) return "MCP"; return "CONFIG"; }
   return x < 12 ? "CONTEXT" : (x < 24 ? "PROMPT" : "MIX");
 }
-
-// ---------- Zone identity styling (#A: open-plan polish) ----------
-// Cosmetic seam runners inlaid along the zone boundaries (verticals x=12 & x=24, horizontal
-// y=11) with walkway GAPS — the primary "separate rooms" cue. Purely visual: NOT in SOLID,
-// so movement + NPC placement are unaffected. Gap sets list the tile indices left open.
-const SEAM_VGAPS = new Set([0, 9, 10, 15, 16, 23]);          // open rows on x=12 / x=24
-const SEAM_HGAPS = new Set([0, 6, 7, 17, 18, 29, 30, 35]);   // open cols on y=11
 
 // ---------- Audio (tiny synth, no assets) ----------
 let audioCtx = null, muted = false;
@@ -393,7 +402,7 @@ function loadImages() {
 // slug has sprites-walk/<slug>/<dir>_<0..3>.png (dir ∈ down/up/left/right, 4-frame cycle:
 // left contact, passing, right contact, passing). L/R art is baked facing the desired way.
 // Only the player uses these frames, so load one slug on demand instead of blocking boot on
-// all 464 PNGs. Missing files leave gaps and drawCharacter falls back safely to spriteMini.
+// every roster member's PNGs. Missing files leave gaps and drawCharacter falls back safely to spriteMini.
 const walkAnim = {};      // slug -> {down:[img×4], up:[...], left:[...], right:[...]}
 const walkAnimLoads = {}; // slug -> in-flight/completed Promise (deduplicates hover/preload)
 const WALK_DIRS = ["down", "up", "left", "right"];
@@ -445,6 +454,13 @@ const studyPropStore = {}; // accepted deterministic study-life cutouts
 let studyPropManifest = [];
 const libStore = {};      // slug -> HTMLImageElement (or null on error) — library assets
 let libManifest = [];     // library manifest entries (or [] on failure)
+const wayfindingStore = {}; // id -> validated HTMLImageElement — wayfinding assets (#049)
+let wayfindingManifest = []; // exact accepted wayfinding entries (or [] on failure)
+const WAYFINDING_IDS = Object.freeze([
+  "zone-agent-frieze", "zone-mcp-frieze", "zone-config-frieze",
+  "zone-prompt-frieze", "zone-context-frieze", "zone-mix-frieze",
+  "door-context-surround", "door-library-surround", "door-battle-surround",
+]);
 function loadProps() {
   return fetch("props/manifest.json")
     .then(r => (r.ok ? r.json() : []))
@@ -513,6 +529,61 @@ function loadLibraryAssets() {
       return Promise.all(libManifest.map(m => loadOne(`library/assets/${m.file}`, libStore, m.slug)));
     })
     .catch(() => { libManifest = []; });
+}
+
+// Wayfinding assets (#049): deterministic accepted 2x batch. The whole manifest fails
+// closed if any declaration is malformed; no partial set can create ambiguous entrances.
+function normalizeWayfindingManifest(manifest) {
+  var rootKeys = ["asset_count", "batch", "batch_sha256", "entries", "format", "provenance", "reviewState", "sourceScale"];
+  var entryKeys = ["alphaMode", "collision", "description", "file", "heightPx", "id", "kind", "provenance", "reviewState", "sha256", "slug", "sourceHeightPx", "sourceScale", "sourceWidthPx", "widthPx"];
+  var provenance = "pillow-primitives:certification-spine-v1";
+  if (!manifest || Object.keys(manifest).sort().join(",") !== rootKeys.join(",") ||
+      manifest.batch !== "batch-certification-spine" || manifest.format !== "RGBA" ||
+      manifest.reviewState !== "accepted" || manifest.sourceScale !== 2 ||
+      manifest.provenance !== provenance || !/^[0-9a-f]{64}$/.test(manifest.batch_sha256 || "") ||
+      manifest.asset_count !== WAYFINDING_IDS.length || !Array.isArray(manifest.entries) ||
+      manifest.entries.length !== WAYFINDING_IDS.length) return [];
+  var normalized = [];
+  for (var i = 0; i < WAYFINDING_IDS.length; i++) {
+    var entry = manifest.entries[i], id = WAYFINDING_IDS[i];
+    var surround = id.indexOf("door-") === 0;
+    var width = 96, height = surround ? 64 : 16;
+    var requiredKeys = surround ? entryKeys.concat(["opening"]).sort() : entryKeys;
+    if (!entry || Object.keys(entry).sort().join(",") !== requiredKeys.join(",") ||
+        entry.id !== id || entry.slug !== id || entry.file !== id + ".png" ||
+        entry.kind !== (surround ? "surround" : "frieze") ||
+        entry.widthPx !== width || entry.heightPx !== height ||
+        entry.sourceWidthPx !== width * 2 || entry.sourceHeightPx !== height * 2 ||
+        entry.sourceScale !== 2 || entry.alphaMode !== "binary" ||
+        entry.collision !== "none" || entry.reviewState !== "accepted" ||
+        entry.provenance !== provenance ||
+        entry.description !== (surround ? "Destination architecture surround" : "Domain architecture frieze") ||
+        typeof entry.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(entry.sha256)) return [];
+    if (surround && (!Array.isArray(entry.opening) || entry.opening.join(",") !== "32,23,64,64")) return [];
+    normalized.push(Object.assign({}, entry));
+  }
+  return normalized;
+}
+function loadWayfindingImage(entry) {
+  return new Promise(function(resolve) {
+    var image = new Image();
+    image.onload = function() {
+      var valid = image.naturalWidth === entry.sourceWidthPx && image.naturalHeight === entry.sourceHeightPx;
+      wayfindingStore[entry.id] = valid ? image : null;
+      resolve();
+    };
+    image.onerror = function() { wayfindingStore[entry.id] = null; resolve(); };
+    image.src = "props-wayfinding/" + entry.file;
+  });
+}
+function loadWayfindingAssets() {
+  return fetch("props-wayfinding/manifest.json")
+    .then(function (response) { return response.ok ? response.json() : null; })
+    .then(function (manifest) {
+      wayfindingManifest = normalizeWayfindingManifest(manifest);
+      return Promise.all(wayfindingManifest.map(loadWayfindingImage));
+    })
+    .catch(function () { wayfindingManifest = []; });
 }
 
 // Smooth-downscaled square version of the trainer sprite for small sizes
@@ -673,6 +744,7 @@ let difficulty = "normal";   // "easy" | "normal" | "hard" — chosen at select,
 let currentMinigame = null;  // {type, stationId, label, score, phase} while state==="minigame"; null otherwise
 let libraryProgress = {};    // bookId -> pageReached; persisted now, written by the reader later (#027 follow-up)
 let minigameScores = {};     // stationId -> best score (higher is better; 0 = not attempted)
+let mentorReview = null;    // #049: {npc, question, review, sel, phase, feedback, msgAt} — defeated-colleague review modal
 let frame = 0;
 let dtF = 1;           // logical 60Hz frames this tick
 let mapCv = null;        // active pre-rendered map (points to officeMapCv or libraryMapCv or battleRoomMapCv)
@@ -733,6 +805,7 @@ function placeNPCs() {
     if (DOORS.some(([dx, dy]) => Math.abs(dx - x) + Math.abs(dy - y) <= 1)) continue;
     if (Math.abs(x - player.x) + Math.abs(y - player.y) <= 2) continue;
     if (reservedSeats.has(`${x},${y}`)) continue; // #047: don't place standing NPCs on chairs
+    if (isPathMaskCell(x, y)) continue; // #049: certification spine + commons clearways
     regions[regionOf(x, y)].push([x, y]);
   }
   // Rank each region's cells best-first (score desc; small rng jitter varies ties so the
@@ -976,13 +1049,17 @@ function spawnPoof(b) {
 function startBattle(npc) {
   // Player cannot be seated during battle (#047).
   leaveSeat();
+  clearMentorReview(); // #049: modal must not survive battle start
+  const matchup = resolveAttributeMatchup(npc.slug);
   const monPool = shuffled(MON_NAMES[npc.type === "MIX" ? weightedDomain() : npc.type],
                            mulberry32(Math.floor(Math.random() * 1e9)));
   const level = Math.max(1, 5 + defeated.size * 2 + (TIER_LEVEL_DELTA[difficulty] || 0));
   const isAgent = npc.type === "AGENT";
-  // Training mode (#046): restore HP before battle, tag encounter for isolation.
+  // Training restores attribute-derived max HP. Campaign HP is clamped when a
+  // legacy/newly-selected character enters its first stat-aware encounter.
   var training = currentMap === "battleRoom";
-  if (training) player.hp = MAX_HP;
+  if (training) player.hp = matchup.maxHp;
+  else player.hp = Math.min(player.hp, matchup.maxHp);
   var introMessage;
   if (typeof DatamonDialogue !== "undefined") {
     introMessage = training
@@ -993,13 +1070,19 @@ function startBattle(npc) {
       ? `${displayName(npc.slug)} challenges you to an Agent Operations duel!`
       : `${displayName(npc.slug)} ${BATTLE_INTROS[Math.floor(Math.random() * BATTLE_INTROS.length)]}`;
   }
+  var monCount = isAgent ? 2 : matchup.opponentMonCount;
+  var attributeLine = typeof DatamonAttributes !== "undefined" ? DatamonAttributes.describe(matchup) : "";
   battle = {
     npc,
     training: training,
-    mons: [0, 1].map(i => ({ name: monPool[i % monPool.length], level: level + i, q: null, alive: true })),
+    attributes: matchup,
+    mons: Array.from({ length: monCount }, (_, i) => ({
+      name: monPool[i % monPool.length], level: level + i, q: null, alive: true,
+    })),
     idx: 0,
     phase: "intro", // Agent phase is projected from reducer state before the scene renders
-    timerMs: HARD_TIMER_MS,
+    timerLimitMs: matchup.hardTimerMs,
+    timerMs: matchup.hardTimerMs,
     msg: introMessage,
     sel: 0,
     feedback: null,
@@ -1023,6 +1106,9 @@ function startBattle(npc) {
       npc: npc,
       npcs: npcs,
       playerHp: player.hp,
+      maxHp: matchup.maxHp,
+      wrongDamage: matchup.wrongDamage,
+      correctHeal: matchup.correctHeal,
     });
     battle.agentOpsSel = 0;
     battle.agentOpsChoiceSel = 0;
@@ -1046,7 +1132,7 @@ function _agentDispatch(b, event) {
   player.hp = b.agentOps.playerHp;
 
   if (event.type === "START_TURN" && b.agentOps !== previous) {
-    b.timerMs = HARD_TIMER_MS;
+    b.timerMs = battleTimerLimit(b);
   }
 
   // Present the whole semantic transition exactly once. The arena compares the
@@ -1070,6 +1156,10 @@ function _agentDispatch(b, event) {
       case "PLAYER_DAMAGE":
         // HP was already assigned absolutely from reducer state above.
         if (!arenaActive) sfx.wrong();
+        break;
+      case "PLAYER_HEAL":
+        // Correct-answer Jargon recovery is already projected from reducer HP.
+        if (!arenaActive) sfx.confirm();
         break;
       case "GUARDRAIL_BLOCK":
         if (!arenaActive) sfx.confirm();
@@ -1191,7 +1281,7 @@ function _agentFinishDefeat(b) {
     if (typeof AgentArena !== "undefined") AgentArena.reset();
     wrapCache.clear();
     battle = null;
-    player.hp = MAX_HP;
+    restorePlayerHp(true);
     player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
     state = "overworld"; bufferedDir = null; turnStartMs = null;
     showToast("Training defeat — HP restored. Try again!");
@@ -1201,7 +1291,7 @@ function _agentFinishDefeat(b) {
   wrapCache.clear();
   battle = null;
   if (currentMap !== "office") { currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv; npcs = officeNpcs; }
-  player.hp = MAX_HP;
+  restorePlayerHp(true);
   player.x = player.fx = 18; player.y = player.fy = 16;
   camFx = camFy = null; stepT = 1; player.moving = false;
   state = "overworld"; bufferedDir = null; turnStartMs = null;
@@ -1314,7 +1404,9 @@ function _agentSyncPhase(b) {
         if (ao.outcome.correct) {
           var action = DatamonBattleOps.ACTIONS[ao.selectedAction] || DatamonBattleOps.ACTIONS.query;
           b.feedback = { correct: true };
-          b.msg = "Correct! " + action.label + " hit for " + action.damage + " Stability." + (q && q.x ? " (" + q.x + ")" : "");
+          b.msg = "Correct! " + action.label + " hit for " + action.damage + " Stability."
+            + (ao.outcome.healed ? " Jargon restored " + ao.outcome.healed + " HP." : "")
+            + (q && q.x ? " (" + q.x + ")" : "");
           b.faintAt = frame;
           b.shake = 0; b.attackAt = 0; b.dmgAt = 0;
         } else {
@@ -1326,7 +1418,7 @@ function _agentSyncPhase(b) {
             b.msg += " Guardrail blocked the hit — no HP damage.";
             b.shake = 0; b.attackAt = 0; b.dmgAt = 0;
           } else {
-            b.msg += " You took " + WRONG_DMG + " damage!";
+            b.msg += " You took " + ao.wrongDamage + " damage!";
             // Agent presentation owns bounded impact cues; legacy shake/flash state
             // stays disabled (including under prefers-reduced-motion).
             b.shake = 0; b.attackAt = 0; b.dmgAt = 0;
@@ -1338,13 +1430,14 @@ function _agentSyncPhase(b) {
     case "feedback":
       if (ao.outcome && ao.outcome.correct) {
         b.feedback = { correct: true };
-        b.msg = "Good hit! " + (ao.boss ? "Boss Stability: " + ao.stability + "/" + ao.maxStability : "Stability: " + ao.stability + "/" + ao.maxStability);
+        b.msg = "Good hit! " + (ao.boss ? "Boss Stability: " + ao.stability + "/" + ao.maxStability : "Stability: " + ao.stability + "/" + ao.maxStability)
+          + (ao.outcome.healed ? " · Jargon +" + ao.outcome.healed + " HP" : "");
       } else if (ao.outcome && ao.outcome.blocked) {
         b.feedback = { correct: false, blocked: true };
         b.msg = "Guardrail blocked the hit. No HP damage taken.";
       } else {
         b.feedback = { correct: false };
-        b.msg = "You took " + WRONG_DMG + " damage!";
+        b.msg = "You took " + ao.wrongDamage + " damage!";
       }
       b.msgAt = frame;
       break;
@@ -1382,7 +1475,7 @@ function advanceBattle() {
     currentMon().q = drawQuestion(b.npc.type);
     b.phase = "question";
     b.sel = 0;
-    b.timerMs = HARD_TIMER_MS;       // (re)start the Hard-mode countdown for the new question
+    b.timerMs = battleTimerLimit(b); // Caffeine matchup sets the Hard-mode countdown
   } else if (b.phase === "feedback") {
     if (b.feedback.correct) {
       currentMon().alive = false;
@@ -1409,7 +1502,7 @@ function advanceBattle() {
       currentMon().q = drawQuestion(b.npc.type);
       b.phase = "question";
       b.sel = 0; b.attackAt = 0; b.dmgAt = 0;
-      b.timerMs = HARD_TIMER_MS;     // (re)start the Hard-mode countdown for the next question
+      b.timerMs = battleTimerLimit(b); // Caffeine matchup sets the next countdown
     }
   } else if (b.phase === "win") {
     if (b.training) {
@@ -1435,13 +1528,13 @@ function advanceBattle() {
     battle = null;
     if (b.training) {
       _trainingLoss(b);
-      player.hp = MAX_HP;
+      restorePlayerHp(true);
       player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
       state = "overworld"; bufferedDir = null; turnStartMs = null;
       showToast("Training defeat — HP restored. Try again!");
     } else {
       if (currentMap !== "office") { currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv; npcs = officeNpcs; }
-      player.hp = MAX_HP;
+      restorePlayerHp(true);
       player.x = player.fx = 18; player.y = player.fy = 16;
       camFx = camFy = null; stepT = 1; player.moving = false;
       state = "overworld"; bufferedDir = null; turnStartMs = null;
@@ -1469,14 +1562,18 @@ function recordOutcome(correct) {
   save();   // persist immediately so a single answer lands in localStorage
 }
 
-// Shared wrong-answer outcome: WRONG_DMG + shake + mon attack/flash animation +
-// feedback flag + transition to the feedback phase. Used by BOTH the wrong branch
-// of answerQuestion AND the Hard-mode timeout handler so they route through the
-// EXACT same code path (Must Not #4 — timeout reuses the existing wrong-answer/
-// blackout flow; at 0 HP advanceBattle's feedback branch routes to lose).
+function applyCorrectHeal(b) {
+  var amount = b && b.attributes ? b.attributes.correctHeal : 0;
+  var before = player.hp;
+  player.hp = Math.min(battleMaxHp(b), player.hp + amount);
+  return player.hp - before;
+}
+
+// Shared wrong-answer outcome: attribute-derived damage + shake + mon attack/flash
+// animation + feedback. Wrong answers and Hard-mode timeouts use this exact path.
 function applyWrongHit(b, msg) {
   sfx.wrong();
-  player.hp = Math.max(0, player.hp - WRONG_DMG);
+  player.hp = Math.max(0, player.hp - battleWrongDamage(b));
   b.shake = 14;
   b.feedback = { correct: false };
   b.msg = msg;
@@ -1499,13 +1596,17 @@ function answerQuestion(i) {
   recordOutcome(correct);
   if (correct) {
     sfx.correct();
-    b.feedback = { correct: true };
-    b.msg = `Correct! ${currentMon().name.toUpperCase()} fainted!` + (q.x ? ` (${q.x})` : "");
+    var healed = applyCorrectHeal(b);
+    b.feedback = { correct: true, healed: healed };
+    b.msg = `Correct! ${currentMon().name.toUpperCase()} fainted!`
+      + (healed ? ` Jargon restored ${healed} HP.` : "")
+      + (q.x ? ` (${q.x})` : "");
     b.faintAt = frame;
     b.msgAt = frame;
     b.phase = "feedback";
   } else {
-    applyWrongHit(b, `Wrong! It was "${q.c[q.a]}". ${q.x || ""} ${currentMon().name.toUpperCase()} hits you for ${WRONG_DMG}!`);
+    var damage = battleWrongDamage(b);
+    applyWrongHit(b, `Wrong! It was "${q.c[q.a]}". ${q.x || ""} ${currentMon().name.toUpperCase()} hits you for ${damage}!`);
   }
 }
 
@@ -1524,7 +1625,8 @@ function timeoutQuestion() {
   // Classic path
   if (b.phase !== "question") return;
   recordOutcome(false);
-  applyWrongHit(b, `Time's up! It was "${currentMon().q.c[currentMon().q.a]}". ${currentMon().name.toUpperCase()} hits you for ${WRONG_DMG}!`);
+  var damage = battleWrongDamage(b);
+  applyWrongHit(b, `Time's up! It was "${currentMon().q.c[currentMon().q.a]}". ${currentMon().name.toUpperCase()} hits you for ${damage}!`);
 }
 
 function attemptRun() {
@@ -1544,7 +1646,7 @@ function attemptRun() {
     battle = null;
     if (b.training) {
       _trainingLoss(b);
-      player.hp = MAX_HP;
+      restorePlayerHp(true);
     }
     player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
     state = "overworld"; bufferedDir = null; turnStartMs = null;
@@ -1552,7 +1654,7 @@ function attemptRun() {
   } else {
     // FAILURE — same attack path as a wrong answer (damage + shake + hit animation).
     sfx.wrong();
-    player.hp = Math.max(0, player.hp - WRONG_DMG);
+    player.hp = Math.max(0, player.hp - battleWrongDamage(b));
     b.shake = 14;
     b.attackAt = frame;
     b.dmgAt = frame;
@@ -1616,12 +1718,12 @@ function _trainingLoss(b) {
 var _lastLocationKey = null;
 var _locationPoliteEl = null;
 const LOCATION_PURPOSES = Object.freeze({
-  AGENT: "Agent design & strategy",
-  MCP: "MCP integration & tooling",
-  CONFIG: "Configuration & deployment",
-  PROMPT: "Prompt engineering & design",
-  CONTEXT: "Context design & retrieval",
-  MIX: "Mixed-domain certification",
+  AGENT: "Debrief agent strategy with mentors",
+  MCP: "Review tool interfaces with mentors",
+  CONFIG: "Audit settings and deployment with mentors",
+  PROMPT: "Critique prompts with mentors",
+  CONTEXT: "Triage context reliability with mentors",
+  MIX: "Review your recommended weak domain",
 });
 
 function locationHudLabel() {
@@ -1633,8 +1735,8 @@ function locationHudLabel() {
 }
 
 function locationHudPurpose() {
-  if (currentMap === "library") return "Browse knowledge & study";
-  if (currentMap === "battleRoom") return "Train against colleagues";
+  if (currentMap === "library") return "Learn unseen material and rehearse";
+  if (currentMap === "battleRoom") return "Test due concepts in safe rematches";
   var region = regionOf(player.x, player.y);
   return LOCATION_PURPOSES[region] || "Office workspace";
 }
@@ -1662,11 +1764,55 @@ function announceLocation(label, purpose, force) {
   }
 }
 
+// ---- Destination preview (#049): door-facing projections ----
+// When the player stands adjacent to (and faces) the Context, Battle, or Library
+// entrance, the Location HUD temporarily projects destination, purpose, accent,
+// and interaction hint. This does not affect collision or interaction logic.
+function officeDestinationPreview() {
+  if (currentMap !== "office") return null;
+  var ft = facingTile();
+  var facing = map[ft[1]] && map[ft[1]][ft[0]];
+
+  // Context meeting-room door: walk-through
+  if (ft[0] === 7 && ft[1] === 15 && facing === ".") {
+    return {
+      label: "Reliability Triage",
+      purpose: "Review Context with bested mentors",
+      accent: TYPE_COLORS["CONTEXT"],
+      hint: "AHEAD: Reliability Triage · review Context",
+      announce: "Reliability Triage ahead. Review Context concepts with bested mentors inside.",
+    };
+  }
+  // Battle Room door: interact
+  if (facing === "A" && (ft[0] === 11 && ft[1] === 23)) {
+    return {
+      label: "Battle Room",
+      purpose: "Test due concepts in safe rematches",
+      accent: "#ef4444",
+      hint: "SPACE: enter Battle Room · Test & Retain",
+      announce: "Battle Room ahead. Test and retain due concepts in safe rematches. Press Enter to enter.",
+    };
+  }
+  // Library door: interact
+  if (facing === "L" && (ft[0] === 24 && ft[1] === 23)) {
+    return {
+      label: "The Library",
+      purpose: "Learn unseen material and rehearse",
+      accent: "#f2b35d",
+      hint: "SPACE: enter Library · Learn & Rehearse",
+      announce: "The Library ahead. Learn unseen material and rehearse with reading and study stations. Press Enter to enter.",
+    };
+  }
+  return null;
+}
+
 function drawLocationHUD() {
   var hudX = CANVAS_W - 294, hudY = 8, hudW = 286, hudH = 52;
-  var label = locationHudLabel();
-  var purpose = locationHudPurpose();
-  var accent = locationHudAccent();
+  // #049: destination preview overrides normal location HUD when facing an entrance
+  var preview = officeDestinationPreview();
+  var label = preview ? preview.label : locationHudLabel();
+  var purpose = preview ? preview.purpose : locationHudPurpose();
+  var accent = preview ? preview.accent : locationHudAccent();
 
   ctx.fillStyle = "rgba(15,23,42,0.85)";
   ctx.beginPath();
@@ -1689,7 +1835,7 @@ function drawLocationHUD() {
   ctx.font = "bold 13px monospace";
   ctx.fillText(label, hudX + 12, hudY + 32);
 
-  // Purpose line
+  // Purpose always remains visible; the contextual bottom hint carries the action key.
   ctx.fillStyle = "#94a3b8";
   ctx.font = "10px monospace";
   ctx.fillText(purpose, hudX + 12, hudY + 46);
@@ -1735,7 +1881,304 @@ function drawEvidenceHUD() {
   ctx.fillText(hudText, hudX + 12, hudY + 15);
 }
 
-// ---- Certification Console modal (#047) ----
+// ---- Mentor Review Modal (#049): defeated-colleague one-question review ----
+// Freezes overworld movement/input behind the modal. Clears on Escape, reset, search,
+// battle, warps, map swap, and victory lifecycle paths.
+function openMentorReview(npc) {
+  if (!npc || state !== "overworld" || currentMap !== "office" || npc.training) return;
+  if (mentorReview) return; // Don't stack modals
+
+  var reviewDomain = npc.type;
+  var review = (typeof DatamonProgress !== "undefined" && typeof QUESTION_BANK !== "undefined")
+    ? DatamonProgress.selectReviewQuestion(QUESTION_BANK, questionStats, seenCounter, reviewDomain)
+    : null;
+  if (!review) {
+    showToast(displayName(npc.slug) + " has no review material for you right now.");
+    return;
+  }
+
+  // Apply reveal telemetry once and retain the reducer's consumed event token.
+  var revealEvent = { type: "reveal", consumed: false };
+  var telemetry = (typeof DatamonProgress !== "undefined")
+    ? DatamonProgress.applyReviewTelemetry(questionStats, seenCounter, review, revealEvent)
+    : null;
+  if (telemetry && telemetry.changed) {
+    questionStats = telemetry.questionStats;
+    seenCounter = telemetry.seenCounter;
+    _evidenceRevision++;
+    save();
+  }
+
+  var question = review.question;
+  var mentorLine = (typeof DatamonDialogue !== "undefined")
+    ? DatamonDialogue.getLine(npc.slug, "campaign-follow-up", npc.type)
+    : "Let's turn that battle into one useful review.";
+  mentorReview = {
+    npc: npc,
+    question: question,
+    review: review,
+    sel: 0,
+    phase: "question",     // question → feedback → close
+    feedback: null,        // {correct: bool}
+    msgAt: frame,
+    answered: false,
+    revealEvent: telemetry && telemetry.event ? telemetry.event : revealEvent,
+    answerEvent: null,
+    mentorLine: mentorLine,
+  };
+
+  sfx.select();
+  toast = null;
+  bufferedDir = null;
+  if (typeof document !== "undefined") {
+    var announcer = document.getElementById("datamon-announcer");
+    if (announcer) {
+      var spokenChoices = (question.c || []).map(function (choice, index) {
+        return (index + 1) + ", " + choice;
+      }).join(". ");
+      announcer.textContent = "Review with " + displayName(npc.slug) + ": " +
+        question.q + " " + spokenChoices + ". Arrow keys or 1 through 4 to choose; Enter to answer; Escape to close.";
+    }
+  }
+}
+
+function drawMentorReview() {
+  if (!mentorReview) return;
+  var mr = mentorReview;
+  var q = mr.question;
+
+  // Full-canvas scrim
+  ctx.fillStyle = "rgba(8,12,24,0.78)";
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // Modal panel
+  var mx = 60, my = 80, mw = CANVAS_W - 120, mh = CANVAS_H - 160;
+  ctx.fillStyle = "rgba(12,18,36,0.97)";
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(mx, my, mw, mh, 8);
+  else ctx.fillRect(mx, my, mw, mh);
+  ctx.fill();
+  ctx.strokeStyle = TYPE_COLORS[mr.npc.type] || "#94a3b8";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Header: mentor identity + domain
+  var accent = TYPE_COLORS[mr.npc.type] || "#94a3b8";
+  ctx.fillStyle = accent;
+  ctx.font = "bold 14px monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(displayName(mr.npc.slug), mx + 20, my + 28);
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "10px monospace";
+  ctx.fillText('"' + mr.mentorLine + '"', mx + 20, my + 44);
+  ctx.fillStyle = "#64748b";
+  ctx.textAlign = "left";
+  ctx.fillText((TYPE_NAMES[mr.review.domain] || mr.review.domain) + " · " +
+    (mr.review.reason === "due" ? "DUE" : mr.review.reason === "unseen" ? "UNSEEN" : "REFRESH"),
+    mx + 220, my + 28);
+  ctx.fillStyle = "rgba(148,163,184,0.12)"; ctx.fillRect(mx + mw - 92, my + 10, 72, 26);
+  ctx.strokeStyle = "#64748b"; ctx.lineWidth = 1; ctx.strokeRect(mx + mw - 92, my + 10, 72, 26);
+  ctx.fillStyle = "#cbd5e1"; ctx.textAlign = "center"; ctx.fillText("CLOSE ×", mx + mw - 56, my + 27);
+
+  // Divider
+  ctx.fillStyle = "rgba(148,163,184,0.25)";
+  ctx.fillRect(mx + 16, my + 52, mw - 32, 1);
+
+  // Question text
+  ctx.fillStyle = "#e2e8f0";
+  ctx.font = "13px monospace";
+  ctx.textAlign = "left";
+  var questionLines = wrapText(q.q, mw - 40);
+  var qy = my + 72;
+  for (var li = 0; li < questionLines.length; li++) {
+    ctx.fillText(questionLines[li], mx + 20, qy + li * 18);
+  }
+  qy += questionLines.length * 18 + 12;
+
+  // Choices
+  var choices = q.c || [];
+  var correctIndex = q.correct != null ? q.correct : q.a;
+  var choiceY = qy;
+  for (var ci = 0; ci < choices.length; ci++) {
+    var cy = choiceY + ci * 36;
+    var selected = ci === mr.sel;
+    var isCorrectAnswer = ci === correctIndex;
+    var isWrongSelected = mr.phase === "feedback" && selected && !mr.feedback.correct;
+    var isCorrectRevealed = mr.phase === "feedback" && isCorrectAnswer;
+
+    // Choice background
+    var bgColor = isCorrectRevealed ? "rgba(34,197,94,0.18)"
+      : isWrongSelected ? "rgba(239,68,68,0.18)"
+      : selected && mr.phase === "question" ? "rgba(148,163,184,0.15)"
+      : "rgba(148,163,184,0.04)";
+    ctx.fillStyle = bgColor;
+    var ch = 34;
+    ctx.fillRect(mx + 16, cy, mw - 32, ch);
+    if (selected || isCorrectRevealed) {
+      ctx.fillStyle = isWrongSelected ? "#ef4444" : isCorrectRevealed ? "#22c55e" : accent;
+      ctx.fillRect(mx + 16, cy, 3, ch);
+    }
+
+    // Number
+    ctx.fillStyle = selected ? "#e2e8f0" : "#64748b";
+    ctx.font = "bold 12px monospace";
+    ctx.textAlign = "left";
+    ctx.fillText((ci + 1), mx + 28, cy + 22);
+
+    // Choice text
+    ctx.fillStyle = (mr.phase === "feedback" && !isCorrectAnswer && !selected) ? "#64748b" : "#e2e8f0";
+    ctx.font = "12px monospace";
+    var choiceLines = wrapText(choices[ci], mw - 80);
+    for (var cl = 0; cl < Math.min(2, choiceLines.length); cl++) {
+      ctx.fillText(choiceLines[cl], mx + 48, cy + 16 + cl * 14);
+    }
+
+    // Feedback markers
+    if (mr.phase === "feedback") {
+      ctx.textAlign = "right";
+      if (isCorrectAnswer) {
+        ctx.fillStyle = "#22c55e";
+        ctx.font = "bold 11px monospace";
+        ctx.fillText("CORRECT", mx + mw - 28, cy + 22);
+      } else if (isWrongSelected) {
+        ctx.fillStyle = "#ef4444";
+        ctx.font = "bold 11px monospace";
+        ctx.fillText("WRONG", mx + mw - 28, cy + 22);
+      }
+    }
+  }
+  choiceY += choices.length * 36 + 16;
+
+  // Explanation (after answer)
+  if (mr.phase === "feedback" && q.x) {
+    ctx.fillStyle = "rgba(148,163,184,0.15)";
+    ctx.fillRect(mx + 16, choiceY, mw - 32, 1);
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "11px monospace";
+    ctx.textAlign = "left";
+    var expLines = wrapText(q.x, mw - 40);
+    for (var ei = 0; ei < expLines.length; ei++) {
+      ctx.fillText(expLines[ei], mx + 20, choiceY + 16 + ei * 15);
+    }
+  }
+
+  // Bottom hint
+  ctx.fillStyle = "#64748b";
+  ctx.font = "10px monospace";
+  ctx.textAlign = "center";
+  var hintY = my + mh - 14;
+  if (mr.phase === "question") {
+    ctx.fillText("\u2191\u2193 select  \u00b7  1-4 choose  \u00b7  Enter/Space confirm  \u00b7  ESC close", mx + mw / 2, hintY);
+  } else {
+    ctx.fillText("Enter/Space to close  \u00b7  ESC close", mx + mw / 2, hintY);
+  }
+}
+
+function handleMentorReviewKey(k) {
+  if (!mentorReview) return false;
+  var mr = mentorReview;
+  var choices = mr.question.c || [];
+
+  if (k === "Escape" || k === "esc") {
+    closeMentorReview();
+    return true;
+  }
+
+  if (mr.phase === "question") {
+    if (k === "ArrowUp" || k === "ArrowLeft" || k === "up" || k === "left") {
+      mr.sel = (mr.sel + choices.length - 1) % choices.length;
+      _announceMentorChoice();
+      return true;
+    }
+    if (k === "ArrowDown" || k === "ArrowRight" || k === "down" || k === "right") {
+      mr.sel = (mr.sel + 1) % choices.length;
+      _announceMentorChoice();
+      return true;
+    }
+    if (["1", "2", "3", "4"].includes(k)) {
+      submitMentorAnswer(parseInt(k) - 1);
+      return true;
+    }
+    if (k === "Enter" || k === " " || k === "Space") {
+      submitMentorAnswer(mr.sel);
+      return true;
+    }
+  } else if (mr.phase === "feedback") {
+    if (k === "Enter" || k === " " || k === "Space") {
+      closeMentorReview();
+      return true;
+    }
+  }
+  return false;
+}
+
+function submitMentorAnswer(index) {
+  if (!mentorReview || mentorReview.phase !== "question") return;
+  var mr = mentorReview;
+  var q = mr.question;
+  if (!Number.isInteger(index) || index < 0 || index >= (q.c || []).length || mr.answered) return;
+  var correctIndex = q.correct != null ? q.correct : q.a;
+  var correct = index === correctIndex;
+
+  mr.sel = index;
+  mr.answered = true;
+  mr.phase = "feedback";
+  mr.feedback = { correct: correct };
+  mr.msgAt = frame;
+
+  // Apply answer telemetry with a retained consumed token so duplicate dispatch is a no-op.
+  if (typeof DatamonProgress !== "undefined") {
+    if (!mr.answerEvent) mr.answerEvent = { type: "answer", correct: correct, consumed: false };
+    var telemetry = DatamonProgress.applyReviewTelemetry(
+      questionStats, seenCounter, mr.review, mr.answerEvent
+    );
+    if (telemetry && telemetry.event) mr.answerEvent = telemetry.event;
+    if (telemetry && telemetry.changed) {
+      questionStats = telemetry.questionStats;
+      seenCounter = telemetry.seenCounter;
+      _evidenceRevision++;
+      save();
+    }
+  }
+
+  if (correct) sfx.correct(); else sfx.wrong();
+
+  if (typeof document !== "undefined") {
+    var announcer = document.getElementById("datamon-announcer");
+    if (announcer) {
+      var msg = correct
+        ? "Correct! " + (q.x || "")
+        : "Wrong. The correct answer was: " + q.c[correctIndex] + ". " + (q.x || "");
+      announcer.textContent = msg;
+    }
+  }
+}
+
+function closeMentorReview() {
+  if (!mentorReview) return;
+  mentorReview = null;
+  sfx.select();
+  if (typeof document !== "undefined") {
+    var announcer = document.getElementById("datamon-announcer");
+    if (announcer) announcer.textContent = "Review closed.";
+  }
+}
+
+// Centralised lifecycle clear — modal must not survive reset, battle, warps, or map swaps.
+function clearMentorReview() {
+  if (mentorReview) mentorReview = null;
+}
+
+function _announceMentorChoice() {
+  if (!mentorReview || typeof document === "undefined") return;
+  var announcer = document.getElementById("datamon-announcer");
+  if (!announcer) return;
+  var mr = mentorReview;
+  var choices = mr.question.c || [];
+  var text = "Choice " + (mr.sel + 1) + " of " + choices.length + ": " + choices[mr.sel];
+  announcer.textContent = text;
+}
 function drawCertConsole() {
   // Full-canvas command-center dossier.
   var bgX = 40, bgY = 40, bgW = CANVAS_W - 80, bgH = CANVAS_H - 80;
@@ -1968,7 +2411,7 @@ window.addEventListener("keydown", e => {
   keys[e.key] = true;
   if (code) keys[code] = true; // physical key codes survive Shift/Caps Lock/layout changes
   const pressedDir = KEY_DIR[e.key] || KEY_DIR[code];
-  if (state === "overworld" && pressedDir && !coffeePrompt && !bookPrompt && !readerState && !scout && !certConsoleOpen) {
+  if (state === "overworld" && pressedDir && !coffeePrompt && !bookPrompt && !readerState && !scout && !certConsoleOpen && !mentorReview) {
     if (player.moving) bufferedDir = pressedDir;
     else {
       // A quick tap must move—not merely turn. Holding/repeat continues through the normal loop.
@@ -1977,6 +2420,9 @@ window.addEventListener("keydown", e => {
       tryStep(pressedDir);
     }
   }
+  // A held activation cannot answer and then immediately close the mentor modal.
+  var mentorActivation = mentorReview && ["Enter", " ", "Space", "1", "2", "3", "4"].includes(e.key);
+  if (mentorActivation && (e.repeat || alreadyDown)) return;
   // Agent phases may change on a keydown. Requiring release before another event
   // prevents a held key (including synthetic repeat:false duplicates) from crossing
   // action → choice → resolve/feedback or a terminal phase back to the overworld.
@@ -2014,7 +2460,8 @@ function handleKey(k) {
       const s = getSave();
       if (s) {
         player.slug = s.player;
-        player.seated = null; certConsoleOpen = false;
+        restorePlayerHp(true);
+        player.seated = null; certConsoleOpen = false; clearMentorReview();
         loadWalkAnim(player.slug); // prewarmed at boot; idempotent if already complete
         defeated = new Set(s.defeated);
         placeNPCs();
@@ -2023,6 +2470,7 @@ function handleKey(k) {
       } else {
         state = "select";
         loadWalkAnim(ROSTER[selectIdx]);
+        announceSelectProfile();
       }
     }
     if (k === "r" || k === "R") {
@@ -2035,7 +2483,7 @@ function handleKey(k) {
       saveCache = undefined;
       defeated = new Set();
       questionStats = {};
-      seenCounter = 0; _evidenceRevision++;
+      seenCounter = 0; _evidenceRevision++; clearMentorReview();
       resetSitAssetCache();
       seenThisRun = {};
       coffeeUses = 3;
@@ -2058,9 +2506,9 @@ function handleKey(k) {
       loadWalkAnim(player.slug);
       resetSitAssetCache();
       defeated = new Set();
-      player.hp = MAX_HP;
+      restorePlayerHp(true);
       player.x = player.fx = 18; player.y = player.fy = 16;
-      player.seated = null; certConsoleOpen = false;
+      player.seated = null; certConsoleOpen = false; clearMentorReview();
       camFx = camFy = null; stepT = 1; player.moving = false;
       _progression = freshProgression();
       _npcDomains = _progression.npcDomains;
@@ -2072,6 +2520,11 @@ function handleKey(k) {
       showToast("Beat every colleague to become a Claude Certified Architect!", 3500);
     }
   } else if (state === "overworld") {
+    // #049: Mentor review modal intercepts before all overworld input
+    if (mentorReview) {
+      handleMentorReviewKey(k);
+      return;
+    }
     if (scout) return;                                  // camera pan cinematic — ignore input
     // Certification Console key handling (#047)
     if (certConsoleOpen) {
@@ -2159,6 +2612,7 @@ function recomputeSearch() {
 function openSearch() {
   leaveSeat();
   certConsoleOpen = false;
+  clearMentorReview(); // #049
   state = "search"; searchQuery = ""; recomputeSearch(); sfx.select();
 }
 function handleSearchKey(e) {
@@ -2222,11 +2676,15 @@ canvas.addEventListener("mouseleave", () => {
 // later synthetic click is swallowed below, so one physical press dispatches at
 // most one reducer event even when that event changes the interactive phase.
 const activeAgentPointers = new Set();
+// Pointerdown owns adjacent overworld interactions. Swallow its synthetic follow-on click
+// so opening a modal can never also select/answer/close inside the newly opened layer.
+let suppressCanvasClickUntil = 0;
+let suppressCanvasClickPointerId = null;
 canvas.addEventListener("pointerdown", e => {
   try { canvas.focus({ preventScroll: true }); } catch (_) { canvas.focus(); }
   if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
   if (typeof DatamonMusic !== "undefined") DatamonMusic.unlock();
-  if (state === "overworld" && certConsoleOpen) return; // modal click is handled once by `click`
+  if (state === "overworld" && (certConsoleOpen || mentorReview)) return; // modal click is handled once by `click`
   if (state === "overworld" && !coffeePrompt && !bookPrompt && !readerState && !scout) {
     const [mx, my] = canvasPos(e);
     const dir = pointerDirection(mx, my);
@@ -2241,6 +2699,8 @@ canvas.addEventListener("pointerdown", e => {
       var adjacentSeat = isFreePlayerSeat(ft[0], ft[1]);
       var adjacentConsole = map[ft[1]] && map[ft[1]][ft[0]] === "X" && currentMap === "office";
       if (!player.moving && (adjacentNpc || adjacentPortal || adjacentSeat || adjacentConsole)) {
+        suppressCanvasClickUntil = performance.now() + 750;
+        suppressCanvasClickPointerId = e.pointerId;
         interact();
         e.preventDefault();
         return;
@@ -2291,16 +2751,54 @@ window.addEventListener("pointerup", e => {
 window.addEventListener("pointercancel", e => {
   releasePointerMovement(e.pointerId);
   activeAgentPointers.delete(e.pointerId);
+  if (suppressCanvasClickPointerId === e.pointerId) {
+    suppressCanvasClickUntil = 0;
+    suppressCanvasClickPointerId = null;
+  }
   if (typeof AgentArena !== "undefined") AgentArena.setHover(null, -1, false);
 });
 window.addEventListener("blur", () => {
   pointerMoveId = null; pointerMoveDir = null;
   activeAgentPointers.clear();
+  suppressCanvasClickUntil = 0; suppressCanvasClickPointerId = null;
 });
 
 canvas.addEventListener("click", e => {
+  var clickNow = performance.now();
+  var samePointer = !e.pointerId || suppressCanvasClickPointerId == null || e.pointerId === suppressCanvasClickPointerId;
+  if (clickNow <= suppressCanvasClickUntil && samePointer) {
+    suppressCanvasClickUntil = 0; suppressCanvasClickPointerId = null;
+    e.preventDefault();
+    return;
+  }
+  if (clickNow > suppressCanvasClickUntil) {
+    suppressCanvasClickUntil = 0; suppressCanvasClickPointerId = null;
+  }
   const [mx, my] = canvasPos(e);
   if (bookPrompt || readerState) return; // swallow clicks behind book modal (keyboard-only UI)
+  if (mentorReview) {
+    // #049: Mentor review click — close on scrim click, select on choice hit
+    var mrX = 60, mrY = 80, mrW = CANVAS_W - 120, mrH = CANVAS_H - 160;
+    if (mx < mrX || mx > mrX + mrW || my < mrY || my > mrY + mrH ||
+        (mx >= mrX + mrW - 92 && mx <= mrX + mrW - 20 && my >= mrY + 10 && my <= mrY + 36)) {
+      closeMentorReview();
+    } else if (mentorReview.phase === "question") {
+      // Calculate which choice was clicked based on question rendering position
+      var qy = mrY + 72;
+      ctx.font = "13px monospace";
+      var qLines = wrapText(mentorReview.question.q, mrW - 40);
+      qy += qLines.length * 18 + 12;
+      var choiceRowH = 36;
+      var clickedChoice = Math.floor((my - qy) / choiceRowH);
+      if (mx >= mrX + 16 && mx <= mrX + mrW - 16 &&
+          clickedChoice >= 0 && clickedChoice < (mentorReview.question.c || []).length) {
+        submitMentorAnswer(clickedChoice);
+      }
+    } else if (mentorReview.phase === "feedback") {
+      closeMentorReview();
+    }
+    return;
+  }
   if (certConsoleOpen) {
     var bgX = 40, bgY = 40, bgW = CANVAS_W - 80, bgH = CANVAS_H - 80;
     if (mx < bgX || mx > bgX + bgW || my < bgY || my > bgY + bgH ||
@@ -2483,17 +2981,16 @@ function interact() {
   const npc = npcs.find(n => n.x === tx && n.y === ty);
   if (npc) {
     if (npc.defeated) {
-      // Campaign follow-up dialogue (#047)
-      var mentorProgress = null;
-      if (typeof DatamonProgress !== "undefined") {
-        mentorProgress = npc.type === "MIX"
-          ? (_getEvidenceSummary() && _getEvidenceSummary().recommendation)
-          : DatamonProgress.domainSummary(QUESTION_BANK, questionStats, seenCounter, npc.type);
+      // #049: Defeated office colleague opens mentor review modal (replaces generic toast)
+      if (typeof DatamonProgress !== "undefined" && typeof QUESTION_BANK !== "undefined") {
+        openMentorReview(npc);
+      } else {
+        // Fallback: generic follow-up when progress.js is not loaded
+        var followUp = (typeof DatamonDialogue !== "undefined")
+          ? DatamonDialogue.campaignFollowUp(npc.slug, npc.type, displayName, null)
+          : `${firstName(npc.slug)}: "Good battle earlier. Back to my Jira board..."`;
+        showToast(followUp);
       }
-      var followUp = (typeof DatamonDialogue !== "undefined")
-        ? DatamonDialogue.campaignFollowUp(npc.slug, npc.type, displayName, mentorProgress)
-        : `${firstName(npc.slug)}: "Good battle earlier. Back to my Jira board..."`;
-      showToast(followUp);
     }
     else if (npc.type === "AGENT" && typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion()) {
       // Reduced motion skips the triple flash/iris hit-stop entirely.
@@ -2571,12 +3068,13 @@ function commitLibraryWarp() {
   player.dir = "up";
   libraryWarpRequested = false;
   if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("library");
-  announceLocation("The Library", "Browse knowledge & study");
+  announceLocation("The Library", "Learn unseen material and rehearse");
   showToast("Entered the Library.");
   camFx = camFy = null; bufferedDir = null; turnStartMs = null;
 }
 
 function enterLibrary() {
+  clearMentorReview(); // #049
   leaveSeat();
   certConsoleOpen = false;
   player.moving = false; stepT = 1;
@@ -2625,12 +3123,13 @@ function commitBattleRoomWarp() {
   player.dir = "up";
   battleRoomWarpRequested = false;
   if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("battleRoom");
-  announceLocation("Battle Room", "Train against colleagues");
+  announceLocation("Battle Room", "Test due concepts in safe rematches");
   showToast("Entered the Battle Room.");
   camFx = camFy = null; bufferedDir = null; turnStartMs = null;
 }
 
 function enterBattleRoom() {
+  clearMentorReview(); // #049
   leaveSeat();
   certConsoleOpen = false;
   player.moving = false; stepT = 1;
@@ -2651,6 +3150,7 @@ function enterBattleRoom() {
 function returnToOffice(entryX, entryY, toastMsg) {
   leaveSeat();
   certConsoleOpen = false;
+  clearMentorReview();
   libraryWarpRequested = false;
   battleRoomWarpRequested = false;
   currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv;
@@ -2670,7 +3170,7 @@ function returnToOffice(entryX, entryY, toastMsg) {
 function drinkCoffee() {
   if (coffeeUses <= 0) return;
   coffeeUses--;
-  player.hp = MAX_HP;
+  restorePlayerHp(true);
   save();   // persist immediately so a reload can't refill the machine
   sfx.confirm();
   showToast(`Fresh coffee — HP restored! ${coffeeUses} ${coffeeUses === 1 ? "use" : "uses"} left.`);
@@ -2695,11 +3195,13 @@ function updateOverworld(dt) {
   if (coffeePrompt) return;   // modal coffee dialog open — freeze movement input
   if (bookPrompt) return;     // book picker open — freeze movement input
   if (readerState) return;    // book reader open — freeze movement input
+  if (mentorReview) return;   // #049: mentor review modal — freeze movement
   if (scout) return;          // search pan-to-person cinematic — freeze movement
   if (certConsoleOpen) return; // Certification Console open — freeze movement
   if (player.seated) return;  // Seated — freeze movement until deliberate stand
 
-  const WALK_SPEED = 7.5, RUN_SPEED = 12.5; // tiles/sec
+  const moveMultiplier = currentMovementMultiplier();
+  const WALK_SPEED = 7.5 * moveMultiplier, RUN_SPEED = 12.5 * moveMultiplier; // CAFFEINE-adjusted tiles/sec
   player.running = !!(keys["r"] || keys["R"] || keys["KeyR"] ||
     keys["Shift"] || keys["ShiftLeft"] || keys["ShiftRight"]);
   if (player.moving) {
@@ -2752,9 +3254,12 @@ function dirHeld(dir) {
   return false;
 }
 function tryStep(dir) {
-  // Seated: movement stands you up instead of walking.
+  // Seated: the first movement press stands you up instead of walking. Clear that
+  // direction's held-key state so a render tick between keydown and keyup cannot also
+  // advance one tile; a later repeat/new press may move normally.
   if (player.seated) {
     leaveSeat();
+    for (const key in keys) if (KEY_DIR[key] === dir) keys[key] = false;
     sfx.select();
     return;
   }
@@ -3897,7 +4402,7 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
     return;
   }
 
-  // Base overworld size 56px; the player grows ~0.5px/win, capped +14px (→70px at 28 wins).
+  // Base overworld size 56px; the player grows ~0.5px/win, capped +14px (→70px after 28 wins).
   const baseSize = isPlayer ? 56 + Math.min(defeated.size * 0.5, 14) : 56;
   const sizeScale = baseSize / 34;            // proportional factor vs. the old 34px base
   const footY = cy + 16;                      // tile bottom (cy + TILE/2) — feet anchored here
@@ -4087,15 +4592,30 @@ function drawTitle() {
 }
 
 // --- Character select: grid left, animated showcase panel right ---
-const SEL = { cols: 6, cell: 74, ox: 26, oy: 104 };
+// Seven compact columns keep the full 37-person roster and difficulty controls visible
+// without shrinking the selected consultant's large showcase portrait.
+const SEL = { cols: 7, cell: 61, ox: 26, oy: 88 };
 const PANEL = { x: 488, y: 96, w: 286, h: 462 };
 let selChangedAt = -999; // frame when selection last changed (drives animations)
+
+function announceSelectProfile() {
+  if (typeof document === "undefined") return;
+  var announcer = document.getElementById("datamon-announcer");
+  if (!announcer) return;
+  var slug = ROSTER[selectIdx], profile = charProfile(slug);
+  announcer.textContent = displayName(slug) + ", " + profile.title + ". " +
+    STAT_NAMES.map(function(name, index) {
+      return name.charAt(0) + name.slice(1).toLowerCase() + " " + profile.stats[index];
+    }).join(", ") +
+    ". Difficulty " + DIFF_LABELS[difficulty] + ".";
+}
 
 function setSelect(i, silent) {
   if (i === selectIdx) return;
   selectIdx = i;
   selChangedAt = frame;
   loadWalkAnim(ROSTER[selectIdx]); // browsing doubles as a tiny, deduplicated prefetch
+  announceSelectProfile();
   if (!silent) sfx.select();
 }
 
@@ -4103,6 +4623,7 @@ function setSelect(i, silent) {
 function cycleDifficulty(dir) {
   const i = DIFFICULTIES.indexOf(difficulty);
   difficulty = DIFFICULTIES[(i + dir + DIFFICULTIES.length) % DIFFICULTIES.length];
+  announceSelectProfile();
   sfx.select();
 }
 
@@ -4138,16 +4659,112 @@ const CONSULTANT_TITLES = [
   "Kernel Panic Counselor", "Embedding Sommelier", "Cron Job Necromancer", "The Refactorer",
 ];
 const STAT_NAMES = ["CAFFEINE", "DEBUGGING", "VIBES", "JARGON"];
+
+// Hand-tuned public character attributes. The select panel introduces them; attributes.js
+// maps them into bounded, symmetric movement/combat resources without changing answers,
+// question choice, campaign rewards, or learning telemetry.
+const CURATED_STATS = Object.freeze({
+  "alex-andrianavalontsalama": [72, 82, 86, 65],
+  "andrea-vreugdenhil":       [74, 76, 96, 84],
+  "antonia-nistor":           [78, 84, 92, 69],
+  "aurelien-bouffanais":      [68, 88, 87, 78],
+  "dana-domanko":             [73, 79, 94, 85],
+  "duc-an-nguyen":            [86, 94, 82, 88],
+  "elina-gu":                 [70, 87, 90, 82],
+  "emile-moffatt":            [88, 91, 83, 72],
+  "ethan-pirso":              [84, 93, 85, 95],
+  "felicia-gorgacheva":       [91, 84, 96, 74],
+  "francesco-finn":           [77, 90, 88, 70],
+  "guillaume-delmas-frenette":[82, 89, 86, 79],
+  "guillaume-pregent":        [85, 94, 91, 81],
+  "jerry-zhu":                [76, 93, 92, 80],
+  "jewoo-lee":                [73, 90, 84, 77],
+  "jonah-lee":                [81, 88, 89, 73],
+  "jonathan-kim":             [87, 95, 94, 83],
+  "julien-hovan":             [100, 100, 100, 100],
+  "logan-labossiere":         [92, 91, 95, 69],
+  "megane-darnaud":           [89, 86, 93, 77],
+  "milen-thomas":             [94, 92, 88, 76],
+  "minh-ngoc-do":             [75, 89, 91, 80],
+  "oyku-cildir":              [83, 94, 93, 90],
+  "pentcho-tchomakov":        [97, 100, 96, 99],
+  "philippe-miranda-jean":    [90, 96, 89, 82],
+  "richard-el-chaar":         [86, 93, 91, 84],
+  "sarah-kotb":               [88, 82, 98, 90],
+  "saransh-padhy":            [89, 92, 93, 74],
+  "scott-carr":               [99, 96, 98, 100],
+  "stephanie-fontaine":       [79, 90, 92, 83],
+  "tabarek-al-khalidi":       [84, 91, 95, 85],
+  "tyler-nagano":             [86, 96, 88, 89],
+  "veronica-marallag":        [78, 88, 94, 77],
+  "victor-desautels":         [91, 90, 97, 72],
+  "vincent-anctil":           [80, 92, 90, 81],
+  "wild-guevera":             [82, 94, 93, 86],
+  "william-chan":             [98, 98, 99, 100],
+});
+const FEATURED_PROFILES = Object.freeze({
+  "julien-hovan":      { title: "The Creator", color: "#f9735b" },
+  "william-chan":      { title: "The Founder", color: "#fbbf24" },
+  "scott-carr":        { title: "The Managing Partner", color: "#fbbf24" },
+  "pentcho-tchomakov": { title: "The Chief Architect", color: "#fbbf24" },
+});
+console.assert(
+  Object.keys(CURATED_STATS).length === ROSTER.length &&
+  ROSTER.every(slug => Array.isArray(CURATED_STATS[slug]) &&
+    CURATED_STATS[slug].length === STAT_NAMES.length &&
+    CURATED_STATS[slug].every(value => Number.isInteger(value) && value >= 0 && value <= 100)),
+  "Curated character attributes must exactly cover ROSTER with four 0-100 integers"
+);
+
 const profileCache = {};
 function charProfile(slug) {
   if (profileCache[slug]) return profileCache[slug];
   const h = hashStr(slug), rng = mulberry32(h);
+  const featured = FEATURED_PROFILES[slug];
   profileCache[slug] = {
-    title: CONSULTANT_TITLES[h % CONSULTANT_TITLES.length],
-    color: TYPE_COLORS[["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"][h % 6]],
-    stats: STAT_NAMES.map(() => 52 + Math.floor(rng() * 48)),
+    title: featured ? featured.title : CONSULTANT_TITLES[h % CONSULTANT_TITLES.length],
+    color: featured ? featured.color : TYPE_COLORS[["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"][h % 6]],
+    stats: CURATED_STATS[slug] ? CURATED_STATS[slug].slice() : STAT_NAMES.map(() => 52 + Math.floor(rng() * 48)),
   };
   return profileCache[slug];
+}
+
+function statsForSlug(slug) {
+  return slug && ROSTER.includes(slug) ? charProfile(slug).stats : [90, 90, 90, 90];
+}
+function currentPlayerMaxHp() {
+  return typeof DatamonAttributes !== "undefined"
+    ? DatamonAttributes.maxHp(statsForSlug(player.slug)) : MAX_HP;
+}
+function currentMovementMultiplier() {
+  return typeof DatamonAttributes !== "undefined"
+    ? DatamonAttributes.movementMultiplier(statsForSlug(player.slug)) : 1;
+}
+function resolveAttributeMatchup(opponentSlug) {
+  if (typeof DatamonAttributes !== "undefined") {
+    return DatamonAttributes.derive(statsForSlug(player.slug), statsForSlug(opponentSlug), difficulty);
+  }
+  return {
+    difficulty: difficulty, maxHp: MAX_HP, wrongDamage: WRONG_DMG,
+    hardTimerMs: HARD_TIMER_MS, correctHeal: 0, opponentMonCount: 2,
+    movementMultiplier: 1,
+  };
+}
+function battleMaxHp(b) {
+  return b && b.attributes ? b.attributes.maxHp : currentPlayerMaxHp();
+}
+function battleWrongDamage(b) {
+  return b && b.attributes ? b.attributes.wrongDamage : WRONG_DMG;
+}
+function battleCorrectHeal(b) {
+  return b && b.attributes ? b.attributes.correctHeal : 0;
+}
+function battleTimerLimit(b) {
+  return b && b.attributes ? b.attributes.hardTimerMs : HARD_TIMER_MS;
+}
+function restorePlayerHp(snapDisplay) {
+  player.hp = currentPlayerMaxHp();
+  if (snapDisplay) player.dispHp = player.hp;
 }
 
 function selectHitTest(mx, my) {
@@ -4441,82 +5058,53 @@ function buildFloorTexture() {
   return cv;
 }
 
-// ---- Living office identity -----------------------------------------------------------
-// The six domains share walnut, brick, rainy steel and brass, but each zone behaves like
-// a different working instrument. Everything below is baked into the visual cache only:
-// no map cells, collision, placements, NPC routes or interaction coordinates change.
+// Quiet material zoning replaces the old seam runners and dense floor diagrams.
+// Domain identity is carried by wall friezes and door silhouettes (#049).
 function drawOfficeZoneIdentity(c, ds) {
-  const hair = 1 / Math.max(1, ds);
-  const wash = (x0, y0, x1, y1, color, cx, cy) => {
-    c.save(); c.beginPath(); c.rect(x0 * TILE, y0 * TILE, (x1 - x0) * TILE, (y1 - y0) * TILE); c.clip();
-    const g = c.createRadialGradient(cx * TILE, cy * TILE, 8, cx * TILE, cy * TILE, 7 * TILE);
-    g.addColorStop(0, color); g.addColorStop(1, "rgba(0,0,0,0)");
-    c.fillStyle = g; c.fillRect(x0 * TILE, y0 * TILE, (x1 - x0) * TILE, (y1 - y0) * TILE); c.restore();
-  };
-  const node = (x, y, color) => {
-    c.fillStyle = "rgba(8,20,38,0.64)"; c.fillRect(x * TILE - 3, y * TILE - 3, 6, 6);
-    c.strokeStyle = color; c.lineWidth = hair; c.strokeRect(x * TILE - 2, y * TILE - 2, 4, 4);
-    c.fillStyle = color; c.fillRect(x * TILE - hair / 2, y * TILE - hair / 2, hair, hair);
-  };
+  var hair = 1 / Math.max(1, ds);
 
-  // Practical-light pools are low-contrast so labels, sprites and answer-signposting remain primary.
-  wash(0, 0, 12, 11, "rgba(242,179,93,0.075)", 7, 5);
-  wash(12, 0, 24, 11, "rgba(168,85,247,0.075)", 18, 6);
-  wash(24, 0, 36, 11, "rgba(34,197,94,0.060)", 30, 5);
-  wash(0, 11, 12, 24, "rgba(6,182,212,0.070)", 5, 18);
-  wash(12, 11, 24, 24, "rgba(249,115,22,0.060)", 18, 18);
-  wash(24, 11, 36, 24, "rgba(245,158,11,0.060)", 29, 17);
-
-  c.save(); c.lineCap = "square"; c.lineJoin = "miter";
-  // MCP LAB — a routed tool bus: ports and orthogonal cable traces, not decorative neon.
-  c.strokeStyle = "rgba(168,85,247,0.48)"; c.lineWidth = hair;
-  c.beginPath(); c.moveTo(13 * TILE, 7 * TILE); c.lineTo(22.5 * TILE, 7 * TILE);
-  c.moveTo(15 * TILE, 7 * TILE); c.lineTo(15 * TILE, 5.25 * TILE);
-  c.moveTo(18 * TILE, 7 * TILE); c.lineTo(18 * TILE, 8.5 * TILE);
-  c.moveTo(21 * TILE, 7 * TILE); c.lineTo(21 * TILE, 5.25 * TILE); c.stroke();
-  c.strokeStyle = "rgba(69,215,232,0.34)"; c.beginPath();
-  c.moveTo(13 * TILE, 7 * TILE + 2); c.lineTo(22.5 * TILE, 7 * TILE + 2); c.stroke();
-  for (const p of [[13,7],[15,5.25],[18,8.5],[21,5.25],[22.5,7]]) node(p[0], p[1], "rgba(199,157,255,0.88)");
-
-  // CONFIG BAY — a brass calibration rail with green verified positions.
-  const railY = 8.55 * TILE;
-  c.fillStyle = "rgba(48,34,27,0.52)"; c.fillRect(25 * TILE, railY - 3, 9.5 * TILE, 6);
-  c.fillStyle = "rgba(242,179,93,0.50)"; c.fillRect(25 * TILE, railY - hair / 2, 9.5 * TILE, hair);
-  for (let i = 0; i <= 19; i++) {
-    const x = (25 + i * 0.5) * TILE;
-    c.fillStyle = i % 4 === 0 ? "rgba(34,197,94,0.78)" : "rgba(232,223,200,0.38)";
-    c.fillRect(x, railY - (i % 4 === 0 ? 5 : 3), hair, i % 4 === 0 ? 10 : 6);
+  // Six-zone low-contrast material washes — labels, sprites, and wayfinding remain primary.
+  var zones = [
+    [0, 0, 12, 11, "rgba(242,179,93,0.05)"],
+    [12, 0, 24, 11, "rgba(168,85,247,0.05)"],
+    [24, 0, 36, 11, "rgba(34,197,94,0.04)"],
+    [0, 11, 12, 24, "rgba(6,182,212,0.05)"],
+    [12, 11, 24, 24, "rgba(249,115,22,0.04)"],
+    [24, 11, 36, 24, "rgba(245,158,11,0.04)"],
+  ];
+  for (var z = 0; z < zones.length; z++) {
+    var zz = zones[z];
+    c.fillStyle = zz[4];
+    c.fillRect(zz[0] * TILE, zz[1] * TILE, (zz[2] - zz[0]) * TILE, (zz[3] - zz[1]) * TILE);
   }
 
-  // CONTEXT CORNER — nested context windows reflected in the glass meeting room.
-  c.strokeStyle = "rgba(174,232,241,0.25)"; c.lineWidth = hair;
-  for (let inset = 0; inset < 3; inset++) {
-    c.strokeRect((1.35 + inset * 0.28) * TILE, (16.1 + inset * 0.28) * TILE,
-                 (7.2 - inset * 0.56) * TILE, (5.5 - inset * 0.56) * TILE);
-  }
-  c.fillStyle = "rgba(6,182,212,0.38)";
-  for (const y of [17.05, 20.85]) c.fillRect(1.65 * TILE, y * TILE, 6.6 * TILE, hair);
+  // Restrained Spine/Commons/Gallery inlays — bounded matte/brass paths that lead the eye.
+  c.save();
+  var pathColor = "rgba(242,179,93,0.18)";       // brass path line
+  var spineColor = "rgba(45,55,72,0.32)";        // matte spine track
 
-  // PROMPT STUDIO — editorial registration frames around four drafting stations.
-  c.strokeStyle = "rgba(249,115,22,0.40)"; c.lineWidth = hair;
-  for (const p of [[13.25,15.15],[19.25,15.15],[13.25,18.15],[19.25,18.15]]) {
-    c.strokeRect(p[0] * TILE, p[1] * TILE, 3.2 * TILE, 2.2 * TILE);
-    c.fillStyle = "rgba(242,179,93,0.54)";
-    c.fillRect(p[0] * TILE, p[1] * TILE, 9, hair); c.fillRect(p[0] * TILE, p[1] * TILE, hair, 9);
-    c.fillRect((p[0] + 3.2) * TILE - 9, (p[1] + 2.2) * TILE - hair, 9, hair);
-  }
+  // Certification Spine: north-south central corridor (x=17..19, y=5..22)
+  c.fillStyle = spineColor;
+  c.fillRect(17 * TILE, 5 * TILE, 3 * TILE, 18 * TILE);
+  c.strokeStyle = pathColor;
+  c.lineWidth = hair;
+  c.strokeRect(17 * TILE + hair, 5 * TILE + hair, 3 * TILE - hair * 2, 18 * TILE - hair * 2);
 
-  // THE LOUNGE — one restrained certification-compass inlay carries all five domains.
-  const mx = 29 * TILE, my = 12.85 * TILE;
-  c.strokeStyle = "rgba(242,179,93,0.48)"; c.lineWidth = hair;
-  c.beginPath(); c.arc(mx, my, 18, 0, Math.PI * 2); c.stroke();
-  c.beginPath(); c.moveTo(mx, my - 15); c.lineTo(mx + 6, my); c.lineTo(mx, my + 15);
-  c.lineTo(mx - 6, my); c.closePath(); c.stroke();
-  const domainMarks = ["#3b82f6","#a855f7","#22c55e","#f97316","#06b6d4"];
-  for (let i = 0; i < domainMarks.length; i++) {
-    const a = -Math.PI / 2 + i * Math.PI * 2 / domainMarks.length;
-    c.fillStyle = domainMarks[i]; c.fillRect(mx + Math.cos(a) * 22 - 1, my + Math.sin(a) * 22 - 1, 2, 2);
-  }
+  // Commons: east-west cross corridor (x=2..33, y=10..12)
+  c.fillStyle = "rgba(232,223,200,0.12)";
+  c.fillRect(2 * TILE, 10 * TILE, 32 * TILE, 3 * TILE);
+  c.strokeStyle = "rgba(232,223,200,0.28)";
+  c.strokeRect(2 * TILE + hair, 10 * TILE + hair, 32 * TILE - hair * 2, 3 * TILE - hair * 2);
+
+  // Portal Gallery: south spine extension (x=10..33, y=21..22)
+  c.fillStyle = "rgba(45,55,72,0.24)";
+  c.fillRect(10 * TILE, 21 * TILE, 24 * TILE, 2 * TILE);
+  c.strokeStyle = "rgba(242,179,93,0.16)";
+  c.strokeRect(10 * TILE + hair, 21 * TILE + hair, 24 * TILE - hair * 2, 2 * TILE - hair * 2);
+
+  // Context Spur: approach to the meeting room
+  c.strokeStyle = "rgba(6,182,212,0.22)";
+  c.strokeRect(6 * TILE + hair, 12 * TILE + hair, 3 * TILE - hair * 2, 3 * TILE - hair * 2);
   c.restore();
 }
 
@@ -4665,27 +5253,6 @@ function buildMapCanvas() {
 
   drawOfficeZoneIdentity(c, ds);
 
-  // ---- A3: cosmetic seam runners inlaid along zone boundaries (walkway gaps left open) ----
-  // A 2px groove + faint highlight straddling the grid line reads as an inlaid threshold
-  // between rooms. Drawn over the floor but BEFORE props, so desks/furniture sit on top.
-  const groove = "rgba(40,22,6,0.40)", sheen = "rgba(255,228,188,0.13)";
-  for (const bx of [12, 24]) {                       // vertical seams
-    const px0 = bx * TILE;
-    for (let yy = 0; yy < MAP_H; yy++) {
-      if (SEAM_VGAPS.has(yy)) continue;
-      c.fillStyle = groove; c.fillRect(px0 - 1, yy * TILE, 2, TILE);
-      c.fillStyle = sheen;  c.fillRect(px0 + 1, yy * TILE, 1, TILE);
-    }
-  }
-  {                                                   // horizontal seam y=11
-    const py0 = 11 * TILE;
-    for (let xx = 0; xx < MAP_W; xx++) {
-      if (SEAM_HGAPS.has(xx)) continue;
-      c.fillStyle = groove; c.fillRect(xx * TILE, py0 - 1, TILE, 2);
-      c.fillStyle = sheen;  c.fillRect(xx * TILE, py0 + 1, TILE, 1);
-    }
-  }
-
   // Reviewed practical-light overlay remains optional and placement-bounded.
   if (typeof DatamonWorldArt !== "undefined") {
     const light = DatamonWorldArt.getHDAsset("agent-wing-lighting", "overlay", "office");
@@ -4767,6 +5334,53 @@ function buildMapCanvas() {
     } else if (studyProp.slug === "desk-study-kit") {
       c.fillStyle = "#1e293b"; c.fillRect(spx + 6, spy + 2, 20, 16);
       c.fillStyle = "#38bdf8"; c.fillRect(spx + 8, spy + 4, 16, 10);
+    }
+  }
+
+  // ---- Wayfinding batch (#049): six wall friezes + three destination surrounds ----
+  // Source pixels are true 2x; widthPx/heightPx are the fixed logical draw dimensions.
+  // The lower-zone friezes live on real glass/south walls rather than lying on the floor.
+  var friezePlacements = [
+    { id: "zone-agent-frieze",   col: 2,  row: 0,  accent: TYPE_COLORS.AGENT },
+    { id: "zone-mcp-frieze",     col: 14, row: 0,  accent: TYPE_COLORS.MCP },
+    { id: "zone-config-frieze",  col: 26, row: 0,  accent: TYPE_COLORS.CONFIG },
+    { id: "zone-context-frieze", col: 2,  row: 15, accent: TYPE_COLORS.CONTEXT },
+    { id: "zone-prompt-frieze",  col: 15, row: 23, accent: TYPE_COLORS.PROMPT },
+    { id: "zone-mix-frieze",     col: 29, row: 23, accent: TYPE_COLORS.MIX },
+  ];
+  for (var fi = 0; fi < friezePlacements.length; fi++) {
+    var fp = friezePlacements[fi];
+    var friezeImg = wayfindingStore[fp.id];
+    var friezeMeta = wayfindingManifest.find(function(entry) { return entry.id === fp.id; });
+    if (friezeImg && friezeMeta) {
+      c.drawImage(friezeImg, fp.col * TILE, fp.row * TILE, friezeMeta.widthPx, friezeMeta.heightPx);
+    } else {
+      // Bounded fallback still communicates a wall instrument without text or collision.
+      c.fillStyle = "rgba(8,20,38,0.82)"; c.fillRect(fp.col * TILE, fp.row * TILE + 4, 3 * TILE, 12);
+      c.strokeStyle = fp.accent; c.lineWidth = 1; c.strokeRect(fp.col * TILE, fp.row * TILE + 4, 3 * TILE, 12);
+      c.fillStyle = fp.accent; c.fillRect(fp.col * TILE + 8, fp.row * TILE + 9, 3 * TILE - 16, 2);
+    }
+  }
+
+  var surroundPlacements = [
+    { id: "door-context-surround", door: DOORS[0], accent: TYPE_COLORS.CONTEXT },
+    { id: "door-battle-surround",  door: DOORS[1], accent: "#ef4444" },
+    { id: "door-library-surround", door: DOORS[2], accent: "#f2b35d" },
+  ];
+  for (var si = 0; si < surroundPlacements.length; si++) {
+    var surround = surroundPlacements[si];
+    var surroundImg = wayfindingStore[surround.id];
+    var surroundMeta = wayfindingManifest.find(function(entry) { return entry.id === surround.id; });
+    var left = surround.door[0] * TILE - TILE;
+    var top = (surround.door[1] + 1) * TILE - 64;
+    if (surroundImg && surroundMeta) {
+      c.drawImage(surroundImg, left, top, surroundMeta.widthPx, surroundMeta.heightPx);
+    } else {
+      // Existing portal remains visible in the transparent center; this adds only posts/lintel.
+      c.strokeStyle = surround.accent; c.lineWidth = 2;
+      c.strokeRect(left + 4, top + 6, 88, 16);
+      c.strokeRect(left + 5, top + 22, 22, 40);
+      c.strokeRect(left + 69, top + 22, 22, 40);
     }
   }
 
@@ -4934,38 +5548,19 @@ function buildBattleRoomMapCanvas() {
 
 // World-space room plaques were removed in favor of the fixed location HUD (#046).
 const LIBRARY_DUST_POINTS = Object.freeze([[6,7],[11,12],[17,5],[20,17],[25,7],[29,18],[33,10],[15,20]]);
-const PROMPT_CURSOR_POINTS = Object.freeze([[15.2,16.35],[21.2,16.35],[15.2,19.35],[21.2,19.35]]);
 
 // Seven bounded, particle-free living-world loops. They are cosmetic and draw above the
 // cached architecture but below labels/characters. Reduced motion pins every loop to phase 0.
 function drawLivingWorldAmbient() {
   if (typeof DatamonWorldArt === "undefined") return;
-  const phase = DatamonWorldArt.getAmbientPhase(2400);
-  const sx = x => (x - camFx) * TILE;
-  const sy = y => (y - camFy) * TILE;
+  var phase = DatamonWorldArt.getAmbientPhase(2400);
+  var sx = function (x) { return (x - camFx) * TILE; };
+  var sy = function (y) { return (y - camFy) * TILE; };
   ctx.save();
   if (currentMap === "office") {
-    // MCP: five tool-port pips chase along the routed floor bus.
-    for (let i = 0; i < 5; i++) {
-      const active = Math.floor(phase * 5) === i;
-      ctx.fillStyle = active ? "rgba(199,157,255,0.90)" : "rgba(168,85,247,0.32)";
-      ctx.fillRect(sx(14.3 + i * 1.75) - 2, sy(7) - 2, active ? 4 : 3, active ? 4 : 3);
-    }
-    // Config: two restrained coffee-steam filaments rise from the real counter.
-    ctx.strokeStyle = "rgba(232,223,200,0.30)"; ctx.lineWidth = 1;
-    for (let i = 0; i < 2; i++) {
-      const lift = ((phase + i * 0.42) % 1) * 13;
-      const x = sx(31.5) + i * 5, y = sy(2.35) - lift;
-      ctx.beginPath(); ctx.moveTo(x, y + 10); ctx.quadraticCurveTo(x + (i ? -3 : 3), y + 5, x, y); ctx.stroke();
-    }
-    // Prompt: editorial cursors blink together at the four drafting stations.
-    ctx.fillStyle = phase < 0.52 ? "rgba(255,205,133,0.78)" : "rgba(249,115,22,0.22)";
-    for (const p of PROMPT_CURSOR_POINTS) ctx.fillRect(sx(p[0]), sy(p[1]), 5, 2);
-    // Lounge: the certification-compass inlay breathes once per cycle.
-    ctx.strokeStyle = `rgba(242,179,93,${0.12 + 0.14 * Math.sin(phase * Math.PI)})`;
-    ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(sx(29), sy(12.85), 21 + phase * 5, 0, Math.PI * 2); ctx.stroke();
-    // The generated Certification Console telemetry strip animates at a bounded 2 FPS.
-    // DatamonWorldArt pins phase to zero for reduced motion.
+    // #049: Quiet ambient — only the certification console telemetry strip remains.
+    // Old MCP bus/pips, Config rail, Context window frames, Prompt cursors, and MIX
+    // compass/pulse animations have been removed in favor of static wayfinding assets.
     var ambientMeta = studyPropManifest.find(function(entry) {
       return entry.slug === STUDY_AMBIENT_PLACEMENT.slug;
     });
@@ -5080,6 +5675,9 @@ function drawOverworld() {
   if (currentMap === "office" && typeof DatamonWorldArt !== "undefined") {
     for (const item of DatamonWorldArt.getVisualDetailPlacements("office")) {
       const p = item.placement, e = item.entry;
+      // The old collision-free collaboration table implied a physical obstacle in a walkable cell.
+      // Functional furniture now owns that role; keep this deprecated visual out of the scene.
+      if (e.id === "hd-collaboration-table") continue;
       const sx = (p.col - camFx) * TILE + (e.anchorX || 0);
       const top = (p.row - camFy) * TILE;
       chars.push({ worldArt: item, sx, top, sy: top + e.heightPx, tx: p.col, ty: p.row });
@@ -5153,7 +5751,8 @@ function drawOverworld() {
   ctx.fillStyle = "rgba(15,23,42,0.85)";
   ctx.fillRect(8, 8, 250, 64);
   ctx.drawImage(pixelHead(player.slug, 48), 16, 16, 48, 48);
-  drawHPBar(66, 38, 140, 10, player.dispHp / MAX_HP, firstName(player.slug) + "  HP " + player.hp + "/" + MAX_HP);
+  const hudMaxHp = currentPlayerMaxHp();
+  drawHPBar(66, 38, 140, 10, Math.min(1, player.dispHp / hudMaxHp), firstName(player.slug) + "  HP " + player.hp + "/" + hudMaxHp);
   ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace"; ctx.textAlign = "left";
   if (currentMap === "battleRoom") {
     // Show training streak stats in the Battle Room.
@@ -5169,8 +5768,10 @@ function drawOverworld() {
   }
 
   // Draw fixed navigation chrome after world entities so no sprite can cover it.
+  var destinationPreview = officeDestinationPreview();
   drawLocationHUD();
-  announceLocation(locationHudLabel(), locationHudPurpose());
+  announceLocation(destinationPreview ? destinationPreview.label : locationHudLabel(),
+    destinationPreview ? destinationPreview.announce : locationHudPurpose());
 
   // ---- Evidence HUD strip (#047): compact study-readiness below location instrument ----
   drawEvidenceHUD();
@@ -5184,8 +5785,11 @@ function drawOverworld() {
   var hint = null, hintColor = "#2dd4bf";
   if (player.seated) {
     hint = "SPACE / MOVE: stand up";
+  } else if (destinationPreview) {
+    hint = destinationPreview.hint;
+    hintColor = destinationPreview.accent;
   } else if (facingNpc && !scout) {
-    var actionVerb = facingNpc.defeated ? "talk with"
+    var actionVerb = facingNpc.defeated ? "review with"
       : (currentMap === "battleRoom" ? "train against" : "battle");
     hint = "SPACE: " + actionVerb + " " + displayName(facingNpc.slug) + " [" + facingNpc.type + "]";
     hintColor = TYPE_COLORS[facingNpc.type];
@@ -5195,7 +5799,7 @@ function drawOverworld() {
   } else if (currentMap === "office" && map[ty] && map[ty][tx] === "X") {
     hint = "SPACE: open Certification Console";
   }
-  if (hint && !certConsoleOpen) {
+  if (hint && !certConsoleOpen && !mentorReview) {
     ctx.fillStyle = "rgba(15,23,42,0.90)";
     ctx.font = "bold 14px monospace";
     const hintW = ctx.measureText(hint).width + 24;
@@ -5280,7 +5884,7 @@ function _agentDrawBattle(b) {
     ctx.fillStyle = "#45d7e8"; ctx.font = "bold 18px monospace"; ctx.textAlign = "center";
     ctx.fillText("AGENT OPERATIONS // PROCEDURAL FALLBACK", CANVAS_W / 2, 36);
     ctx.fillStyle = "#e8dfc8"; ctx.font = "bold 13px monospace";
-    ctx.fillText("Stability " + ao.stability + "/" + ao.maxStability + " · Momentum " + ao.momentum + "/3 · Guardrail " + (ao.guardrail ? "ACTIVE" : "OFF") + " · HP " + ao.playerHp, CANVAS_W / 2, 66);
+    ctx.fillText("Stability " + ao.stability + "/" + ao.maxStability + " · Momentum " + ao.momentum + "/3 · Guardrail " + (ao.guardrail ? "ACTIVE" : "OFF") + " · HP " + ao.playerHp + "/" + ao.maxHp, CANVAS_W / 2, 66);
     ctx.textAlign = "left"; ctx.fillStyle = "#f2b35d"; ctx.font = "bold 12px monospace";
     ctx.fillText((ao.question && ao.question.q || "Question unavailable").slice(0, 105), 24, 430);
     var rects = ao.phase === "action" ? _agentActionRects() : _agentChoiceRects();
@@ -5405,9 +6009,12 @@ function drawBattle() {
   const pTx = pbX + 68;
   ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 15px monospace"; ctx.textAlign = "left";
   ctx.fillText("YOU (" + firstName(player.slug) + ")", pTx, 324);
-  drawHPBar(pTx, 340, 175, 12, player.dispHp / MAX_HP);
+  const maxHp = battleMaxHp(b);
+  drawHPBar(pTx, 340, 175, 12, Math.min(1, player.dispHp / maxHp));
   ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
-  ctx.fillText(Math.round(player.dispHp) + "/" + MAX_HP, pTx + 182, 351);
+  ctx.fillText(Math.round(player.dispHp) + "/" + maxHp, pTx + 182, 351);
+  ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 9px monospace";
+  ctx.fillText("MISS -" + battleWrongDamage(b) + " · CORRECT +" + battleCorrectHeal(b) + " HP", pTx, 366);
 
   // floating damage number
   if (b.dmgAt) {
@@ -5415,7 +6022,7 @@ function drawBattle() {
     if (dT < 45) {
       ctx.globalAlpha = Math.max(0, 1 - dT / 45);
       ctx.fillStyle = "#f87171"; ctx.font = "bold 22px monospace"; ctx.textAlign = "center";
-      ctx.fillText("-" + WRONG_DMG, CANVAS_W - 240, 290 - dT * 1.1);
+      ctx.fillText("-" + battleWrongDamage(b), CANVAS_W - 240, 290 - dT * 1.1);
       ctx.globalAlpha = 1;
     }
   }
@@ -5464,7 +6071,7 @@ function drawBattle() {
     if (difficulty === "hard") {
       const remMs = Math.max(0, b.timerMs);
       const secs = Math.ceil(remMs / 1000);
-      const frac = Math.max(0, Math.min(1, remMs / HARD_TIMER_MS));
+      const frac = Math.max(0, Math.min(1, remMs / battleTimerLimit(b)));
       const low = remMs < 10000;
       const barW = 220, barH = 12, tcx = CANVAS_W / 2, tby = by - 34;
       const col = low ? "#f87171" : "#facc15";
@@ -5732,6 +6339,8 @@ function loop(t) {
   if (state === "overworld") drawCoffeePrompt();
   if (state === "overworld") { if (bookPrompt) drawBookPrompt(); if (readerState) drawReader(); }
   drawToast();
+  // Mentor review is the final visual layer; no stale toast or navigation chrome can cover it.
+  if (state === "overworld" && mentorReview) drawMentorReview();
 
   requestAnimationFrame(loop);
 }
@@ -5761,6 +6370,7 @@ loadWalkAnim(getSave()?.player);
 // Full library assets load lazily on first warp.
 Promise.all([
   loadImages(), loadTiles(), loadProps(), loadStudyProps(),
+  loadWayfindingAssets(),
   hdOfficePromise,
   // Load only shared library dependencies needed by the office entrance
   fetch("library/assets/manifest.json")

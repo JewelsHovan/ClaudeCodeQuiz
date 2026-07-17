@@ -12,6 +12,19 @@ const coreJs = fs.readFileSync(
   "utf-8"
 );
 
+const EXPECTED_ROSTER = [
+  "alex-andrianavalontsalama", "andrea-vreugdenhil", "antonia-nistor",
+  "aurelien-bouffanais", "dana-domanko", "duc-an-nguyen", "elina-gu",
+  "emile-moffatt", "ethan-pirso", "felicia-gorgacheva", "francesco-finn",
+  "guillaume-delmas-frenette", "guillaume-pregent", "jerry-zhu", "jewoo-lee",
+  "jonah-lee", "jonathan-kim", "julien-hovan", "logan-labossiere",
+  "megane-darnaud", "milen-thomas", "minh-ngoc-do", "oyku-cildir",
+  "pentcho-tchomakov", "philippe-miranda-jean", "richard-el-chaar",
+  "sarah-kotb", "saransh-padhy", "scott-carr", "stephanie-fontaine",
+  "tabarek-al-khalidi", "tyler-nagano", "veronica-marallag",
+  "victor-desautels", "vincent-anctil", "wild-guevera", "william-chan",
+];
+
 /**
  * Helper: inject the test seam, set up error/request collectors,
  * navigate to the app, and wait for the title screen.
@@ -152,6 +165,71 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     expect(state).toBe("title");
 
     // No page errors, console errors, or failed requests
+    expect(errors, `Unexpected errors: ${errors.join("; ")}`).toEqual([]);
+    expect(failedRequests, `Failed requests: ${failedRequests.join("; ")}`).toEqual([]);
+  });
+
+  test("expanded roster has complete trainer/portrait art and fits the select matrix", async ({ page }) => {
+    const { errors, failedRequests } = await setupPage(page);
+    await page.waitForFunction(() => { try { return eval("state") === "title"; } catch (_) { return false; } });
+
+    const title = await page.evaluate(() => {
+      const ge = (0, eval), roster = ge("ROSTER"), sprites = ge("sprites");
+      return {
+        roster,
+        trainersReady: roster.every(slug => sprites[slug]?.naturalWidth === 256 && sprites[slug]?.naturalHeight === 256),
+      };
+    });
+    expect(title.roster).toEqual(EXPECTED_ROSTER);
+    expect(title.trainersReady).toBe(true);
+
+    const portraits = await page.evaluate(async () => {
+      const ge = (0, eval), roster = ge("ROSTER"), art = window.DatamonWorldArt;
+      const loaded = await Promise.all(roster.map(slug => art.loadPortrait(slug)));
+      return loaded.map(image => image && ({ width: image.naturalWidth, height: image.naturalHeight }));
+    });
+    expect(portraits).toHaveLength(EXPECTED_ROSTER.length);
+    expect(portraits.every(image => image && image.height === 96 && image.width >= 64 && image.width <= 128)).toBe(true);
+
+    const attributes = await page.evaluate(() => {
+      const ge = (0, eval), roster = ge("ROSTER"), curated = ge("CURATED_STATS");
+      const profiles = Object.fromEntries(roster.map(slug => [slug, ge("charProfile")(slug)]));
+      const principals = ["william-chan", "scott-carr", "pentcho-tchomakov"];
+      const total = slug => profiles[slug].stats.reduce((sum, value) => sum + value, 0);
+      return {
+        curatedSlugs: Object.keys(curated).sort(),
+        allProfilesMatch: roster.every(slug => JSON.stringify(profiles[slug].stats) === JSON.stringify(curated[slug])),
+        creator: profiles["julien-hovan"],
+        principalTotals: principals.map(total),
+        strongestNonFeatured: Math.max(...roster.filter(slug => slug !== "julien-hovan" && !principals.includes(slug)).map(total)),
+        featuredTitles: [profiles["william-chan"].title, profiles["scott-carr"].title, profiles["pentcho-tchomakov"].title],
+      };
+    });
+    expect(attributes.curatedSlugs).toEqual([...EXPECTED_ROSTER].sort());
+    expect(attributes.allProfilesMatch).toBe(true);
+    expect(attributes.creator.stats).toEqual([100, 100, 100, 100]);
+    expect(attributes.creator.title).toBe("The Creator");
+    expect(Math.min(...attributes.principalTotals)).toBeGreaterThan(attributes.strongestNonFeatured);
+    expect(attributes.featuredTitles).toEqual(["The Founder", "The Managing Partner", "The Chief Architect"]);
+
+    await page.keyboard.press("Enter");
+    expect(await page.locator("#datamon-announcer").textContent()).toContain("Caffeine 72");
+    await page.keyboard.press("ArrowRight");
+    expect(await page.locator("#datamon-announcer").textContent()).toContain("Andrea Vreugdenhil");
+    const layout = await page.evaluate(() => {
+      const ge = (0, eval), roster = ge("ROSTER"), sel = ge("SEL"), panel = ge("PANEL");
+      const rows = Math.ceil(roster.length / sel.cols), rects = ge("difficultyRects")();
+      return {
+        state: ge("state"), gridRight: sel.ox + sel.cols * sel.cell,
+        gridBottom: sel.oy + rows * sel.cell, panelLeft: panel.x,
+        difficultyTop: rects[0][1], difficultyBlurbBottom: rects[0][1] + rects[0][3] + 16,
+        footerY: ge("CANVAS_H") - 20,
+      };
+    });
+    expect(layout).toMatchObject({ state: "select" });
+    expect(layout.gridRight).toBeLessThan(layout.panelLeft);
+    expect(layout.gridBottom).toBeLessThan(layout.difficultyTop);
+    expect(layout.difficultyBlurbBottom).toBeLessThan(layout.footerY);
     expect(errors, `Unexpected errors: ${errors.join("; ")}`).toEqual([]);
     expect(failedRequests, `Failed requests: ${failedRequests.join("; ")}`).toEqual([]);
   });
@@ -618,14 +696,19 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     const { errors, failedRequests } = await setupPage(page);
     await startDirectBattle(page, { type: "AGENT", difficulty: "hard" });
 
-    // Build exactly 2 Momentum with two Query hits, checking START_TURN owns reset.
+    const matchup = (await inspectState(page)).battle.attributes;
+    expect(matchup.hardTimerMs).toBeGreaterThanOrEqual(25000);
+    expect(matchup.hardTimerMs).toBeLessThanOrEqual(35000);
+
+    // Build exactly 2 Momentum with two Query hits, checking START_TURN owns the
+    // attribute-derived Caffeine timer reset.
     for (let turn = 0; turn < 2; turn++) {
-      expect((await inspectState(page)).battle.timerMs).toBe(30000);
+      expect((await inspectState(page)).battle.timerMs).toBe(matchup.hardTimerMs);
       await playKeyboardQueryTurn(page);
       await acknowledgeAgentMessage(page);
       await page.evaluate(() => { (0, eval)("battle").timerMs = 7; });
       await acknowledgeAgentMessage(page);
-      expect((await inspectState(page)).battle.timerMs).toBe(30000);
+      expect((await inspectState(page)).battle.timerMs).toBe(matchup.hardTimerMs);
     }
     expect((await inspectState(page)).agentOps.momentum).toBe(2);
 
@@ -644,7 +727,7 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     expect(info.agentOps.guardrail).toBe(0);
     expect(info.agentOps.outcome).toMatchObject({ correct: false, reason: "timeout", blocked: true });
     expect(info.battle.message).toMatch(/Guardrail blocked/i);
-    expect(info.battle.message).not.toMatch(/25/);
+    expect(info.battle.message).not.toContain(String(matchup.wrongDamage));
     expect(info.battle.shake).toBe(0);
     expect(info.battle.attackAt).toBe(0);
     expect(info.battle.damageAt).toBe(0);

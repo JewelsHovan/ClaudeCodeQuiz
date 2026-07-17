@@ -98,6 +98,14 @@ describe("DatamonBattleOps — createEncounter defaults", () => {
     const enc = api.createEncounter({ playerHp: -10 });
     assert.equal(enc.playerHp, 0);
   });
+
+  it("accepts bounded attribute-derived HP, miss damage, and correct healing", () => {
+    const enc = api.createEncounter({ maxHp: 110, playerHp: 999, wrongDamage: 21, correctHeal: 8 });
+    assert.equal(enc.maxHp, 110);
+    assert.equal(enc.playerHp, 110);
+    assert.equal(enc.wrongDamage, 21);
+    assert.equal(enc.correctHeal, 8);
+  });
 });
 
 describe("DatamonBattleOps — isLastUndefeatedAgent", () => {
@@ -377,6 +385,16 @@ describe("DatamonBattleOps — reduce: SUBMIT_ANSWER (correct answers)", () => {
     assert.equal(outcome.correct, true);
     assert.equal(outcome.questionId, "agent-001");
   });
+
+  it("correct answer heals by the configured amount without exceeding max HP", () => {
+    let s = api.createEncounter({ maxHp: 110, playerHp: 105, correctHeal: 8 });
+    s = api.reduce(s, { type: "START_TURN", question: Q }).state;
+    s = api.reduce(s, { type: "SELECT_ACTION", action: "query" }).state;
+    const r = api.reduce(s, { type: "SUBMIT_ANSWER", index: 2 });
+    assert.equal(r.state.playerHp, 110);
+    assert.equal(r.state.outcome.healed, 5);
+    jsonEqual(r.effects.find(e => e.type === "PLAYER_HEAL"), { type: "PLAYER_HEAL", amount: 5 });
+  });
 });
 
 describe("DatamonBattleOps — reduce: SUBMIT_ANSWER (wrong answers)", () => {
@@ -400,6 +418,15 @@ describe("DatamonBattleOps — reduce: SUBMIT_ANSWER (wrong answers)", () => {
     const r = api.reduce(s, { type: "SUBMIT_ANSWER", index: 0 });
     assert.equal(r.state.playerHp, 75); // 100 - 25
     assert.ok(r.effects.find(e => e.type === "PLAYER_DAMAGE"));
+  });
+
+  it("wrong answer uses configured matchup damage", () => {
+    let s = api.createEncounter({ maxHp: 110, playerHp: 110, wrongDamage: 21 });
+    s = api.reduce(s, { type: "START_TURN", question: Q }).state;
+    s = api.reduce(s, { type: "SELECT_ACTION", action: "query" }).state;
+    const r = api.reduce(s, { type: "SUBMIT_ANSWER", index: 0 });
+    assert.equal(r.state.playerHp, 89);
+    jsonEqual(r.effects.find(e => e.type === "PLAYER_DAMAGE"), { type: "PLAYER_DAMAGE", amount: 21 });
   });
 
   it("wrong answer consumes guardrail instead of HP damage", () => {
@@ -458,6 +485,15 @@ describe("DatamonBattleOps — reduce: TIMEOUT", () => {
     assert.ok(outcome);
     assert.equal(outcome.correct, false);
     assert.equal(outcome.reason, "timeout");
+  });
+
+  it("TIMEOUT uses configured matchup damage", () => {
+    let s = api.createEncounter({ maxHp: 96, playerHp: 96, wrongDamage: 29 });
+    s = api.reduce(s, { type: "START_TURN", question: Q }).state;
+    s = api.reduce(s, { type: "SELECT_ACTION", action: "query" }).state;
+    const r = api.reduce(s, { type: "TIMEOUT" });
+    assert.equal(r.state.playerHp, 67);
+    jsonEqual(r.effects.find(e => e.type === "PLAYER_DAMAGE"), { type: "PLAYER_DAMAGE", amount: 29 });
   });
 
   it("TIMEOUT consumes guardrail first and records that HP damage was blocked", () => {

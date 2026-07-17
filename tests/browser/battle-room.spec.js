@@ -66,12 +66,12 @@ test.describe("DATAMON Battle Room and location instrument", () => {
       });
     });
     expect(officeLocations).toEqual([
-      ["Agent Wing", "Agent design & strategy"],
-      ["MCP Lab", "MCP integration & tooling"],
-      ["Config Bay", "Configuration & deployment"],
-      ["Context Corner", "Context design & retrieval"],
-      ["Prompt Studio", "Prompt engineering & design"],
-      ["The Lounge", "Mixed-domain certification"],
+      ["Agent Wing", "Debrief agent strategy with mentors"],
+      ["MCP Lab", "Review tool interfaces with mentors"],
+      ["Config Bay", "Audit settings and deployment with mentors"],
+      ["Context Corner", "Triage context reliability with mentors"],
+      ["Prompt Studio", "Critique prompts with mentors"],
+      ["The Lounge", "Review your recommended weak domain"],
     ]);
 
     await enterBattleRoom(page);
@@ -105,7 +105,7 @@ test.describe("DATAMON Battle Room and location instrument", () => {
       };
     });
     expect(room).toMatchObject({
-      label: "Battle Room", purpose: "Train against colleagues", count: 28, unique: 28,
+      label: "Battle Room", purpose: "Test due concepts in safe rematches", count: 36, unique: 36,
       selectedAbsent: true, allTraining: true, unreachable: 0, entryClear: true,
       mapScale: 2, mapSize: [2304, 1536], battleWallLoaded: true, libraryCold: true,
       noFloorLabels: true, noDiagonalReflection: true,
@@ -190,8 +190,9 @@ test.describe("DATAMON Battle Room and location instrument", () => {
       const ge = (0, eval), target = ge("npcs").find(n => n.type !== "AGENT");
       ge("player").hp = 5; ge("startBattle")(target); return target.slug;
     });
-    expect(await page.evaluate(() => ({ training: (0, eval)("battle.training"), hp: (0, eval)("player.hp") })))
-      .toEqual({ training: true, hp: 100 });
+    expect(await page.evaluate(() => ({
+      training: (0, eval)("battle.training"), hp: (0, eval)("player.hp"), maxHp: (0, eval)("currentPlayerMaxHp")(),
+    }))).toEqual({ training: true, hp: 96, maxHp: 96 });
 
     // Reach one real question so canonical/legacy learning telemetry still records.
     await page.evaluate(() => { const ge = (0, eval); ge("advanceBattle")(); ge("advanceBattle")(); });
@@ -213,9 +214,9 @@ test.describe("DATAMON Battle Room and location instrument", () => {
     await page.evaluate(slug => { const ge = (0, eval), npc = ge("npcs").find(n => n.slug === slug); ge("startBattle")(npc); ge("battle").phase = "lose"; ge("advanceBattle")(); }, target);
     result = await page.evaluate(() => {
       const ge = (0, eval), br = ge("_progression").activities.battleRoom;
-      return { streak: { ...br }, hp: ge("player").hp, map: ge("currentMap"), saved: JSON.parse(localStorage.getItem("datamon-save-v1")).progression.activities.battleRoom };
+      return { streak: { ...br }, hp: ge("player").hp, maxHp: ge("currentPlayerMaxHp")(), map: ge("currentMap"), saved: JSON.parse(localStorage.getItem("datamon-save-v1")).progression.activities.battleRoom };
     });
-    expect(result).toEqual({ streak: { currentStreak: 0, bestStreak: 2, wins: 2 }, hp: 100, map: "battleRoom", saved: { currentStreak: 0, bestStreak: 2, wins: 2 } });
+    expect(result).toEqual({ streak: { currentStreak: 0, bestStreak: 2, wins: 2 }, hp: 96, maxHp: 96, map: "battleRoom", saved: { currentStreak: 0, bestStreak: 2, wins: 2 } });
     expect(errors).toEqual([]);
     expect(failedRequests).toEqual([]);
   });

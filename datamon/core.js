@@ -70,7 +70,10 @@
       try { result.state = globalEval("typeof state !== 'undefined' ? state : null"); } catch (_) { result.state = null; }
       try {
         const p = globalEval("player");
-        result.player = p ? { hp: p.hp, slug: p.slug, x: p.x, y: p.y, seated: !!p.seated } : null;
+        result.player = p ? {
+          hp: p.hp, maxHp: globalEval("currentPlayerMaxHp()"),
+          slug: p.slug, x: p.x, y: p.y, seated: !!p.seated,
+        } : null;
       } catch (_) { result.player = null; }
       try {
         const list = globalEval("npcs");
@@ -93,6 +96,7 @@
             shake: b.shake || 0,
             attackAt: b.attackAt || 0,
             damageAt: b.dmgAt || 0,
+            attributes: b.attributes ? { ...b.attributes } : null,
           };
           // Agent Operations telemetry: expose reducer state only on loopback hosts.
           if (b.agentOps) {
@@ -106,6 +110,9 @@
               momentum: b.agentOps.momentum,
               guardrail: b.agentOps.guardrail,
               playerHp: b.agentOps.playerHp,
+              maxHp: b.agentOps.maxHp,
+              wrongDamage: b.agentOps.wrongDamage,
+              correctHeal: b.agentOps.correctHeal,
               selectedAction: b.agentOps.selectedAction,
               choiceCursor: b.agentOpsChoiceSel,
               outcome: b.agentOps.outcome ? { ...b.agentOps.outcome } : null,
