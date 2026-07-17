@@ -16,6 +16,8 @@ async function setup(page) {
   await page.goto("/");
   await page.waitForFunction(() => { try { return (0,eval)("state") === "title" && (0,eval)("officeMapCv") !== null; } catch { return false; } });
   await page.keyboard.press("Enter"); await page.keyboard.press("Enter");
+  await page.waitForFunction(() => (0,eval)("state") === "dialogue");
+  await page.keyboard.press("Escape");
   await page.waitForFunction(() => (0,eval)("state") === "overworld");
   return { errors, failedRequests, requests };
 }
@@ -117,6 +119,11 @@ test.describe("Certification Spine office wayfinding and mentor reviews", () => 
     await page.waitForTimeout(50);
     const openPoint=await page.evaluate(() => {const ge=(0,eval),npc=ge("npcs").find(value=>value.slug===window.__mentorNpc),canvas=document.getElementById("game"),r=canvas.getBoundingClientRect();const sx=(npc.x-ge("camFx"))*ge("TILE")+ge("TILE")/2,sy=(npc.y-ge("camFy"))*ge("TILE")+ge("TILE")/2;return{x:r.left+sx/ge("CANVAS_W")*r.width,y:r.top+sy/ge("CANVAS_H")*r.height};});
     await page.mouse.click(openPoint.x,openPoint.y);
+    const handoff = await page.evaluate(() => {const ge=(0,eval),session=ge("dialogueSession"),ctx=ge("dialogueContext");return{state:ge("state"),kind:ctx&&ctx.kind,script:session&&session.script.id,beat:session&&session.beatId,review:!!ge("mentorReview"),announcement:document.getElementById("datamon-announcer").textContent};});
+    expect(handoff).toMatchObject({state:"dialogue",kind:"mentor",script:`mentor-handoff:${await page.evaluate(() => window.__mentorNpc)}`,beat:"handoff",review:false});
+    expect(handoff.announcement).toContain("I can run one focused review now");
+    // First physical key reveals the complete transmission; the second consumes the sole review effect.
+    await page.keyboard.press("Enter"); await page.keyboard.press("Enter");
     const opened = await page.evaluate(() => {const ge=(0,eval),mr=ge("mentorReview"),p=ge("player"),canonical=ge("questionStats")[mr.question.id],alias=ge("questionStats")[`${mr.review.domain}:${mr.review.index}`];return{phase:mr.phase,answered:mr.answered,domain:mr.review.domain,reason:mr.review.reason,id:mr.question.id,seenCounter:ge("seenCounter"),canonical,alias,position:[p.x,p.y],mentorLine:mr.mentorLine,announcement:document.getElementById("datamon-announcer").textContent};});
     expect(opened).toMatchObject({phase:"question",answered:false,domain:"AGENT",reason:"due",id:"agent-001",seenCounter:26,position:expect.any(Array)});
     expect(opened.canonical).toEqual(opened.alias); expect(opened.canonical).toMatchObject({seen:2,correct:0,wrong:2,lastSeen:26});

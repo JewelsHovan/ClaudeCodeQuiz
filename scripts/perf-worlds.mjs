@@ -72,6 +72,39 @@ async function moveOnce(page, key = "w") {
   return page.evaluate(() => { const p = (0, eval)("player"); return { x: p.x, y: p.y }; });
 }
 
+async function dialogueMetrics(page) {
+  const before = await page.evaluate(() => ({
+    frame: (0,eval)("frame"), script: (0,eval)("dialogueSession.script.id"),
+  }));
+  const timing = await frameSample(page);
+  const after = await page.evaluate(() => ({
+    frame: (0,eval)("frame"), state: (0,eval)("state"), session: !!(0,eval)("dialogueSession"),
+  }));
+  return { timing, script: before.script, loopAdvanced: after.frame > before.frame,
+    stayedOpen: after.state === "dialogue" && after.session };
+}
+
+async function seatedHandoffMetrics(page) {
+  const before = await page.evaluate(() => {
+    const ge=(0,eval),npc=ge("npcs").find(value=>value._seated&&value.type!=="AGENT"),p=ge("player");
+    const spots=[[npc.x,npc.y+1,"up"],[npc.x,npc.y-1,"down"],[npc.x+1,npc.y,"left"],[npc.x-1,npc.y,"right"]];
+    const spot=spots.find(value=>ge("walkable")(value[0],value[1]));
+    p.x=p.fx=spot[0];p.y=p.fy=spot[1];p.dir=spot[2];p.moving=false;ge("beginNpcDialogue")(npc);
+    return {frame:ge("frame"),slug:npc.slug};
+  });
+  const timing = await frameSample(page);
+  const after = await page.evaluate(slug => {
+    const ge=(0,eval),p=ge("player"),npc=ge("npcs").find(value=>value.slug===slug),frame=ge("challengeFacingFrame");
+    const result={frame:ge("frame"),state:ge("state"),staging:!!ge("dialogueStaging"),safe:p.x!==npc.x||p.y!==npc.y,
+      facing:!!frame&&frame.slug===slug&&frame.dir===npc.dir,resident:frame?1:0};
+    ge("closeDialogue")(true);
+    result.cleaned=ge("challengeFacingFrame")===null&&ge("encounterSeatRestore")===null&&npc._seated===true;
+    return result;
+  }, before.slug);
+  return {timing, loopAdvanced:after.frame>before.frame, converged:after.state==="dialogue"&&!after.staging&&after.safe,
+    facing:after.facing,resident:after.resident,cleaned:after.cleaned};
+}
+
 async function consoleMetrics(page) {
   const before = await page.evaluate(() => {
     const ge = (0, eval); ge("certConsoleOpen = true");
@@ -140,9 +173,13 @@ try {
       catch (_) { return false; }
     }, null, { timeout: 15000 });
     await page.keyboard.press("Enter"); await page.keyboard.press("Enter");
+    await page.waitForFunction(() => (0, eval)("state") === "dialogue");
+    const dialogue = await dialogueMetrics(page);
+    await page.keyboard.press("Escape");
     await page.waitForFunction(() => (0, eval)("state") === "overworld");
 
     const scenes = [await sceneMetrics(page, "office")];
+    const seatedHandoff = await seatedHandoffMetrics(page);
     const certificationConsole = await consoleMetrics(page);
     const mentorReview = await mentorMetrics(page);
     await page.evaluate(() => (0, eval)("enterLibrary")());
@@ -159,11 +196,13 @@ try {
     const duplicateStudyRequests = [...new Set(studyRequests)].filter(value => studyRequests.filter(item => item === value).length > 1);
     const wayfindingRequests = requests.filter(value => value.startsWith("/props-wayfinding/"));
     const duplicateWayfindingRequests = [...new Set(wayfindingRequests)].filter(value => wayfindingRequests.filter(item => item === value).length > 1);
-    const run = { ...config, scenes, certificationConsole, mentorReview, errors, requestCount: requests.length,
+    const run = { ...config, scenes, dialogue, seatedHandoff, certificationConsole, mentorReview, errors, requestCount: requests.length,
       architectureRequests, duplicateArchitectureRequests, studyRequests, duplicateStudyRequests,
       wayfindingRequests, duplicateWayfindingRequests };
     runs.push(run);
     console.log(`DPR${config.dpr} CPU${config.cpu}x: ` + scenes.map(item => `${item.scene} p95=${item.timing.p95.toFixed(1)}ms cache=${item.caches.mib.toFixed(1)}MiB`).join(" | ") +
+      ` | dialogue p95=${dialogue.timing.p95.toFixed(1)}ms` +
+      ` | handoff p95=${seatedHandoff.timing.p95.toFixed(1)}ms` +
       ` | console p95=${certificationConsole.timing.p95.toFixed(1)}ms` +
       ` | mentor p95=${mentorReview.timing.p95.toFixed(1)}ms`);
     await context.close();
@@ -181,6 +220,10 @@ for (const run of runs) {
   if (run.duplicateWayfindingRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate wayfinding requests ${run.duplicateWayfindingRequests.join(", ")}`);
   if (run.wayfindingRequests.length !== 10) violations.push(`DPR${run.dpr}/CPU${run.cpu}: expected 10 wayfinding requests, got ${run.wayfindingRequests.length}`);
   const consoleBudget = run.cpu === 1 ? NORMAL_FRAME_P95_BUDGET_MS : STRESS_FRAME_P95_BUDGET_MS;
+  if (!run.dialogue.loopAdvanced || !run.dialogue.stayedOpen || run.dialogue.script !== "certification-prologue-v1") violations.push(`DPR${run.dpr}/CPU${run.cpu}/dialogue: lifecycle failed`);
+  if (run.dialogue.timing.p95 > consoleBudget) violations.push(`DPR${run.dpr}/CPU${run.cpu}/dialogue: frame p95 ${run.dialogue.timing.p95.toFixed(2)} ms > ${consoleBudget}`);
+  if (!run.seatedHandoff.loopAdvanced || !run.seatedHandoff.converged || !run.seatedHandoff.facing || !run.seatedHandoff.cleaned || run.seatedHandoff.resident > 1) violations.push(`DPR${run.dpr}/CPU${run.cpu}/handoff: lifecycle/facing bound failed`);
+  if (run.seatedHandoff.timing.p95 > consoleBudget) violations.push(`DPR${run.dpr}/CPU${run.cpu}/handoff: frame p95 ${run.seatedHandoff.timing.p95.toFixed(2)} ms > ${consoleBudget}`);
   if (!run.certificationConsole.loopAdvanced) violations.push(`DPR${run.dpr}/CPU${run.cpu}/console: game loop stopped`);
   if (!run.certificationConsole.summaryCacheStable) violations.push(`DPR${run.dpr}/CPU${run.cpu}/console: evidence summary cache churned`);
   if (run.certificationConsole.timing.p95 > consoleBudget) violations.push(`DPR${run.dpr}/CPU${run.cpu}/console: frame p95 ${run.certificationConsole.timing.p95.toFixed(2)} ms > ${consoleBudget}`);

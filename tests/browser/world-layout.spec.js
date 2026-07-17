@@ -15,6 +15,8 @@ async function setup(page) {
   await page.goto("/");
   await page.waitForFunction(() => { try { return (0,eval)("state") === "title" && (0,eval)("officeMapCv") !== null; } catch { return false; } });
   await page.keyboard.press("Enter"); await page.keyboard.press("Enter");
+  await page.waitForFunction(() => (0,eval)("state") === "dialogue");
+  await page.keyboard.press("Escape");
   await page.waitForFunction(() => (0,eval)("state") === "overworld");
   return { errors, failedRequests };
 }

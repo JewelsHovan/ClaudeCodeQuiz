@@ -19,6 +19,8 @@ async function setup(page) {
   await page.waitForFunction(() => { try { return (0, eval)("state") === "title" && (0, eval)("officeMapCv") !== null; } catch { return false; } });
   await page.keyboard.press("Enter");
   await page.keyboard.press("Enter");
+  await page.waitForFunction(() => (0, eval)("state") === "dialogue");
+  await page.keyboard.press("Escape");
   await page.waitForFunction(() => (0, eval)("state") === "overworld");
   return { errors, failedRequests, requests };
 }
@@ -314,6 +316,10 @@ test.describe("Sittable study office and Certification Console", () => {
       const p=ge("player"); p.x=p.fx=17; p.y=p.fy=5; p.dir="up"; p.moving=false;
       ge("interact")();
     });
+    expect(await page.evaluate(() => ({state:(0,eval)("state"),script:(0,eval)("dialogueSession.script.id"),open:(0,eval)("certConsoleOpen")})))
+      .toEqual({state:"dialogue",script:"certification-console-arrival-v1",open:false});
+    await page.keyboard.press("Enter"); await page.keyboard.press("Enter");
+    await page.waitForFunction(() => (0,eval)("state") === "overworld" && (0,eval)("certConsoleOpen"));
     expect(await page.evaluate(() => {
       const ge=(0,eval), summary=ge("_getEvidenceSummary")(), p=ge("player");
       return {open:ge("certConsoleOpen"), evidence:summary.evidencePct, next:summary.recommendationKey, pos:[p.x,p.y]};

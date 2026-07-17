@@ -18,6 +18,9 @@
   var _reverseIdMap = null; // canonical ID -> "CAT:index"
   var VALID_DOMAINS = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
   var BATTLE_ROOM_DEFAULTS = Object.freeze({ currentStreak: 0, bestStreak: 0, wins: 0 });
+  var CERTIFICATION_QUEST_ID = "claude-code-certification";
+  var CERTIFICATION_FIRST_OBJECTIVE = "Report to the Certification Console";
+  var CERTIFICATION_FIELD_OBJECTIVE = "Challenge colleagues across all five domains";
 
   function configure(opts) {
     if (opts.roster) _roster = opts.roster.slice();
@@ -120,6 +123,38 @@
     return out;
   }
 
+  // ---- certification quest normalisation (#052) ----
+  // Existing characters without the record resume in-progress and never enter a new-game
+  // cutscene. A deliberately persisted `prologueSeen:false` is preserved so interrupted
+  // fresh starts can safely replay the briefing.
+  function normaliseCertificationQuests(rawQuests, hasPlayer) {
+    var quests = (rawQuests && typeof rawQuests === "object" && !Array.isArray(rawQuests))
+      ? safeClone(rawQuests) : {};
+    if (!hasPlayer) {
+      delete quests[CERTIFICATION_QUEST_ID];
+      return quests;
+    }
+    var raw = quests[CERTIFICATION_QUEST_ID];
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      quests[CERTIFICATION_QUEST_ID] = {
+        status: "active",
+        objective: CERTIFICATION_FIRST_OBJECTIVE,
+        prologueSeen: true
+      };
+      return quests;
+    }
+    var status = raw.status === "completed" ? "completed" : "active";
+    var objective = typeof raw.objective === "string" && raw.objective.trim() && raw.objective.length <= 160
+      ? raw.objective.trim()
+      : (status === "completed" ? "Claude Code certification complete" : CERTIFICATION_FIRST_OBJECTIVE);
+    quests[CERTIFICATION_QUEST_ID] = {
+      status: status,
+      objective: objective,
+      prologueSeen: status === "completed" ? true : (typeof raw.prologueSeen === "boolean" ? raw.prologueSeen : true)
+    };
+    return quests;
+  }
+
   // ---- full normalise ----
   function normalise(parsed) {
     if (!parsed || typeof parsed !== "object") return defaults();
@@ -206,6 +241,9 @@
         out.progression.npcDomains = cleanDomains;
       }
     }
+
+    // Add/sanitise the certification quest only for a valid selected character.
+    out.progression.quests = normaliseCertificationQuests(out.progression.quests, !!out.player);
 
     // Telemetry stats
     out.questionStats = normaliseStats(parsed.questionStats || {});
@@ -336,6 +374,9 @@
     BACKUP_KEY: BACKUP_KEY,
     CURRENT_SCHEMA: CURRENT_SCHEMA,
     BATTLE_ROOM_DEFAULTS: BATTLE_ROOM_DEFAULTS,
+    CERTIFICATION_QUEST_ID: CERTIFICATION_QUEST_ID,
+    CERTIFICATION_FIRST_OBJECTIVE: CERTIFICATION_FIRST_OBJECTIVE,
+    CERTIFICATION_FIELD_OBJECTIVE: CERTIFICATION_FIELD_OBJECTIVE,
     configure: configure,
     roster: roster,
     idMap: idMap,
@@ -344,6 +385,7 @@
     defaults: defaults,
     normalise: normalise,
     normaliseStats: normaliseStats,
+    normaliseCertificationQuests: normaliseCertificationQuests,
     loadFromStorage: loadFromStorage,
     saveToStorage: saveToStorage,
     isWriteProtected: isWriteProtected,

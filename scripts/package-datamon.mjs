@@ -14,10 +14,10 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
 const DATAMON = path.join(ROOT, "datamon");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
-const RUNTIME_SCRIPTS = ["state.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js"];
+const RUNTIME_SCRIPTS = ["state.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js"];
 const PAYLOAD_ALLOWLIST = [
   "index.html", "game.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "state.js",
-  "progress.js", "dialogue.js",
+  "progress.js", "dialogue-runtime.js", "dialogue.js",
   "world-art.js", "world-layout.js", "music.js",
   "portraits/*.png", "headshots/*.png", "sprites/*.png", "sprites-walk/**/*.png",
   "sprites-sit/**/*.png", "sprites-sit/manifest.json",

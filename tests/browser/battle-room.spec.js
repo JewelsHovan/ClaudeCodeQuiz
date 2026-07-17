@@ -22,6 +22,8 @@ async function setup(page) {
   });
   await page.keyboard.press("Enter");
   await page.keyboard.press("Enter");
+  await page.waitForFunction(() => { try { return (0, eval)("state") === "dialogue"; } catch (_) { return false; } });
+  await page.keyboard.press("Escape");
   await page.waitForFunction(() => { try { return (0, eval)("state") === "overworld"; } catch (_) { return false; } });
   return { errors, failedRequests };
 }
@@ -129,8 +131,9 @@ test.describe("DATAMON Battle Room and location instrument", () => {
     });
     await page.mouse.click(point.x, point.y);
     expect(await page.evaluate(slug => {
-      const ge = (0, eval);
-      return ge("state") === "transition" && ge("battleTransition").npc.slug === slug;
+      const ge = (0, eval), session = ge("dialogueSession"), context = ge("dialogueContext");
+      return ge("state") === "dialogue" && context.training === true && context.npc.slug === slug &&
+        session.script.id === "training-challenge:" + slug && session.beatId === "challenge" && session.consumedTokens.length === 0;
     }, target.slug)).toBe(true);
     expect(errors).toEqual([]);
     expect(failedRequests).toEqual([]);

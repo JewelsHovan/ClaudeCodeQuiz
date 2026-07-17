@@ -38,6 +38,7 @@ check:
     node --check datamon/agent-arena.js
     node --check datamon/questions.js
     node --check datamon/progress.js
+    node --check datamon/dialogue-runtime.js
     node --check datamon/dialogue.js
     node --check datamon/state.js
     node --check datamon/core.js

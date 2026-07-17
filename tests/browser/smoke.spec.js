@@ -72,6 +72,28 @@ async function inspectState(page) {
   });
 }
 
+async function skipFreshPrologue(page) {
+  await page.waitForFunction(() => { try { return eval("state") === "dialogue"; } catch (_) { return false; } });
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => { try { return eval("state") === "overworld"; } catch (_) { return false; } });
+}
+
+async function acceptCurrentChallenge(page) {
+  for (let guard = 0; guard < 12; guard++) {
+    const snapshot = await page.evaluate(() => {
+      const ge = (0, eval);
+      if (ge("state") !== "dialogue") return { state: ge("state") };
+      const session = ge("dialogueSession");
+      return { state: "dialogue", phase: session.phase, staging: !!ge("dialogueStaging") };
+    });
+    if (snapshot.state !== "dialogue") return;
+    if (snapshot.staging) { await page.waitForTimeout(40); continue; }
+    await page.keyboard.press(snapshot.phase === "choice" ? "1" : "Enter");
+    await page.waitForTimeout(25);
+  }
+  throw new Error("Challenge dialogue did not reach its battle effect");
+}
+
 async function startDirectBattle(page, { type, boss = false, difficulty = "normal" }) {
   await page.waitForFunction(() => { try { return eval("state") === "title"; } catch (_) { return false; } });
   return page.evaluate(({ requestedType, makeBoss, requestedDifficulty }) => {
@@ -239,7 +261,7 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     await page.waitForFunction(() => { try { return eval("state") === "title"; } catch (_) { return false; } });
     await page.keyboard.press("Enter");
     await page.keyboard.press("Enter");
-    await page.waitForFunction(() => { try { return eval("state") === "overworld"; } catch (_) { return false; } });
+    await skipFreshPrologue(page);
 
     const start = (await inspectState(page)).player;
     expect({ x: start.x, y: start.y }).toEqual({ x: 18, y: 16 });
@@ -318,11 +340,9 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     }, { timeout: 10000 });
     expect(await getState(page)).toBe("select");
 
-    // Select first character (press Enter to confirm default selection)
+    // Select first character, then explicitly skip the fresh-run certification briefing.
     await page.keyboard.press("Enter");
-    await page.waitForFunction(() => {
-      try { return eval("state") === "overworld"; } catch (_) { return false; }
-    }, { timeout: 10000 });
+    await skipFreshPrologue(page);
     expect(await getState(page)).toBe("overworld");
 
     // Get NPC positions and find a non-defeated target
@@ -379,8 +399,10 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     console.log(`Player at (${px}, ${py}), NPC at (${targetNpc.x}, ${targetNpc.y}), distance=${dist}`);
     expect(dist).toBe(1);
 
-    // Interact to start battle
+    // Interact, accept the portrait-led challenge, then start battle.
     await page.keyboard.press("Space");
+    await page.waitForFunction(() => { try { return eval("state") === "dialogue"; } catch (_) { return false; } });
+    await acceptCurrentChallenge(page);
     await page.waitForTimeout(500);
 
     // Check if we entered battle or transition
@@ -509,7 +531,14 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     expect(stored.primary.defeated).toEqual(["ethan-pirso"]);
     expect(stored.primary.questionStats["agent-001"]).toEqual(stored.primary.questionStats["AGENT:0"]);
     expect(stored.primary.progression.badges).toEqual(["agent"]);
-    expect(stored.primary.progression.quests).toEqual({ mentor: "active" });
+    expect(stored.primary.progression.quests).toEqual({
+      mentor: "active",
+      "claude-code-certification": {
+        status: "active",
+        objective: "Report to the Certification Console",
+        prologueSeen: true,
+      },
+    });
     expect(stored.primary.progression.activities).toEqual({
       study: 80,
       battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 },
@@ -529,7 +558,7 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     await page.keyboard.press("Enter");
     await page.waitForFunction(() => { try { return eval("state") === "select"; } catch (_) { return false; } });
     await page.keyboard.press("Enter");
-    await page.waitForFunction(() => { try { return eval("state") === "overworld"; } catch (_) { return false; } });
+    await skipFreshPrologue(page);
     expect(await page.evaluate(() => localStorage.getItem("datamon-save-v1"))).toBe(raw);
     expect(await page.evaluate(() => eval("_writeProtectedSave"))).toBe(true);
 

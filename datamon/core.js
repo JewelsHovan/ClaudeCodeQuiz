@@ -123,6 +123,30 @@
           result.battle = null;
         }
       } catch (_) { result.battle = null; }
+      try {
+        const session = globalEval("typeof dialogueSession !== 'undefined' ? dialogueSession : null");
+        const context = globalEval("typeof dialogueContext !== 'undefined' ? dialogueContext : null");
+        result.dialogue = session ? {
+          script: session.script && session.script.id,
+          beat: session.beatId,
+          phase: session.phase,
+          choice: session.choice,
+          visibleChars: session.visibleChars,
+          consumedTokens: session.consumedTokens ? session.consumedTokens.length : 0,
+          kind: context && context.kind,
+          npc: context && context.npc && context.npc.slug,
+          training: !!(context && context.training),
+          replay: !!(context && context.replay),
+          staging: !!globalEval("dialogueStaging"),
+          seatRestore: !!globalEval("encounterSeatRestore"),
+        } : null;
+      } catch (_) { result.dialogue = null; }
+      try {
+        const progressionState = globalEval("typeof _progression !== 'undefined' ? _progression : null");
+        const questId = globalEval("typeof DatamonState !== 'undefined' ? DatamonState.CERTIFICATION_QUEST_ID : 'claude-code-certification'");
+        const quest = progressionState && progressionState.quests && progressionState.quests[questId];
+        result.certificationQuest = quest ? { ...quest } : null;
+      } catch (_) { result.certificationQuest = null; }
       try { result.difficulty = globalEval("typeof difficulty !== 'undefined' ? difficulty : null"); } catch (_) { result.difficulty = null; }
       try {
         const anim = globalEval("walkAnim");

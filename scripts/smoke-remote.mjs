@@ -24,7 +24,7 @@ const CHARACTER_RELEASE_FILES = [
 ];
 const RUNTIME_FILES = [
   "index.html", "state.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js",
-  "progress.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js",
+  "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js",
   ...WAYFINDING_FILES, ...CHARACTER_RELEASE_FILES,
 ];
 
@@ -120,7 +120,11 @@ try {
   await page.keyboard.press("Enter");
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => {
-    try { return eval("state") === "overworld"; } catch (_) { return false; }
+    try { return eval("state") === "dialogue" && eval("dialogueSession.script.id") === "certification-prologue-v1"; } catch (_) { return false; }
+  }, null, { timeout: 15000 });
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => {
+    try { return eval("state") === "overworld" && eval("certificationQuestRecord().prologueSeen") === true; } catch (_) { return false; }
   }, null, { timeout: 15000 });
   const start = await page.evaluate(() => {
     const current = eval("player");
@@ -168,6 +172,12 @@ try {
     player.x = player.fx = 17; player.y = player.fy = 5; player.dir = "up"; player.moving = false;
     ge("interact")();
   });
+  if (await page.evaluate(() => (0,eval)("state") === "dialogue")) {
+    for (let guard=0;guard<4;guard++) {
+      if (await page.evaluate(() => (0,eval)("certConsoleOpen"))) break;
+      await page.keyboard.press("Enter");
+    }
+  }
   const consoleState = await page.evaluate(() => {
     const ge = (0, eval), summary = ge("_getEvidenceSummary")();
     return { open: ge("certConsoleOpen"), evidence: summary.evidencePct, next: summary.recommendationKey };
@@ -176,7 +186,25 @@ try {
     throw new Error(`public Certification Console mismatch: ${JSON.stringify(consoleState)}`);
   }
   await page.keyboard.press("Escape");
-  console.log("Public study office passed: sit/stand assets and Certification Console");
+
+  // Public seated handoff: stand, face, displace safely, then cancel and restore the chair.
+  const handoff = await page.evaluate(() => {
+    const ge=(0,eval),npc=ge("npcs").find(value=>value._seated&&!value.defeated),p=ge("player");
+    const spots=[[npc.x,npc.y+1,"up"],[npc.x,npc.y-1,"down"],[npc.x+1,npc.y,"left"],[npc.x-1,npc.y,"right"]];
+    const spot=spots.find(value=>ge("walkable")(value[0],value[1]));
+    p.x=p.fx=spot[0];p.y=p.fy=spot[1];p.dir=spot[2];p.moving=false;ge("beginNpcDialogue")(npc);
+    return {slug:npc.slug,state:ge("state"),standing:!npc._seated,restore:!!ge("encounterSeatRestore"),safe:p.x!==npc.x||p.y!==npc.y};
+  });
+  if (handoff.state !== "dialogue" || !handoff.standing || !handoff.restore || !handoff.safe) {
+    throw new Error(`public seated handoff mismatch: ${JSON.stringify(handoff)}`);
+  }
+  await page.keyboard.press("Escape");
+  const handoffRestored = await page.evaluate(slug => {
+    const ge=(0,eval),npc=ge("npcs").find(value=>value.slug===slug);
+    return ge("state")==="overworld"&&npc._seated&&ge("encounterSeatRestore")===null;
+  }, handoff.slug);
+  if (!handoffRestored) throw new Error("public seated handoff did not restore its chair");
+  console.log("Public study office passed: sit/stand assets, seated challenge handoff, and Certification Console");
 
   const spine = await page.evaluate(() => {
     const ge=(0,eval),p=ge("player");
@@ -189,15 +217,27 @@ try {
       JSON.stringify(spine.labels) !== JSON.stringify(["Reliability Triage","Battle Room","The Library"])) {
     throw new Error(`public Certification Spine mismatch: ${JSON.stringify(spine)}`);
   }
-  const reviewOpen = await page.evaluate(() => {
-    const ge=(0,eval),npc=ge("npcs").find(value=>!value.training),p=ge("player");npc.defeated=true;
+  const reviewHandoff = await page.evaluate(() => {
+    const ge=(0,eval),npc=ge("npcs").find(value=>!value.training&&!value._seated),p=ge("player");npc.defeated=true;ge("defeated").add(npc.slug);
     const dirs=[[0,1,"up"],[0,-1,"down"],[1,0,"left"],[-1,0,"right"]];
     const spot=dirs.map(([dx,dy,dir])=>({x:npc.x+dx,y:npc.y+dy,dir})).find(pos=>ge("walkable")(pos.x,pos.y));
     p.x=p.fx=spot.x;p.y=p.fy=spot.y;p.dir=spot.dir;p.moving=false;ge("interact")();
-    const mr=ge("mentorReview");
+    return {state:ge("state"),script:ge("dialogueSession")&&ge("dialogueSession.script.id"),slug:npc.slug};
+  });
+  if (reviewHandoff.state!=="dialogue"||reviewHandoff.script!==`mentor-handoff:${reviewHandoff.slug}`) {
+    throw new Error(`public mentor handoff mismatch: ${JSON.stringify(reviewHandoff)}`);
+  }
+  for (let guard=0;guard<8;guard++) {
+    const modalOpen=await page.evaluate(() => !!(0,eval)("mentorReview"));
+    if (modalOpen) break;
+    const staging=await page.evaluate(() => !!(0,eval)("dialogueStaging"));
+    if (staging) await page.waitForTimeout(80); else await page.keyboard.press("Enter");
+  }
+  const reviewOpen = await page.evaluate(() => {
+    const mr=(0,eval)("mentorReview");
     return mr ? {open:true,correct:mr.question.a,id:mr.question.id,alias:`${mr.review.domain}:${mr.review.index}`} : {open:false};
   });
-  if (!reviewOpen.open) throw new Error("public mentor review did not open");
+  if (!reviewOpen.open) throw new Error("public mentor review did not open after portrait handoff");
   await page.keyboard.press(String(reviewOpen.correct+1));
   const reviewFeedback=await page.evaluate(({id,alias})=>{const ge=(0,eval),mr=ge("mentorReview"),stats=ge("questionStats");return{phase:mr&&mr.phase,correct:mr&&mr.feedback&&mr.feedback.correct,canonical:stats[id],aliasStats:stats[alias]};},{id:reviewOpen.id,alias:reviewOpen.alias});
   if (reviewFeedback.phase !== "feedback" || reviewFeedback.correct !== true ||

@@ -308,5 +308,145 @@
     return name + ': "' + line + '"';
   };
 
+  // ---------- Declarative portrait scenes (#052) ----------
+  // These factories contain authored copy only. DatamonDialogueRuntime validates/freezes
+  // every returned script and owns all mutable progression.
+  function sceneSpeaker(name, slug, side, domain, expression) {
+    return { name: name, slug: slug, side: side, domain: domain || "MIX", expression: expression || "neutral" };
+  }
+  function sceneEffect(type) { return { type: type }; }
+
+  API.prologueScript = function (playerSlug, displayNameFn) {
+    var playerName = displayNameFn(playerSlug);
+    var command = sceneSpeaker("Certification Command", null, "system", "MIX", "signal");
+    var candidate = sceneSpeaker(playerName, playerSlug, "right", "MIX", "ready");
+    return {
+      id: "certification-prologue-v1",
+      startBeat: "link",
+      skipEffects: [sceneEffect("ACTIVATE_QUEST")],
+      beats: {
+        link: {
+          id: "link", speaker: command,
+          text: "Candidate link established. Welcome to DATAMON, the Claude Code certification campus.",
+          next: "purpose",
+        },
+        purpose: {
+          id: "purpose", speaker: candidate,
+          text: "I am here to become a consultant—and prove I can use Claude Code with judgment, not just speed.",
+          next: "commit",
+        },
+        commit: {
+          id: "commit", speaker: command,
+          text: "Your field run tests five operating domains: Agents, MCP, Config, Prompt, and Context. How will you enter the program?",
+          choices: [
+            { label: "Begin the certification run.", next: "objective" },
+            { label: "Brief me on the standard first.", next: "standard" },
+          ],
+        },
+        standard: {
+          id: "standard", speaker: command,
+          text: "Certification means answering with evidence, learning from misses, and defeating every consultant without changing what is true.",
+          next: "objective",
+        },
+        objective: {
+          id: "objective", speaker: command,
+          text: "First objective: report to the Certification Console in the center spine. Review your evidence, then challenge colleagues when ready.",
+          effects: [sceneEffect("ACTIVATE_QUEST")], next: null,
+        },
+      },
+    };
+  };
+
+  API.consoleArrivalScript = function (playerSlug, displayNameFn) {
+    var command = sceneSpeaker("Certification Command", null, "system", "MIX", "objective");
+    return {
+      id: "certification-console-arrival-v1",
+      startBeat: "arrival",
+      skipEffects: [sceneEffect("OPEN_CERT_CONSOLE")],
+      beats: {
+        arrival: {
+          id: "arrival", speaker: command,
+          text: "Console handshake accepted, " + displayNameFn(playerSlug) + ". Your five evidence channels are online. Field objective updated: challenge colleagues across every domain.",
+          effects: [sceneEffect("OPEN_CERT_CONSOLE")], next: null,
+        },
+      },
+    };
+  };
+
+  API.challengeScript = function (npcSlug, type, playerSlug, displayNameFn, training) {
+    var opponent = sceneSpeaker(displayNameFn(npcSlug), npcSlug, "left", type, training ? "focused" : "challenge");
+    var candidate = sceneSpeaker(displayNameFn(playerSlug), playerSlug, "right", "MIX", "ready");
+    return {
+      id: (training ? "training-challenge:" : "campaign-challenge:") + npcSlug,
+      startBeat: "challenge",
+      skipEffects: [sceneEffect("CLOSE_DIALOGUE")],
+      beats: {
+        challenge: {
+          id: "challenge", speaker: opponent,
+          text: API.getLine(npcSlug, training ? "training-rematch" : "intro", type), next: "response",
+        },
+        response: {
+          id: "response", speaker: candidate,
+          text: training ? "Run this as an isolated training simulation?" : "Accept this certification challenge?",
+          choices: [
+            { label: training ? "Start simulation" : "Challenge accepted", next: "lock" },
+            { label: "Not yet", effects: [sceneEffect("CLOSE_DIALOGUE")] },
+          ],
+        },
+        lock: {
+          id: "lock", speaker: opponent,
+          text: API.getLine(npcSlug, "intro", type).replace(/[!.?]?$/, ".") + " Load your active Battlemon.",
+          effects: [sceneEffect("START_BATTLE")], next: null,
+        },
+      },
+    };
+  };
+
+  API.outcomeScript = function (npcSlug, type, displayNameFn, playerWon, training) {
+    var opponent = sceneSpeaker(displayNameFn(npcSlug), npcSlug, "left", type, playerWon ? "respect" : "victory");
+    var line = API.getLine(npcSlug, playerWon ? "opponent-lose" : "opponent-win", type);
+    line += training
+      ? " Simulation logged; campaign progress remains isolated."
+      : (playerWon ? " Challenge recorded in your certification ledger." : " Recover, review the evidence, and return when ready.");
+    return {
+      id: (training ? "training-outcome:" : "campaign-outcome:") + npcSlug + ":" + (playerWon ? "win" : "loss"),
+      startBeat: "reaction",
+      skipEffects: [sceneEffect("CLOSE_DIALOGUE")],
+      beats: {
+        reaction: {
+          id: "reaction", speaker: opponent, text: line,
+          effects: [sceneEffect("CLOSE_DIALOGUE")], next: null,
+        },
+      },
+    };
+  };
+
+  API.mentorScript = function (npcSlug, type, playerSlug, progress, displayNameFn) {
+    var opponent = sceneSpeaker(displayNameFn(npcSlug), npcSlug, "left", type, "mentor");
+    var total = progress && progress.total || 0;
+    var defeatedCount = progress && progress.defeated || 0;
+    var domainTotal = progress && progress.domainTotal || 0;
+    var domainDefeated = progress && progress.domainDefeated || 0;
+    var remaining = Math.max(0, total - defeatedCount);
+    var domainRemaining = Math.max(0, domainTotal - domainDefeated);
+    var evidence = remaining === 0
+      ? "Every consultant is cleared. Your final certification review is ready."
+      : (domainRemaining === 0
+        ? "This domain is cleared; " + remaining + " consultant" + (remaining === 1 ? " remains." : "s remain.")
+        : domainRemaining + " in this domain and " + remaining + " overall remain.");
+    return {
+      id: "mentor-handoff:" + npcSlug,
+      startBeat: "handoff",
+      skipEffects: [sceneEffect("CLOSE_DIALOGUE")],
+      beats: {
+        handoff: {
+          id: "handoff", speaker: opponent,
+          text: API.getLine(npcSlug, "campaign-follow-up", type) + " " + evidence + " I can run one focused review now.",
+          effects: [sceneEffect("OPEN_MENTOR_REVIEW")], next: null,
+        },
+      },
+    };
+  };
+
   window.DatamonDialogue = API;
 })();

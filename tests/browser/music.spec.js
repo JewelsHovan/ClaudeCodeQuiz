@@ -68,6 +68,14 @@ async function waitForMusicScene(page, scene) {
   await page.waitForFunction(expected => window.DatamonMusic.getDiagnostics().scene === expected, scene);
 }
 
+async function enterOffice(page) {
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => (0,eval)("state") === "dialogue");
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => (0,eval)("state") === "overworld");
+}
+
 test.describe("DATAMON original adaptive soundtrack", () => {
   test("routes scenes, crossfades, and keeps one bounded scheduler", async ({ page }) => {
     const observed = await boot(page);
@@ -84,7 +92,10 @@ test.describe("DATAMON original adaptive soundtrack", () => {
     expect(diag.schedulerStarts).toBe(1);
     expect(diag.contextCreations).toBe(1);
 
-    await page.keyboard.press("Enter"); // select → office
+    await page.keyboard.press("Enter"); // select → portrait certification briefing
+    await page.waitForFunction(() => (0,eval)("state") === "dialogue");
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => (0,eval)("state") === "overworld");
     await waitForMusicScene(page, "office");
     const startsBefore = await page.evaluate(() => window.DatamonMusic.getDiagnostics().schedulerStarts);
     await page.evaluate(() => {
@@ -111,8 +122,7 @@ test.describe("DATAMON original adaptive soundtrack", () => {
 
   test("real game states route exploration, battle, boss, defeat, and bounded victory music", async ({ page }) => {
     const observed = await boot(page);
-    await page.keyboard.press("Enter"); // select
-    await page.keyboard.press("Enter"); // overworld
+    await enterOffice(page);
     await waitForMusicScene(page, "office");
 
     await page.evaluate(() => { (0,eval)('currentMap = "library"'); });
@@ -160,8 +170,7 @@ test.describe("DATAMON original adaptive soundtrack", () => {
 
   test("global mute works in search and visibility/pagehide clean up voices", async ({ page }) => {
     const observed = await boot(page);
-    await page.keyboard.press("Enter");
-    await page.keyboard.press("Enter");
+    await enterOffice(page);
     await waitForMusicScene(page, "office");
     await page.keyboard.press("f");
     await page.waitForFunction(() => (0,eval)("state") === "search");
@@ -193,16 +202,17 @@ test.describe("DATAMON original adaptive soundtrack", () => {
 
   test("scheduler activity cannot mutate game, reducer, save, or question state", async ({ page }) => {
     const observed = await boot(page);
-    await page.keyboard.press("Enter");
-    await page.keyboard.press("Enter");
+    await enterOffice(page);
     await waitForMusicScene(page, "office");
     const before = await page.evaluate(() => {
       const ge=(0,eval);
       window.__musicReducerProbe = window.DatamonBattleOps.createEncounter({
         npc:{slug:"probe",type:"AGENT"}, question:{id:"agent-001",choices:["a","b","c","d"],correct:0}, playerHp:75,
       });
+      const p=ge("player");
       return JSON.stringify({
-        player: ge("player"), defeated: [...ge("defeated")], questionStats: ge("questionStats"),
+        player:{slug:p.slug,x:p.x,y:p.y,fx:p.fx,fy:p.fy,dir:p.dir,moving:p.moving,hp:p.hp,seated:p.seated},
+        defeated: [...ge("defeated")], questionStats: ge("questionStats"),
         seenCounter: ge("seenCounter"), progression: ge("_progression"), reducer:window.__musicReducerProbe,
         storage: localStorage.getItem(window.DatamonState.SAVE_KEY),
       });
@@ -210,9 +220,10 @@ test.describe("DATAMON original adaptive soundtrack", () => {
     await page.evaluate(() => { window.__fakeAudio.currentTime += 8; });
     await page.waitForTimeout(100);
     const after = await page.evaluate(() => {
-      const ge=(0,eval);
+      const ge=(0,eval),p=ge("player");
       return JSON.stringify({
-        player: ge("player"), defeated: [...ge("defeated")], questionStats: ge("questionStats"),
+        player:{slug:p.slug,x:p.x,y:p.y,fx:p.fx,fy:p.fy,dir:p.dir,moving:p.moving,hp:p.hp,seated:p.seated},
+        defeated: [...ge("defeated")], questionStats: ge("questionStats"),
         seenCounter: ge("seenCounter"), progression: ge("_progression"), reducer:window.__musicReducerProbe,
         storage: localStorage.getItem(window.DatamonState.SAVE_KEY),
       });
@@ -243,6 +254,8 @@ test.describe("DATAMON original adaptive soundtrack", () => {
     await page.waitForFunction(() => (0,eval)("state") === "select");
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("Enter");
+    await page.waitForFunction(() => (0,eval)("state") === "dialogue");
+    await page.keyboard.press("Escape");
     await page.waitForFunction(() => (0,eval)("state") === "overworld");
     const result = await page.evaluate(() => ({
       music:window.DatamonMusic.getDiagnostics(), partial:window.__partialAudio,
@@ -259,9 +272,7 @@ test.describe("DATAMON original adaptive soundtrack", () => {
   test("suspended and resume-rejected audio still permits normal activation", async ({ page }) => {
     await page.addInitScript(() => { window.__startAudioSuspended=true; window.__rejectMusicResume=true; });
     const observed = await boot(page);
-    await page.keyboard.press("Enter");
-    await page.keyboard.press("Enter");
-    await page.waitForFunction(() => (0,eval)("state") === "overworld");
+    await enterOffice(page);
     const diag = await page.evaluate(() => window.DatamonMusic.getDiagnostics());
     expect(diag.available).toBe(false);
     expect(diag.unlocked).toBe(false);
@@ -272,8 +283,7 @@ test.describe("DATAMON original adaptive soundtrack", () => {
 
   test("unlocked office music stays inside the active-scene frame budget", async ({ page }) => {
     const observed = await boot(page);
-    await page.keyboard.press("Enter");
-    await page.keyboard.press("Enter");
+    await enterOffice(page);
     await waitForMusicScene(page, "office");
     const samples = await page.evaluate(count => new Promise(resolve => {
       const values=[]; let previous=performance.now();
@@ -292,9 +302,7 @@ test.describe("DATAMON original adaptive soundtrack", () => {
 
   test("Web Audio denial degrades to silence while the game remains playable", async ({ page }) => {
     const observed = await boot(page, false);
-    await page.keyboard.press("Enter");
-    await page.keyboard.press("Enter");
-    await page.waitForFunction(() => (0,eval)("state") === "overworld");
+    await enterOffice(page);
     const diag = await page.evaluate(() => window.DatamonMusic.getDiagnostics());
     expect(diag.available).toBe(false);
     expect(diag.unlocked).toBe(false);

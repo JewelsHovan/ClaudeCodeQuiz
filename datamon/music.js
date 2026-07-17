@@ -181,7 +181,7 @@
     }
     if (state === "transition" && snapshot.transitionType === "AGENT") return "agent-battle";
     if (state === "transition") return "classic-battle";
-    if (state === "overworld" || state === "search") {
+    if (state === "overworld" || state === "search" || state === "dialogue") {
       return snapshot.currentMap === "library" ? "library" : "office";
     }
     return "title";

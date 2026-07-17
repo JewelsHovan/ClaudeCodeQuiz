@@ -96,6 +96,10 @@ test.describe("HD world-art accepted pilot contracts", () => {
         await page.keyboard.press("Enter");
         await page.keyboard.press("Enter");
         await page.waitForFunction(() => {
+          try { return (0, eval)("state") === "dialogue"; } catch (_) { return false; }
+        });
+        await page.keyboard.press("Escape");
+        await page.waitForFunction(() => {
           try { return (0, eval)("state") === "overworld"; } catch (_) { return false; }
         });
         const startY = await page.evaluate(() => (0, eval)("player").y);

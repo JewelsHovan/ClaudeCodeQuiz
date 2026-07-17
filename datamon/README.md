@@ -36,7 +36,8 @@ localStorage (per browser + port, so stick with one way of serving it).
 | Input | Action |
 |---|---|
 | Arrows / WASD | Move |
-| SPACE / ENTER / E | Interact, sit/stand, enter portals, open the Console, battle, or review with a mentor |
+| SPACE / ENTER / E | Interact, sit/stand, enter portals, open the Console, challenge, or review with a mentor |
+| Dialogue: ENTER / SPACE, arrows, 1–6, ESC | Reveal/advance, choose, direct-select, or skip/close |
 | 1–4 or arrows + ENTER | Answer battle and mentor-review questions |
 | Mouse / touch | Click once to step or hold toward a direction; select visible controls |
 | Shift + arrows/WASD or R | Run while moving |
@@ -63,17 +64,26 @@ localStorage (per browser + port, so stick with one way of serving it).
 - The compact **Evidence** strip reports accumulated study evidence and the next recommended
   domain. Evidence is coverage × answer accuracy, weighted by the real exam blueprint; it is
   intentionally not presented as a pass prediction.
-- Face the five-channel **Certification Console** in the north office and interact for detailed
-  coverage, accuracy, due/unseen questions, domain weights, and the next study target.
+- A fresh candidate receives a skippable portrait briefing to become a consultant and earn
+  Claude Code certification. The schema-v2 quest first points to the five-channel
+  **Certification Console** in the north office. Its first portrait-led handshake advances the
+  field objective, then the Console reports detailed coverage, accuracy, due/unseen questions,
+  domain weights, and the next study target. Press **P** at the Console
+  to replay the briefing without resetting the current objective.
 - Office chairs are real seats rather than walkable decoration. Six colleagues work seated at
   domain-matched desks, four chairs remain available to the player, and movement or interaction
   stands safely back on the approach tile.
 - The cyan stacked-window, red shield, and walnut open-book surrounds make the Context,
   Battle Room, and Library thresholds visually distinct. Their transparent centers never add
   collision; map symbols remain authoritative.
-- Interact with a defeated office colleague for one untimed mentor review. Reviews select real
-  **due → unseen → refresh** material from that domain, show the canonical explanation, and
-  update the same question telemetry as battles. They never change HP, campaign wins, or training streaks.
+- Colleague interactions use the portrait-led **Ops Comms Console**. An undefeated colleague
+  speaks before battle and gives a campaign/training-isolated outcome debrief afterward; a
+  defeated office colleague gives a mentor handoff before one untimed review. Reviews select
+  real **due → unseen → refresh** material from that domain, show the
+  canonical explanation, and update the same question telemetry as battles. They never change
+  HP, campaign wins, or training streaks. A seated challenger stands, faces the candidate, and
+  moves the candidate to a deterministic safe tile before speaking; the captured chair contract
+  restores after win, loss, flee, or reload.
 - Battle Room rematches restore HP before each encounter, preserve campaign rival progress,
   continue question-learning telemetry, and track separate current/best training streaks. Its
   continuous proving-ground floor uses large true-DPR2 resin panels, a certification runway,
@@ -107,7 +117,8 @@ localStorage (per browser + port, so stick with one way of serving it).
 - `game.js` — engine: overworld, seating, Certification Console, character select, battle adapters, Library, Battle Room, and save
 - `attributes.js` — pure bounded Caffeine/Debugging/Vibes/Jargon matchup rules
 - `progress.js` — pure canonical evidence/recommendation plus mentor-review selection and telemetry reducer
-- `dialogue.js` — deterministic domain-aware challenge, outcome, rematch, and mentor dialogue
+- `dialogue-runtime.js` — pure immutable scene reducer, exact-once input tokens, choices/effects, and safe displacement
+- `dialogue.js` — deterministic domain lines plus declarative prologue/challenge/mentor portrait scenes
 - `battle-ops.js` — pure Agent Operations reducer and strategic action economy
 - `agent-arena.js` — Incident Command presentation, accessibility, bounded effects/audio
 - `world-art.js` — DPR-aware map caches, accepted HD asset/ambient layer, lazy portraits
@@ -232,8 +243,9 @@ calibration rail, nested floor frames, editorial boxes, and compass pulse. The L
 continuous staggered slate, brass aisles, walnut alcoves, reading pools, and an open-book
 medallion. The accepted architecture batch still provides capped brick/slate/navy walls and
 inner book/training portals. Missing or invalid art fails to bounded procedural silhouettes
-without changing collision or state. Character portraits use a separate, consistent GBA
-Fire Emblem dialogue style and are not coupled to world-art batch promotion.
+without changing collision or state. Character portraits use a separate, consistent tactical-RPG
+pixel vocabulary inside DATAMON's original Ops Comms treatment and are not coupled to world-art
+batch promotion.
 
 The deterministic pipeline never writes generated output directly into accepted runtime art:
 
@@ -419,8 +431,11 @@ not modify production gameplay or saves.
 
 `state.js` normalizes the existing `datamon-save-v1` localStorage key into schema v2 while
 retaining every previous top-level field. It adds reserved campaign progression, explicit
-stable question IDs, and persisted NPC domains. Legacy `CAT:index` question telemetry is
-kept alongside canonical IDs for rollback; the original legacy value is backed up once.
+stable question IDs, and persisted NPC domains. The `claude-code-certification` quest uses
+stable status/objective/prologue fields: fresh selections see the briefing, while existing
+characters without that record resume active with `prologueSeen: true` and are never trapped.
+Dialogue and seated-handoff sessions remain ephemeral. Legacy `CAT:index` question telemetry
+is kept alongside canonical IDs for rollback; the original legacy value is backed up once.
 Unknown future schemas are write-protected until the player explicitly resets from title.
 
 ### Fixed performance contract

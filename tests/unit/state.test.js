@@ -311,11 +311,16 @@ describe("DatamonState — telemetry migration", () => {
 
 describe("DatamonState — progression fields", () => {
   let api;
+  const certificationQuest = {
+    status: "active",
+    objective: "Report to the Certification Console",
+    prologueSeen: true,
+  };
   before(() => { api = loadApi(); });
 
   it("adds default progression fields to legacy saves", () => {
     const out = api.normalise({ player: "alice" });
-    jsonEqual(out.progression, { badges: [], quests: {}, activities: { battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 } }, npcDomains: {} });
+    jsonEqual(out.progression, { badges: [], quests: { "claude-code-certification": certificationQuest }, activities: { battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 } }, npcDomains: {} });
   });
 
   it("preserves existing progression data", () => {
@@ -330,7 +335,7 @@ describe("DatamonState — progression fields", () => {
     });
     jsonEqual(out.progression, {
       badges: ["badge-1"],
-      quests: { "q1": "active" },
+      quests: { "q1": "active", "claude-code-certification": certificationQuest },
       activities: { "a1": 5, battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 } },
       npcDomains: { "alice": "AGENT" },
     });
@@ -347,9 +352,52 @@ describe("DatamonState — progression fields", () => {
       },
     });
     jsonEqual(out.progression.badges, []);
-    jsonEqual(out.progression.quests, {});
+    jsonEqual(out.progression.quests, { "claude-code-certification": certificationQuest });
     jsonEqual(out.progression.activities, { battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 } });
     jsonEqual(out.progression.npcDomains, {});
+  });
+
+  it("preserves an interrupted fresh prologue and sanitises malformed quest fields", () => {
+    const interrupted = api.normalise({
+      player: "alice",
+      progression: { quests: { "claude-code-certification": {
+        status: "active", objective: "Report to the Certification Console", prologueSeen: false,
+      } } },
+    });
+    jsonEqual(interrupted.progression.quests[api.CERTIFICATION_QUEST_ID], {
+      status: "active", objective: api.CERTIFICATION_FIRST_OBJECTIVE, prologueSeen: false,
+    });
+    const malformed = api.normalise({
+      player: "alice",
+      progression: { quests: { "claude-code-certification": {
+        status: "unknown", objective: "", prologueSeen: "yes", extra: "drop",
+      } } },
+    });
+    jsonEqual(malformed.progression.quests[api.CERTIFICATION_QUEST_ID], certificationQuest);
+  });
+
+  it("preserves an advanced or completed certification objective", () => {
+    const field = api.normalise({
+      player: "alice",
+      progression: { quests: { "claude-code-certification": {
+        status: "active", objective: "Challenge colleagues across all five domains", prologueSeen: true,
+      } } },
+    });
+    assert.equal(field.progression.quests[api.CERTIFICATION_QUEST_ID].objective, api.CERTIFICATION_FIELD_OBJECTIVE);
+    const complete = api.normalise({
+      player: "alice",
+      progression: { quests: { "claude-code-certification": {
+        status: "completed", objective: "Certification earned", prologueSeen: false,
+      } } },
+    });
+    jsonEqual(complete.progression.quests[api.CERTIFICATION_QUEST_ID], {
+      status: "completed", objective: "Certification earned", prologueSeen: true,
+    });
+  });
+
+  it("does not attach the certification quest without a valid selected character", () => {
+    const out = api.normalise({ progression: { quests: { "claude-code-certification": certificationQuest } } });
+    jsonEqual(out.progression.quests, {});
   });
 
   it("filters npcDomains to valid roster keys and domain values", () => {

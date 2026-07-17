@@ -72,6 +72,8 @@ describe("DatamonMusic — original deterministic score", () => {
       [{ state: "title" }, "title"],
       [{ state: "select" }, "title"],
       [{ state: "overworld", currentMap: "office" }, "office"],
+      [{ state: "dialogue", currentMap: "office" }, "office"],
+      [{ state: "dialogue", currentMap: "library" }, "library"],
       [{ state: "search", currentMap: "library" }, "library"],
       [{ state: "minigame" }, "minigame"],
       [{ state: "transition", transitionType: "AGENT" }, "agent-battle"],

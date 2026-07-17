@@ -7,6 +7,7 @@ import fs from "node:fs";
 import vm from "node:vm";
 
 const dialogueSource = fs.readFileSync("datamon/dialogue.js", "utf8");
+const runtimeSource = fs.readFileSync("datamon/dialogue-runtime.js", "utf8");
 
 function loadDialogue() {
   const sandbox = { window: {}, globalThis: {} };
@@ -179,6 +180,62 @@ describe("DatamonDialogue", () => {
       assert.deepEqual(due, { attempted: 3, due: 2, unseen: 21 });
       assert.match(api.campaignFollowUp("julien-hovan", "AGENT", displayName,
         { attempted: 3, due: 0, unseen: 4 }), /4 unseen questions/);
+    });
+  });
+
+  describe("portrait scene factories", () => {
+    function runtime() {
+      const sandbox = { window: {} };
+      vm.runInNewContext(runtimeSource, sandbox, { filename: "datamon/dialogue-runtime.js" });
+      return sandbox.window.DatamonDialogueRuntime;
+    }
+
+    it("builds a stable valid prologue with a branch and exact quest terminal", () => {
+      const first = api.prologueScript("julien-hovan", displayName);
+      const second = api.prologueScript("julien-hovan", displayName);
+      assert.equal(JSON.stringify(first), JSON.stringify(second));
+      assert.equal(first.id, "certification-prologue-v1");
+      assert.equal(first.beats.commit.choices.length, 2);
+      assert.deepEqual(JSON.parse(JSON.stringify(first.skipEffects)), [{ type: "ACTIVATE_QUEST" }]);
+      assert.ok(runtime().validateScript(first));
+    });
+
+    it("builds the Console objective beat with skip-safe handoff", () => {
+      const scene = api.consoleArrivalScript("julien-hovan", displayName);
+      assert.equal(scene.id, "certification-console-arrival-v1");
+      assert.match(scene.beats.arrival.text, /five evidence channels/);
+      assert.deepEqual(JSON.parse(JSON.stringify(scene.beats.arrival.effects)), [{ type: "OPEN_CERT_CONSOLE" }]);
+      assert.deepEqual(JSON.parse(JSON.stringify(scene.skipEffects)), [{ type: "OPEN_CERT_CONSOLE" }]);
+      assert.ok(runtime().validateScript(scene));
+    });
+
+    it("builds campaign and isolated-training challenge paths", () => {
+      for (const training of [false, true]) {
+        const scene = api.challengeScript("alex-rister", "AGENT", "julien-hovan", displayName, training);
+        assert.match(scene.id, training ? /^training-challenge:/ : /^campaign-challenge:/);
+        assert.deepEqual(JSON.parse(JSON.stringify(scene.beats.lock.effects)), [{ type: "START_BATTLE" }]);
+        assert.deepEqual(JSON.parse(JSON.stringify(scene.skipEffects)), [{ type: "CLOSE_DIALOGUE" }]);
+        assert.ok(runtime().validateScript(scene));
+      }
+    });
+
+    it("builds distinct campaign/training outcome reactions", () => {
+      for (const training of [false, true]) for (const playerWon of [false, true]) {
+        const scene = api.outcomeScript("alex-rister", "AGENT", displayName, playerWon, training);
+        assert.match(scene.id, training ? /^training-outcome:/ : /^campaign-outcome:/);
+        assert.match(scene.id, playerWon ? /:win$/ : /:loss$/);
+        assert.deepEqual(JSON.parse(JSON.stringify(scene.beats.reaction.effects)), [{ type: "CLOSE_DIALOGUE" }]);
+        assert.ok(runtime().validateScript(scene));
+      }
+    });
+
+    it("builds a mentor handoff with evidence and one review effect", () => {
+      const progress = { total: 36, defeated: 8, domainTotal: 6, domainDefeated: 2 };
+      const scene = api.mentorScript("alex-rister", "AGENT", "julien-hovan", progress, displayName);
+      assert.match(scene.beats.handoff.text, /4 in this domain and 28 overall remain/);
+      assert.deepEqual(JSON.parse(JSON.stringify(scene.beats.handoff.effects)), [{ type: "OPEN_MENTOR_REVIEW" }]);
+      assert.deepEqual(progress, { total: 36, defeated: 8, domainTotal: 6, domainDefeated: 2 });
+      assert.ok(runtime().validateScript(scene));
     });
   });
 

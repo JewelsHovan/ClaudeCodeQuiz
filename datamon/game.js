@@ -417,6 +417,26 @@ function loadWalkAnim(slug) {
   return walkAnimLoads[slug];
 }
 
+// One ephemeral directional frame lets a seated challenger visibly face the displaced
+// candidate without loading or retaining all sixteen rival walk frames.
+let challengeFacingFrame = null; // {slug,dir,image}; at most one resident
+function loadChallengeFacingFrame(slug, dir) {
+  var record = { slug: slug, dir: WALK_DIRS.includes(dir) ? dir : "down", image: null };
+  challengeFacingFrame = record;
+  var image = new Image();
+  image.onload = function() { if (challengeFacingFrame === record) record.image = image; };
+  image.onerror = function() { if (challengeFacingFrame === record) record.image = null; };
+  image.src = "sprites-walk/" + slug + "/" + record.dir + "_0.png";
+}
+function clearChallengeFacingFrame(slug) {
+  if (!challengeFacingFrame || (slug && challengeFacingFrame.slug !== slug)) return;
+  var activeSlug = challengeFacingFrame.slug;
+  challengeFacingFrame = null;
+  Object.keys(walkMiniCache).forEach(function(key) {
+    if (key.indexOf("challenge:" + activeSlug + ":") === 0) delete walkMiniCache[key];
+  });
+}
+
 // GBA-style office tiles (32px) -> tileStore, for the tile-based renderer (ticket #003).
 // loadOne already resolves with tileStore[slug] = null on any load error, so a missing
 // tiles/ dir or a 404 never throws — the game falls back silently to flat tileColor().
@@ -682,7 +702,7 @@ const LIBRARY_DOOR_TILE        = [18, 23];      // "L" in library south wall
 const LIBRARY_ENTRY            = [18, 22];      // land here entering library
 const BATTLE_ROOM_DOOR_TILE    = [18, 23];      // "A" in battle room south wall
 const BATTLE_ROOM_ENTRY        = [18, 22];      // land here entering battle room
-let state = "title";    // title | select | overworld | battle | victory | search | minigame
+let state = "title";    // title | select | overworld | dialogue | transition | battle | victory | search | minigame
 let selectIdx = 0;
 let player = { slug: null, x: 18, y: 16, fx: 18, fy: 16, dir: "down", moving: false, hp: MAX_HP, dispHp: MAX_HP, seated: null };
 let battleTransition = null;   // {npc, t} — flash + iris wipe into battle
@@ -742,6 +762,16 @@ let currentMinigame = null;  // {type, stationId, label, score, phase} while sta
 let libraryProgress = {};    // bookId -> pageReached; persisted now, written by the reader later (#027 follow-up)
 let minigameScores = {};     // stationId -> best score (higher is better; 0 = not attempted)
 let mentorReview = null;    // #049: {npc, question, review, sel, phase, feedback, msgAt} — defeated-colleague review modal
+// ---- Portrait dialogue + encounter staging (#052) ----
+let dialogueSession = null;  // pure DatamonDialogueRuntime state; never serialized
+let dialogueContext = null;  // {kind,npc,training,replay}
+let dialogueStaging = null;  // visual-only player displacement tween
+let encounterSeatRestore = null; // captured chair contract retained through battle
+let dialogueEventSeq = 0;
+let dialogueAnnouncedKey = null;
+let dialogueAnnouncementHoldUntil = 0;
+const DIALOGUE_STAGING_FRAMES = 24;
+const DIALOGUE_PANEL = Object.freeze({ y: 350, h: 238, portrait: 112, leftX: 24, rightX: 664, textInset: 156 });
 let frame = 0;
 let dtF = 1;           // logical 60Hz frames this tick
 let mapCv = null;        // active pre-rendered map (points to officeMapCv or libraryMapCv or battleRoomMapCv)
@@ -1053,7 +1083,7 @@ function spawnPoof(b) {
   }
 }
 
-function startBattle(npc) {
+function startBattle(npc, portraitLed) {
   // Player cannot be seated during battle (#047).
   leaveSeat();
   clearMentorReview(); // #049: modal must not survive battle start
@@ -1082,6 +1112,7 @@ function startBattle(npc) {
   battle = {
     npc,
     training: training,
+    portraitLed: !!portraitLed,
     attributes: matchup,
     mons: Array.from({ length: monCount }, (_, i) => ({
       name: monPool[i % monPool.length], level: level + i, q: null, alive: true,
@@ -1256,6 +1287,7 @@ function _agentExitToOverworld(b, toastMessage) {
   if (battle !== b) return;
   if (typeof AgentArena !== "undefined") AgentArena.reset();
   wrapCache.clear();
+  restoreEncounterSeat();
   battle = null;
   player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
   state = "overworld"; bufferedDir = null; turnStartMs = null;
@@ -1266,23 +1298,26 @@ function _agentFinishVictory(b) {
   if (battle !== b || !b._agentVictoryConsumed) return;
   if (typeof AgentArena !== "undefined") AgentArena.reset();
   wrapCache.clear();
+  restoreEncounterSeat();
   battle = null;
+  player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
+  bufferedDir = null; turnStartMs = null;
   if (b.training) {
     // Training: always return to Battle Room, never trigger campaign victory.
-    player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
-    state = "overworld"; bufferedDir = null; turnStartMs = null;
+    state = "overworld";
+    var agentTrainingWinToast = toast && toast.msg;
+    if (b.portraitLed) openPostBattleDialogue(b, true, "overworld", agentTrainingWinToast);
     return;
   }
-  if (npcs.every(function (n) { return n.defeated; })) {
-    state = "victory";
-  } else {
-    player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
-    state = "overworld"; bufferedDir = null; turnStartMs = null;
-  }
+  var campaignComplete = npcs.every(function (n) { return n.defeated; });
+  if (campaignComplete) completeCertificationQuest();
+  state = campaignComplete ? "victory" : "overworld";
+  if (b.portraitLed) openPostBattleDialogue(b, true, campaignComplete ? "victory" : "overworld", null);
 }
 
 function _agentFinishDefeat(b) {
   if (battle !== b || !b._agentDefeatConsumed) return;
+  restoreEncounterSeat();
   if (b.training) {
     // Training defeat: no campaign respawn; stay in Battle Room.
     if (typeof AgentArena !== "undefined") AgentArena.reset();
@@ -1291,7 +1326,9 @@ function _agentFinishDefeat(b) {
     restorePlayerHp(true);
     player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
     state = "overworld"; bufferedDir = null; turnStartMs = null;
-    showToast("Training defeat — HP restored. Try again!");
+    var agentTrainingLossToast = "Training defeat — HP restored. Try again!";
+    showToast(agentTrainingLossToast);
+    if (b.portraitLed) openPostBattleDialogue(b, false, "overworld", agentTrainingLossToast);
     return;
   }
   if (typeof AgentArena !== "undefined") AgentArena.reset();
@@ -1302,7 +1339,9 @@ function _agentFinishDefeat(b) {
   player.x = player.fx = 18; player.y = player.fy = 16;
   camFx = camFy = null; stepT = 1; player.moving = false;
   state = "overworld"; bufferedDir = null; turnStartMs = null;
-  showToast("You respawned in the lounge with a fresh coffee. HP restored!");
+  var agentRespawnToast = "You respawned in the lounge with a fresh coffee. HP restored!";
+  showToast(agentRespawnToast);
+  if (b.portraitLed) openPostBattleDialogue(b, false, "overworld", agentRespawnToast);
 }
 
 // Keyboard input routing for Agent Operations encounters. The global keydown
@@ -1385,6 +1424,24 @@ function _agentFirstEnabledChoice(ao) {
   return 0;
 }
 
+function battleTerminalMessage(b, playerWon) {
+  if (b && b.portraitLed) {
+    return playerWon
+      ? "You defeated " + displayName(b.npc.slug) + "! Debrief link ready."
+      : "You blacked out from imposter syndrome... Recovery debrief ready.";
+  }
+  if (playerWon) {
+    return "You defeated " + displayName(b.npc.slug) + "! "
+      + (typeof DatamonDialogue !== "undefined"
+        ? '"' + DatamonDialogue.opponentLoss(b.npc.slug, b.npc.type, displayName) + '"'
+        : '"' + WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)] + '"');
+  }
+  return "You blacked out from imposter syndrome... "
+    + (typeof DatamonDialogue !== "undefined"
+      ? '"' + DatamonDialogue.opponentWin(b.npc.slug, b.npc.type, displayName) + '"'
+      : '"' + LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)] + '"');
+}
+
 // Project reducer state into the legacy battle rendering object. This is the
 // only function allowed to assign an Agent encounter's presentation phase.
 function _agentSyncPhase(b) {
@@ -1453,17 +1510,11 @@ function _agentSyncPhase(b) {
       b.msgAt = frame;
       break;
     case "victory":
-      b.msg = "You defeated " + displayName(b.npc.slug) + "! "
-        + (typeof DatamonDialogue !== "undefined"
-          ? '"' + DatamonDialogue.opponentLoss(b.npc.slug, b.npc.type, displayName) + '"'
-          : '"' + WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)] + '"');
+      b.msg = battleTerminalMessage(b, true);
       b.msgAt = frame;
       break;
     case "defeat":
-      b.msg = "You blacked out from imposter syndrome... "
-        + (typeof DatamonDialogue !== "undefined"
-          ? '"' + DatamonDialogue.opponentWin(b.npc.slug, b.npc.type, displayName) + '"'
-          : '"' + LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)] + '"');
+      b.msg = battleTerminalMessage(b, false);
       b.msgAt = frame;
       break;
   }
@@ -1491,19 +1542,13 @@ function advanceBattle() {
         sendOutCurrentMon(b);
       } else {
         b.phase = "win";
-        b.msg = "You defeated " + displayName(b.npc.slug) + "! "
-          + (typeof DatamonDialogue !== "undefined"
-            ? '"' + DatamonDialogue.opponentLoss(b.npc.slug, b.npc.type, displayName) + '"'
-            : '"' + WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)] + '"');
+        b.msg = battleTerminalMessage(b, true);
         b.msgAt = frame;
         sfx.victory();
       }
     } else if (player.hp <= 0) {
       b.phase = "lose";
-      b.msg = "You blacked out from imposter syndrome... "
-        + (typeof DatamonDialogue !== "undefined"
-          ? '"' + DatamonDialogue.opponentWin(b.npc.slug, b.npc.type, displayName) + '"'
-          : '"' + LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)] + '"');
+      b.msg = battleTerminalMessage(b, false);
       b.msgAt = frame;
     } else {
       currentMon().q = drawQuestion(b.npc.type);
@@ -1512,40 +1557,48 @@ function advanceBattle() {
       b.timerMs = battleTimerLimit(b); // Caffeine matchup sets the next countdown
     }
   } else if (b.phase === "win") {
+    restoreEncounterSeat();
     if (b.training) {
       _trainingWin(b);
+      var trainingWinToast = toast && toast.msg;
       wrapCache.clear();
       battle = null;
       player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
       state = "overworld"; bufferedDir = null; turnStartMs = null;
+      if (b.portraitLed) openPostBattleDialogue(b, true, "overworld", trainingWinToast);
     } else {
       b.npc.defeated = true;
       defeated.add(b.npc.slug);
       save();
       wrapCache.clear();
       battle = null;
-      if (npcs.every(n => n.defeated)) { state = "victory"; sfx.victory(); }
-      else {
-        player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
-        state = "overworld"; bufferedDir = null; turnStartMs = null;
-      }
+      var campaignComplete = npcs.every(function(npc) { return npc.defeated; });
+      if (campaignComplete) { completeCertificationQuest(); sfx.victory(); }
+      player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
+      state = campaignComplete ? "victory" : "overworld"; bufferedDir = null; turnStartMs = null;
+      if (b.portraitLed) openPostBattleDialogue(b, true, campaignComplete ? "victory" : "overworld", null);
     }
   } else if (b.phase === "lose") {
     wrapCache.clear();
+    restoreEncounterSeat();
     battle = null;
     if (b.training) {
       _trainingLoss(b);
       restorePlayerHp(true);
       player.fx = player.x; player.fy = player.y; player.moving = false; stepT = 1;
       state = "overworld"; bufferedDir = null; turnStartMs = null;
-      showToast("Training defeat — HP restored. Try again!");
+      var trainingLossToast = "Training defeat — HP restored. Try again!";
+      showToast(trainingLossToast);
+      if (b.portraitLed) openPostBattleDialogue(b, false, "overworld", trainingLossToast);
     } else {
       if (currentMap !== "office") { currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv; npcs = officeNpcs; }
       restorePlayerHp(true);
       player.x = player.fx = 18; player.y = player.fy = 16;
       camFx = camFy = null; stepT = 1; player.moving = false;
       state = "overworld"; bufferedDir = null; turnStartMs = null;
-      showToast("You respawned in the lounge with a fresh coffee. HP restored!");
+      var respawnToast = "You respawned in the lounge with a fresh coffee. HP restored!";
+      showToast(respawnToast);
+      if (b.portraitLed) openPostBattleDialogue(b, false, "overworld", respawnToast);
     }
   }
 }
@@ -1650,6 +1703,7 @@ function attemptRun() {
     // SUCCESS — flee to the overworld.
     sfx.confirm();
     wrapCache.clear();
+    restoreEncounterSeat();
     battle = null;
     if (b.training) {
       _trainingLoss(b);
@@ -1668,10 +1722,7 @@ function attemptRun() {
     if (player.hp <= 0) {
       // route into the existing lose/blackout flow (advanceBattle() handles it on advance)
       b.feedback = { correct: false };
-      b.msg = "You blacked out from imposter syndrome... "
-        + (typeof DatamonDialogue !== "undefined"
-          ? '"' + DatamonDialogue.opponentWin(b.npc.slug, b.npc.type, displayName) + '"'
-          : '"' + LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)] + '"');
+      b.msg = battleTerminalMessage(b, false);
       b.msgAt = frame;
       b.phase = "lose";
     } else {
@@ -1766,7 +1817,11 @@ function announceLocation(label, purpose, force) {
       var text = (label || "") + ". " + (purpose || "");
       _locationPoliteEl.textContent = "";
       // Re-setting after a microtask lets screen readers re-read.
-      setTimeout(function() { if (_locationPoliteEl) _locationPoliteEl.textContent = text; }, 0);
+      setTimeout(function() {
+        if (_locationPoliteEl && state !== "dialogue" && performance.now() >= dialogueAnnouncementHoldUntil) {
+          _locationPoliteEl.textContent = text;
+        }
+      }, 0);
     }
   }
 }
@@ -2327,7 +2382,7 @@ function drawCertConsole() {
   ctx.fillStyle = "#64748b";
   ctx.font = "10px monospace";
   ctx.textAlign = "center";
-  ctx.fillText("\u2191\u2193 navigate domains  \u00b7  ENTER/Space hear detail  \u00b7  ESC close", bgX + bgW / 2, bgY + bgH - 16);
+  ctx.fillText("\u2191\u2193 navigate  \u00b7  ENTER detail  \u00b7  P replay briefing  \u00b7  ESC close", bgX + bgW / 2, bgY + bgH - 16);
 }
 
 // ---- Certification Console input handling (#047) ----
@@ -2343,6 +2398,12 @@ function handleCertConsoleKey(key) {
     return true;
   }
   if (!certConsoleOpen) return false;
+  if (key === "p" || key === "P") {
+    certConsoleOpen = false;
+    certConsoleSel = 0;
+    openPrologue(true);
+    return true;
+  }
   var summary = _getEvidenceSummary();
   var maxSel = summary ? summary.domains.length - 1 : 4;
   if (key === "ArrowUp" || key === "up") {
@@ -2397,6 +2458,7 @@ function _announceConsoleDetail() {
 // ---------- Input ----------
 const keys = {};
 const agentActivationKeys = new Set();
+const dialogueActivationKeys = new Set();
 window.addEventListener("keydown", e => {
   // Unlock audio on first user interaction (browser autoplay policy).
   if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
@@ -2410,7 +2472,7 @@ window.addEventListener("keydown", e => {
   if (state === "search") { e.preventDefault(); handleSearchKey(e); return; }
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
   if (e.key === "Tab" && state === "select") e.preventDefault();   // Tab cycles difficulty, not focus
-  if (e.key === "Escape" && state === "battle" && battle && (battle.phase === "question" || (battle.agentOps && (battle.agentOps.phase === "action" || battle.agentOps.phase === "choice")))) e.preventDefault();
+  if (e.key === "Escape" && (state === "dialogue" || (state === "battle" && battle && (battle.phase === "question" || (battle.agentOps && (battle.agentOps.phase === "action" || battle.agentOps.phase === "choice")))))) e.preventDefault();
   const code = e.code || "";
   const alreadyDown = !!keys[e.key] || !!(code && keys[code]);
   const agentOwned = agentActivationKeys.has(e.key);
@@ -2427,7 +2489,11 @@ window.addEventListener("keydown", e => {
       tryStep(pressedDir);
     }
   }
-  // A held activation cannot answer and then immediately close the mentor modal.
+  // A held activation cannot cross dialogue beats/choices or answer and then close a mentor modal.
+  var dialogueKeySupported = ["Enter", " ", "Space", "Escape", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "1", "2", "3", "4", "5", "6"].includes(e.key);
+  var dialogueActivation = (state === "dialogue" && dialogueKeySupported) || dialogueActivationKeys.has(e.key);
+  if (dialogueActivation && (e.repeat || alreadyDown)) return;
+  if (state === "dialogue" && dialogueKeySupported) dialogueActivationKeys.add(e.key);
   var mentorActivation = mentorReview && ["Enter", " ", "Space", "1", "2", "3", "4"].includes(e.key);
   if (mentorActivation && (e.repeat || alreadyDown)) return;
   // Agent phases may change on a keydown. Requiring release before another event
@@ -2442,10 +2508,12 @@ window.addEventListener("keyup", e => {
   keys[e.key] = false;
   if (e.code) keys[e.code] = false;
   agentActivationKeys.delete(e.key);
+  dialogueActivationKeys.delete(e.key);
 }, true);
 window.addEventListener("blur", () => {
   for (const key in keys) keys[key] = false;
   agentActivationKeys.clear();
+  dialogueActivationKeys.clear();
 });
 
 document.addEventListener("visibilitychange", () => {
@@ -2461,6 +2529,11 @@ function handleKey(k) {
     return;
   }
 
+  if (state === "dialogue") {
+    handleDialogueKey(k);
+    return;
+  }
+
   if (state === "title") {
     if (k === "Enter" || k === " ") {
       sfx.confirm();
@@ -2468,12 +2541,14 @@ function handleKey(k) {
       if (s) {
         player.slug = s.player;
         restorePlayerHp(true);
-        player.seated = null; certConsoleOpen = false; clearMentorReview();
+        player.seated = null; certConsoleOpen = false; clearMentorReview(); resetDialogueLifecycle();
         loadWalkAnim(player.slug); // prewarmed at boot; idempotent if already complete
         defeated = new Set(s.defeated);
         placeNPCs();
         if (npcs.every(n => n.defeated)) { state = "victory"; }
-        else { state = "overworld"; bufferedDir = null; turnStartMs = null; }
+        else if (certificationQuestRecord() && certificationQuestRecord().prologueSeen === false) {
+          openPrologue(false);
+        } else { state = "overworld"; bufferedDir = null; turnStartMs = null; }
       } else {
         state = "select";
         loadWalkAnim(ROSTER[selectIdx]);
@@ -2490,7 +2565,7 @@ function handleKey(k) {
       saveCache = undefined;
       defeated = new Set();
       questionStats = {};
-      seenCounter = 0; _evidenceRevision++; clearMentorReview();
+      seenCounter = 0; _evidenceRevision++; clearMentorReview(); resetDialogueLifecycle();
       resetSitAssetCache();
       seenThisRun = {};
       coffeeUses = 3;
@@ -2519,12 +2594,13 @@ function handleKey(k) {
       camFx = camFy = null; stepT = 1; player.moving = false;
       _progression = freshProgression();
       _npcDomains = _progression.npcDomains;
+      createFreshCertificationQuest();
       placeNPCs();
       coffeeUses = 3;
       libraryProgress = {}; minigameScores = {}; currentMinigame = null;  // #028 — fresh character starts clean
       save();
       state = "overworld"; bufferedDir = null; turnStartMs = null;
-      showToast("Beat every colleague to become a Claude Certified Architect!", 3500);
+      openPrologue(false);
     }
   } else if (state === "overworld") {
     // #049: Mentor review modal intercepts before all overworld input
@@ -2683,6 +2759,7 @@ canvas.addEventListener("mouseleave", () => {
 // later synthetic click is swallowed below, so one physical press dispatches at
 // most one reducer event even when that event changes the interactive phase.
 const activeAgentPointers = new Set();
+const activeDialoguePointers = new Set();
 // Pointerdown owns adjacent overworld interactions. Swallow its synthetic follow-on click
 // so opening a modal can never also select/answer/close inside the newly opened layer.
 let suppressCanvasClickUntil = 0;
@@ -2691,6 +2768,16 @@ canvas.addEventListener("pointerdown", e => {
   try { canvas.focus({ preventScroll: true }); } catch (_) { canvas.focus(); }
   if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
   if (typeof DatamonMusic !== "undefined") DatamonMusic.unlock();
+  if (state === "dialogue" && dialogueSession) {
+    if (activeDialoguePointers.has(e.pointerId)) return;
+    activeDialoguePointers.add(e.pointerId);
+    const [mx, my] = canvasPos(e);
+    handleDialoguePointer(mx, my, "pointerdown");
+    suppressCanvasClickUntil = performance.now() + 750;
+    suppressCanvasClickPointerId = e.pointerId;
+    e.preventDefault();
+    return;
+  }
   if (state === "overworld" && (certConsoleOpen || mentorReview)) return; // modal click is handled once by `click`
   if (state === "overworld" && !coffeePrompt && !bookPrompt && !readerState && !scout) {
     const [mx, my] = canvasPos(e);
@@ -2753,11 +2840,13 @@ canvas.addEventListener("pointerdown", e => {
 window.addEventListener("pointerup", e => {
   releasePointerMovement(e.pointerId);
   activeAgentPointers.delete(e.pointerId);
+  activeDialoguePointers.delete(e.pointerId);
   if (typeof AgentArena !== "undefined") AgentArena.setHover(null, -1, false);
 });
 window.addEventListener("pointercancel", e => {
   releasePointerMovement(e.pointerId);
   activeAgentPointers.delete(e.pointerId);
+  activeDialoguePointers.delete(e.pointerId);
   if (suppressCanvasClickPointerId === e.pointerId) {
     suppressCanvasClickUntil = 0;
     suppressCanvasClickPointerId = null;
@@ -2767,6 +2856,7 @@ window.addEventListener("pointercancel", e => {
 window.addEventListener("blur", () => {
   pointerMoveId = null; pointerMoveDir = null;
   activeAgentPointers.clear();
+  activeDialoguePointers.clear();
   suppressCanvasClickUntil = 0; suppressCanvasClickPointerId = null;
 });
 
@@ -2782,6 +2872,11 @@ canvas.addEventListener("click", e => {
     suppressCanvasClickUntil = 0; suppressCanvasClickPointerId = null;
   }
   const [mx, my] = canvasPos(e);
+  if (state === "dialogue" && dialogueSession) {
+    handleDialoguePointer(mx, my, "click");
+    e.preventDefault();
+    return;
+  }
   if (bookPrompt || readerState) return; // swallow clicks behind book modal (keyboard-only UI)
   if (mentorReview) {
     // #049: Mentor review click — close on scrim click, select on choice hit
@@ -2956,6 +3051,424 @@ function facingTile() {
   return [player.x + d[0], player.y + d[1]];
 }
 
+// ---------- Portrait dialogue + certification quest (#052) ----------
+function certificationQuestRecord() {
+  if (!_progression || !_progression.quests) return null;
+  return _progression.quests[DatamonState.CERTIFICATION_QUEST_ID] || null;
+}
+
+function createFreshCertificationQuest() {
+  if (!_progression.quests || typeof _progression.quests !== "object") _progression.quests = {};
+  _progression.quests[DatamonState.CERTIFICATION_QUEST_ID] = {
+    status: "active",
+    objective: DatamonState.CERTIFICATION_FIRST_OBJECTIVE,
+    prologueSeen: false,
+  };
+}
+
+function activateCertificationQuest(replay) {
+  if (!_progression.quests || typeof _progression.quests !== "object") _progression.quests = {};
+  var existing = certificationQuestRecord();
+  if (replay && existing) {
+    existing.prologueSeen = true;
+  } else {
+    _progression.quests[DatamonState.CERTIFICATION_QUEST_ID] = {
+      status: "active",
+      objective: DatamonState.CERTIFICATION_FIRST_OBJECTIVE,
+      prologueSeen: true,
+    };
+  }
+  save();
+  showToast(replay ? "Certification briefing replay complete." : "Quest active: report to the Certification Console.", 3400);
+}
+
+function openCertificationConsole() {
+  certConsoleOpen = true;
+  certConsoleSel = 0;
+  toast = null;
+  sfx.select();
+  _dialogueAnnounce("Certification Console opened. Study evidence, not a pass prediction. Use arrow keys to navigate, P to replay the briefing, Escape to close.");
+  setTimeout(_announceConsoleSelection, 0);
+}
+
+function advanceCertificationQuestAtConsole() {
+  var quest = certificationQuestRecord();
+  if (!quest || quest.status !== "active" || quest.objective !== DatamonState.CERTIFICATION_FIRST_OBJECTIVE) return false;
+  quest.objective = DatamonState.CERTIFICATION_FIELD_OBJECTIVE;
+  quest.prologueSeen = true;
+  save();
+  showToast("Quest updated: challenge colleagues across all five domains.", 3600);
+  return true;
+}
+
+function completeCertificationQuest() {
+  var quest = certificationQuestRecord();
+  if (!quest || quest.status === "completed") return false;
+  quest.status = "completed";
+  quest.objective = "Claude Code certification complete";
+  quest.prologueSeen = true;
+  save();
+  return true;
+}
+
+function _dialogueAnnounce(message) {
+  if (typeof document === "undefined") return;
+  var announcer = document.getElementById("datamon-announcer");
+  if (announcer) announcer.textContent = message;
+}
+
+function announceDialogueBeat(force, selectionOnly, prefix) {
+  if (!dialogueSession || typeof DatamonDialogueRuntime === "undefined") return;
+  var beat = DatamonDialogueRuntime.currentBeat(dialogueSession);
+  if (!beat) return;
+  var key = dialogueSession.script.id + ":" + dialogueSession.beatId + ":" + dialogueSession.choice;
+  if (!force && key === dialogueAnnouncedKey) return;
+  dialogueAnnouncedKey = key;
+  var message;
+  if (selectionOnly && beat.choices && beat.choices.length) {
+    message = "Choice " + (dialogueSession.choice + 1) + " of " + beat.choices.length + ": " + beat.choices[dialogueSession.choice].label;
+  } else {
+    message = beat.speaker.name + ", " + (beat.speaker.domain || "mixed") + " channel. " + beat.text;
+    if (beat.choices && beat.choices.length) {
+      message += " " + beat.choices.map(function(choice, index) { return (index + 1) + ", " + choice.label + "."; }).join(" ");
+      message += " Selected: " + beat.choices[dialogueSession.choice].label + ".";
+    } else {
+      message += " Press Enter to reveal or continue.";
+    }
+    message += " Escape skips or closes this scene.";
+  }
+  _dialogueAnnounce((prefix || "") + message);
+}
+
+function dialogueEventToken(source) {
+  dialogueEventSeq = (dialogueEventSeq + 1) % 1000000000;
+  return source + ":" + dialogueEventSeq;
+}
+
+function restoreEncounterSeat() {
+  var record = encounterSeatRestore;
+  encounterSeatRestore = null;
+  dialogueStaging = null;
+  if (!record || !record.npc) { clearChallengeFacingFrame(); return false; }
+  clearChallengeFacingFrame(record.npc.slug);
+  record.npc.x = record.x;
+  record.npc.y = record.y;
+  record.npc._seated = true;
+  record.npc.dir = "down";
+  loadSitAsset(record.npc.slug);
+  return true;
+}
+
+function clearDialogueInputLatches() {
+  // Preserve the currently-held physical key in `keys` until keyup so a synthetic
+  // repeat:false duplicate cannot leak from a terminal dialogue beat into the world.
+  agentActivationKeys.clear();
+  bufferedDir = null;
+  turnStartMs = null;
+  pointerMoveId = null;
+  pointerMoveDir = null;
+}
+
+function closeDialogue(restoreSeat, announcement) {
+  dialogueSession = null;
+  dialogueContext = null;
+  dialogueAnnouncedKey = null;
+  dialogueStaging = null;
+  wrapCache.clear();
+  if (restoreSeat !== false) restoreEncounterSeat();
+  clearDialogueInputLatches();
+  state = "overworld";
+  dialogueAnnouncementHoldUntil = performance.now() + 1000;
+  _dialogueAnnounce(announcement || "Dialogue closed. Movement restored.");
+}
+
+function resetDialogueLifecycle() {
+  dialogueSession = null;
+  dialogueContext = null;
+  dialogueAnnouncedKey = null;
+  restoreEncounterSeat();
+  dialogueActivationKeys.clear();
+  clearDialogueInputLatches();
+}
+
+function _standDestinationValid(x, y, challengedNpc) {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return false;
+  if (!map[y] || SOLID.has(map[y][x])) return false;
+  if (currentMap === "office" && OFFICE_SEATS.has(x + "," + y)) return false;
+  if (npcs.some(function(npc) { return npc !== challengedNpc && npc.x === x && npc.y === y; })) return false;
+  return !(challengedNpc.x === x && challengedNpc.y === y);
+}
+
+function prepareSeatedChallenge(npc) {
+  dialogueStaging = null;
+  if (currentMap !== "office" || !npc || !npc._seated || typeof DatamonDialogueRuntime === "undefined") return;
+  encounterSeatRestore = { npc: npc, slug: npc.slug, x: npc.x, y: npc.y };
+  npc._seated = false;
+  var from = { x: player.fx, y: player.fy };
+  var destination = DatamonDialogueRuntime.chooseStandDisplacement(player, npc, function(x, y) {
+    return _standDestinationValid(x, y, npc);
+  }) || { x: player.x, y: player.y, moved: false };
+  player.x = destination.x; player.y = destination.y;
+  player.moving = false; stepT = 1;
+  var vx = destination.x - npc.x, vy = destination.y - npc.y;
+  npc.dir = Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? "left" : "right") : (vy < 0 ? "up" : "down");
+  loadChallengeFacingFrame(npc.slug, npc.dir);
+  var reduced = typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion();
+  if (!destination.moved || reduced) {
+    player.fx = destination.x; player.fy = destination.y;
+  } else {
+    player.fx = from.x; player.fy = from.y;
+    dialogueStaging = {
+      fromX: from.x, fromY: from.y, toX: destination.x, toY: destination.y,
+      t: 0, duration: DIALOGUE_STAGING_FRAMES,
+    };
+  }
+}
+
+function _openDialogueFallback(context) {
+  if (context.kind === "prologue") {
+    activateCertificationQuest(context.replay);
+    state = "overworld";
+  } else if (context.kind === "console-arrival") {
+    state = "overworld";
+    openCertificationConsole();
+  } else if (context.kind === "outcome") {
+    state = context.afterState === "victory" ? "victory" : "overworld";
+    if (context.toastMessage) showToast(context.toastMessage);
+  } else if (context.kind === "mentor") {
+    restoreEncounterSeat();
+    state = "overworld";
+    openMentorReview(context.npc);
+  } else if (context.npc) {
+    restoreEncounterSeat();
+    if (context.npc.type === "AGENT" && typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion()) {
+      startBattle(context.npc);
+    } else {
+      battleTransition = { npc: context.npc, t: 0 }; state = "transition";
+    }
+  }
+}
+
+function openDialogueScene(script, context) {
+  if (typeof DatamonDialogueRuntime === "undefined" || !script) {
+    _openDialogueFallback(context);
+    return false;
+  }
+  var session = DatamonDialogueRuntime.createSession(script);
+  if (!session) {
+    restoreEncounterSeat();
+    state = "overworld";
+    if (context.kind === "prologue") activateCertificationQuest(context.replay);
+    else if (context.kind === "console-arrival") { openCertificationConsole(); return false; }
+    else if (context.kind === "outcome") {
+      state = context.afterState === "victory" ? "victory" : "overworld";
+      if (context.toastMessage) showToast(context.toastMessage);
+      return false;
+    } else showToast("Comms script rejected. No encounter started.");
+    _dialogueAnnounce("Dialogue unavailable. No encounter or review was started.");
+    return false;
+  }
+  dialogueSession = session;
+  dialogueContext = context;
+  ["Enter", " ", "Escape", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "1", "2", "3", "4", "5", "6"].forEach(function(key) {
+    if (keys[key]) dialogueActivationKeys.add(key);
+  });
+  dialogueAnnouncedKey = null;
+  toast = null;
+  certConsoleOpen = false;
+  clearMentorReview();
+  clearDialogueInputLatches();
+  state = "dialogue";
+  if (dialogueStaging) {
+    _dialogueAnnounce("Seated challenge handoff. Colleague standing and moving the candidate to a safe tile.");
+  } else {
+    announceDialogueBeat(true, false);
+  }
+  return true;
+}
+
+function openPrologue(replay) {
+  var script = typeof DatamonDialogue !== "undefined" && DatamonDialogue.prologueScript
+    ? DatamonDialogue.prologueScript(player.slug, displayName) : null;
+  return openDialogueScene(script, { kind: "prologue", npc: null, training: false, replay: !!replay });
+}
+
+function openConsoleArrivalDialogue() {
+  var script = typeof DatamonDialogue !== "undefined" && DatamonDialogue.consoleArrivalScript
+    ? DatamonDialogue.consoleArrivalScript(player.slug, displayName) : null;
+  return openDialogueScene(script, { kind: "console-arrival", npc: null, training: false, replay: false });
+}
+
+function openPostBattleDialogue(b, playerWon, afterState, toastMessage) {
+  if (!b || !b.portraitLed) {
+    state = afterState === "victory" ? "victory" : "overworld";
+    if (toastMessage) showToast(toastMessage);
+    return false;
+  }
+  var script = typeof DatamonDialogue !== "undefined" && DatamonDialogue.outcomeScript
+    ? DatamonDialogue.outcomeScript(b.npc.slug, b.npc.type, displayName, !!playerWon, !!b.training) : null;
+  return openDialogueScene(script, {
+    kind: "outcome", npc: b.npc, training: !!b.training, replay: false,
+    playerWon: !!playerWon, afterState: afterState || "overworld", toastMessage: toastMessage || null,
+  });
+}
+
+function beginNpcDialogue(npc) {
+  if (!npc) return;
+  var training = currentMap === "battleRoom";
+  if (npc.defeated && !training) {
+    var campaignNpcs = currentMap === "office" ? npcs : officeNpcs;
+    var domainTotal = campaignNpcs.filter(function(rival) { return rival.type === npc.type; }).length;
+    var domainDefeated = campaignNpcs.filter(function(rival) { return rival.type === npc.type && rival.defeated; }).length;
+    var mentorScript = typeof DatamonDialogue !== "undefined" && DatamonDialogue.mentorScript
+      ? DatamonDialogue.mentorScript(npc.slug, npc.type, player.slug, {
+          total: rivalTotal, defeated: defeated.size, domainTotal: domainTotal, domainDefeated: domainDefeated,
+        }, displayName) : null;
+    openDialogueScene(mentorScript, { kind: "mentor", npc: npc, training: false, replay: false });
+    return;
+  }
+  prepareSeatedChallenge(npc);
+  var script = typeof DatamonDialogue !== "undefined" && DatamonDialogue.challengeScript
+    ? DatamonDialogue.challengeScript(npc.slug, npc.type, player.slug, displayName, training) : null;
+  openDialogueScene(script, { kind: "challenge", npc: npc, training: training, replay: false });
+}
+
+function applyDialogueEffects(effects, selectionLabel, eventType) {
+  if (!Array.isArray(effects) || !effects.length) return;
+  var selectedPrefix = selectionLabel ? "Selected choice: " + selectionLabel + ". " : "";
+  var skippedPrefix = eventType === "SKIP" ? "Scene skipped. " : "";
+  for (var i = 0; i < effects.length; i++) {
+    var effect = effects[i];
+    var context = dialogueContext;
+    if (!effect || !context) return;
+    if (effect.type === "ACTIVATE_QUEST") {
+      activateCertificationQuest(context.replay);
+      closeDialogue(true, skippedPrefix + (context.replay
+        ? "Certification briefing replay complete. Previous quest objective preserved."
+        : "Certification quest active. Objective: report to the Certification Console."));
+      return;
+    }
+    if (effect.type === "CLOSE_DIALOGUE") {
+      if (context.kind === "outcome") {
+        var afterState = context.afterState;
+        var outcomeToast = context.toastMessage;
+        closeDialogue(true, skippedPrefix + "Encounter debrief complete.");
+        state = afterState === "victory" ? "victory" : "overworld";
+        if (outcomeToast) showToast(outcomeToast);
+      } else {
+        closeDialogue(true, selectedPrefix + skippedPrefix + "Conversation closed. Movement restored.");
+        showToast("Conversation closed.");
+      }
+      return;
+    }
+    if (effect.type === "OPEN_MENTOR_REVIEW") {
+      var mentorNpc = context.npc;
+      closeDialogue(true);
+      openMentorReview(mentorNpc);
+      return;
+    }
+    if (effect.type === "OPEN_CERT_CONSOLE") {
+      closeDialogue(true, skippedPrefix + "Certification objective acknowledged. Opening evidence Console.");
+      openCertificationConsole();
+      return;
+    }
+    if (effect.type === "START_BATTLE") {
+      var npc = context.npc;
+      closeDialogue(false, selectedPrefix + "Challenge accepted. Battle transition starting."); // keep the captured seat contract until encounter exit
+      sfx.battle();
+      if (npc.type === "AGENT" && typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion()) {
+        startBattle(npc, true);
+      } else {
+        battleTransition = { npc: npc, t: 0, portraitLed: true };
+        state = "transition";
+      }
+      return;
+    }
+  }
+}
+
+function dispatchDialogue(event) {
+  if (!dialogueSession || typeof DatamonDialogueRuntime === "undefined") return false;
+  var previousBeat = dialogueSession.beatId;
+  var previousChoice = dialogueSession.choice;
+  var previousBeatData = DatamonDialogueRuntime.currentBeat(dialogueSession);
+  var selectionLabel = null;
+  if (dialogueSession.phase === "choice" && previousBeatData && previousBeatData.choices) {
+    var selectedIndex = event.type === "CHOOSE" ? event.index
+      : (event.type === "ACTIVATE" ? dialogueSession.choice : -1);
+    if (Number.isInteger(selectedIndex) && previousBeatData.choices[selectedIndex]) {
+      selectionLabel = previousBeatData.choices[selectedIndex].label;
+    }
+  }
+  var result = DatamonDialogueRuntime.reduce(dialogueSession, event);
+  if (!result.consumed && result.state === dialogueSession) return false;
+  dialogueSession = result.state;
+  if (event.type !== "TICK") sfx.select();
+  if (dialogueSession && (dialogueSession.beatId !== previousBeat || dialogueSession.choice !== previousChoice)) {
+    var changedBeat = dialogueSession.beatId !== previousBeat;
+    announceDialogueBeat(true, !changedBeat, changedBeat && selectionLabel
+      ? "Selected choice: " + selectionLabel + ". " : "");
+  }
+  applyDialogueEffects(result.effects, selectionLabel, event.type);
+  if (dialogueSession && dialogueSession.completed) {
+    closeDialogue(true, "Dialogue complete. Movement restored.");
+  }
+  return !!result.consumed;
+}
+
+function handleDialoguePointer(mx, my, source) {
+  if (!dialogueSession) return false;
+  var geometry = dialogueHitGeometry();
+  if (!geometry) return false;
+  var token = dialogueEventToken(source || "pointer");
+  if (mx >= geometry.skip.x && mx <= geometry.skip.x + geometry.skip.w &&
+      my >= geometry.skip.y && my <= geometry.skip.y + geometry.skip.h) {
+    return dispatchDialogue({ type: "SKIP", token: token });
+  }
+  if (dialogueStaging) return false;
+  var choice = geometry.choices.find(function(rect) {
+    return mx >= rect.x && mx <= rect.x + rect.w && my >= rect.y && my <= rect.y + rect.h;
+  });
+  if (choice) return dispatchDialogue({ type: "CHOOSE", index: choice.index, token: token });
+  if (mx >= 12 && mx <= CANVAS_W - 12 && my >= DIALOGUE_PANEL.y && my <= DIALOGUE_PANEL.y + DIALOGUE_PANEL.h) {
+    return dispatchDialogue({ type: "ACTIVATE", token: token });
+  }
+  return false;
+}
+
+function handleDialogueKey(k) {
+  if (!dialogueSession) return false;
+  var token = dialogueEventToken("key");
+  if (k === "Escape") return dispatchDialogue({ type: "SKIP", token: token });
+  if (dialogueStaging) return true; // stand/displacement must converge before any spoken beat advances
+  if (k === "ArrowUp" || k === "ArrowLeft") return dispatchDialogue({ type: "MOVE_CHOICE", direction: -1, token: token });
+  if (k === "ArrowDown" || k === "ArrowRight") return dispatchDialogue({ type: "MOVE_CHOICE", direction: 1, token: token });
+  if (/^[1-6]$/.test(k)) return dispatchDialogue({ type: "CHOOSE", index: Number(k) - 1, token: token });
+  if (k === "Enter" || k === " " || k === "Space") return dispatchDialogue({ type: "ACTIVATE", token: token });
+  return false;
+}
+
+function updateDialogue() {
+  if (!dialogueSession || typeof DatamonDialogueRuntime === "undefined") return;
+  if (dialogueStaging) {
+    dialogueStaging.t = Math.min(1, dialogueStaging.t + dtF / dialogueStaging.duration);
+    var eased = dialogueStaging.t * dialogueStaging.t * (3 - 2 * dialogueStaging.t);
+    player.fx = dialogueStaging.fromX + (dialogueStaging.toX - dialogueStaging.fromX) * eased;
+    player.fy = dialogueStaging.fromY + (dialogueStaging.toY - dialogueStaging.fromY) * eased;
+    if (dialogueStaging.t >= 1) {
+      player.fx = dialogueStaging.toX; player.fy = dialogueStaging.toY;
+      dialogueStaging = null;
+      announceDialogueBeat(true, false);
+    }
+    return;
+  }
+  var reduced = typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion();
+  var tick = DatamonDialogueRuntime.reduce(dialogueSession, {
+    type: "TICK", amount: Math.max(1, TEXT_SPEED() * dtF), reducedMotion: reduced,
+  });
+  dialogueSession = tick.state;
+}
+
 function interact() {
   const [tx, ty] = facingTile();
 
@@ -2971,39 +3484,23 @@ function interact() {
     if (sitAt(tx, ty)) { sfx.confirm(); return; }
   }
 
-  // Certification Console interaction
+  // Certification Console interaction. The first quest arrival gets one portrait-led
+  // command beat; interrupted/reloaded arrivals are already advanced and open directly.
   if (map[ty] && map[ty][tx] === "X" && currentMap === "office") {
-    certConsoleOpen = true;
-    certConsoleSel = 0;
-    toast = null;
-    sfx.select();
-    if (typeof document !== "undefined") {
-      var announcer = document.getElementById("datamon-announcer");
-      if (announcer) announcer.textContent = "Certification Console opened. Study evidence, not a pass prediction. Use arrow keys to navigate, Escape to close.";
+    var arrivingQuest = certificationQuestRecord();
+    if (arrivingQuest && arrivingQuest.status === "active" &&
+        arrivingQuest.objective === DatamonState.CERTIFICATION_FIRST_OBJECTIVE) {
+      advanceCertificationQuestAtConsole();
+      openConsoleArrivalDialogue();
+    } else {
+      openCertificationConsole();
     }
-    setTimeout(_announceConsoleSelection, 0);
     return;
   }
 
   const npc = npcs.find(n => n.x === tx && n.y === ty);
   if (npc) {
-    if (npc.defeated) {
-      // #049: Defeated office colleague opens mentor review modal (replaces generic toast)
-      if (typeof DatamonProgress !== "undefined" && typeof QUESTION_BANK !== "undefined") {
-        openMentorReview(npc);
-      } else {
-        // Fallback: generic follow-up when progress.js is not loaded
-        var followUp = (typeof DatamonDialogue !== "undefined")
-          ? DatamonDialogue.campaignFollowUp(npc.slug, npc.type, displayName, null)
-          : `${firstName(npc.slug)}: "Good battle earlier. Back to my Jira board..."`;
-        showToast(followUp);
-      }
-    }
-    else if (npc.type === "AGENT" && typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion()) {
-      // Reduced motion skips the triple flash/iris hit-stop entirely.
-      sfx.battle();
-      startBattle(npc);
-    } else { battleTransition = { npc, t: 0 }; state = "transition"; sfx.battle(); }
+    beginNpcDialogue(npc);
     return;
   }
   if (map[ty] && map[ty][tx] === "C") {
@@ -4479,6 +4976,17 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
     }
   }
 
+  // A seated challenger gets one ephemeral directional idle frame during the handoff/battle
+  // lead-in, making the recorded face-player direction visible without retaining rival sheets.
+  if (!isPlayer && challengeFacingFrame && challengeFacingFrame.slug === slug && challengeFacingFrame.image) {
+    var facingImage = challengeFacingFrame.image;
+    var facingH = baseSize;
+    var facingW = facingH * (facingImage.width / facingImage.height);
+    var facingMini = walkMini(facingImage, "challenge:" + slug + ":" + challengeFacingFrame.dir, facingW, facingH);
+    ctx.drawImage(facingMini, px(cx - facingW / 2), px(footY - facingH), facingW, facingH);
+    return;
+  }
+
   const mini = spriteMini(slug, baseSize);
   if (mini) {
     // Foot-anchored affine: translate to the feet, scale about that point, draw upward.
@@ -5771,7 +6279,7 @@ function drawOverworld() {
   for (const n of npcs) {
     const sx = (n.x - camFx) * TILE + TILE / 2, sy = (n.y - camFy) * TILE + TILE / 2;
     if (!onScreen(sx, sy)) continue;
-    chars.push({ sx, sy, slug: n.slug, dir: "down", isPlayer: false, bob: !n.defeated, tx: n.x, ty: n.y, npc: n, seated: !!n._seated });
+    chars.push({ sx, sy, slug: n.slug, dir: n.dir || "down", isPlayer: false, bob: !n.defeated, tx: n.x, ty: n.y, npc: n, seated: !!n._seated });
   }
   {
     const sx = (player.fx - camFx) * TILE + TILE / 2, sy = (player.fy - camFy) * TILE + TILE / 2;
@@ -5881,8 +6389,10 @@ function drawOverworld() {
   // Draw fixed navigation chrome after world entities so no sprite can cover it.
   var destinationPreview = officeDestinationPreview();
   drawLocationHUD();
-  announceLocation(destinationPreview ? destinationPreview.label : locationHudLabel(),
-    destinationPreview ? destinationPreview.announce : locationHudPurpose());
+  if (state !== "dialogue" && performance.now() >= dialogueAnnouncementHoldUntil) {
+    announceLocation(destinationPreview ? destinationPreview.label : locationHudLabel(),
+      destinationPreview ? destinationPreview.announce : locationHudPurpose());
+  }
 
   // ---- Evidence HUD strip (#047): compact study-readiness below location instrument ----
   drawEvidenceHUD();
@@ -6315,6 +6825,150 @@ function drawCoffeePrompt() {
   }
 }
 
+// ---------- Ops Comms portrait dialogue (#052) ----------
+function dialogueHitGeometry() {
+  if (!dialogueSession || typeof DatamonDialogueRuntime === "undefined") return null;
+  var beat = DatamonDialogueRuntime.currentBeat(dialogueSession);
+  if (!beat) return null;
+  var right = beat.speaker.side === "right";
+  var textX = right ? 24 : DIALOGUE_PANEL.textInset;
+  var textW = right ? DIALOGUE_PANEL.rightX - 40 : CANVAS_W - textX - 24;
+  var choiceRects = [];
+  if (beat.choices && dialogueSession.phase === "choice") {
+    for (var i = 0; i < beat.choices.length; i++) {
+      choiceRects.push({ x: textX + 14, y: 486 + i * 34, w: textW - 28, h: 29, index: i });
+    }
+  }
+  return {
+    textX: textX, textW: textW,
+    choices: choiceRects,
+    advance: { x: textX + textW - 148, y: 541, w: 134, h: 28 },
+    skip: dialogueStaging
+      ? { x: CANVAS_W - 142, y: 116, w: 116, h: 28 }
+      : { x: CANVAS_W - 122, y: 358, w: 98, h: 24 },
+  };
+}
+
+function _drawCommandPortrait(speaker, x, y, size, accent) {
+  ctx.save();
+  ctx.fillStyle = "#07111f"; ctx.fillRect(x, y, size, size);
+  ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.strokeRect(x, y, size, size);
+  if (speaker.slug) {
+    ctx.drawImage(pixelHead(speaker.slug, size - 12), x + 6, y + 6, size - 12, size - 12);
+  } else {
+    var cx = x + size / 2, cy = y + size / 2;
+    ctx.strokeStyle = accent; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(cx, cy, size * 0.31, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, size * 0.18, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = accent;
+    for (var i = 0; i < 8; i++) {
+      var angle = i * Math.PI / 4;
+      ctx.fillRect(Math.round(cx + Math.cos(angle) * size * 0.36) - 3,
+        Math.round(cy + Math.sin(angle) * size * 0.36) - 3, 6, 6);
+    }
+    ctx.font = "bold 13px monospace"; ctx.textAlign = "center";
+    ctx.fillText("CC", cx, cy + 5);
+  }
+  // Consultant badge cut-corner and live-link indicator.
+  ctx.fillStyle = accent;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 22, y); ctx.lineTo(x, y + 22); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#22c55e"; ctx.fillRect(x + size - 13, y + 7, 6, 6);
+  ctx.restore();
+}
+
+function drawDialogue() {
+  if (!dialogueSession || typeof DatamonDialogueRuntime === "undefined") return;
+  var beat = DatamonDialogueRuntime.currentBeat(dialogueSession);
+  if (!beat) return;
+  var geometry = dialogueHitGeometry();
+  var accent = TYPE_COLORS[beat.speaker.domain] || TYPE_COLORS.MIX || "#2dd4bf";
+  var right = beat.speaker.side === "right";
+  var portraitX = right ? DIALOGUE_PANEL.rightX : DIALOGUE_PANEL.leftX;
+  var portraitY = 392;
+
+  // The physical seated handoff is shown before the transcript panel so standing and
+  // safe displacement remain visible even for chairs near the south edge.
+  if (dialogueStaging) {
+    var stageX = 178, stageY = 106, stageW = 438, stageH = 48;
+    ctx.fillStyle = "rgba(5,13,26,0.94)"; ctx.fillRect(stageX, stageY, stageW, stageH);
+    ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.strokeRect(stageX, stageY, stageW, stageH);
+    ctx.fillStyle = accent; ctx.fillRect(stageX, stageY, 5, stageH);
+    ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 11px monospace"; ctx.textAlign = "left";
+    ctx.fillText("SEATED HANDOFF // " + beat.speaker.name.toUpperCase(), stageX + 16, stageY + 20);
+    ctx.fillStyle = "#94a3b8"; ctx.font = "9px monospace";
+    ctx.fillText("STANDING · FACING CANDIDATE · SAFE TILE LOCK", stageX + 16, stageY + 36);
+    ctx.fillStyle = "#162235"; ctx.fillRect(stageX + 16, stageY + stageH - 5, stageW - 32, 2);
+    ctx.fillStyle = accent; ctx.fillRect(stageX + 16, stageY + stageH - 5,
+      (stageW - 32) * Math.max(0, Math.min(1, dialogueStaging.t)), 2);
+    ctx.fillStyle = "#172033"; ctx.fillRect(geometry.skip.x, geometry.skip.y, geometry.skip.w, geometry.skip.h);
+    ctx.strokeStyle = "#475569"; ctx.strokeRect(geometry.skip.x, geometry.skip.y, geometry.skip.w, geometry.skip.h);
+    ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
+    ctx.fillText("CANCEL  ESC", geometry.skip.x + geometry.skip.w / 2, geometry.skip.y + 18);
+    ctx.textAlign = "left";
+    return;
+  }
+
+  // Frozen-world scrim + certification-command console.
+  ctx.fillStyle = "rgba(2,6,23,0.52)"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.fillStyle = "rgba(5,13,26,0.98)";
+  ctx.fillRect(12, DIALOGUE_PANEL.y, CANVAS_W - 24, DIALOGUE_PANEL.h);
+  ctx.strokeStyle = "#334155"; ctx.lineWidth = 2;
+  ctx.strokeRect(12, DIALOGUE_PANEL.y, CANVAS_W - 24, DIALOGUE_PANEL.h);
+  ctx.fillStyle = accent; ctx.fillRect(12, DIALOGUE_PANEL.y, CANVAS_W - 24, 4);
+  ctx.fillRect(right ? CANVAS_W - 18 : 12, DIALOGUE_PANEL.y, 6, DIALOGUE_PANEL.h);
+
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#64748b"; ctx.font = "bold 9px monospace";
+  ctx.fillText("OPS COMMS // " + dialogueSession.script.id.toUpperCase(), 26, 373);
+  ctx.fillStyle = accent; ctx.font = "bold 13px monospace";
+  ctx.fillText(beat.speaker.name.toUpperCase(), geometry.textX, 397);
+  ctx.fillStyle = "#94a3b8"; ctx.font = "10px monospace";
+  ctx.fillText((beat.speaker.domain || "MIX") + " CHANNEL  ·  " + (beat.speaker.expression || "NEUTRAL").toUpperCase(), geometry.textX, 413);
+  _drawCommandPortrait(beat.speaker, portraitX, portraitY, DIALOGUE_PANEL.portrait, accent);
+
+  // Transcript is wrapped from the complete line, then clipped by pure visibleChars.
+  var lines = wrapTextMemo(beat.text, geometry.textW - 18, "bold 13px monospace");
+  var visibleLines = typewriterSlice(lines, dialogueSession.visibleChars);
+  ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 13px monospace";
+  visibleLines.slice(0, 4).forEach(function(line, index) {
+    ctx.fillText(line, geometry.textX, 439 + index * 18);
+  });
+
+  if (beat.choices && dialogueSession.phase === "choice") {
+    geometry.choices.forEach(function(rect, index) {
+      var selected = index === dialogueSession.choice;
+      ctx.fillStyle = selected ? accent : "#162235";
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.strokeStyle = selected ? "#f8fafc" : "#334155"; ctx.lineWidth = selected ? 2 : 1;
+      ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.fillStyle = selected ? "#06111e" : "#cbd5e1";
+      ctx.font = "bold 11px monospace";
+      ctx.fillText((index + 1) + "  " + beat.choices[index].label, rect.x + 10, rect.y + 19);
+    });
+  } else if (dialogueSession.phase !== "typing") {
+    ctx.fillStyle = accent; ctx.fillRect(geometry.advance.x, geometry.advance.y, geometry.advance.w, geometry.advance.h);
+    ctx.fillStyle = "#06111e"; ctx.font = "bold 11px monospace"; ctx.textAlign = "center";
+    ctx.fillText(dialogueSession.phase === "ready" ? "ENTER  CONTINUE" : "LINK COMPLETE", geometry.advance.x + geometry.advance.w / 2, geometry.advance.y + 18);
+    ctx.textAlign = "left";
+  } else {
+    ctx.fillStyle = "#162235"; ctx.fillRect(geometry.advance.x, geometry.advance.y, geometry.advance.w, geometry.advance.h);
+    ctx.strokeStyle = accent; ctx.lineWidth = 1; ctx.strokeRect(geometry.advance.x, geometry.advance.y, geometry.advance.w, geometry.advance.h);
+    ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
+    ctx.fillText("REVEAL  ENTER", geometry.advance.x + geometry.advance.w / 2, geometry.advance.y + 18);
+    ctx.textAlign = "left";
+  }
+
+  // Pointer-accessible skip/close control.
+  ctx.fillStyle = "#172033"; ctx.fillRect(geometry.skip.x, geometry.skip.y, geometry.skip.w, geometry.skip.h);
+  ctx.strokeStyle = "#475569"; ctx.lineWidth = 1; ctx.strokeRect(geometry.skip.x, geometry.skip.y, geometry.skip.w, geometry.skip.h);
+  ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 9px monospace"; ctx.textAlign = "center";
+  ctx.fillText(dialogueContext && dialogueContext.kind === "prologue" ? "SKIP  ESC" : "CLOSE  ESC", geometry.skip.x + geometry.skip.w / 2, geometry.skip.y + 16);
+  ctx.textAlign = "left";
+
+  ctx.fillStyle = "#64748b"; ctx.font = "9px monospace";
+  ctx.fillText("ENTER/SPACE advance  ·  ↑↓ choose  ·  1–6 direct select  ·  ESC skip/close", 26, 580);
+}
+
 // ---------- Main loop ----------
 let lastT = performance.now();
 function drawSearch() {
@@ -6409,9 +7063,10 @@ function loop(t) {
     _sitAnimPhase %= SEATED_DRAW_GEOMETRY.phasePeriodTicks;
   }
   if (state === "overworld") updateOverworld(dt);
+  if (state === "dialogue") updateDialogue();
   if (state === "transition" && battleTransition) {
     battleTransition.t += dtF;
-    if (battleTransition.t >= 46) { startBattle(battleTransition.npc); battleTransition = null; }
+    if (battleTransition.t >= 46) { startBattle(battleTransition.npc, !!battleTransition.portraitLed); battleTransition = null; }
   }
   // Hard-mode question timer: counts down ONLY during the question phase (Invariant 1 —
   // paused during feedback/typewriter/intro/sendout/win/lose). On expiry, route through
@@ -6442,6 +7097,7 @@ function loop(t) {
   if (state === "title") drawTitle();
   else if (state === "select") drawSelect();
   else if (state === "overworld") drawOverworld();
+  else if (state === "dialogue") { drawOverworld(); drawDialogue(); }
   else if (state === "transition") { drawOverworld(); drawTransition(); }
   else if (state === "battle") drawBattle();
   else if (state === "victory") drawVictory();
