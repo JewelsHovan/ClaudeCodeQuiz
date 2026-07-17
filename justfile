@@ -42,6 +42,7 @@ check:
     node --check datamon/state.js
     node --check datamon/core.js
     node --check datamon/world-art.js
+    node --check datamon/world-layout.js
     node --check datamon/music.js
     for file in scripts/*.mjs tests/unit/*.js tests/browser/*.js; do node --check "$file"; done
     python3 -m py_compile datamon/tools/art_pipeline.py datamon/tools/gen_world_art.py datamon/tools/gen_architecture_assets.py datamon/tools/gen_sitting_assets.py datamon/tools/gen_study_assets.py datamon/tools/gen_wayfinding_assets.py tests/test_art_pipeline.py tests/test_sitting_assets.py tests/test_wayfinding_assets.py

@@ -24,7 +24,7 @@ const CHARACTER_RELEASE_FILES = [
 ];
 const RUNTIME_FILES = [
   "index.html", "state.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js",
-  "progress.js", "dialogue.js", "world-art.js", "music.js", "game.js",
+  "progress.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js",
   ...WAYFINDING_FILES, ...CHARACTER_RELEASE_FILES,
 ];
 

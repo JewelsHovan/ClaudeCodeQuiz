@@ -52,7 +52,9 @@ localStorage (per browser + port, so stick with one way of serving it).
   | **Prompt Studio** | Prompt Engineering & Structured Output | 20% | Prompt critique |
   | **Context Corner** | Context Management & Reliability | 15% | Reliability triage |
   | **The Lounge** | Mixed, blueprint-weighted | — | Recommended weak-domain review |
-- A trainer's zone decides their question domain. The office's **Certification Spine**,
+- A trainer's zone decides their question domain. A deterministic semantic-anchor allocator
+  spreads standing colleagues between plausible desks, lounge, kitchen, meeting, and review
+  positions instead of clustering around one prop. The office's **Certification Spine**,
   cross-office Commons, and south Portal Gallery keep the Console and destinations on clear
   sightlines. Shape-coded wall friezes identify domains without floor labels.
 - Face an entrance to preview its destination and purpose in the existing Location instrument:
@@ -73,12 +75,16 @@ localStorage (per browser + port, so stick with one way of serving it).
   **due → unseen → refresh** material from that domain, show the canonical explanation, and
   update the same question telemetry as battles. They never change HP, campaign wins, or training streaks.
 - Battle Room rematches restore HP before each encounter, preserve campaign rival progress,
-  continue question-learning telemetry, and track separate current/best training streaks.
+  continue question-learning telemetry, and track separate current/best training streaks. Its
+  continuous proving-ground floor uses large true-DPR2 resin panels, a certification runway,
+  six shape-coded bays, and nearer rival rows so the arrival view is active rather than empty.
 - **Agent Wing battles are strategic Incident Command encounters.** Choose Query,
   Inspect, Patch, or Escalate; build Momentum, deploy a Guardrail, and reduce enemy
   Stability on a service-topology board. The last undefeated Agent rival is a gated
   three-phase boss with 3/4/5 Stability.
-- Character attributes now drive a bounded, symmetric matchup without changing which answer
+- Player and NPC overworld sprites share one fixed feet-anchored height; campaign progress no
+  longer makes the player visually dwarf colleagues. Character attributes still drive a bounded,
+  symmetric matchup without changing which answer
   is correct or how learning telemetry works: **Caffeine** adjusts movement and the Hard timer,
   **Debugging** adjusts miss damage (15–35), **Vibes** sets player max HP (90–110) and classic
   opponent team size (1–3), and **Jargon** restores 0–8 HP after a correct answer. The battle
@@ -105,6 +111,7 @@ localStorage (per browser + port, so stick with one way of serving it).
 - `battle-ops.js` — pure Agent Operations reducer and strategic action economy
 - `agent-arena.js` — Incident Command presentation, accessibility, bounded effects/audio
 - `world-art.js` — DPR-aware map caches, accepted HD asset/ambient layer, lazy portraits
+- `world-layout.js` — pure semantic office anchor allocation and accepted 36-rival training slots
 - `music.js` — original deterministic score, scene routing, crossfades, and bounded Web Audio scheduler
 - `questions.js` — 120-question bank (AGENT / MCP / CONFIG / PROMPT / CONTEXT,
   24 per exam domain, each with an explanation), mon names, battle quotes

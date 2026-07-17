@@ -270,33 +270,29 @@ function buildBattleRoomMap() {
 
 const BATTLE_ROOM_MAP = buildBattleRoomMap();
 
-// Deterministic ring placement for all non-player roster members. Slots alternate
-// between edges so the room stays visually balanced as the roster grows. Ten slots
-// fit each long edge and eight fit each short edge without blocking the south entry.
+// Deterministic training-bay placement for every non-player roster member. Reviewed slots
+// preserve the perimeter league silhouette while bringing three sparring rows into the entry
+// camera; the south-to-centre lane remains open. world-layout.js returns defensive copies so
+// no runtime interaction can mutate the accepted slot contract.
 function buildBattleRoomNPCs(playerSlug) {
-  const horizontalX = [4, 7, 10, 13, 16, 19, 22, 25, 28, 31];
-  const verticalY = [4, 6, 8, 10, 12, 14, 16, 18];
-  const edges = [
-    horizontalX.map(function(x) { return [x, 3]; }),
-    horizontalX.map(function(x) { return [x, 20]; }),
-    verticalY.map(function(y) { return [3, y]; }),
-    verticalY.map(function(y) { return [32, y]; }),
-  ];
-  const slots = [];
-  for (var slotIndex = 0; slotIndex < horizontalX.length; slotIndex++) {
-    for (var edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
-      if (edges[edgeIndex][slotIndex]) slots.push(edges[edgeIndex][slotIndex]);
-    }
-  }
+  const slots = (typeof DatamonWorldLayout !== "undefined")
+    ? DatamonWorldLayout.battleRoomSlots()
+    : [
+      [4,19],[7,19],[10,19],[13,19],[23,19],[26,19],[29,19],[32,19],
+      [6,15],[10,15],[14,15],[22,15],[26,15],[30,15],
+      [8,11],[12,11],[16,11],[20,11],[24,11],[28,11],
+      [3,4],[3,7],[3,10],[3,13],[3,16],[32,4],[32,7],[32,10],[32,13],[32,16],
+      [6,3],[11,3],[16,3],[20,3],[25,3],[30,3],
+    ].map(function(slot) { return { x: slot[0], y: slot[1] }; });
 
   const others = ROSTER.filter(function(s) { return s !== playerSlug; });
   const domains = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
-  console.assert(others.length <= slots.length, "Battle Room perimeter capacity exceeded");
+  console.assert(others.length === slots.length, "Battle Room slot contract must fit all 36 rivals");
   return others.slice(0, slots.length).map(function(slug, index) {
     var persisted = _npcDomains && _npcDomains[slug];
     var type = domains.indexOf(persisted) >= 0 ? persisted : domains[index % domains.length];
     return {
-      slug: slug, x: slots[index][0], y: slots[index][1],
+      slug: slug, x: slots[index].x, y: slots[index].y,
       type: type, defeated: false, training: true,
     };
   });
@@ -710,6 +706,7 @@ let certConsoleSel = 0;
 // ---- Sitting asset cache and fixed draw geometry (#047/#048) ----
 // Gameplay remains anchored to the same chair tile. These visual-only values make the
 // compact pose, fallback, cadence, and foreground chair mask independently testable.
+const STANDING_CHARACTER_HEIGHT = 56; // equal player/NPC visual height; progression never changes scale
 const SEATED_DRAW_GEOMETRY = Object.freeze({
   poseSize: 64,
   feetOffsetY: 16,
@@ -774,90 +771,100 @@ const wrapCache = new Map(); // font|maxW|text -> wrapped lines
 function placeNPCs() {
   const rng = mulberry32(20260610);
   const others = ROSTER.filter(s => s !== player.slug);
-
-  // ---- Seated NPC reservations (#047) ----
-  // Pre-reserve the 6 NPC-designated chair cells so they aren't used for standing placement.
+  const domains = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
+  const order = shuffled(others, rng);
   const reservedSeats = new Set(OFFICE_SEATS.keys());
 
-  // "Smart" placement: rank candidate cells so NPCs stand BY the furniture (desks, couches,
-  // bar…) and OUT OF the walkways, instead of stranded mid-floor blocking traffic.
-  // Cells orthogonally adjacent to any baked prop footprint read as "at your station".
-  const furnitureAdj = new Set();
-  for (const p of PROP_PLACEMENTS) {
-    const meta = propManifest.find(m => m.slug === p.slug);
-    const tw = (meta && meta.tileW) || 1, th = (meta && meta.tileH) || 1;
-    for (let yy = p.row; yy < p.row + th; yy++)
-      for (let xx = p.col; xx < p.col + tw; xx++) {
-        for (const [ax, ay] of [[xx, yy + 1], [xx, yy - 1], [xx - 1, yy], [xx + 1, yy]])
-          furnitureAdj.add(`${ax},${ay}`);
-      }
-  }
-  // Main traffic lanes to keep clear: inter-zone aisles (vertical x≈12/24, horizontal y≈11)
-  // and a 2-tile margin around every door (incl. the library warp door at 24,23).
-  const inAisle = (x, y) => (x >= 11 && x <= 13) || (x >= 23 && x <= 25) || (y >= 10 && y <= 12);
-  const nearDoor = (x, y) => DOORS.some(([dx, dy]) => Math.abs(dx - x) + Math.abs(dy - y) <= 2);
-  const score = (x, y) => (furnitureAdj.has(`${x},${y}`) ? 100 : 0)
-    - (inAisle(x, y) ? 60 : 0) - (nearDoor(x, y) ? 80 : 0);
-
-  const regions = { AGENT: [], MCP: [], CONFIG: [], PROMPT: [], CONTEXT: [], MIX: [] };
-  for (let y = 1; y < MAP_H - 1; y++) for (let x = 1; x < MAP_W - 1; x++) {
-    if (SOLID.has(map[y][x])) continue;
-    if (DOORS.some(([dx, dy]) => Math.abs(dx - x) + Math.abs(dy - y) <= 1)) continue;
-    if (Math.abs(x - player.x) + Math.abs(y - player.y) <= 2) continue;
-    if (reservedSeats.has(`${x},${y}`)) continue; // #047: don't place standing NPCs on chairs
-    if (isPathMaskCell(x, y)) continue; // #049: certification spine + commons clearways
-    regions[regionOf(x, y)].push([x, y]);
-  }
-  // Rank each region's cells best-first (score desc; small rng jitter varies ties so the
-  // layout isn't identical every run while staying deterministic for a given seed).
-  for (const k in regions) {
-    regions[k] = regions[k]
-      .map(([x, y]) => [x, y, score(x, y) + rng() * 5])
-      .sort((a, b) => b[2] - a[2]);
-  }
-
-  const order = shuffled(others, rng);
-  const perRegion = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
-  npcs = [];
-  order.forEach((slug, i) => {
-    // Persist domain identity when a prior assignment exists; otherwise
-    // use the deterministic round-robin result and record it.
-    // Defensive: validate that a persisted domain is a known region;
-    // malformed data cannot index an unknown key.
-    const VALID_DOMAINS = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT", "MIX"];
-    const freshType = perRegion[i % 6];
+  // Preserve valid persisted domain identities; new colleagues receive a deterministic
+  // round-robin identity. Placement is now a separate pure concern in world-layout.js.
+  const people = order.map(function(slug, index) {
     const persisted = (typeof _npcDomains === "object" && _npcDomains[slug]);
-    const type = (persisted && VALID_DOMAINS.indexOf(persisted) >= 0) ? persisted : freshType;
-    // Record for future sessions (even if unchanged — idempotent).
-    if (typeof _npcDomains === "object") _npcDomains[slug] = type;
-    // Take the best-ranked spot still ≥3 tiles from every placed NPC (one per workstation).
-    const idx = regions[type].findIndex(([x, y]) =>
-      !npcs.some(n => Math.abs(n.x - x) + Math.abs(n.y - y) < 3));
-    if (idx >= 0) {
-      const [x, y] = regions[type][idx];
-      npcs.push({ slug, x, y, type, defeated: defeated.has(slug) });
-      regions[type].splice(idx, 1);
-    }
+    const domain = domains.indexOf(persisted) >= 0 ? persisted : domains[index % domains.length];
+    if (typeof _npcDomains === "object") _npcDomains[slug] = domain;
+    return { slug: slug, domain: domain };
   });
-  // ---- #047: Assign seated NPCs to reserved chairs ----
-  // Take first 2 NPCs from each desk-bearing domain and place them at their chairs.
+
+  // Select the six seated colleagues before standing allocation so chair occupants do not
+  // consume and then vacate the best standing anchors. Seat identity remains deterministic.
+  const seatedSlugs = new Set();
+  const seated = [];
   for (const [seatKey, domain] of NPC_SEAT_ASSIGNMENTS) {
-    var seatDomNPCs = npcs.filter(function(n) {
-      return n.type === domain && !n._seated;
+    const person = people.find(function(candidate) {
+      return candidate.domain === domain && !seatedSlugs.has(candidate.slug);
     });
-    if (seatDomNPCs.length > 0) {
-      var target = seatDomNPCs[0];
-      var coords = seatKey.split(",");
-      target.x = parseInt(coords[0], 10);
-      target.y = parseInt(coords[1], 10);
-      target._seated = true;
-      target.dir = "down";
-      // Preload sitting asset for this NPC
-      loadSitAsset(target.slug);
-    }
+    if (!person) continue;
+    const coords = seatKey.split(",");
+    seatedSlugs.add(person.slug);
+    seated.push({
+      slug: person.slug, type: person.domain,
+      x: parseInt(coords[0], 10), y: parseInt(coords[1], 10),
+      defeated: defeated.has(person.slug), _seated: true, dir: "down",
+      _layoutZone: "assigned-seat", _layoutSource: "seat",
+    });
+  }
+  const standingPeople = people.filter(function(person) { return !seatedSlugs.has(person.slug); });
+
+  function validStandingCell(x, y) {
+    if (x < 1 || y < 1 || x >= MAP_W - 1 || y >= MAP_H - 1) return false;
+    if (SOLID.has(map[y][x])) return false;
+    if (DOORS.some(function(door) { return Math.abs(door[0] - x) + Math.abs(door[1] - y) <= 1; })) return false;
+    if (Math.abs(x - player.x) + Math.abs(y - player.y) <= 2) return false;
+    if (reservedSeats.has(x + "," + y) || isPathMaskCell(x, y)) return false;
+    return true;
   }
 
-  rivalTotal = npcs.length; // stable HUD denominator — set after placement completes
+  // Complete region pools are capacity-only fallbacks. Named activity anchors from the pure
+  // module win ties, while quadrant tags ensure a fallback cannot collapse into one corner.
+  const fallbackByDomain = { AGENT: [], MCP: [], CONFIG: [], PROMPT: [], CONTEXT: [], MIX: [] };
+  for (let y = 1; y < MAP_H - 1; y++) for (let x = 1; x < MAP_W - 1; x++) {
+    if (!validStandingCell(x, y)) continue;
+    const domain = regionOf(x, y);
+    const horizontal = x < (domain === "AGENT" || domain === "CONTEXT" ? 6 : domain === "MCP" || domain === "PROMPT" ? 18 : 30)
+      ? "west" : "east";
+    const vertical = y < 6 || (y >= 13 && y < 18) ? "north" : "south";
+    fallbackByDomain[domain].push({ x: x, y: y, zone: "fallback-" + horizontal + "-" + vertical, source: "fallback" });
+  }
+
+  let allocation = null;
+  if (typeof DatamonWorldLayout !== "undefined") {
+    allocation = DatamonWorldLayout.allocateOffice({
+      people: standingPeople,
+      fallbackByDomain: fallbackByDomain,
+      isValid: validStandingCell,
+      seed: 20260717,
+    });
+  }
+  // Missing-module fallback remains deterministic and geometry-safe; packaging independently
+  // requires world-layout.js, so production normally takes the richer semantic allocator.
+  if (!allocation || !allocation.complete) {
+    const used = new Set();
+    const placements = [];
+    for (const person of standingPeople) {
+      const candidate = fallbackByDomain[person.domain].find(function(point) {
+        const key = point.x + "," + point.y;
+        return !used.has(key) && !placements.some(function(other) {
+          return Math.abs(other.x - point.x) + Math.abs(other.y - point.y) < 3;
+        });
+      });
+      if (!candidate) continue;
+      used.add(candidate.x + "," + candidate.y);
+      placements.push({ slug: person.slug, domain: person.domain, x: candidate.x, y: candidate.y, zone: candidate.zone, source: "fallback" });
+    }
+    allocation = { placements: placements, complete: placements.length === standingPeople.length };
+  }
+
+  npcs = allocation.placements.map(function(placement) {
+    return {
+      slug: placement.slug, x: placement.x, y: placement.y, type: placement.domain,
+      defeated: defeated.has(placement.slug),
+      _layoutZone: placement.zone, _layoutSource: placement.source,
+    };
+  }).concat(seated);
+  for (const colleague of seated) loadSitAsset(colleague.slug);
+
+  console.assert(allocation.complete && npcs.length === others.length,
+    "Office layout must place every non-player colleague");
+  rivalTotal = npcs.length;
 }
 
 // ---------- Save / load ----------
@@ -4402,8 +4409,9 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
     return;
   }
 
-  // Base overworld size 56px; the player grows ~0.5px/win, capped +14px (→70px after 28 wins).
-  const baseSize = isPlayer ? 56 + Math.min(defeated.size * 0.5, 14) : 56;
+  // Every standing consultant uses one visual-height contract. Progress remains visible in
+  // evidence/campaign instruments rather than making the player physically dwarf colleagues.
+  const baseSize = STANDING_CHARACTER_HEIGHT;
   const sizeScale = baseSize / 34;            // proportional factor vs. the old 34px base
   const footY = cy + 16;                      // tile bottom (cy + TILE/2) — feet anchored here
 
@@ -4443,7 +4451,7 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
     ctx.restore();
   }
 
-  // A tall sprite (up to 58px) grows upward past its own 32px tile — that's CORRECT
+  // A tall sprite grows upward past its own 32px tile — that's CORRECT
   // top-down layering: the character stands in front of the wall/desk to its north and
   // draws over it (depth-sort orders characters against each other; the static map is
   // always behind them). The opaque HUD is drawn AFTER all characters, so it naturally
@@ -4596,6 +4604,21 @@ function drawTitle() {
 // without shrinking the selected consultant's large showcase portrait.
 const SEL = { cols: 7, cell: 61, ox: 26, oy: 88 };
 const PANEL = { x: 488, y: 96, w: 286, h: 462 };
+const SELECT_STAT_LAYOUT = Object.freeze({
+  panelPad: 18, labelWidth: 80, labelGap: 8, valueWidth: 30, valueGap: 8, trackHeight: 10,
+});
+function selectStatGeometry() {
+  const labelX = PANEL.x + SELECT_STAT_LAYOUT.panelPad;
+  const valueRight = PANEL.x + PANEL.w - SELECT_STAT_LAYOUT.panelPad;
+  const valueLeft = valueRight - SELECT_STAT_LAYOUT.valueWidth;
+  const trackX = labelX + SELECT_STAT_LAYOUT.labelWidth + SELECT_STAT_LAYOUT.labelGap;
+  const trackRight = valueLeft - SELECT_STAT_LAYOUT.valueGap;
+  return {
+    labelX: labelX, trackX: trackX, trackWidth: Math.max(0, trackRight - trackX),
+    valueLeft: valueLeft, valueRight: valueRight, valueWidth: SELECT_STAT_LAYOUT.valueWidth,
+    trackHeight: SELECT_STAT_LAYOUT.trackHeight,
+  };
+}
 let selChangedAt = -999; // frame when selection last changed (drives animations)
 
 function announceSelectProfile() {
@@ -4854,20 +4877,24 @@ function drawSelect() {
   ctx.fillStyle = p.color; ctx.font = "bold 12px monospace";
   ctx.fillText("« " + p.title + " »", cx, PANEL.y + 332);
 
-  // animated stat bars
-  const bx = PANEL.x + 18, bw = PANEL.w - 36;
+  // Animated stat bars use three explicit columns. The fill is clamped to its track and can
+  // never paint beneath the fixed right-aligned value lane (including values 99 and 100).
+  const statGeo = selectStatGeometry();
   STAT_NAMES.forEach((sn, i) => {
     const by = PANEL.y + 352 + i * 23;
     const fillT = Math.min(1, Math.max(0, (frame - selChangedAt - i * 4) / 26));
-    const v = p.stats[i] * (1 - Math.pow(1 - fillT, 2));
-    ctx.fillStyle = "#64748b"; ctx.font = "bold 10px monospace"; ctx.textAlign = "left";
-    ctx.fillText(sn, bx, by + 8);
-    ctx.fillStyle = "#0f172a";
-    ctx.fillRect(bx + 86, by, bw - 86, 10);
+    const v = Math.max(0, Math.min(100, p.stats[i] * (1 - Math.pow(1 - fillT, 2))));
+    ctx.fillStyle = "#94a3b8"; ctx.font = "bold 10px monospace"; ctx.textAlign = "left";
+    ctx.fillText(sn, statGeo.labelX, by + 8);
+    ctx.fillStyle = "#07101f";
+    ctx.fillRect(statGeo.trackX, by, statGeo.trackWidth, statGeo.trackHeight);
     ctx.fillStyle = p.color;
-    ctx.fillRect(bx + 86, by, (bw - 86) * (v / 100), 10);
-    ctx.fillStyle = "#94a3b8"; ctx.font = "10px monospace"; ctx.textAlign = "right";
-    ctx.fillText(String(Math.round(v)), bx + bw, by + 9);
+    ctx.fillRect(statGeo.trackX, by, statGeo.trackWidth * (v / 100), statGeo.trackHeight);
+    // Repaint the dedicated number lane so even malformed canvas state cannot reduce contrast.
+    ctx.fillStyle = "#111c33";
+    ctx.fillRect(statGeo.valueLeft, by - 2, statGeo.valueWidth, statGeo.trackHeight + 4);
+    ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 10px monospace"; ctx.textAlign = "right";
+    ctx.fillText(String(Math.round(v)), statGeo.valueRight, by + 9);
   });
 
   if (Math.floor(frame / 25) % 2 === 0) {
@@ -5053,6 +5080,22 @@ function buildFloorTexture() {
   g.addColorStop(0, "rgba(255,238,205,0.10)");
   g.addColorStop(1, "rgba(40,22,8,0.14)");
   c.fillStyle = g; c.fillRect(0, 0, W, H);
+
+  // Sparse physical-pixel pores, checks, and knots survive the DPR2 cache as detail below one
+  // logical pixel. They are deterministic and restrained enough not to reintroduce tile noise.
+  c.imageSmoothingEnabled = false;
+  for (let i = 0; i < 360; i++) {
+    const pxX = Math.floor(rng() * W), pxY = Math.floor(rng() * H);
+    c.fillStyle = rng() < 0.64 ? "rgba(58,31,10,0.16)" : "rgba(255,224,177,0.13)";
+    c.fillRect(pxX, pxY, rng() < 0.82 ? 1 : Math.max(1, ds), 1);
+  }
+  for (let i = 0; i < 26; i++) {
+    const knotX = Math.floor(rand(20, W - 20)), knotY = Math.floor(rand(20, H - 20));
+    const radiusX = rand(2.5, 5.5) * ds, radiusY = rand(1.2, 2.8) * ds;
+    c.strokeStyle = "rgba(58,31,10,0.13)"; c.lineWidth = 1;
+    c.beginPath(); c.ellipse(knotX, knotY, radiusX, radiusY, 0, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = "rgba(255,226,184,0.07)"; c.fillRect(knotX - radiusX, knotY - 1, radiusX * 2, 1);
+  }
 
   floorTex = cv;
   return cv;
@@ -5464,9 +5507,102 @@ function buildLibraryMapCanvas() {
   return cv;
 }
 
-// ---------- Battle Room map canvas (#046) ----------
-// Renders BATTLE_ROOM_MAP to a detail-scaled canvas. Navy/accented training arena
-// with central compass floor motif and perimeter ring.
+// ---------- Battle Room map canvas (#046/#051) ----------
+// The proving-ground floor is one room-scale material composition. Large resin panels,
+// physical-pixel wear, six domain bays, and a lit centre dais replace the old 32px checkerboard
+// without changing a single map/collision cell.
+function drawBattleRoomFloor(c, ds) {
+  const hair = 1 / Math.max(1, ds), rng = mulberry32(0xBA771E);
+  const worldW = MAP_W * TILE, worldH = MAP_H * TILE;
+  c.save();
+  c.fillStyle = "#20293a"; c.fillRect(0, 0, worldW, worldH);
+
+  // Staggered 4×3-tile resin plates erase the logical tile grid and give the room industrial
+  // scale. Hairline bevels remain one physical pixel at DPR2.
+  const panelTones = ["#242e40", "#283246", "#222c3d", "#2a3447"];
+  const panelW = 4 * TILE, panelH = 3 * TILE;
+  for (let row = 0, y = 0; y < worldH; row++, y += panelH) {
+    const offset = row % 2 ? -panelW / 2 : 0;
+    for (let x = offset; x < worldW; x += panelW) {
+      c.fillStyle = panelTones[Math.floor(rng() * panelTones.length)];
+      c.fillRect(x, y, panelW, panelH);
+      c.fillStyle = "rgba(226,232,240,0.055)"; c.fillRect(x, y, panelW, hair);
+      c.fillStyle = "rgba(3,7,18,0.28)"; c.fillRect(x, y + panelH - hair, panelW, hair);
+      c.fillRect(x + panelW - hair, y, hair, panelH);
+    }
+  }
+
+  // True-detail scuffs and inspection marks: deterministic, cache-baked, and below one logical
+  // pixel at DPR2. Sparse diagonal checks imply repeated training rather than visual noise.
+  for (let i = 0; i < 260; i++) {
+    const x = 2 * TILE + rng() * (worldW - 4 * TILE);
+    const y = 2 * TILE + rng() * (worldH - 4 * TILE);
+    const length = (2 + rng() * 6) / Math.max(1, ds);
+    c.strokeStyle = rng() < 0.68 ? "rgba(226,232,240,0.08)" : "rgba(2,6,23,0.16)";
+    c.lineWidth = hair;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x + length, y + length * 0.35); c.stroke();
+  }
+
+  // A matte certification runway gives the south entry an immediate destination and keeps
+  // x=17..19 visually/physically legible all the way to the central proving dais.
+  const laneX = 17 * TILE, laneW = 3 * TILE;
+  const lane = c.createLinearGradient(0, 22 * TILE, 0, 9 * TILE);
+  lane.addColorStop(0, "rgba(239,68,68,0.20)"); lane.addColorStop(1, "rgba(45,212,191,0.08)");
+  c.fillStyle = lane; c.fillRect(laneX, 9 * TILE, laneW, 14 * TILE);
+  c.strokeStyle = "rgba(226,232,240,0.24)"; c.lineWidth = hair;
+  c.strokeRect(laneX + hair, 9 * TILE + hair, laneW - hair * 2, 14 * TILE - hair * 2);
+  for (let y = 20.5; y >= 14.5; y -= 2) {
+    c.fillStyle = "rgba(242,179,93,0.38)";
+    c.beginPath(); c.moveTo(18.5 * TILE, y * TILE - 7); c.lineTo(18.5 * TILE + 8, y * TILE + 1);
+    c.lineTo(18.5 * TILE, y * TILE + 9); c.lineTo(18.5 * TILE - 8, y * TILE + 1); c.fill();
+  }
+
+  // Central certification seal: layered hex/dial geometry is the room's one signature moment.
+  const cx = 18.5 * TILE, cy = 11.7 * TILE;
+  const glow = c.createRadialGradient(cx, cy, 10, cx, cy, 4.7 * TILE);
+  glow.addColorStop(0, "rgba(242,179,93,0.18)"); glow.addColorStop(0.58, "rgba(45,212,191,0.055)");
+  glow.addColorStop(1, "rgba(2,6,23,0)");
+  c.fillStyle = glow; c.fillRect(cx - 5 * TILE, cy - 5 * TILE, 10 * TILE, 10 * TILE);
+  function hex(radius) {
+    c.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = -Math.PI / 2 + i * Math.PI / 3;
+      const x = cx + Math.cos(angle) * radius, y = cy + Math.sin(angle) * radius;
+      if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
+    }
+    c.closePath();
+  }
+  c.fillStyle = "rgba(8,20,38,0.48)"; hex(3.2 * TILE); c.fill();
+  c.strokeStyle = "rgba(242,179,93,0.68)"; c.lineWidth = 2 * hair; hex(3.2 * TILE); c.stroke();
+  c.strokeStyle = "rgba(226,232,240,0.24)"; c.lineWidth = hair; hex(2.35 * TILE); c.stroke();
+  c.fillStyle = "rgba(242,179,93,0.62)"; c.fillRect(cx - 18, cy - hair, 36, 2 * hair);
+  c.fillStyle = "rgba(45,212,191,0.58)"; c.fillRect(cx - hair, cy - 18, 2 * hair, 36);
+
+  // Six domain proving bays use a shape + accent rail, never text or colour alone.
+  const bayColors = [TYPE_COLORS.AGENT, TYPE_COLORS.MCP, TYPE_COLORS.CONFIG,
+    TYPE_COLORS.PROMPT, TYPE_COLORS.CONTEXT, TYPE_COLORS.MIX];
+  const bays = [[6,15],[10,11],[13,6],[24,6],[27,11],[30,15]];
+  bays.forEach(function(bay, index) {
+    const x = (bay[0] - 1.2) * TILE, y = (bay[1] - 0.8) * TILE, w = 2.4 * TILE, h = 1.6 * TILE;
+    c.fillStyle = "rgba(8,20,38,0.34)"; c.fillRect(x, y, w, h);
+    c.strokeStyle = bayColors[index] + "99"; c.lineWidth = 2 * hair; c.strokeRect(x, y, w, h);
+    c.fillStyle = bayColors[index] + "bb"; c.fillRect(x + 8, y + 7, w - 16, 3);
+    c.strokeStyle = "rgba(226,232,240,0.34)"; c.lineWidth = hair;
+    c.beginPath();
+    if (index % 3 === 0) c.arc(x + w / 2, y + h / 2 + 5, 9, 0, Math.PI * 2);
+    else if (index % 3 === 1) { c.moveTo(x + w / 2, y + 16); c.lineTo(x + w / 2 - 10, y + h - 9); c.lineTo(x + w / 2 + 10, y + h - 9); c.closePath(); }
+    else c.rect(x + w / 2 - 8, y + h / 2 - 3, 16, 16);
+    c.stroke();
+  });
+
+  // Segmented perimeter rails frame the 36 training positions without reading as one empty box.
+  c.strokeStyle = "rgba(239,68,68,0.24)"; c.lineWidth = 2 * hair;
+  [[2.4,2.4,8,0],[25.6,2.4,8,0],[2.4,20.6,8,0],[25.6,20.6,8,0]].forEach(function(seg) {
+    c.beginPath(); c.moveTo(seg[0] * TILE, seg[1] * TILE); c.lineTo((seg[0] + seg[2]) * TILE, seg[1] * TILE); c.stroke();
+  });
+  c.restore();
+}
+
 function buildBattleRoomMapCanvas() {
   var cv = document.createElement("canvas");
   cv.width  = Math.round(MAP_W * TILE * MAP_DETAIL_SCALE);
@@ -5476,8 +5612,9 @@ function buildBattleRoomMapCanvas() {
   c.imageSmoothingEnabled = false;
   var ds = MAP_DETAIL_SCALE;
   c.scale(ds, ds);
+  drawBattleRoomFloor(c, ds);
 
-  // Dark training floor with subtle grid.
+  // Structural walls/portal remain map-authoritative; floor paint never creates collision.
   for (var y = 0; y < MAP_H; y++) {
     for (var x = 0; x < MAP_W; x++) {
       var sx = x * TILE, sy = y * TILE;
@@ -5493,56 +5630,14 @@ function buildBattleRoomMapCanvas() {
           drawWallRelief(c, sx, sy, horizontalWall, "rgba(200,208,224,0.76)", "rgba(8,20,38,0.82)");
         }
       } else if (t === "A") {
-        // Return door — slate inset with gold frame
-        c.fillStyle = "#1e2838";
-        c.fillRect(sx, sy, TILE, TILE);
-        c.strokeStyle = "#c89940";
-        c.lineWidth = 2;
-        c.strokeRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
-        c.fillStyle = "#c89940";
-        c.font = "9px monospace";
-        c.textAlign = "center";
+        c.fillStyle = "#1e2838"; c.fillRect(sx, sy, TILE, TILE);
+        c.strokeStyle = "#c89940"; c.lineWidth = 2; c.strokeRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
+        c.fillStyle = "#c89940"; c.font = "9px monospace"; c.textAlign = "center";
         c.fillText("EXIT", sx + TILE / 2, sy + TILE / 2 + 3);
-      } else {
-        // Training floor — dark grey with subtle centre-line grid
-        c.fillStyle = "#2a3040";
-        c.fillRect(sx, sy, TILE, TILE);
-        if ((x + y) % 2 === 0) {
-          c.fillStyle = "#2d3444";
-          c.fillRect(sx, sy, TILE, TILE);
-        }
       }
     }
   }
-
-  // Central training compass motif
-  var cx = 18 * TILE, cy = 12 * TILE;
-  c.strokeStyle = "rgba(200,153,64,0.35)";
-  c.lineWidth = 2;
-  c.beginPath();
-  c.arc(cx, cy, 3 * TILE, 0, Math.PI * 2);
-  c.stroke();
-  c.strokeStyle = "rgba(200,153,64,0.18)";
-  c.beginPath();
-  c.arc(cx, cy, 4.5 * TILE, 0, Math.PI * 2);
-  c.stroke();
-  // Cardinal direction marks
-  c.fillStyle = "rgba(200,153,64,0.30)";
-  c.font = "bold 11px monospace";
-  c.textAlign = "center";
-  c.fillText("N", cx, cy - 3.5 * TILE + 4);
-  c.fillText("S", cx, cy + 3.5 * TILE + 4);
-  c.fillText("E", cx + 3.5 * TILE, cy + 4);
-  c.fillText("W", cx - 3.5 * TILE, cy + 4);
-
-  // Perimeter training ring marker
-  c.strokeStyle = "rgba(239,68,68,0.12)";
-  c.lineWidth = 1;
-  var margin = 2.2;
-  c.strokeRect(margin * TILE, margin * TILE,
-    (MAP_W - margin * 2) * TILE, (MAP_H - margin * 2) * TILE);
   drawArchitecturePortal(c, "architecture-battle-portal", BATTLE_ROOM_DOOR_TILE[0], BATTLE_ROOM_DOOR_TILE[1]);
-
   return cv;
 }
 
@@ -5601,6 +5696,18 @@ function drawLivingWorldAmbient() {
     ctx.strokeRect(sx(2.2), sy(2.2), (MAP_W - 4.4) * TILE, (MAP_H - 4.4) * TILE);
   }
   ctx.restore();
+}
+
+const OFFICE_HUD_GEOMETRY = Object.freeze({
+  x: 8, y: 8, width: 250, height: 64, portraitX: 16, portraitY: 16, portraitSize: 48,
+  contentX: 66, hpY: 38, hpWidth: 140, primaryBaseline: 62, secondaryBaseline: null,
+});
+const TRAINING_HUD_GEOMETRY = Object.freeze({
+  x: 8, y: 8, width: 292, height: 88, portraitX: 16, portraitY: 16, portraitSize: 48,
+  contentX: 66, hpY: 38, hpWidth: 164, primaryBaseline: 65, secondaryBaseline: 82,
+});
+function overworldHudGeometry(mapName) {
+  return mapName === "battleRoom" ? TRAINING_HUD_GEOMETRY : OFFICE_HUD_GEOMETRY;
 }
 
 function drawOverworld() {
@@ -5747,24 +5854,28 @@ function drawOverworld() {
     ctx.textBaseline = "alphabetic";
   }
 
-  // HUD
-  ctx.fillStyle = "rgba(15,23,42,0.85)";
-  ctx.fillRect(8, 8, 250, 64);
-  ctx.drawImage(pixelHead(player.slug, 48), 16, 16, 48, 48);
+  // Measured HUD geometry gives Battle Room telemetry its own baselines below the HP bar;
+  // the previous 64px panel let streak/wins glyphs collide with the bar and panel edge.
+  const hud = overworldHudGeometry(currentMap);
+  ctx.fillStyle = "rgba(15,23,42,0.90)";
+  ctx.fillRect(hud.x, hud.y, hud.width, hud.height);
+  ctx.drawImage(pixelHead(player.slug, hud.portraitSize), hud.portraitX, hud.portraitY,
+    hud.portraitSize, hud.portraitSize);
   const hudMaxHp = currentPlayerMaxHp();
-  drawHPBar(66, 38, 140, 10, Math.min(1, player.dispHp / hudMaxHp), firstName(player.slug) + "  HP " + player.hp + "/" + hudMaxHp);
-  ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace"; ctx.textAlign = "left";
+  drawHPBar(hud.contentX, hud.hpY, hud.hpWidth, 10,
+    Math.min(1, player.dispHp / hudMaxHp), firstName(player.slug) + "  HP " + player.hp + "/" + hudMaxHp);
+  ctx.fillStyle = "#cbd5e1"; ctx.font = "11px monospace"; ctx.textAlign = "left";
   if (currentMap === "battleRoom") {
-    // Show training streak stats in the Battle Room.
     var brActivity = (_progression && _progression.activities && _progression.activities.battleRoom)
       ? _progression.activities.battleRoom : null;
     var str = brActivity ? brActivity.currentStreak || 0 : 0;
     var bst = brActivity ? brActivity.bestStreak || 0 : 0;
-    ctx.fillText("Training streak: " + str + " (best: " + bst + ")", 66, 56);
-    ctx.fillStyle = "#64748b"; ctx.font = "10px monospace";
-    ctx.fillText("Wins: " + (brActivity ? brActivity.wins || 0 : 0) + "  |  Unlimited rematches", 66, 68);
+    ctx.fillText("Training streak " + str + "  ·  best " + bst, hud.contentX, hud.primaryBaseline);
+    ctx.fillStyle = "#94a3b8"; ctx.font = "10px monospace";
+    ctx.fillText("Wins " + (brActivity ? brActivity.wins || 0 : 0) + "  ·  unlimited rematches",
+      hud.contentX, hud.secondaryBaseline);
   } else {
-    ctx.fillText("Rivals bested: " + defeated.size + "/" + rivalTotal, 66, 62);
+    ctx.fillText("Rivals bested: " + defeated.size + "/" + rivalTotal, hud.contentX, hud.primaryBaseline);
   }
 
   // Draw fixed navigation chrome after world entities so no sprite can cover it.
