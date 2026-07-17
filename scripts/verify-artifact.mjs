@@ -62,6 +62,48 @@ for (const script of RUNTIME_SCRIPTS) {
 const HEADSHOT_TOMBSTONE_SHA256 = "f2bb5bbaca678ecad746b1fa5ecfa2c8a81dd18817be19f0187c036d25326317";
 const portraitSlugs = payload.filter(file => /^portraits\/[^/]+\.png$/.test(file.path))
   .map(file => path.basename(file.path, ".png")).sort();
+
+// Sitting art is executable presentation data: package exactly two declared frames for
+// every roster slug, with no nested extras and with hashes tied to stable rear source art.
+const sittingManifest = JSON.parse(fs.readFileSync(path.join(DIST, "sprites-sit/manifest.json"), "utf8"));
+if (!Array.isArray(sittingManifest.entries) || sittingManifest.roster_count !== portraitSlugs.length ||
+    sittingManifest.frame_count !== portraitSlugs.length * 2) {
+  throw new Error("Packaged sitting manifest roster/frame counts are not canonical");
+}
+const sittingSlugs = sittingManifest.entries.map(entry => entry && entry.slug).sort();
+if (JSON.stringify(sittingSlugs) !== JSON.stringify(portraitSlugs)) {
+  throw new Error("Packaged sitting slugs must exactly match packaged portrait slugs");
+}
+const declaredSittingFrames = [];
+for (const entry of sittingManifest.entries) {
+  if (!entry || typeof entry.slug !== "string" || !Array.isArray(entry.frames) || entry.frames.length !== 2) {
+    throw new Error("Packaged sitting entry must declare exactly two frames");
+  }
+  for (let index = 0; index < 2; index++) {
+    const frame = entry.frames[index];
+    const expectedFile = `sprites-sit/${entry.slug}/idle_${index}.png`;
+    const expectedSource = `sprites-walk/${entry.slug}/up_0.png`;
+    if (!frame || frame.frame !== index || frame.file !== expectedFile || frame.source !== expectedSource) {
+      throw new Error(`Noncanonical packaged sitting declaration for ${entry.slug} frame ${index}`);
+    }
+    for (const [declaredPath, declaredHash, label] of [
+      [expectedFile, frame.sha256, "frame"], [expectedSource, frame.sourceSha256, "source"],
+    ]) {
+      if (!payloadPaths.has(declaredPath) || !/^[0-9a-f]{64}$/.test(declaredHash || "")) {
+        throw new Error(`Missing or invalid packaged sitting ${label}: ${declaredPath}`);
+      }
+      const actualHash = createHash("sha256").update(fs.readFileSync(path.join(DIST, declaredPath))).digest("hex");
+      if (actualHash !== declaredHash) throw new Error(`Packaged sitting ${label} hash mismatch: ${declaredPath}`);
+    }
+    declaredSittingFrames.push(expectedFile);
+  }
+}
+const packagedSittingFrames = payload.filter(file => /^sprites-sit\/.*\.png$/.test(file.path))
+  .map(file => file.path).sort();
+if (JSON.stringify(packagedSittingFrames) !== JSON.stringify(declaredSittingFrames.sort())) {
+  throw new Error("Packaged sitting PNG set must exactly match the 58 declared frames");
+}
+
 const headshotTombstones = payload.filter(file => /^headshots\/[^/]+\.png$/.test(file.path));
 const tombstoneSlugs = headshotTombstones.map(file => path.basename(file.path, ".png")).sort();
 if (JSON.stringify(tombstoneSlugs) !== JSON.stringify(portraitSlugs)) {

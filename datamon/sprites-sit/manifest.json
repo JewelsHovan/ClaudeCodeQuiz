@@ -1,7 +1,41 @@
 {
-  "batch": "ticket-047-sit",
+  "batch": "ticket-048-compact-rear-sit",
   "format": "64x64 RGBA",
   "frames": 2,
+  "recipe": {
+    "pose": "compact-rear-seated-v2",
+    "provenance": "local-pillow-stable-up-0-$0",
+    "stableSourceFrame": "up_0",
+    "motion": "one-pixel-head-weight-shift",
+    "alphaThreshold": 18,
+    "forbiddenLegY": 50,
+    "postureBounds": {
+      "left": [
+        19,
+        24
+      ],
+      "top": [
+        13,
+        15
+      ],
+      "right_exclusive": [
+        41,
+        46
+      ],
+      "bottom_exclusive": [
+        48,
+        50
+      ],
+      "width": [
+        19,
+        26
+      ],
+      "height": [
+        34,
+        37
+      ]
+    }
+  },
   "entries": [
     {
       "slug": "alex-andrianavalontsalama",
@@ -11,14 +45,14 @@
           "file": "sprites-sit/alex-andrianavalontsalama/idle_0.png",
           "source": "sprites-walk/alex-andrianavalontsalama/up_0.png",
           "sourceSha256": "c0ceb5e0c2ee2d52be77f404894005803cd9f84181c04a48b37f2b4c260feb1e",
-          "sha256": "fdd460b3fd4d43dbc9dfb6e86684097525d9a0f70cfb4de44c295aa4ab98bea4"
+          "sha256": "33c2043e9e7e07e720b501714d18597380e2ca7d365a34056066fb115b9c6033"
         },
         {
           "frame": 1,
           "file": "sprites-sit/alex-andrianavalontsalama/idle_1.png",
-          "source": "sprites-walk/alex-andrianavalontsalama/up_1.png",
-          "sourceSha256": "cc935cd42cd2bd82aae718c94239a8dc3e099f948580c70b89879e3b61016e9e",
-          "sha256": "d66a12f9c6f40fa8b999b6456d1f4e5ab4bd484747dde2ef6fb3c2d2a2d8725f"
+          "source": "sprites-walk/alex-andrianavalontsalama/up_0.png",
+          "sourceSha256": "c0ceb5e0c2ee2d52be77f404894005803cd9f84181c04a48b37f2b4c260feb1e",
+          "sha256": "cf9794c52a46281f94b2e1134eca4d5c48a71488ef1e3c345a8d79062d00f7e4"
         }
       ]
     },
@@ -30,14 +64,14 @@
           "file": "sprites-sit/antonia-nistor/idle_0.png",
           "source": "sprites-walk/antonia-nistor/up_0.png",
           "sourceSha256": "76aea6e6a209cade1ec1f954fbbca577d11959f44ddaa0471d9847562f8f458e",
-          "sha256": "2b9fce6f207f135651ffb60e69a8a267aad843bb4a77da395f04ffdad03bb62b"
+          "sha256": "1d65c5d3de9540feed46ac6acf80c114a0bb39d4de0114278ec72dfefc8fd4ba"
         },
         {
           "frame": 1,
           "file": "sprites-sit/antonia-nistor/idle_1.png",
-          "source": "sprites-walk/antonia-nistor/up_1.png",
-          "sourceSha256": "1c60c443951313193c0813bb90ac02b4ef473c9847f29be7ddfcd09779158682",
-          "sha256": "c25775626e09d60f5207db3e3442db4061af679d9f294349d7916417ff1b367a"
+          "source": "sprites-walk/antonia-nistor/up_0.png",
+          "sourceSha256": "76aea6e6a209cade1ec1f954fbbca577d11959f44ddaa0471d9847562f8f458e",
+          "sha256": "a9be492b2354ae07ad30b2e567662463978b5d38de6fabcf076071207c6cb461"
         }
       ]
     },
@@ -49,14 +83,14 @@
           "file": "sprites-sit/aurelien-bouffanais/idle_0.png",
           "source": "sprites-walk/aurelien-bouffanais/up_0.png",
           "sourceSha256": "273de79dca75b943f6dbb907729d16fe2f4f250122633daade7cbe369aa74552",
-          "sha256": "24829f6ea45f15cd43df9782d6488d2bf9b242ec2029f913767df1a99919bc82"
+          "sha256": "b250bf4b71a7829de73b9f19ef182b45f373bf4be3325ea6c9666def04811345"
         },
         {
           "frame": 1,
           "file": "sprites-sit/aurelien-bouffanais/idle_1.png",
-          "source": "sprites-walk/aurelien-bouffanais/up_1.png",
-          "sourceSha256": "314ddd6f4c4ff1d9947a607f054f89fc58a91c98165386c2092f9ebed6ae7118",
-          "sha256": "515b5a9db3b0f32982f7dc1621419a081c004d1bf96066001d7e0b31b1183b92"
+          "source": "sprites-walk/aurelien-bouffanais/up_0.png",
+          "sourceSha256": "273de79dca75b943f6dbb907729d16fe2f4f250122633daade7cbe369aa74552",
+          "sha256": "71f3c0a6181a3143dc8ad119d34a28af8214fcb5632d7db05fcb31301913f51c"
         }
       ]
     },
@@ -68,14 +102,14 @@
           "file": "sprites-sit/dana-domanko/idle_0.png",
           "source": "sprites-walk/dana-domanko/up_0.png",
           "sourceSha256": "89de1e66474e970248604da6690cc2a8c7a2ed17facf5353dbe1392d76ed04d7",
-          "sha256": "9df1f1fed8c91af5ba34768d8c1de2ceadb5bc83a8769bef67b402b01bec29b4"
+          "sha256": "5d55de9e14791c090ff6447fbd238e785612ae5ed2940e46a14678fea5e10dc8"
         },
         {
           "frame": 1,
           "file": "sprites-sit/dana-domanko/idle_1.png",
-          "source": "sprites-walk/dana-domanko/up_1.png",
-          "sourceSha256": "1d496ef2063d2addcb53311c098affed68f454f38eda9d086d8c8381cc88486c",
-          "sha256": "d94ee0722d7f06e6df5fdbb6075e809e1056d3ea1b691cf691f79c73185cd54c"
+          "source": "sprites-walk/dana-domanko/up_0.png",
+          "sourceSha256": "89de1e66474e970248604da6690cc2a8c7a2ed17facf5353dbe1392d76ed04d7",
+          "sha256": "88e87bd9ee4af7fefdca11303876e38cae41763781314cb2548d1054e8468e5e"
         }
       ]
     },
@@ -87,14 +121,14 @@
           "file": "sprites-sit/duc-an-nguyen/idle_0.png",
           "source": "sprites-walk/duc-an-nguyen/up_0.png",
           "sourceSha256": "07f05d41be589bbf5a7beba74a65cb1302a82f63c184d09b95550d11c8f5e871",
-          "sha256": "c4b5379ae1a8cb1f36540f19c39c1ebad265ac883d3b375492bfe647e29374f7"
+          "sha256": "53bec9511413b33ac337f576af68b49c397942fd05296c176ebd570124a92849"
         },
         {
           "frame": 1,
           "file": "sprites-sit/duc-an-nguyen/idle_1.png",
-          "source": "sprites-walk/duc-an-nguyen/up_1.png",
-          "sourceSha256": "72e56bf54e53b73d9b058594903d850c43e7f3a277737d1e4b84bd47c6cdbc34",
-          "sha256": "ad0251ea818de205beb79d258cf46e74bc0cdbe777cf54c61c260fce22175fa0"
+          "source": "sprites-walk/duc-an-nguyen/up_0.png",
+          "sourceSha256": "07f05d41be589bbf5a7beba74a65cb1302a82f63c184d09b95550d11c8f5e871",
+          "sha256": "ff8f7924d4a80e1d0c6197713c5828c49f856aa777f240802accd3670c4c15df"
         }
       ]
     },
@@ -106,14 +140,14 @@
           "file": "sprites-sit/emile-moffatt/idle_0.png",
           "source": "sprites-walk/emile-moffatt/up_0.png",
           "sourceSha256": "4934bfeb656c4c9aa12aa3f10a9622a32bb4e4b3643a54a4cd18b48b6b6c9435",
-          "sha256": "5783c01ed45dc09dee835498bb5e22bccf1bda16618a266a7e6fa8f62735ffda"
+          "sha256": "81689aed50db6e8024fdeb0fe5dc7e7a8072d34b95998a2d283da35e1fd69ff7"
         },
         {
           "frame": 1,
           "file": "sprites-sit/emile-moffatt/idle_1.png",
-          "source": "sprites-walk/emile-moffatt/up_1.png",
-          "sourceSha256": "10958c5e6c5af9523d3b16ea0b2f808bf94ed61a02e9ca350bf110e3063fa468",
-          "sha256": "0d2e34bdfa025e96ec7e6e766ab3e346b861abd2bff63e5c2b90cb5320a224ed"
+          "source": "sprites-walk/emile-moffatt/up_0.png",
+          "sourceSha256": "4934bfeb656c4c9aa12aa3f10a9622a32bb4e4b3643a54a4cd18b48b6b6c9435",
+          "sha256": "62b044b004562f581c53f9c6ab17653187a5c0ee0e949f574c9a4ae2d9448052"
         }
       ]
     },
@@ -125,14 +159,14 @@
           "file": "sprites-sit/ethan-pirso/idle_0.png",
           "source": "sprites-walk/ethan-pirso/up_0.png",
           "sourceSha256": "e7bfc31aeaa32ca584bfcf423995f40c57dc38525cad057566f13f1a4a0b4bd9",
-          "sha256": "db33b07c69b177c7c67a9280b00de8e0328a7fb87ab8c465444f9990a5130ed9"
+          "sha256": "1463f6cf680d36cacedfad33c46924251c45caeb2f56acfb9cd609df4d6df342"
         },
         {
           "frame": 1,
           "file": "sprites-sit/ethan-pirso/idle_1.png",
-          "source": "sprites-walk/ethan-pirso/up_1.png",
-          "sourceSha256": "095bd588db034141270f3b6147208ab877303ef194e0324c1ba181243c4db0ec",
-          "sha256": "4fcc1c61317fedf211f3f93b9fb224823990bbe14e26b7b5d2024832e315d149"
+          "source": "sprites-walk/ethan-pirso/up_0.png",
+          "sourceSha256": "e7bfc31aeaa32ca584bfcf423995f40c57dc38525cad057566f13f1a4a0b4bd9",
+          "sha256": "b3735e8352e928f050d869c13589cf988e4264812be04dd1801c10aec833aacf"
         }
       ]
     },
@@ -144,14 +178,14 @@
           "file": "sprites-sit/felicia-gorgacheva/idle_0.png",
           "source": "sprites-walk/felicia-gorgacheva/up_0.png",
           "sourceSha256": "f12278113a8ca74726655e0808a1fa2d22860d71b322fd4cfc81ccee63c885bf",
-          "sha256": "c7a7b21b545b2e87b81a74d30a6f8f3124db65db87008096993280df7545af86"
+          "sha256": "5d43b409a954f02226151495bfd1762dad52c1b636cd67721456c0e2d4d53700"
         },
         {
           "frame": 1,
           "file": "sprites-sit/felicia-gorgacheva/idle_1.png",
-          "source": "sprites-walk/felicia-gorgacheva/up_1.png",
-          "sourceSha256": "a314ca6a50017eb34826ffd46a846662d9fb730ff19d3eb1eb63cb82e1ac2aca",
-          "sha256": "d16fcf3e0c919550aa3948fba6a83b6e670dae099ea2fef246890b5949fd4e07"
+          "source": "sprites-walk/felicia-gorgacheva/up_0.png",
+          "sourceSha256": "f12278113a8ca74726655e0808a1fa2d22860d71b322fd4cfc81ccee63c885bf",
+          "sha256": "80312f7852e80a9e92d78965ab9f976506f860382d55b69e8a3e256f7c8b88c8"
         }
       ]
     },
@@ -163,14 +197,14 @@
           "file": "sprites-sit/francesco-finn/idle_0.png",
           "source": "sprites-walk/francesco-finn/up_0.png",
           "sourceSha256": "69670a970555cfe4721b7b3f3c2bc8125eb5644d7357c6df7f263b2ffb1d220e",
-          "sha256": "3956e3c6aec4312495e594310652ff2d5c7cbf8fae6ed8b8f4db91db19eb034b"
+          "sha256": "c781216a786afb02dec067f90143b8bbcea7634adfa617b661d5e44642129d4c"
         },
         {
           "frame": 1,
           "file": "sprites-sit/francesco-finn/idle_1.png",
-          "source": "sprites-walk/francesco-finn/up_1.png",
-          "sourceSha256": "3c9d5d4934d9425684257950e094b6cbf8a0d8bd1f40435ccd307be50f664a27",
-          "sha256": "7a48ee1d5e2909935e6eae03eb090be2bed620858460cde1f7f1dd61ba558ee0"
+          "source": "sprites-walk/francesco-finn/up_0.png",
+          "sourceSha256": "69670a970555cfe4721b7b3f3c2bc8125eb5644d7357c6df7f263b2ffb1d220e",
+          "sha256": "7fbf73e099173404b07b8bad6457eed401e8331b9ae0e9f33889911c2f31e6d3"
         }
       ]
     },
@@ -182,14 +216,14 @@
           "file": "sprites-sit/guillaume-delmas-frenette/idle_0.png",
           "source": "sprites-walk/guillaume-delmas-frenette/up_0.png",
           "sourceSha256": "ae4f210219e1361810f1bd53d20d4600ccfe1a9a51d9dbac0eb2a5e64d2cb1d4",
-          "sha256": "7bded24a0af59c1a5f4d01abd381c5d42d253fe73ee7ec4f1e5910fb9e8544e9"
+          "sha256": "9c1b80fb0a2c4a538cfe7bca16bccc325357bf8d6ebf7d81a16e50a7dfc7c2dd"
         },
         {
           "frame": 1,
           "file": "sprites-sit/guillaume-delmas-frenette/idle_1.png",
-          "source": "sprites-walk/guillaume-delmas-frenette/up_1.png",
-          "sourceSha256": "5e4c5a7652595c27c6ff0202053551ed88d26054b551b47afbe886b0606f94e4",
-          "sha256": "018458e087ceeb55b6e1738336ddc8dc90b53bf8181a1871e484855a347dba08"
+          "source": "sprites-walk/guillaume-delmas-frenette/up_0.png",
+          "sourceSha256": "ae4f210219e1361810f1bd53d20d4600ccfe1a9a51d9dbac0eb2a5e64d2cb1d4",
+          "sha256": "44d36e17404f89760583fcc9dc61c6e4d1fc9631f2cbb645814549185e95a060"
         }
       ]
     },
@@ -201,14 +235,14 @@
           "file": "sprites-sit/guillaume-pregent/idle_0.png",
           "source": "sprites-walk/guillaume-pregent/up_0.png",
           "sourceSha256": "e44c298ca2b8ed3dd70d268fea5d9aff7e7e37076b37ad0b64726079cdb53df4",
-          "sha256": "51a9986759bef71dc8d27fc54859a45c8a7236bf29bdecb60c0b9d6f73a24808"
+          "sha256": "b5534451805d8e751356c7bcf4858c47f2fff76593f7ece4826b45f27b86dda1"
         },
         {
           "frame": 1,
           "file": "sprites-sit/guillaume-pregent/idle_1.png",
-          "source": "sprites-walk/guillaume-pregent/up_1.png",
-          "sourceSha256": "fd54a20db22a8f00aa82021059fc7187dcc2940676ba77647a4e150bbf3c86f8",
-          "sha256": "912c6bb043d7579e96a79d288afb7803a918176cdc5d1061931eab89202f1225"
+          "source": "sprites-walk/guillaume-pregent/up_0.png",
+          "sourceSha256": "e44c298ca2b8ed3dd70d268fea5d9aff7e7e37076b37ad0b64726079cdb53df4",
+          "sha256": "9e6519e9e2ac7ffe83478200631064fbad5c2be568b3fd837221d31f3ae1c638"
         }
       ]
     },
@@ -220,14 +254,14 @@
           "file": "sprites-sit/jerry-zhu/idle_0.png",
           "source": "sprites-walk/jerry-zhu/up_0.png",
           "sourceSha256": "3d0cd1e5fd6fc486950580047076bc8a509cfec5c973e1c75d319cca17934ad5",
-          "sha256": "53b653dea446b9b1ae6bfc82fc2fd4e0ba54f5c68eb8552a0b63aa4a57d0c806"
+          "sha256": "aaaca34fba3ad410ca5c848c48e6dceff9a94e3b232a40310d5bb7f20627caac"
         },
         {
           "frame": 1,
           "file": "sprites-sit/jerry-zhu/idle_1.png",
-          "source": "sprites-walk/jerry-zhu/up_1.png",
-          "sourceSha256": "1965409093f71258100e5f0f06d8beeb53dc32ee26537e17debbb74409076115",
-          "sha256": "c25d64bbfae19c3f0d09e67aa852db8722e78dba451c7f0bcac10ac22abd491f"
+          "source": "sprites-walk/jerry-zhu/up_0.png",
+          "sourceSha256": "3d0cd1e5fd6fc486950580047076bc8a509cfec5c973e1c75d319cca17934ad5",
+          "sha256": "17105f72ca80b18f29ce2b89fca7da4b1fe074f28f828b14d47ae3bb679414fd"
         }
       ]
     },
@@ -239,14 +273,14 @@
           "file": "sprites-sit/jonah-lee/idle_0.png",
           "source": "sprites-walk/jonah-lee/up_0.png",
           "sourceSha256": "f5cc5eca7cf8f4fe4ff798fa95b5875a625c66696772e1be517470c656bc1541",
-          "sha256": "7cab8901749e1bd09057fa221ca9d5c45286f2cfbd27a3d60672df060e4ae8f9"
+          "sha256": "8ec81c6e555244be56fd6d5dc024e6f426a99a214946240ca6b5f284c27c5430"
         },
         {
           "frame": 1,
           "file": "sprites-sit/jonah-lee/idle_1.png",
-          "source": "sprites-walk/jonah-lee/up_1.png",
-          "sourceSha256": "54dd59957f46f339afa11762828ad553c35ab33e3dd5353ae9a4dd187d8fa161",
-          "sha256": "2f415e9f08c079203ec5fde779b33261acbe6c677c8a086a0e25e769831e3032"
+          "source": "sprites-walk/jonah-lee/up_0.png",
+          "sourceSha256": "f5cc5eca7cf8f4fe4ff798fa95b5875a625c66696772e1be517470c656bc1541",
+          "sha256": "8ff2c7e4a6ecb20c990bfaeed8894dd033eb4f8845a08e91ae1af1bf79004cc3"
         }
       ]
     },
@@ -258,14 +292,14 @@
           "file": "sprites-sit/jonathan-kim/idle_0.png",
           "source": "sprites-walk/jonathan-kim/up_0.png",
           "sourceSha256": "9bae49815e83b5b431314ca09d7d3f25abc4e916755767fd07bc0a6e2a23b40a",
-          "sha256": "2b02cbcdcfb68ccdb1670b573fd3ea678fa91e9e225c1454e34d3f5aab655fe5"
+          "sha256": "9c93e909d6f0408db14c8e52e79e44ac2dd88fa68956084cc08d178aac87932c"
         },
         {
           "frame": 1,
           "file": "sprites-sit/jonathan-kim/idle_1.png",
-          "source": "sprites-walk/jonathan-kim/up_1.png",
-          "sourceSha256": "3d67e3e428ac8e67207ddc6a08f6ccf69046acd6555bf9e1c7be530de98f82a1",
-          "sha256": "09dc0ec40571a5af28d71ea288f336d4461280b4214268d79ed751ba3373be39"
+          "source": "sprites-walk/jonathan-kim/up_0.png",
+          "sourceSha256": "9bae49815e83b5b431314ca09d7d3f25abc4e916755767fd07bc0a6e2a23b40a",
+          "sha256": "5ba3a829e90bcbffb1996f01efe32f30e4bdde74f5e572aea787d04b4099731c"
         }
       ]
     },
@@ -277,14 +311,14 @@
           "file": "sprites-sit/julien-hovan/idle_0.png",
           "source": "sprites-walk/julien-hovan/up_0.png",
           "sourceSha256": "a1df6a0d27661f9049fd2ffb5f53565465822b829c385f764f877132d66e317a",
-          "sha256": "9dc19fc368646089dafe3c804923365ec36627a420c31331f4f8496b35e335a3"
+          "sha256": "c11921c68a28b1d2d9725202d5e16a07fdcff6ded83812644a54c097f6e74539"
         },
         {
           "frame": 1,
           "file": "sprites-sit/julien-hovan/idle_1.png",
-          "source": "sprites-walk/julien-hovan/up_1.png",
-          "sourceSha256": "a7642530982db2e369eb352db36d9e19d2fd7caeca5e7e5f1412a072f6400cab",
-          "sha256": "cb158d9b681d4faf8738758bb955576b27c175d577fe705853104dbe15d69ec3"
+          "source": "sprites-walk/julien-hovan/up_0.png",
+          "sourceSha256": "a1df6a0d27661f9049fd2ffb5f53565465822b829c385f764f877132d66e317a",
+          "sha256": "4c142a8aa2aaad7242b02593417ba76863c0469a697006c2916c708bc086b852"
         }
       ]
     },
@@ -296,14 +330,14 @@
           "file": "sprites-sit/logan-labossiere/idle_0.png",
           "source": "sprites-walk/logan-labossiere/up_0.png",
           "sourceSha256": "27315832eca9bdc2b64bf43e55cda6033cc95061d73185dc9351fa47ba4172f5",
-          "sha256": "a6cb47aefa5c744e7a8539d66d2506188d123cc72a5e237e9252f96b733686ac"
+          "sha256": "1325fb3c6e4e3d5a9f683085006a81d4e33738d187a096da89486be0842a2e15"
         },
         {
           "frame": 1,
           "file": "sprites-sit/logan-labossiere/idle_1.png",
-          "source": "sprites-walk/logan-labossiere/up_1.png",
-          "sourceSha256": "cc020efa9d093ea5bd88a565d947c96508ffff5bd5fd161043255281f06ea8f0",
-          "sha256": "f24063d3f18176b4ef498b4392e802e2607493a2a40f4f4b87aafdd4e48df8b0"
+          "source": "sprites-walk/logan-labossiere/up_0.png",
+          "sourceSha256": "27315832eca9bdc2b64bf43e55cda6033cc95061d73185dc9351fa47ba4172f5",
+          "sha256": "ecabad153d2f1a766a13ef9131b46b46fa7ce657d0e487d354b47eac00b56ec0"
         }
       ]
     },
@@ -315,14 +349,14 @@
           "file": "sprites-sit/megane-darnaud/idle_0.png",
           "source": "sprites-walk/megane-darnaud/up_0.png",
           "sourceSha256": "a4fa50b730f03f6a8edfb70b3193c01d3383623e0f466bda89878a6bdc9190ac",
-          "sha256": "c1e14a756fee49fa188538f50e16d141748f77dbd5cc1f2167a8a60d189184cb"
+          "sha256": "d846fcac65ebd3afb0d409a21c8a47f25bc875b79eb27e2940359d183e35ac32"
         },
         {
           "frame": 1,
           "file": "sprites-sit/megane-darnaud/idle_1.png",
-          "source": "sprites-walk/megane-darnaud/up_1.png",
-          "sourceSha256": "bdca7e28b07cc37fcf2549b8068ae0f0e9a004dc339a6ece38e5c0e36327c2f0",
-          "sha256": "4052e01ca8b4c19dc1408b864b4c8816d7e55f36bb5a67bb26d774de5b0ce541"
+          "source": "sprites-walk/megane-darnaud/up_0.png",
+          "sourceSha256": "a4fa50b730f03f6a8edfb70b3193c01d3383623e0f466bda89878a6bdc9190ac",
+          "sha256": "c9010e97bbed6b12e14f47b85b3ae9f81d4a81dc655031c46ee0265bb1021d28"
         }
       ]
     },
@@ -334,14 +368,14 @@
           "file": "sprites-sit/pentcho-tchomakov/idle_0.png",
           "source": "sprites-walk/pentcho-tchomakov/up_0.png",
           "sourceSha256": "27ae0636446ac07878c91a5547e4d6f1ef416ec94689ccb01ab50d255515436e",
-          "sha256": "decac4e658c33455fbd3bcd7450ad480084a7db0d381c620fafdf01d30ed9b6b"
+          "sha256": "ace9581011d5c3895b6d3bb7d0cb1aa45929e2aedc77ad06f3afcf7f90ccbc3c"
         },
         {
           "frame": 1,
           "file": "sprites-sit/pentcho-tchomakov/idle_1.png",
-          "source": "sprites-walk/pentcho-tchomakov/up_1.png",
-          "sourceSha256": "eb2ec1ad2f2f1c6d20ec5ccb42c74fc2f8492bf309a88bf7b0cc0878b1c37b07",
-          "sha256": "108c46ef03419b031a93e740f92dc9350ee18368c31f358e614f95967cb07521"
+          "source": "sprites-walk/pentcho-tchomakov/up_0.png",
+          "sourceSha256": "27ae0636446ac07878c91a5547e4d6f1ef416ec94689ccb01ab50d255515436e",
+          "sha256": "65820832b7b3f28d0c2e0f4f6c4e9e7a0842b9ec58582c4075ecd6dbdc2f85e4"
         }
       ]
     },
@@ -353,14 +387,14 @@
           "file": "sprites-sit/philippe-miranda-jean/idle_0.png",
           "source": "sprites-walk/philippe-miranda-jean/up_0.png",
           "sourceSha256": "66b37b4af01d5d55f0244d795c45ffadd4169d3501fdd801d4443090ca5fc406",
-          "sha256": "8d905d280d6e6d1136f07bd296a3466dd1ed025410c616c693ee38e4133dfed2"
+          "sha256": "eeb5f6e4d2496d61e81fa1458ad7fc1295d9e2f42de82687cbfc1cd58b1c5625"
         },
         {
           "frame": 1,
           "file": "sprites-sit/philippe-miranda-jean/idle_1.png",
-          "source": "sprites-walk/philippe-miranda-jean/up_1.png",
-          "sourceSha256": "02059fa12715e6b24fa7082abeaecf68dc336c7c5d46577a18d58d61912e8539",
-          "sha256": "5e4367756ace67f0ca7a63806c82b603a992b7e1b793f6f22e6519462ebeda60"
+          "source": "sprites-walk/philippe-miranda-jean/up_0.png",
+          "sourceSha256": "66b37b4af01d5d55f0244d795c45ffadd4169d3501fdd801d4443090ca5fc406",
+          "sha256": "0a0fb9ba3f3dbd40d5b1db0345f40a8d4e77224b14cc54e2d71b76ecb2c55ef5"
         }
       ]
     },
@@ -372,14 +406,14 @@
           "file": "sprites-sit/richard-el-chaar/idle_0.png",
           "source": "sprites-walk/richard-el-chaar/up_0.png",
           "sourceSha256": "dce060bf5490ddae3e402e1d8c1c7e4954fe13b03a45fa532355cd7388a29831",
-          "sha256": "d06a16c76c5371825a62e89b47d466e6570b054a4ddc6335715fee775b4401be"
+          "sha256": "9d4535827df227d8c57947caa326876438ad17b1f613fb139d8089677358fe75"
         },
         {
           "frame": 1,
           "file": "sprites-sit/richard-el-chaar/idle_1.png",
-          "source": "sprites-walk/richard-el-chaar/up_1.png",
-          "sourceSha256": "38e51d796858d3e301f084ce22eaf8298518508fe718d940db1aa4c97018df46",
-          "sha256": "909b454ee510f4078128bb114d8fd6a0910dfa86f3fdb21441c825025f15b03b"
+          "source": "sprites-walk/richard-el-chaar/up_0.png",
+          "sourceSha256": "dce060bf5490ddae3e402e1d8c1c7e4954fe13b03a45fa532355cd7388a29831",
+          "sha256": "b332e65044d81d17fc3486414666566b392d2b5df72092fdeed842a1d884308f"
         }
       ]
     },
@@ -391,14 +425,14 @@
           "file": "sprites-sit/sarah-kotb/idle_0.png",
           "source": "sprites-walk/sarah-kotb/up_0.png",
           "sourceSha256": "910290ddc4f7cc39f70387fdf95bb21831c396e8124f93559732cc807039f9e0",
-          "sha256": "35ba6d9cd413a4a9247083e7406659dbfcc838e723bcb29c02b90b3bdb4b8093"
+          "sha256": "a4cf5096c8a4cf16033a50d13ce0f3e9d857564c48508c888b8d723eb39dcddb"
         },
         {
           "frame": 1,
           "file": "sprites-sit/sarah-kotb/idle_1.png",
-          "source": "sprites-walk/sarah-kotb/up_1.png",
-          "sourceSha256": "8ba64048a0dee54ba58998e661cea9dcf01de94fa145b185f67e3010ccbfbd20",
-          "sha256": "0f6115a858af5a2ca34a9fdd0ecc4824b9a36d623222a3da2fc5400385a8cfe8"
+          "source": "sprites-walk/sarah-kotb/up_0.png",
+          "sourceSha256": "910290ddc4f7cc39f70387fdf95bb21831c396e8124f93559732cc807039f9e0",
+          "sha256": "4a1ffddcb997b4a9446a00e7b47d63f7f21946e698d0e404018f8b388a1f9314"
         }
       ]
     },
@@ -410,14 +444,14 @@
           "file": "sprites-sit/scott-carr/idle_0.png",
           "source": "sprites-walk/scott-carr/up_0.png",
           "sourceSha256": "e099b8020d14c1f8cc24d7a99c0a864759683bc4baa1daa082aff8737c941872",
-          "sha256": "7cc48f4030b1ed67039b808597dc03329cfacc214f59914ca53014f7e7117cb3"
+          "sha256": "70e902b858ddfbb164b273180914750bf36889ccb629c0642b848cfe8106ea26"
         },
         {
           "frame": 1,
           "file": "sprites-sit/scott-carr/idle_1.png",
-          "source": "sprites-walk/scott-carr/up_1.png",
-          "sourceSha256": "1f43b3e2e1d42d64867957aadfe355fb098924a7f2e2990f67de8f2469cdca1e",
-          "sha256": "c3304479d62b87c6189071962984b973f3ec3fd037e9fa89081e8f680f694fca"
+          "source": "sprites-walk/scott-carr/up_0.png",
+          "sourceSha256": "e099b8020d14c1f8cc24d7a99c0a864759683bc4baa1daa082aff8737c941872",
+          "sha256": "f34fbdee09bf721a3c7ebc283dffaef5bb2a1b5a995a6dd8393ab010f25f0d21"
         }
       ]
     },
@@ -429,14 +463,14 @@
           "file": "sprites-sit/stephanie-fontaine/idle_0.png",
           "source": "sprites-walk/stephanie-fontaine/up_0.png",
           "sourceSha256": "eae2996abe499d3ff0dbdea0374ef536ea3e9111208ef151694ca283a2e726a0",
-          "sha256": "fa8e914384454891de6e19741116c67e2ac6b3becd428df4e8b2e6c1b0a15285"
+          "sha256": "1255ccd9a66ae3917dcc3207e0e30a4763c33ad14acf2f56423ce40c72646145"
         },
         {
           "frame": 1,
           "file": "sprites-sit/stephanie-fontaine/idle_1.png",
-          "source": "sprites-walk/stephanie-fontaine/up_1.png",
-          "sourceSha256": "3d953d7dd6e0677249515e47419b3bcc9ef92800ff641f65d95d8ae5e4ce67c0",
-          "sha256": "d35d22bd112722054ad750412fa98dc504a1f3c213e8e7c55046c2bf3803a672"
+          "source": "sprites-walk/stephanie-fontaine/up_0.png",
+          "sourceSha256": "eae2996abe499d3ff0dbdea0374ef536ea3e9111208ef151694ca283a2e726a0",
+          "sha256": "eb7e228b395beb329e35262012a1a2c31bbef543bcc5b8e912960b5da562f3f1"
         }
       ]
     },
@@ -448,14 +482,14 @@
           "file": "sprites-sit/tabarek-al-khalidi/idle_0.png",
           "source": "sprites-walk/tabarek-al-khalidi/up_0.png",
           "sourceSha256": "36e0feeea5a37bbbe77031c919c0d1d23b0dd50aa96d085f03f5fbdfcbb2f111",
-          "sha256": "5889d1a6e21b60c7d65458e749a6018dccde764c59009a515dba820fdc11d5c0"
+          "sha256": "82bcf110ce21ce2b9bfc90e43cf03ac8aac4d23a9e365811ac94620895038dc6"
         },
         {
           "frame": 1,
           "file": "sprites-sit/tabarek-al-khalidi/idle_1.png",
-          "source": "sprites-walk/tabarek-al-khalidi/up_1.png",
-          "sourceSha256": "254106799e615a6582bfb939ad988af125a0c4581bc66cdecc708816f84b55bc",
-          "sha256": "bff7113c418e9cba4aed89be841aef64b01c96e8fe983f6f7f935969352a7172"
+          "source": "sprites-walk/tabarek-al-khalidi/up_0.png",
+          "sourceSha256": "36e0feeea5a37bbbe77031c919c0d1d23b0dd50aa96d085f03f5fbdfcbb2f111",
+          "sha256": "9eb586bf8ec5fb2661f2e982683aac63b471f38afd39722f25bdc152fa1b78c3"
         }
       ]
     },
@@ -467,14 +501,14 @@
           "file": "sprites-sit/tyler-nagano/idle_0.png",
           "source": "sprites-walk/tyler-nagano/up_0.png",
           "sourceSha256": "5e146ffe167298580b2ce607d859c587bfe13b934b82ad6ba212ce19439691ed",
-          "sha256": "e493a7f98decbf4c683dc5fb16359fd5364246d39b30da6dbfabbe43d15cb159"
+          "sha256": "2307be5f6ec566f48cd93441217745ab57c2fc2ba8a42fa1d5a95a55e0c583b8"
         },
         {
           "frame": 1,
           "file": "sprites-sit/tyler-nagano/idle_1.png",
-          "source": "sprites-walk/tyler-nagano/up_1.png",
-          "sourceSha256": "ca4b1b7ec4f78b6740c9f982f2f723ba0069e69b6a373f629c821154bc67d1e8",
-          "sha256": "f855c49c980eeb26d92cc1be09ba1579596c2026251bcc02957d086b2e7c5969"
+          "source": "sprites-walk/tyler-nagano/up_0.png",
+          "sourceSha256": "5e146ffe167298580b2ce607d859c587bfe13b934b82ad6ba212ce19439691ed",
+          "sha256": "b081e876c0d976d74ecb636d011302d9c490cdfd8f45cffdeab476d373d51c0a"
         }
       ]
     },
@@ -486,14 +520,14 @@
           "file": "sprites-sit/veronica-marallag/idle_0.png",
           "source": "sprites-walk/veronica-marallag/up_0.png",
           "sourceSha256": "14293f6dd08e36afc191e92823125b43207d76d11e9f4583ac4c6714a93c60f4",
-          "sha256": "9476f2e822065455bc11a5d82ad89e958c7d4a04af7f512480c7364a39792c16"
+          "sha256": "06c7481f3265ea49a159ebcf727a446b06f7d367c9c0c2cdd5c5f58c377842d9"
         },
         {
           "frame": 1,
           "file": "sprites-sit/veronica-marallag/idle_1.png",
-          "source": "sprites-walk/veronica-marallag/up_1.png",
-          "sourceSha256": "c03b6e901b215b1a05186e5111e242d0471d55ba7f0a5fc5f89baa33651990d4",
-          "sha256": "fbd35febc05a1eb813c452536a796ac826c2d68772cd31e643895015feb588e2"
+          "source": "sprites-walk/veronica-marallag/up_0.png",
+          "sourceSha256": "14293f6dd08e36afc191e92823125b43207d76d11e9f4583ac4c6714a93c60f4",
+          "sha256": "af3e538d889234acdabe2a13ac97b4eb9c210763c3da77727d062c43a89e8a5c"
         }
       ]
     },
@@ -505,14 +539,14 @@
           "file": "sprites-sit/victor-desautels/idle_0.png",
           "source": "sprites-walk/victor-desautels/up_0.png",
           "sourceSha256": "949651902f79e9012294b29cf5800041a83b48e12f5b93aa33a311c3c50671d0",
-          "sha256": "2450b95b4438f9dfd722841da17d15f585bf10cbb148001e7faa8ae04d41b265"
+          "sha256": "df4bcbff527855e12f9cdb37deed7af0eab7ae4c31518dce473126f28a64345b"
         },
         {
           "frame": 1,
           "file": "sprites-sit/victor-desautels/idle_1.png",
-          "source": "sprites-walk/victor-desautels/up_1.png",
-          "sourceSha256": "e8a9896c8a02c26d3347cb245dff87a867044c29ad3622a213a5ef91f1ed96c5",
-          "sha256": "7a1adc6fd8a59e22c0a9664ae9d75068376d00114150e92ae9c2c6a4f70a4c99"
+          "source": "sprites-walk/victor-desautels/up_0.png",
+          "sourceSha256": "949651902f79e9012294b29cf5800041a83b48e12f5b93aa33a311c3c50671d0",
+          "sha256": "5ce6c50979c26144e5982ed9db5fd8a4b9639fca3f3fa3dc6ed38bc5271ccb43"
         }
       ]
     },
@@ -524,14 +558,14 @@
           "file": "sprites-sit/vincent-anctil/idle_0.png",
           "source": "sprites-walk/vincent-anctil/up_0.png",
           "sourceSha256": "0ad40aaee38c3312fc3672d13d1b13893258eb749462a5e1c279c43ff033af9e",
-          "sha256": "af67369defee176ffaf05a1bd57a8b487b9559c5fa892449647e2bb56a7d4d76"
+          "sha256": "6ec3fc69735b5afd7636b3afa207a6659c69e9b015fc3e1076a967a985ab820d"
         },
         {
           "frame": 1,
           "file": "sprites-sit/vincent-anctil/idle_1.png",
-          "source": "sprites-walk/vincent-anctil/up_1.png",
-          "sourceSha256": "717a18f21c2d0ceb713064f35e47239100de5e5448740bdef56ed4b285100085",
-          "sha256": "5da01cdfef7eaae9f5cbd9dfd697fc572aa569e3e4a9afd53c480ef75d7f1c43"
+          "source": "sprites-walk/vincent-anctil/up_0.png",
+          "sourceSha256": "0ad40aaee38c3312fc3672d13d1b13893258eb749462a5e1c279c43ff033af9e",
+          "sha256": "e1974b5e2d6d988a851facaf44802b2111027b6ff80ef1c7ebcbcf636a3be05b"
         }
       ]
     },
@@ -543,19 +577,19 @@
           "file": "sprites-sit/william-chan/idle_0.png",
           "source": "sprites-walk/william-chan/up_0.png",
           "sourceSha256": "f9fd28cb6de08779b162f0da1e5c4fb3dbe4d4c4a8b61298da55165efb0d8409",
-          "sha256": "52397741280c50c0f6034942e9f29b266620720b1b75fab0d0c99579abed1fee"
+          "sha256": "7392c19914e444b1072159f48c5afc5faa57b936370dfbc8acdb6e5759749567"
         },
         {
           "frame": 1,
           "file": "sprites-sit/william-chan/idle_1.png",
-          "source": "sprites-walk/william-chan/up_1.png",
-          "sourceSha256": "f290de28cd63dc70d5c418de3430ca4961b7fc5c141c5ef4ef82826d04a51bba",
-          "sha256": "310ef493efb2bf19c74b23f529ecc5f6ccc0f45623f23535676236089f72a951"
+          "source": "sprites-walk/william-chan/up_0.png",
+          "sourceSha256": "f9fd28cb6de08779b162f0da1e5c4fb3dbe4d4c4a8b61298da55165efb0d8409",
+          "sha256": "0549b9ab70ef97da8db1199d88625dd2bdf5d60c31e1b21389e9711738b38b81"
         }
       ]
     }
   ],
-  "batch_sha256": "e0b210dea08960a4ac21899627d219dfbe537788fad3bf7ac794ce860141d9c7",
+  "batch_sha256": "c1a2b78abe03e4b8191940b7c255ccf02f6adfb4ab5b3dd865935ccf5098fcd5",
   "roster_count": 29,
   "frame_count": 58
 }

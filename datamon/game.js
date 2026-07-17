@@ -636,7 +636,27 @@ let seenCounter = 0;    // monotonic draw counter — drives lastSeen recency (n
 // ---- Certification Console state (#047) ----
 let certConsoleOpen = false;
 let certConsoleSel = 0;
-// ---- Sitting asset cache (#047) ----
+// ---- Sitting asset cache and fixed draw geometry (#047/#048) ----
+// Gameplay remains anchored to the same chair tile. These visual-only values make the
+// compact pose, fallback, cadence, and foreground chair mask independently testable.
+const SEATED_DRAW_GEOMETRY = Object.freeze({
+  poseSize: 64,
+  feetOffsetY: 16,
+  frameHoldTicks: 60,
+  phasePeriodTicks: 120,
+  chairSize: 32,
+  chairTopOffsetY: -16,
+  chairForegroundSourceY: 7,
+  chairForegroundHeight: 25,
+  fallbackHeadWidth: 18,
+  fallbackHeadHeight: 17,
+  fallbackHeadTopOffsetY: -34,
+  fallbackTorsoTopOffsetY: -18,
+  fallbackTorsoWidth: 24,
+  fallbackTorsoHeight: 18,
+});
+const SEATED_FALLBACK_HAIR = Object.freeze(["#33251f", "#171717", "#5b3a29", "#8a5a32", "#b45309", "#d4a574"]);
+const SEATED_FALLBACK_SHIRTS = Object.freeze(["#334155", "#1e3a5f", "#3f3f46", "#374151", "#254b45", "#4c3d67"]);
 let _sittingAssetStore = {};   // slug -> {idle_0: Image, idle_1: Image}|null
 let _sittingLoaded = new Set();// slugs that have been requested (avoid double-fetch)
 let _sitAnimPhase = 0;         // bounded animation phase for seated idle loop
@@ -2354,10 +2374,10 @@ function walkable(x, y, ignoreSeats) {
   return true;
 }
 
-// ---- Sitting asset loading (#047) ----
-// Lazy-load the two-frame sitting sprite for a slug. Falls back to standing
-// sprite on missing files. Returns the cache entry synchronously (images may
-// still be loading).
+// ---- Sitting asset loading (#047/#048) ----
+// Lazy-load the two-frame sitting sprite for a slug. Missing/pending files use the
+// compact procedural seated fallback in drawCharacter; standing art is never shown.
+// Returns the cache entry synchronously (images may still be loading).
 function loadSitAsset(slug) {
   if (!slug || _sittingLoaded.has(slug)) return;
   _sittingLoaded.add(slug);
@@ -3802,46 +3822,78 @@ function drawHPBar(x, y, w, h, frac, label) {
   }
 }
 
+function seatedFrameIndex(phase, reducedMotion) {
+  if (reducedMotion) return 0;
+  var period = SEATED_DRAW_GEOMETRY.phasePeriodTicks;
+  var bounded = ((phase % period) + period) % period;
+  return Math.floor(bounded / SEATED_DRAW_GEOMETRY.frameHoldTicks);
+}
+
+function seatedFallbackPaletteIndex(slug, salt, length) {
+  var hash = salt | 0;
+  var source = String(slug || "datamon");
+  for (var i = 0; i < source.length; i++) hash = ((hash * 33) ^ source.charCodeAt(i)) | 0;
+  return (hash >>> 0) % length;
+}
+
+function drawCompactSeatedFallback(cx, cy, slug) {
+  var geometry = SEATED_DRAW_GEOMETRY;
+  var shirt = SEATED_FALLBACK_SHIRTS[seatedFallbackPaletteIndex(slug, 17, SEATED_FALLBACK_SHIRTS.length)];
+  var hair = SEATED_FALLBACK_HAIR[seatedFallbackPaletteIndex(slug, 53, SEATED_FALLBACK_HAIR.length)];
+  // Opaque, rear-facing, legless shoulder/back silhouette. It performs no image or
+  // portrait request, so pending and failed sitting art cannot flash a standing body
+  // or a front-facing face while the character is looking toward the desk.
+  ctx.fillStyle = shirt;
+  ctx.fillRect(px(cx - geometry.fallbackTorsoWidth / 2),
+    px(cy + geometry.fallbackTorsoTopOffsetY),
+    geometry.fallbackTorsoWidth, geometry.fallbackTorsoHeight);
+  ctx.fillStyle = "rgba(15,23,42,0.32)";
+  ctx.fillRect(px(cx - geometry.fallbackTorsoWidth / 2 + 3),
+    px(cy + geometry.fallbackTorsoTopOffsetY + 8),
+    geometry.fallbackTorsoWidth - 6, geometry.fallbackTorsoHeight - 8);
+  ctx.fillStyle = "#b98263"; // nape only; no face is visible from this rear pose
+  ctx.fillRect(px(cx - 4), px(cy - 20), 8, 5);
+  ctx.fillStyle = hair;
+  var headX = cx - geometry.fallbackHeadWidth / 2;
+  var headY = cy + geometry.fallbackHeadTopOffsetY;
+  ctx.fillRect(px(headX + 2), px(headY), geometry.fallbackHeadWidth - 4, 2);
+  ctx.fillRect(px(headX), px(headY + 2), geometry.fallbackHeadWidth, geometry.fallbackHeadHeight - 4);
+  ctx.fillRect(px(headX + 2), px(headY + geometry.fallbackHeadHeight - 2), geometry.fallbackHeadWidth - 4, 2);
+}
+
+function drawSeatedChairForeground(cx, cy) {
+  var geometry = SEATED_DRAW_GEOMETRY;
+  var chair = propStore["office-chair"];
+  if (!chair || chair.naturalWidth < geometry.chairSize || chair.naturalHeight < geometry.chairSize) return;
+  // The chair was cache-baked behind the person. Repaint its explicit upper-back-through-
+  // base region in front, covering the lower torso/pelvis while retaining the outer shell.
+  ctx.drawImage(chair,
+    0, geometry.chairForegroundSourceY,
+    geometry.chairSize, geometry.chairForegroundHeight,
+    px(cx - geometry.chairSize / 2),
+    px(cy + geometry.chairTopOffsetY + geometry.chairForegroundSourceY),
+    geometry.chairSize, geometry.chairForegroundHeight);
+}
+
 function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
-  // ---- Seated pose (#047): draw sitting frame instead of standing sprite ----
+  // ---- Compact seated pose (#047/#048): fixed tile anchor, visual-only lowering ----
   if (seated) {
     var sitFrames = getSitFrames(slug);
-    // Slow bounded animation phase advances only while rendered in active scene.
-    // Reduced motion pins to frame 0.
     var reducedMotion = (typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion && AgentArena.prefersReducedMotion());
-    var sitFrameIdx = reducedMotion ? 0 : (Math.floor(_sitAnimPhase / 30) % 2); // ~0.5 Hz cycle
+    var sitFrameIdx = seatedFrameIndex(_sitAnimPhase, reducedMotion);
     var sitImg = null;
     if (sitFrames) {
       sitImg = (sitFrameIdx === 0 ? sitFrames.idle_0 : sitFrames.idle_1)
-        || sitFrames.idle_0 || sitFrames.idle_1;
+        || sitFrames.idle_0 || sitFrames.idle_1; // coherent partial-load fallback
     }
     if (sitImg && sitImg.complete && sitImg.naturalWidth > 0) {
-      // Draw sitting pose: 64×64, bottom-anchored at feet, centred horizontally.
-      var sitH = 64, sitW = 64;
-      ctx.drawImage(sitImg, px(cx - sitW / 2), px(cy + 16 - sitH), sitW, sitH);
+      var poseSize = SEATED_DRAW_GEOMETRY.poseSize;
+      ctx.drawImage(sitImg, px(cx - poseSize / 2),
+        px(cy + SEATED_DRAW_GEOMETRY.feetOffsetY - poseSize), poseSize, poseSize);
     } else {
-      // Fallback: draw standing mini sprite slightly lower (compressed appearance).
-      var fallbackMini = spriteMini(slug, 48);
-      if (fallbackMini) {
-        ctx.save();
-        ctx.globalAlpha = 0.7;
-        ctx.drawImage(fallbackMini, px(cx - 24), px(cy + 16 - 48), 48, 48);
-        ctx.restore();
-      } else {
-        // Ultimate fallback: simple body shape at chair height.
-        ctx.fillStyle = "#475569";
-        ctx.fillRect(px(cx - 12), px(cy), 24, 24);
-        ctx.drawImage(pixelHead(slug, 16), px(cx - 8), px(cy - 10), 16, 16);
-      }
+      drawCompactSeatedFallback(cx, cy, slug);
     }
-    // Repaint the lower chair shell in front of the folded legs. The full chair is
-    // already cache-baked behind the character, so this creates intentional seating.
-    var chair = propStore["office-chair"];
-    if (chair && chair.naturalWidth > 0) {
-      var cropY = Math.floor(chair.naturalHeight * 0.44);
-      ctx.drawImage(chair, 0, cropY, chair.naturalWidth, chair.naturalHeight - cropY,
-        px(cx - 16), px(cy - 16 + cropY), 32, 32 - cropY);
-    }
+    drawSeatedChairForeground(cx, cy);
     return;
   }
 
@@ -5632,10 +5684,12 @@ function loop(t) {
   lastT = t;
   dtF = dt * 60;
   frame += dtF;
-  // Advance seated idle animation phase (#047). Slow bounded phase (0.5 Hz).
-  // Reduced motion pins frame 0 — handled in drawCharacter at load time.
+  // Advance the subtle seated idle at one frame/second (0.5 Hz full cycle).
+  // Reduced motion pins frame zero in drawCharacter; the phase remains bounded.
   _sitAnimPhase += dtF;
-  if (_sitAnimPhase > 120) _sitAnimPhase -= 120; // wrap to keep bounded (2 sec cycle)
+  if (_sitAnimPhase >= SEATED_DRAW_GEOMETRY.phasePeriodTicks) {
+    _sitAnimPhase %= SEATED_DRAW_GEOMETRY.phasePeriodTicks;
+  }
   if (state === "overworld") updateOverworld(dt);
   if (state === "transition" && battleTransition) {
     battleTransition.t += dtF;
