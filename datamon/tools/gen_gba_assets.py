@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 """Reproducible generator for DATAMON's GBA-style character assets (deep-think: datamon-gba-aesthetic).
 
-Two assets per roster member, mirroring the gen_props.py recipe (AI generate -> deterministic
-post-process -> committed PNG). Validated end-to-end in Phase 0 on veronica-marallag.
+Character assets for each roster member, mirroring the gen_props.py recipe (AI generate ->
+deterministic post-process -> committed PNG). Validated end-to-end in Phase 0 on
+veronica-marallag.
 
-  - PORTRAIT  (datamon/portraits/<slug>.png): Fire-Emblem-style dialogue bust, ~80px tall.
+  - TRAINER   (datamon/sprites/<slug>.png): full-body battle/roster sprite on a 256px square.
+              Model = Nano Banana 2. Magenta chroma-key background.
+  - PORTRAIT  (datamon/portraits/<slug>.png): Fire-Emblem-style dialogue bust, 96px tall.
               Model = Nano Banana 2 (best identity preservation). Magenta chroma-key bg.
-  - OVERWORLD (datamon/sprites-gba/<slug>.png): chibi south-facing walker, ~48px tall.
-              Model = gpt-image-1.5 (true transparent alpha — robust vs light-coloured clothing).
+  - OVERWORLD (datamon/sprites-gba/<slug>.png): optional chibi south-facing walker, ~48px tall.
+              Model = Nano Banana 2. Magenta chroma-key background.
 
 Pipeline per asset (steps 2-5 are DETERMINISTIC for a given raw input):
-  1. AI generate via image-compass, passing the headshot (and, for overworld, the existing
-     sprite) as --ref for identity/outfit. Raw cached to datamon/.gba-gen-cache/.
-  2. Resolve background -> hard alpha: gpt transparent => kill faint halo; NB2 JPEG => chroma-key.
-  3. Autocrop to the alpha bbox.
-  4. Lanczos downscale to the target height; per-asset 16-colour quantize (dither NONE).
-  5. Add a 1px dark outline (dilated-alpha mask); hard 1-bit alpha.
+  1. AI generate via image-compass, passing the local headshot as the identity reference.
+     Raw output is cached under datamon/.gba-gen-cache/.
+  2. Chroma-key the flat magenta background to hard alpha.
+  3. Autocrop to the alpha bbox and keep the connected character silhouette.
+  4. Fit trainers bottom-centre in a 256px square with nearest-neighbour resampling.
+  5. Lanczos-downscale portraits/chibi art to their target height and quantize them to 16 colours.
 
 Reproducibility: AI generation is NON-DETERMINISTIC; committed PNGs are curated outputs of a run.
 Re-running --gen produces visually-similar-but-not-identical art; steps 2-5 are deterministic.
@@ -24,14 +27,21 @@ Usage:
   # Re-run the deterministic pipeline on whatever raw art is already cached (no API):
   uv run --with pillow python datamon/tools/gen_gba_assets.py --pipeline-only
 
-  # Generate a small validation set (a few diverse faces), portraits + overworld:
-  uv run --with pillow python datamon/tools/gen_gba_assets.py --only tabarek-al-khalidi,scott-carr
+  # Generate runtime trainers and flattering Fire Emblem portraits for new teammates:
+  # BILLABLE: run only after an estimate and explicit approval.
+  uv run --with pillow python datamon/tools/gen_gba_assets.py --gen --only slug-a,slug-b --kind runtime \
+    --style-ref datamon/.design/refs/fire-emblem-portrait-style.png
 
-  # Generate everything (58 calls — needs OPENAI_API_KEY + GEMINI_API_KEY):
-  uv run --with pillow python datamon/tools/gen_gba_assets.py --gen
+  # Restyle every portrait from local identity + style references (review before keeping):
+  uv run --with pillow python datamon/tools/gen_gba_assets.py --gen --kind portrait --force \
+    --style-ref datamon/.design/refs/fire-emblem-portrait-style.png
 
-Flags: --only a,b  --limit N  --kind portrait|overworld|both  --force  --pipeline-only  --gen/--no-gen
-Env:   OPENAI_API_KEY, GEMINI_API_KEY (for --gen); IMAGE_COMPASS_DIR (optional override).
+  # Generate the optional small chibi assets instead:
+  uv run --with pillow python datamon/tools/gen_gba_assets.py --gen --only slug-a,slug-b --kind overworld
+
+Flags: --only a,b  --limit N  --kind trainer|portrait|overworld|runtime|all
+       --style-ref PATH  --force  --pipeline-only  --gen/--no-gen
+Env:   GEMINI_API_KEY (for --gen); IMAGE_COMPASS_DIR (optional override).
 """
 from __future__ import annotations
 
@@ -58,20 +68,48 @@ MAGENTA = (255, 0, 255)                   # portrait chroma-key bg
 
 # Asset class config -------------------------------------------------------
 KINDS = {
+    "trainer": {
+        "model": "gemini",
+        "out": SPRITES,
+        "target_size": 256,
+        "square": True,
+        "ncolors": None,
+        "refs": ["headshot"],
+        "bg": "magenta",
+        "prompt": (
+            "Create one production-ready full-body 2D pixel-art character sprite in the style "
+            "of Game Boy Advance-era Pokemon trainer battle sprites. The character must clearly "
+            "be the SAME person as the reference photo: preserve their face, hairstyle, hair "
+            "colour, skin tone, facial hair, glasses, and smart-casual office clothing. Realistic "
+            "adult body proportions, standing confidently and facing the viewer, with the full "
+            "body visible from head to feet and centred. Chunky visible pixels, restrained colour "
+            "palette, crisp tone bands, clean dark outline, no anti-aliasing, no photorealism. "
+            "Entire background perfectly flat solid chroma magenta #ff00ff, including between the "
+            "arms and legs. No transparency, shadow, scenery, text, border, frame, or extra person."
+        ),
+    },
     "portrait": {
         "model": "gemini",
         "out": PORTRAITS_OUT,
-        "target_h": 80,
+        "target_h": 96,
         "ncolors": 16,
         "refs": ["headshot"],
         "bg": "magenta",                  # NB2 returns opaque JPEG -> key this
         "prompt": (
-            "Game Boy Advance / Fire Emblem style RPG dialogue PORTRAIT bust of the SAME person "
-            "in the reference photo — preserve their face, hairstyle, skin tone and identity closely. "
-            "Head-and-shoulders bust, facing slightly toward the viewer, calm confident expression. "
-            "Flat cel shading with crisp tone bands, bold dark outline, limited retro palette, hard "
-            "clean pixel edges, NO anti-aliasing, NO photographic gradients, NO realism — hand-drawn "
-            "16-bit portrait art. Plain flat solid magenta (#ff00ff) background, no shadow."
+            "Create ONE polished Game Boy Advance Fire Emblem support-conversation PORTRAIT. "
+            "The FIRST reference is the identity photo: the result must be unmistakably the SAME "
+            "person. Preserve their ethnicity, skin tone, face shape, hairstyle and hair colour, "
+            "eyebrows, glasses, facial hair, and other distinguishing features. Make the likeness "
+            "gently flattering and heroic — warm expression, elegant proportions, clear lively eyes — "
+            "without changing who they are or making them look like a generic anime character. Keep "
+            "their real smart-casual clothing cues rather than copying fantasy armour. The SECOND "
+            "reference, when supplied, is STYLE ONLY: match its hand-authored GBA Fire Emblem pixel "
+            "clusters, warm skin highlights, selective deep-plum outline, expressive three-quarter "
+            "view, crisp stepped hair shapes, and restrained 16-colour cel-shaded palette. Draw a "
+            "single near-square head-and-shoulders dialogue bust, head fully visible, shoulders filling "
+            "the lower edge, facing slightly toward the viewer. No extra poses, sprite sheet, repeated "
+            "face, text, border, scenery, shadow, or photorealism. Entire background must be perfectly "
+            "flat solid chroma magenta #ff00ff, including every gap around hair and shoulders."
         ),
     },
     "overworld": {
@@ -118,12 +156,14 @@ def discover_image_compass() -> Path | None:
     return None
 
 
-def _refs_for(kind: str, slug: str) -> list[str]:
+def _refs_for(kind: str, slug: str, style_ref: Path | None = None) -> list[str]:
     out = []
     for r in KINDS[kind]["refs"]:
         p = (HEADSHOTS if r == "headshot" else SPRITES) / f"{slug}.png"
         if p.exists():
             out.append(str(p))
+    if kind == "portrait" and style_ref is not None:
+        out.append(str(style_ref))
     return out
 
 
@@ -140,10 +180,10 @@ def _parse_paths(stdout: str) -> Path | None:
     return None
 
 
-def ai_generate(kind: str, slug: str, ic_dir: Path) -> Path | None:
+def ai_generate(kind: str, slug: str, ic_dir: Path, style_ref: Path | None = None) -> Path | None:
     """Generate one raw asset; copy into the raw cache; return the cached path."""
     cfg = KINDS[kind]
-    refs = _refs_for(kind, slug)
+    refs = _refs_for(kind, slug, style_ref)
     variant = f"gba-{kind}-{slug}"
     if cfg["model"] == "openai":
         gen = ic_dir / "scripts" / "generate_openai.py"
@@ -254,6 +294,19 @@ def _downscale(img: Image.Image, target_h: int) -> Image.Image:
     return img.resize((tw, target_h), Image.LANCZOS)
 
 
+def _fit_square(img: Image.Image, size: int) -> Image.Image:
+    """Fit a full-body sprite into a transparent square, anchored at bottom-centre."""
+    w, h = img.size
+    scale = min(size / max(1, w), size / max(1, h))
+    fitted = img.resize(
+        (max(1, round(w * scale)), max(1, round(h * scale))),
+        Image.Resampling.NEAREST,
+    )
+    out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    out.alpha_composite(fitted, ((size - fitted.width) // 2, size - fitted.height))
+    return out
+
+
 def _quantize_keepalpha(img: Image.Image, ncolors: int) -> Image.Image:
     img = img.convert("RGBA")
     alpha = img.getchannel("A")
@@ -299,20 +352,31 @@ def postprocess(raw: Path, kind: str) -> Image.Image:
     else:  # transparent
         img = _kill_faint(img, thresh=90)
     img = _autocrop(img)
-    img = _downscale(img, cfg["target_h"])
+    if cfg.get("square"):
+        img = _fit_square(img, cfg["target_size"])
+    else:
+        img = _downscale(img, cfg["target_h"])
     img = _keep_largest(img, thresh=150)          # clean silhouette (no halo frame)
-    img = _quantize_keepalpha(img, cfg["ncolors"])  # AI art already carries its own outline
+    if cfg.get("ncolors"):
+        img = _quantize_keepalpha(img, cfg["ncolors"])  # art already carries its own outline
     return img
 
 
-def process_one(kind: str, slug: str, ic_dir: Path | None, do_gen: bool, force: bool) -> str:
+def process_one(
+    kind: str,
+    slug: str,
+    ic_dir: Path | None,
+    do_gen: bool,
+    force: bool,
+    style_ref: Path | None = None,
+) -> str:
     cfg = KINDS[kind]
     out_path = cfg["out"] / f"{slug}.png"
     raw = CACHE / f"{slug}-{kind}.png"
     if do_gen and (force or not raw.exists()):
         if ic_dir is None:
             return f"SKIP {kind}/{slug}: image-compass not found"
-        got = ai_generate(kind, slug, ic_dir)
+        got = ai_generate(kind, slug, ic_dir, style_ref)
         if got is None:
             return f"FAIL {kind}/{slug}: generation failed"
         raw = got
@@ -328,10 +392,17 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", help="comma-separated slugs")
     ap.add_argument("--limit", type=int)
-    ap.add_argument("--kind", choices=["portrait", "overworld", "both"], default="both")
+    ap.add_argument(
+        "--kind",
+        choices=["trainer", "portrait", "overworld", "runtime", "both", "all"],
+        default="both",
+    )
     ap.add_argument("--force", action="store_true", help="regenerate even if raw cached")
+    ap.add_argument("--style-ref", type=Path,
+                    help="portrait-only visual style reference (identity remains the teammate headshot)")
     ap.add_argument("--pipeline-only", action="store_true", help="no API; re-run pipeline from cache")
-    ap.add_argument("--gen", dest="gen", action="store_true", default=True)
+    ap.add_argument("--gen", dest="gen", action="store_true", default=False,
+                    help="explicitly enable external billable generation")
     ap.add_argument("--no-gen", dest="gen", action="store_false")
     args = ap.parse_args()
 
@@ -341,17 +412,27 @@ def main() -> int:
         slugs = [s for s in slugs if s in want]
     if args.limit:
         slugs = slugs[: args.limit]
-    kinds = ["portrait", "overworld"] if args.kind == "both" else [args.kind]
+    if args.kind == "runtime":
+        kinds = ["trainer", "portrait"]
+    elif args.kind == "both":  # backwards-compatible alias for the original two outputs
+        kinds = ["portrait", "overworld"]
+    elif args.kind == "all":
+        kinds = ["trainer", "portrait", "overworld"]
+    else:
+        kinds = [args.kind]
+    if args.style_ref is not None and not args.style_ref.is_file():
+        sys.stderr.write(f"ERROR: style reference not found: {args.style_ref}\n")
+        return 2
     do_gen = args.gen and not args.pipeline_only
     ic_dir = discover_image_compass() if do_gen else None
     if do_gen and ic_dir is None:
-        sys.stderr.write("ERROR: image-compass not found; set IMAGE_COMPASS_DIR or use --pipeline-only.\n")
+        sys.stderr.write("ERROR: image-compass not found; set IMAGE_COMPASS_DIR or omit --gen for cache-only processing.\n")
         return 2
 
     print(f"roster={len(slugs)} kinds={kinds} gen={do_gen} ic={ic_dir}")
     for slug in slugs:
         for kind in kinds:
-            print(process_one(kind, slug, ic_dir, do_gen, args.force))
+            print(process_one(kind, slug, ic_dir, do_gen, args.force, args.style_ref))
     return 0
 
 

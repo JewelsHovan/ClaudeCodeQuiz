@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Ticket #048: generate deterministic compact rear-facing seated poses for all
-29 roster members from one accepted, non-walking up frame.
+Ticket #048: generate deterministic compact rear-facing seated poses for every
+roster member from one accepted, non-walking up frame.
 
 The recipe is local Pillow composition only: no network/API calls and $0 spend.
 """
@@ -19,14 +19,16 @@ OUT_DIR = ROOT / "sprites-sit"
 SPRITES_WALK = ROOT / "sprites-walk"
 
 ROSTER = [
-    "alex-andrianavalontsalama", "antonia-nistor", "aurelien-bouffanais",
-    "dana-domanko", "duc-an-nguyen", "emile-moffatt", "ethan-pirso",
-    "felicia-gorgacheva", "francesco-finn", "guillaume-delmas-frenette",
-    "guillaume-pregent", "jerry-zhu", "jonah-lee", "jonathan-kim",
-    "julien-hovan", "logan-labossiere", "megane-darnaud", "pentcho-tchomakov",
-    "philippe-miranda-jean", "richard-el-chaar", "sarah-kotb", "scott-carr",
-    "stephanie-fontaine", "tabarek-al-khalidi", "tyler-nagano",
-    "veronica-marallag", "victor-desautels", "vincent-anctil", "william-chan",
+    "alex-andrianavalontsalama", "andrea-vreugdenhil", "antonia-nistor",
+    "aurelien-bouffanais", "dana-domanko", "duc-an-nguyen", "elina-gu",
+    "emile-moffatt", "ethan-pirso", "felicia-gorgacheva", "francesco-finn",
+    "guillaume-delmas-frenette", "guillaume-pregent", "jerry-zhu", "jewoo-lee",
+    "jonah-lee", "jonathan-kim", "julien-hovan", "logan-labossiere",
+    "megane-darnaud", "milen-thomas", "minh-ngoc-do", "oyku-cildir",
+    "pentcho-tchomakov", "philippe-miranda-jean", "richard-el-chaar",
+    "sarah-kotb", "saransh-padhy", "scott-carr", "stephanie-fontaine",
+    "tabarek-al-khalidi", "tyler-nagano", "veronica-marallag",
+    "victor-desautels", "vincent-anctil", "wild-guevera", "william-chan",
 ]
 
 CANVAS_SIZE = 64

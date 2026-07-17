@@ -32,6 +32,10 @@
 
   // ---- Helpers ----
 
+  function boundedInteger(value, fallback, low, high) {
+    return Number.isFinite(value) ? Math.max(low, Math.min(high, Math.round(value))) : fallback;
+  }
+
   /**
    * Deterministic Inspect: given a question with 4 choices and a correct index,
    * derive two wrong indexes that will be eliminated. The seed is derived from
@@ -80,9 +84,11 @@
   // ---- Encounter Factory ----
 
   /**
-   * createEncounter({ boss, playerHp, npc, npcs })
+   * createEncounter({ boss, playerHp, maxHp, wrongDamage, correctHeal, npc, npcs })
    *   boss: force boss mode (overrides auto-detection)
-   *   playerHp: current player HP (default 100)
+   *   playerHp/maxHp: bounded current and maximum HP (defaults 100/100)
+   *   wrongDamage: deterministic miss damage (default 25)
+   *   correctHeal: HP recovered after a correct answer (default 0)
    *   npc: the NPC being battled (used for boss detection)
    *   npcs: all NPCs (used to determine last undefeated AGENT)
    */
@@ -95,6 +101,8 @@
       isBoss = isLastUndefeatedAgent(config.npc, config.npcs);
     }
     var caps = isBoss ? BOSS_PHASE_CAPS : [REGULAR_STABILITY];
+    var maxHp = boundedInteger(config.maxHp, 100, 50, 200);
+    var playerHp = boundedInteger(config.playerHp, maxHp, 0, maxHp);
     return {
       phase: "action",
       boss: isBoss,
@@ -102,7 +110,10 @@
       bossPhases: isBoss ? 3 : 1,
       stability: caps[0],
       maxStability: caps[0],
-      playerHp: typeof config.playerHp === "number" ? Math.max(0, config.playerHp) : 100,
+      playerHp: playerHp,
+      maxHp: maxHp,
+      wrongDamage: boundedInteger(config.wrongDamage, WRONG_DAMAGE, 1, 100),
+      correctHeal: boundedInteger(config.correctHeal, 0, 0, 25),
       momentum: 0,
       guardrail: 0,
       question: null,
@@ -132,6 +143,7 @@
    *   { type: "RECORD_OUTCOME", questionId, correct, reason }
    *   { type: "STABILITY_DAMAGE", amount }
    *   { type: "PLAYER_DAMAGE", amount }
+   *   { type: "PLAYER_HEAL", amount }
    *   { type: "GUARDRAIL_BLOCK" }                — guardrail consumed instead of HP damage
    *   { type: "ESCAPED" }
    *   { type: "PHASE_SHIFT", bossPhase, newStability }
@@ -150,6 +162,9 @@
       stability: state.stability,
       maxStability: state.maxStability,
       playerHp: state.playerHp,
+      maxHp: boundedInteger(state.maxHp, 100, 50, 200),
+      wrongDamage: boundedInteger(state.wrongDamage, WRONG_DAMAGE, 1, 100),
+      correctHeal: boundedInteger(state.correctHeal, 0, 0, 25),
       momentum: state.momentum,
       guardrail: state.guardrail,
       question: state.question ? shallowCloneQuestion(state.question) : null,
@@ -160,6 +175,7 @@
         index: state.outcome.index,
         reason: state.outcome.reason,
         blocked: !!state.outcome.blocked,
+        healed: boundedInteger(state.outcome.healed, 0, 0, 25),
       } : null,
     };
     var effects = [];
@@ -224,7 +240,7 @@
         var isCorrect = chosenIndex === correctIndex;
         var blocked = !isCorrect && s.guardrail > 0;
         s.phase = "resolve";
-        s.outcome = { correct: isCorrect, index: chosenIndex, reason: "answer", blocked: blocked };
+        s.outcome = { correct: isCorrect, index: chosenIndex, reason: "answer", blocked: blocked, healed: 0 };
 
         // Always record the outcome exactly once
         effects.push({
@@ -239,6 +255,12 @@
           s.stability = Math.max(0, s.stability - damage);
           s.momentum = Math.min(MAX_MOMENTUM, s.momentum + 1);
           effects.push({ type: "STABILITY_DAMAGE", amount: damage });
+          var healed = Math.min(s.correctHeal, Math.max(0, s.maxHp - s.playerHp));
+          if (healed > 0) {
+            s.playerHp += healed;
+            s.outcome.healed = healed;
+            effects.push({ type: "PLAYER_HEAL", amount: healed });
+          }
         } else {
           // Wrong answer: reset momentum
           s.momentum = 0;
@@ -246,8 +268,8 @@
             s.guardrail = 0;
             effects.push({ type: "GUARDRAIL_BLOCK" });
           } else {
-            s.playerHp = Math.max(0, s.playerHp - WRONG_DAMAGE);
-            effects.push({ type: "PLAYER_DAMAGE", amount: WRONG_DAMAGE });
+            s.playerHp = Math.max(0, s.playerHp - s.wrongDamage);
+            effects.push({ type: "PLAYER_DAMAGE", amount: s.wrongDamage });
           }
         }
         break;
@@ -258,7 +280,7 @@
           return { state: state, effects: effects };
         }
         s.phase = "resolve";
-        s.outcome = { correct: false, index: -1, reason: "timeout", blocked: s.guardrail > 0 };
+        s.outcome = { correct: false, index: -1, reason: "timeout", blocked: s.guardrail > 0, healed: 0 };
 
         effects.push({
           type: "RECORD_OUTCOME",
@@ -272,8 +294,8 @@
           s.guardrail = 0;
           effects.push({ type: "GUARDRAIL_BLOCK" });
         } else {
-          s.playerHp = Math.max(0, s.playerHp - WRONG_DAMAGE);
-          effects.push({ type: "PLAYER_DAMAGE", amount: WRONG_DAMAGE });
+          s.playerHp = Math.max(0, s.playerHp - s.wrongDamage);
+          effects.push({ type: "PLAYER_DAMAGE", amount: s.wrongDamage });
         }
         break;
 

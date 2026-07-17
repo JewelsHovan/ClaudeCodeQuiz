@@ -822,9 +822,9 @@
     ctx.fillText(humanSlug(battle.npc.slug).split(" ")[0] + " // INCIDENT LEAD", opponentX, 344);
   }
 
-  function drawStatus(ctx, state) {
+  function drawStatus(ctx, state, battle) {
     var y = 350;
-    panel(ctx, 206, y, 388, 41, COLORS.cobalt);
+    panel(ctx, 206, y, 388, 48, COLORS.cobalt);
     ctx.textAlign = "left";
     ctx.font = "bold 9px monospace";
 
@@ -844,7 +844,13 @@
     ctx.fillStyle = COLORS.coral;
     ctx.fillText("♥", 503, y + 24);
     ctx.fillStyle = COLORS.text;
-    ctx.fillText("HP " + state.playerHp + "/100", 520, y + 23);
+    ctx.fillText("HP " + state.playerHp + "/" + (state.maxHp || 100), 520, y + 23);
+
+    ctx.fillStyle = COLORS.muted;
+    ctx.font = "bold 7px monospace";
+    ctx.textAlign = "center";
+    var timer = battle && battle.timerLimitMs ? Math.round(battle.timerLimitMs / 1000) : 30;
+    ctx.fillText("MATCHUP  MISS -" + (state.wrongDamage || 25) + "  ·  CORRECT +" + (state.correctHeal || 0) + " HP  ·  HARD " + timer + "s", 400, y + 40);
   }
 
   function drawGlyph(ctx, shape, x, y, size, color) {
@@ -1031,7 +1037,8 @@
     ctx.font = "bold 10px monospace";
     ctx.fillText("GUARDRAIL " + (result.guardrailBefore ? "ACTIVE" : "OFF") + " → " +
       (result.guardrailAfter ? "ACTIVE" : "OFF") + (result.blocked ? " (BLOCKED)" : " (NO BLOCK)"), 420, 516);
-    drawEconomyLine(ctx, "HP", result.hpBefore, result.hpAfter, 28, 537, COLORS.coral);
+    drawEconomyLine(ctx, "HP", result.hpBefore, result.hpAfter, 28, 537,
+      result.hpAfter > result.hpBefore ? COLORS.success : COLORS.coral);
 
     ctx.fillStyle = COLORS.cyan;
     ctx.font = "bold 10px monospace";
@@ -1055,7 +1062,7 @@
       ctx.fillText("STABILITY RESET " + state.stability + "/" + state.maxStability + " · MOMENTUM " + state.momentum + " · GUARDRAIL " + (state.guardrail ? "ACTIVE" : "OFF"), W / 2, 500);
       ctx.fillText("ENTER TO RECEIVE THE NEXT QUESTION", W / 2, 548);
     } else {
-      ctx.fillText("HP " + state.playerHp + " · STABILITY " + state.stability + " · MOMENTUM " + state.momentum + " · GUARDRAIL " + (state.guardrail ? "ACTIVE" : "OFF"), W / 2, 486);
+      ctx.fillText("HP " + state.playerHp + "/" + (state.maxHp || 100) + " · STABILITY " + state.stability + " · MOMENTUM " + state.momentum + " · GUARDRAIL " + (state.guardrail ? "ACTIVE" : "OFF"), W / 2, 486);
       ctx.fillText(state.phase === "victory" ? "ENTER TO RETURN TO THE OFFICE" : "ENTER TO REBOOT IN THE LOUNGE", W / 2, 536);
     }
   }
@@ -1153,7 +1160,7 @@
     drawBoard(ctx, battle.agentOps);
     drawPhaseCards(ctx, battle.agentOps);
     drawTrainers(ctx, battle);
-    drawStatus(ctx, battle.agentOps);
+    drawStatus(ctx, battle.agentOps, battle);
     drawCaption(ctx);
     drawCue(ctx);
 

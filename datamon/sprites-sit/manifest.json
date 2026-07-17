@@ -57,6 +57,25 @@
       ]
     },
     {
+      "slug": "andrea-vreugdenhil",
+      "frames": [
+        {
+          "frame": 0,
+          "file": "sprites-sit/andrea-vreugdenhil/idle_0.png",
+          "source": "sprites-walk/andrea-vreugdenhil/up_0.png",
+          "sourceSha256": "07a2a18077127d7fd46c23cd51449f8524bee8a4f16628837a41df4b6296761e",
+          "sha256": "bdc119af37f96e67530b63f0b9442097014d8ee4208b374f54239bf1d40f619e"
+        },
+        {
+          "frame": 1,
+          "file": "sprites-sit/andrea-vreugdenhil/idle_1.png",
+          "source": "sprites-walk/andrea-vreugdenhil/up_0.png",
+          "sourceSha256": "07a2a18077127d7fd46c23cd51449f8524bee8a4f16628837a41df4b6296761e",
+          "sha256": "aae40a5557d3ce4cf5870827c6bb4381f78f4709295cab6758ac096597ffc143"
+        }
+      ]
+    },
+    {
       "slug": "antonia-nistor",
       "frames": [
         {
@@ -129,6 +148,25 @@
           "source": "sprites-walk/duc-an-nguyen/up_0.png",
           "sourceSha256": "07f05d41be589bbf5a7beba74a65cb1302a82f63c184d09b95550d11c8f5e871",
           "sha256": "ff8f7924d4a80e1d0c6197713c5828c49f856aa777f240802accd3670c4c15df"
+        }
+      ]
+    },
+    {
+      "slug": "elina-gu",
+      "frames": [
+        {
+          "frame": 0,
+          "file": "sprites-sit/elina-gu/idle_0.png",
+          "source": "sprites-walk/elina-gu/up_0.png",
+          "sourceSha256": "98c2900dd5dbf0e29d68ffa37d4a9d2f470c6b57cbbc307ddb183d001702fd97",
+          "sha256": "c95ff07e7d3739dd9d3b8bdf3fcc75958b38d1863a5bdbdcf38ccf88b5dcc5b5"
+        },
+        {
+          "frame": 1,
+          "file": "sprites-sit/elina-gu/idle_1.png",
+          "source": "sprites-walk/elina-gu/up_0.png",
+          "sourceSha256": "98c2900dd5dbf0e29d68ffa37d4a9d2f470c6b57cbbc307ddb183d001702fd97",
+          "sha256": "ab8f6fc65770d5ecc023b204edb62c4b77c79063d99c9827de0baad212c6640c"
         }
       ]
     },
@@ -266,6 +304,25 @@
       ]
     },
     {
+      "slug": "jewoo-lee",
+      "frames": [
+        {
+          "frame": 0,
+          "file": "sprites-sit/jewoo-lee/idle_0.png",
+          "source": "sprites-walk/jewoo-lee/up_0.png",
+          "sourceSha256": "fb20e309c22652edf54fb44e7405957df39c13ef096a83f6af8d248bd91b7434",
+          "sha256": "0f674d6eca78b6f80c5c6089388a129598a2822217b3cb64346eb1266793b373"
+        },
+        {
+          "frame": 1,
+          "file": "sprites-sit/jewoo-lee/idle_1.png",
+          "source": "sprites-walk/jewoo-lee/up_0.png",
+          "sourceSha256": "fb20e309c22652edf54fb44e7405957df39c13ef096a83f6af8d248bd91b7434",
+          "sha256": "41c7adb9a8bd9dbc188718c8fd3d195cfdbacada3b92368b6476d7b42ecc6f89"
+        }
+      ]
+    },
+    {
       "slug": "jonah-lee",
       "frames": [
         {
@@ -361,6 +418,63 @@
       ]
     },
     {
+      "slug": "milen-thomas",
+      "frames": [
+        {
+          "frame": 0,
+          "file": "sprites-sit/milen-thomas/idle_0.png",
+          "source": "sprites-walk/milen-thomas/up_0.png",
+          "sourceSha256": "03cb9746994c0698b703bf17c0a2f4f041fa296af18a32669306fd201127f4dd",
+          "sha256": "5ca435a0a3e59adcf0cca45524ea98ae86273f4e709b7c466bca3cfdf171dad1"
+        },
+        {
+          "frame": 1,
+          "file": "sprites-sit/milen-thomas/idle_1.png",
+          "source": "sprites-walk/milen-thomas/up_0.png",
+          "sourceSha256": "03cb9746994c0698b703bf17c0a2f4f041fa296af18a32669306fd201127f4dd",
+          "sha256": "792294ec7d92195c6595641d545f28bcfcc46b09a958826496381bda711913ff"
+        }
+      ]
+    },
+    {
+      "slug": "minh-ngoc-do",
+      "frames": [
+        {
+          "frame": 0,
+          "file": "sprites-sit/minh-ngoc-do/idle_0.png",
+          "source": "sprites-walk/minh-ngoc-do/up_0.png",
+          "sourceSha256": "b5737458be8a3a02766b850d2e0022fda9e2e190e3ce9cc0f8b9f5069a6aaf3b",
+          "sha256": "05837eee8604b78beb67d394fd9b1f0a891c499f2e8ba83f8193ebbf6d2819e2"
+        },
+        {
+          "frame": 1,
+          "file": "sprites-sit/minh-ngoc-do/idle_1.png",
+          "source": "sprites-walk/minh-ngoc-do/up_0.png",
+          "sourceSha256": "b5737458be8a3a02766b850d2e0022fda9e2e190e3ce9cc0f8b9f5069a6aaf3b",
+          "sha256": "bc10cc9f7803eae6e5ca9ce19b050fe5b7258b789d0f96080f737b062808c6f2"
+        }
+      ]
+    },
+    {
+      "slug": "oyku-cildir",
+      "frames": [
+        {
+          "frame": 0,
+          "file": "sprites-sit/oyku-cildir/idle_0.png",
+          "source": "sprites-walk/oyku-cildir/up_0.png",
+          "sourceSha256": "865a7e939a79e38113c63da08e8b75c692080c93df5f1990b9964bf516965ac2",
+          "sha256": "f3159b2be574aab30ed88f3b42eb702ab0cd6b14b794fb5e7cdd0d459f5ca67f"
+        },
+        {
+          "frame": 1,
+          "file": "sprites-sit/oyku-cildir/idle_1.png",
+          "source": "sprites-walk/oyku-cildir/up_0.png",
+          "sourceSha256": "865a7e939a79e38113c63da08e8b75c692080c93df5f1990b9964bf516965ac2",
+          "sha256": "8193a3f6293f292b8187f48b6b7cb4b16f072a9792fda79f41d81626a02774c7"
+        }
+      ]
+    },
+    {
       "slug": "pentcho-tchomakov",
       "frames": [
         {
@@ -433,6 +547,25 @@
           "source": "sprites-walk/sarah-kotb/up_0.png",
           "sourceSha256": "910290ddc4f7cc39f70387fdf95bb21831c396e8124f93559732cc807039f9e0",
           "sha256": "4a1ffddcb997b4a9446a00e7b47d63f7f21946e698d0e404018f8b388a1f9314"
+        }
+      ]
+    },
+    {
+      "slug": "saransh-padhy",
+      "frames": [
+        {
+          "frame": 0,
+          "file": "sprites-sit/saransh-padhy/idle_0.png",
+          "source": "sprites-walk/saransh-padhy/up_0.png",
+          "sourceSha256": "33e09153fd7abf9fc4dd1a7d3cb18fcbec005b4f7260945a8b24c98ac1d4a07b",
+          "sha256": "e27ea6d31f880ac60d0f0ef451feebf3f82853a691e3bb6b0733412f0da0af13"
+        },
+        {
+          "frame": 1,
+          "file": "sprites-sit/saransh-padhy/idle_1.png",
+          "source": "sprites-walk/saransh-padhy/up_0.png",
+          "sourceSha256": "33e09153fd7abf9fc4dd1a7d3cb18fcbec005b4f7260945a8b24c98ac1d4a07b",
+          "sha256": "4d5b4e7216dc0692c57e3c274575706af5c979047af8e4f2c8d1388f5dbdb8b4"
         }
       ]
     },
@@ -570,6 +703,25 @@
       ]
     },
     {
+      "slug": "wild-guevera",
+      "frames": [
+        {
+          "frame": 0,
+          "file": "sprites-sit/wild-guevera/idle_0.png",
+          "source": "sprites-walk/wild-guevera/up_0.png",
+          "sourceSha256": "e599aae320cd9ce0c401c3493657c15eaa31b8f1197ee0271c5a1fc14b22ccfe",
+          "sha256": "04e73039fe98a8cc5bbe411832278c5589abcc4fa5cee75b12bad3a884ac228b"
+        },
+        {
+          "frame": 1,
+          "file": "sprites-sit/wild-guevera/idle_1.png",
+          "source": "sprites-walk/wild-guevera/up_0.png",
+          "sourceSha256": "e599aae320cd9ce0c401c3493657c15eaa31b8f1197ee0271c5a1fc14b22ccfe",
+          "sha256": "9f360383acc1712a8126f6cb23868184f1c8ab77db33ba93ff0d505bd537742f"
+        }
+      ]
+    },
+    {
       "slug": "william-chan",
       "frames": [
         {
@@ -589,7 +741,7 @@
       ]
     }
   ],
-  "batch_sha256": "c1a2b78abe03e4b8191940b7c255ccf02f6adfb4ab5b3dd865935ccf5098fcd5",
-  "roster_count": 29,
-  "frame_count": 58
+  "batch_sha256": "53676a89ebd74334fe0233f5f5cd9fd23af72fab85bfdf820501eb9bf3ebdc31",
+  "roster_count": 37,
+  "frame_count": 74
 }

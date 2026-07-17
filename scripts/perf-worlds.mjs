@@ -86,6 +86,20 @@ async function consoleMetrics(page) {
   return { timing, loopAdvanced: after > before.frame, summaryCacheStable: before.summaryCacheStable };
 }
 
+async function mentorMetrics(page) {
+  const before = await page.evaluate(() => {
+    const ge = (0, eval), npc = ge("npcs").find(value => !value.training);
+    npc.defeated = true; ge("defeated").add(npc.slug); ge("openMentorReview")(npc);
+    return { frame: ge("frame"), open: !!ge("mentorReview") };
+  });
+  const timing = await frameSample(page);
+  const after = await page.evaluate(() => {
+    const ge = (0, eval), frame = ge("frame"); ge("closeMentorReview")();
+    return { frame, open: !!ge("mentorReview") };
+  });
+  return { timing, opened: before.open, loopAdvanced: after.frame > before.frame, closed: !after.open };
+}
+
 async function sceneMetrics(page, scene) {
   const frameBefore = await page.evaluate(() => (0, eval)("frame"));
   const timing = await frameSample(page);
@@ -130,6 +144,7 @@ try {
 
     const scenes = [await sceneMetrics(page, "office")];
     const certificationConsole = await consoleMetrics(page);
+    const mentorReview = await mentorMetrics(page);
     await page.evaluate(() => (0, eval)("enterLibrary")());
     await page.waitForFunction(() => (0, eval)("currentMap") === "library", null, { timeout: 15000 });
     scenes.push(await sceneMetrics(page, "library"));
@@ -142,11 +157,15 @@ try {
     const duplicateArchitectureRequests = [...new Set(architectureRequests)].filter(value => architectureRequests.filter(item => item === value).length > 1);
     const studyRequests = requests.filter(value => value.startsWith("/props-study/") || value.startsWith("/sprites-sit/"));
     const duplicateStudyRequests = [...new Set(studyRequests)].filter(value => studyRequests.filter(item => item === value).length > 1);
-    const run = { ...config, scenes, certificationConsole, errors, requestCount: requests.length,
-      architectureRequests, duplicateArchitectureRequests, studyRequests, duplicateStudyRequests };
+    const wayfindingRequests = requests.filter(value => value.startsWith("/props-wayfinding/"));
+    const duplicateWayfindingRequests = [...new Set(wayfindingRequests)].filter(value => wayfindingRequests.filter(item => item === value).length > 1);
+    const run = { ...config, scenes, certificationConsole, mentorReview, errors, requestCount: requests.length,
+      architectureRequests, duplicateArchitectureRequests, studyRequests, duplicateStudyRequests,
+      wayfindingRequests, duplicateWayfindingRequests };
     runs.push(run);
     console.log(`DPR${config.dpr} CPU${config.cpu}x: ` + scenes.map(item => `${item.scene} p95=${item.timing.p95.toFixed(1)}ms cache=${item.caches.mib.toFixed(1)}MiB`).join(" | ") +
-      ` | console p95=${certificationConsole.timing.p95.toFixed(1)}ms`);
+      ` | console p95=${certificationConsole.timing.p95.toFixed(1)}ms` +
+      ` | mentor p95=${mentorReview.timing.p95.toFixed(1)}ms`);
     await context.close();
   }
 } finally {
@@ -159,10 +178,15 @@ for (const run of runs) {
   if (run.errors.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: ${run.errors.join("; ")}`);
   if (run.duplicateArchitectureRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate architecture requests ${run.duplicateArchitectureRequests.join(", ")}`);
   if (run.duplicateStudyRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate study requests ${run.duplicateStudyRequests.join(", ")}`);
+  if (run.duplicateWayfindingRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate wayfinding requests ${run.duplicateWayfindingRequests.join(", ")}`);
+  if (run.wayfindingRequests.length !== 10) violations.push(`DPR${run.dpr}/CPU${run.cpu}: expected 10 wayfinding requests, got ${run.wayfindingRequests.length}`);
   const consoleBudget = run.cpu === 1 ? NORMAL_FRAME_P95_BUDGET_MS : STRESS_FRAME_P95_BUDGET_MS;
   if (!run.certificationConsole.loopAdvanced) violations.push(`DPR${run.dpr}/CPU${run.cpu}/console: game loop stopped`);
   if (!run.certificationConsole.summaryCacheStable) violations.push(`DPR${run.dpr}/CPU${run.cpu}/console: evidence summary cache churned`);
   if (run.certificationConsole.timing.p95 > consoleBudget) violations.push(`DPR${run.dpr}/CPU${run.cpu}/console: frame p95 ${run.certificationConsole.timing.p95.toFixed(2)} ms > ${consoleBudget}`);
+  if (!run.mentorReview.opened || !run.mentorReview.closed) violations.push(`DPR${run.dpr}/CPU${run.cpu}/mentor: modal lifecycle failed`);
+  if (!run.mentorReview.loopAdvanced) violations.push(`DPR${run.dpr}/CPU${run.cpu}/mentor: game loop stopped`);
+  if (run.mentorReview.timing.p95 > consoleBudget) violations.push(`DPR${run.dpr}/CPU${run.cpu}/mentor: frame p95 ${run.mentorReview.timing.p95.toFixed(2)} ms > ${consoleBudget}`);
   for (const scene of run.scenes) {
     if (!scene.loopAdvanced) violations.push(`DPR${run.dpr}/CPU${run.cpu}/${scene.scene}: game loop stopped`);
     if (scene.timing.samples < 5) violations.push(`DPR${run.dpr}/CPU${run.cpu}/${scene.scene}: insufficient frame samples`);
@@ -184,9 +208,10 @@ const summary = {
     return {
       ...Object.fromEntries(run.scenes.map(scene => [scene.scene, { p95: scene.timing.p95, max: scene.timing.max, cacheMiB: scene.caches.mib }])),
       certificationConsole: { p95: run.certificationConsole.timing.p95, max: run.certificationConsole.timing.max },
+      mentorReview: { p95: run.mentorReview.timing.p95, max: run.mentorReview.timing.max },
     };
   })(),
-  allFrameP95: percentile(runs.flatMap(run => [run.certificationConsole.timing.p95, ...run.scenes.map(scene => scene.timing.p95)]), 0.95),
+  allFrameP95: percentile(runs.flatMap(run => [run.certificationConsole.timing.p95, run.mentorReview.timing.p95, ...run.scenes.map(scene => scene.timing.p95)]), 0.95),
 };
 fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
 fs.writeFileSync(OUTPUT, JSON.stringify(summary, null, 2) + "\n");

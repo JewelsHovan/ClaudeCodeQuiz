@@ -225,15 +225,16 @@ test.describe("HD world-art accepted pilot contracts", () => {
         transitions,
       };
     });
-    expect(result.officeHash).toBe("a07a524ff09faa749dc8936615efd2baf0f8c79f0fb7c1a1584d9a037bb29e41");
+    // Certification Spine: quiet path hierarchy + accepted friezes/surrounds replaces old floor diagrams.
+    expect(result.officeHash).toBe("58fa9e0c0eaa68b6d452197d1ce541f62e16aeacfaf8e4209129ec0feec71c36");
     expect(result.libraryHash).toBe("83c10ea86e53fe0a06f68f9373b40350737634ab87c41b741c8b139dc3e4908a");
     expect(result.battleRoomHash).toBe("5cce5ea29a100fdd42289607cf2b12abee9cafc37caaab62442991937eadced7");
-    expect(result.placementHash).toBe("c875a85f8c8b30be76cc9b25b2762261ce5928685d6df13dd2500ab9d2148444");
+    expect(result.placementHash).toBe("853fae649c47dbebdc6cd2d81bc777c8e9ae6811519280c0db4f366af3419e52");
     expect(result.libraryPlacementHash).toBe("10fceb41c203e7e5ec32fbb6f8e77c2b15e5be410ecc2bb7aa9ac9dd175f9651");
-    expect(result.officeReach).toEqual({ walkable: 682, reached: 682 });
+    expect(result.officeReach).toEqual({ walkable: 685, reached: 685 });
     expect(result.libraryReach).toEqual({ walkable: 710, reached: 710 });
     expect(result.battleRoomReach).toEqual({ walkable: 748, reached: 748 });
-    expect(result.placementCount).toBe(40);
+    expect(result.placementCount).toBe(37);
     expect(result.transitions).toBe(63);
   });
 

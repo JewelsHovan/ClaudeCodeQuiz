@@ -166,5 +166,116 @@
     return "Study " + domainName + detail + ".";
   };
 
+  // ---- Mentor-review selection (ticket #049) ----
+  // Pure canonical selector: due → unseen → oldest refresh for a real domain.
+  // MIX resolves through current DatamonProgress recommendation.
+  // Never mutates input telemetry. Deterministic for a given snapshot.
+  API.selectReviewQuestion = function (questionBank, questionStats, seenCounter, requestedDomain) {
+    var domain = requestedDomain;
+    if (domain === "MIX") {
+      var summary = API.summarise(questionBank, questionStats, seenCounter);
+      domain = summary.recommendationKey;
+    }
+    if (!DOMAIN_KEYS.includes(domain)) domain = "AGENT";
+
+    var bank = (questionBank && questionBank[domain]) || [];
+    var sc = safeNonNegativeInt(seenCounter);
+    var stats = questionStats && typeof questionStats === "object" ? questionStats : {};
+
+    var ranked = bank.map(function (q, index) {
+      if (!q || typeof q.id !== "string" || !Array.isArray(q.c) || q.c.length !== 4) return null;
+      var st = stats[q.id] || {};
+      var seen = safeNonNegativeInt(st.seen);
+      var correct = safeNonNegativeInt(st.correct);
+      var wrong = safeNonNegativeInt(st.wrong);
+      var lastSeen = safeNonNegativeInt(st.lastSeen);
+      var due = seen > 0 && (wrong >= correct || sc - lastSeen >= DEFAULT_SEEN_GAP);
+      var unseen = (correct + wrong) === 0;
+      return {
+        question: q, index: index, seen: seen, correct: correct,
+        wrong: wrong, lastSeen: lastSeen, due: due, unseen: unseen,
+        delta: wrong - correct,
+      };
+    });
+
+    ranked = ranked.filter(function (item) { return !!item; });
+    // due: greatest wrong-minus-correct deficit, then oldest lastSeen, then canonical index
+    var due = ranked.filter(function (r) { return r.due; })
+      .sort(function (a, b) {
+        return (b.delta - a.delta) || (a.lastSeen - b.lastSeen) || (a.index - b.index);
+      });
+    // unseen: canonical bank index
+    var unseen = ranked.filter(function (r) { return !r.due && r.unseen; })
+      .sort(function (a, b) { return a.index - b.index; });
+    // refresh: oldest lastSeen, then canonical index
+    var refresh = ranked.filter(function (r) { return !r.due && !r.unseen; })
+      .sort(function (a, b) { return (a.lastSeen - b.lastSeen) || (a.index - b.index); });
+
+    var pick = due[0] || unseen[0] || refresh[0] || null;
+    if (!pick) return null;
+
+    return {
+      domain: domain,
+      index: pick.index,
+      question: pick.question,
+      reason: pick.due ? "due" : (pick.unseen ? "unseen" : "refresh"),
+    };
+  };
+
+  // Pure telemetry application. Returns new questionStats + seenCounter + a consumed
+  // event token; callers retain that token so retries/repeated UI dispatch are no-ops.
+  // Inputs are never mutated.
+  API.applyReviewTelemetry = function (questionStats, seenCounter, review, event) {
+    var stats = questionStats && typeof questionStats === "object" ? questionStats : {};
+    var sc = safeNonNegativeInt(seenCounter);
+    var returnedEvent = event && typeof event === "object" ? Object.assign({}, event) : null;
+    var out = {};
+    var keys = Object.keys(stats);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var v = stats[k];
+      if (v && typeof v === "object") {
+        out[k] = {
+          seen: safeNonNegativeInt(v.seen),
+          correct: safeNonNegativeInt(v.correct),
+          wrong: safeNonNegativeInt(v.wrong),
+          lastSeen: safeNonNegativeInt(v.lastSeen),
+        };
+      }
+    }
+
+    if (!review || !review.question || !DOMAIN_KEYS.includes(review.domain) ||
+        !Number.isInteger(review.index) || review.index < 0 ||
+        typeof review.question.id !== "string" || !event || event.consumed === true) {
+      return { questionStats: out, seenCounter: sc, changed: false, event: returnedEvent };
+    }
+
+    var canonical = review.question.id;
+    var alias = review.domain + ":" + review.index;
+    var base = out[canonical] || out[alias] || {};
+    var next = {
+      seen: safeNonNegativeInt(base.seen),
+      correct: safeNonNegativeInt(base.correct),
+      wrong: safeNonNegativeInt(base.wrong),
+      lastSeen: safeNonNegativeInt(base.lastSeen),
+    };
+
+    if (event.type === "reveal") {
+      next.seen++;
+      next.lastSeen = ++sc;
+    } else if (event.type === "answer" &&
+               (event.correct === true || event.correct === false)) {
+      if (event.correct) next.correct++;
+      else next.wrong++;
+    } else {
+      return { questionStats: out, seenCounter: sc, changed: false, event: returnedEvent };
+    }
+
+    returnedEvent = Object.assign({}, returnedEvent, { consumed: true });
+    out[canonical] = { seen: next.seen, correct: next.correct, wrong: next.wrong, lastSeen: next.lastSeen };
+    out[alias] = { seen: next.seen, correct: next.correct, wrong: next.wrong, lastSeen: next.lastSeen };
+    return { questionStats: out, seenCounter: sc, changed: true, event: returnedEvent };
+  };
+
   window.DatamonProgress = API;
 })();

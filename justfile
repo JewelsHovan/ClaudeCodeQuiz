@@ -33,6 +33,7 @@ check:
     set -euo pipefail
     echo "=== DATAMON check suite ==="
     node --check datamon/game.js
+    node --check datamon/attributes.js
     node --check datamon/battle-ops.js
     node --check datamon/agent-arena.js
     node --check datamon/questions.js
@@ -43,13 +44,14 @@ check:
     node --check datamon/world-art.js
     node --check datamon/music.js
     for file in scripts/*.mjs tests/unit/*.js tests/browser/*.js; do node --check "$file"; done
-    python3 -m py_compile datamon/tools/art_pipeline.py datamon/tools/gen_world_art.py datamon/tools/gen_architecture_assets.py datamon/tools/gen_sitting_assets.py datamon/tools/gen_study_assets.py tests/test_art_pipeline.py tests/test_sitting_assets.py
+    python3 -m py_compile datamon/tools/art_pipeline.py datamon/tools/gen_world_art.py datamon/tools/gen_architecture_assets.py datamon/tools/gen_sitting_assets.py datamon/tools/gen_study_assets.py datamon/tools/gen_wayfinding_assets.py tests/test_art_pipeline.py tests/test_sitting_assets.py tests/test_wayfinding_assets.py
     python3 datamon/retag_questions.py --check
     node scripts/validate-content.mjs
-    python3 -m unittest tests/test_art_pipeline.py tests/test_sitting_assets.py
+    python3 -m unittest tests/test_art_pipeline.py tests/test_sitting_assets.py tests/test_wayfinding_assets.py
     python3 datamon/tools/gen_architecture_assets.py --validate-twice
     python3 datamon/tools/gen_sitting_assets.py --validate-twice
     python3 datamon/tools/gen_study_assets.py --validate-twice
+    python3 datamon/tools/gen_wayfinding_assets.py --validate-twice
     python3 datamon/tools/art_pipeline.py validate-active
     if [[ -f datamon/.environment-work/staging/batch-agent-wing/manifest.json ]]; then python3 datamon/tools/art_pipeline.py validate datamon/.environment-work/staging/batch-agent-wing datamon/.environment-work/staging/batch-agent-wing/manifest.json; fi
     node --test tests/unit/*.test.js

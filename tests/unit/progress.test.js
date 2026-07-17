@@ -348,4 +348,206 @@ describe("DatamonProgress", () => {
       assert.equal(s.accuracy, 0.5);
     });
   });
+
+  // ---- Ticket #049: mentor review selection & telemetry ----
+  describe("selectReviewQuestion", () => {
+    it("returns first unseen question when no stats exist", () => {
+      const pick = api.selectReviewQuestion(TEST_BANK, {}, 0, "AGENT");
+      assert(pick);
+      assert.equal(pick.domain, "AGENT");
+      assert.equal(pick.index, 0);
+      assert.equal(pick.reason, "unseen");
+    });
+
+    it("picks by due-deficit, then lastSeen, then index", () => {
+      const stats = {
+        "agent-001": { seen: 2, correct: 1, wrong: 3, lastSeen: 8 },
+        "agent-002": { seen: 2, correct: 0, wrong: 2, lastSeen: 3 },
+      };
+      const pick = api.selectReviewQuestion(TEST_BANK, stats, 30, "AGENT");
+      assert(pick);
+      // agent-001 delta = 3-1 = 2; agent-002 delta = 2-0 = 2;
+      // Equal deficit — agent-002 has older lastSeen (3 < 8)
+      assert.equal(pick.question.id, "agent-002");
+      assert.equal(pick.reason, "due");
+    });
+
+    it("MIX resolves to current recommendation domain", () => {
+      const stats = {};
+      for (const domain of api.DOMAIN_KEYS) {
+        for (let i = 1; i <= 24; i++) {
+          stats[domain.toLowerCase() + "-" + String(i).padStart(3, "0")] = {
+            seen: 1, correct: domain === "MCP" ? 0 : 1, wrong: domain === "MCP" ? 1 : 0, lastSeen: 100,
+          };
+        }
+      }
+      const pick = api.selectReviewQuestion(TEST_BANK, stats, 100, "MIX");
+      assert(pick);
+      assert.equal(pick.domain, "MCP");
+    });
+
+    it("falls back to AGENT for invalid domain", () => {
+      const pick = api.selectReviewQuestion(TEST_BANK, {}, 0, "INVALID");
+      assert(pick);
+      assert.equal(pick.domain, "AGENT");
+    });
+
+    it("returns null for empty question bank", () => {
+      const pick = api.selectReviewQuestion({}, {}, 0, "AGENT");
+      assert.equal(pick, null);
+    });
+
+    it("ignores rollback aliases and always ranks canonical IDs", () => {
+      const pick = api.selectReviewQuestion(TEST_BANK, {
+        "AGENT:0": { seen: 999, correct: 999, wrong: 0, lastSeen: 999 },
+      }, 20, "AGENT");
+      assert.equal(pick.question.id, "agent-001");
+      assert.equal(pick.reason, "unseen");
+    });
+
+    it("prefers due over unseen and oldest refresh after both pools drain", () => {
+      const duePick = api.selectReviewQuestion(TEST_BANK, {
+        "agent-010": { seen: 1, correct: 0, wrong: 1, lastSeen: 19 },
+      }, 20, "AGENT");
+      assert.equal(duePick.question.id, "agent-010");
+      assert.equal(duePick.reason, "due");
+
+      const complete = {};
+      for (let i = 1; i <= 24; i++) complete[`agent-${String(i).padStart(3, "0")}`] = {
+        seen: 1, correct: 1, wrong: 0, lastSeen: i === 7 ? 2 : 10,
+      };
+      const refresh = api.selectReviewQuestion(TEST_BANK, complete, 10, "AGENT");
+      assert.equal(refresh.question.id, "agent-007");
+      assert.equal(refresh.reason, "refresh");
+    });
+
+    it("skips malformed question records safely", () => {
+      const malformed = { AGENT: [null, { id: "x", c: ["only"] }] };
+      assert.equal(api.selectReviewQuestion(malformed, {}, 0, "AGENT"), null);
+    });
+
+    it("is deterministic across repeated calls", () => {
+      const stats = {
+        "agent-001": { seen: 2, correct: 1, wrong: 3, lastSeen: 8 },
+        "agent-002": { seen: 2, correct: 0, wrong: 2, lastSeen: 3 },
+      };
+      const first = JSON.stringify(api.selectReviewQuestion(TEST_BANK, stats, 30, "AGENT"));
+      for (let i = 0; i < 100; i++) {
+        assert.equal(JSON.stringify(api.selectReviewQuestion(TEST_BANK, stats, 30, "AGENT")), first);
+      }
+    });
+  });
+
+  describe("applyReviewTelemetry", () => {
+    it("reveal increments seenCounter and stamps canonical/alias", () => {
+      const stats = {
+        "agent-001": { seen: 1, correct: 0, wrong: 0, lastSeen: 5 },
+      };
+      const review = {
+        domain: "AGENT", index: 0, question: { id: "agent-001" },
+        reason: "unseen",
+      };
+      const event = { type: "reveal", consumed: false };
+      const result = api.applyReviewTelemetry(stats, 30, review, event);
+      assert.equal(result.changed, true);
+      assert.deepEqual(event, { type: "reveal", consumed: false });
+      jsonEqual(result.event, { type: "reveal", consumed: true });
+      assert.equal(result.seenCounter, 31);
+      assert.equal(result.questionStats["agent-001"].seen, 2);
+      assert.equal(result.questionStats["agent-001"].lastSeen, 31);
+      // Alias sync
+      assert.deepEqual(
+        result.questionStats["agent-001"],
+        result.questionStats["AGENT:0"]
+      );
+    });
+
+    it("never mutates input stats", () => {
+      const stats = {
+        "agent-001": { seen: 1, correct: 0, wrong: 0, lastSeen: 5 },
+      };
+      const before = JSON.stringify(stats);
+      const review = {
+        domain: "AGENT", index: 0, question: { id: "agent-001" },
+        reason: "unseen",
+      };
+      api.applyReviewTelemetry(stats, 30, review, { type: "reveal" });
+      assert.equal(JSON.stringify(stats), before);
+    });
+
+    it("a returned consumed token makes repeated dispatch an exact no-op", () => {
+      const stats = { "agent-001": { seen: 1, correct: 0, wrong: 0, lastSeen: 5 } };
+      const review = { domain: "AGENT", index: 0, question: { id: "agent-001" } };
+      const first = api.applyReviewTelemetry(stats, 30, review, { type: "answer", correct: true, consumed: false });
+      const repeated = api.applyReviewTelemetry(first.questionStats, first.seenCounter, review, first.event);
+      assert.equal(first.changed, true);
+      assert.equal(repeated.changed, false);
+      assert.equal(repeated.questionStats["agent-001"].correct, 1);
+      assert.equal(repeated.seenCounter, first.seenCounter);
+    });
+
+    it("answer correct increments correct", () => {
+      const stats = {
+        "agent-001": { seen: 2, correct: 0, wrong: 0, lastSeen: 31 },
+      };
+      const review = {
+        domain: "AGENT", index: 0, question: { id: "agent-001" },
+        reason: "unseen",
+      };
+      const result = api.applyReviewTelemetry(stats, 31, review, { type: "answer", correct: true });
+      assert.equal(result.changed, true);
+      assert.equal(result.questionStats["agent-001"].correct, 1);
+      assert.equal(result.questionStats["agent-001"].wrong, 0);
+    });
+
+    it("answer wrong increments wrong", () => {
+      const stats = {
+        "agent-001": { seen: 2, correct: 1, wrong: 0, lastSeen: 31 },
+      };
+      const review = {
+        domain: "AGENT", index: 0, question: { id: "agent-001" },
+        reason: "due",
+      };
+      const result = api.applyReviewTelemetry(stats, 31, review, { type: "answer", correct: false });
+      assert.equal(result.changed, true);
+      assert.equal(result.questionStats["agent-001"].wrong, 1);
+    });
+
+    it("invalid event types are no-ops", () => {
+      const stats = {
+        "agent-001": { seen: 2, correct: 1, wrong: 0, lastSeen: 31 },
+      };
+      const review = {
+        domain: "AGENT", index: 0, question: { id: "agent-001" },
+        reason: "due",
+      };
+      const result = api.applyReviewTelemetry(stats, 31, review, { type: "bogus" });
+      assert.equal(result.changed, false);
+      jsonEqual(result.questionStats, stats, "no-op should return equal content");
+    });
+
+    it("returns unchanged for null, malformed, or consumed review events", () => {
+      const stats = { "agent-001": { seen: 1, correct: 0, wrong: 0, lastSeen: 5 } };
+      assert.equal(api.applyReviewTelemetry(stats, 30, null, { type: "reveal" }).changed, false);
+      const review = { domain: "AGENT", index: 0, question: { id: "agent-001" } };
+      assert.equal(api.applyReviewTelemetry(stats, 30, review, { type: "answer", correct: true, consumed: true }).changed, false);
+      assert.equal(api.applyReviewTelemetry(stats, 30, { ...review, index: -1 }, { type: "reveal" }).changed, false);
+      assert.equal(api.applyReviewTelemetry(stats, 30, { ...review, index: true }, { type: "reveal" }).changed, false);
+    });
+
+    it("syncs alias exactly with canonical after reveal and answer", () => {
+      const stats = {};
+      const review = {
+        domain: "AGENT", index: 0, question: { id: "agent-001" },
+        reason: "unseen",
+      };
+      const afterReveal = api.applyReviewTelemetry(stats, 30, review, { type: "reveal" });
+      const afterAnswer = api.applyReviewTelemetry(afterReveal.questionStats, afterReveal.seenCounter, review, { type: "answer", correct: false });
+      assert.deepEqual(
+        afterAnswer.questionStats["agent-001"],
+        afterAnswer.questionStats["AGENT:0"]
+      );
+      assert.equal(afterAnswer.questionStats["agent-001"].wrong, 1);
+    });
+  });
 });
