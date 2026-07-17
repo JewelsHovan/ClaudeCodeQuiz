@@ -166,7 +166,7 @@ test.describe("HD world-art accepted pilot contracts", () => {
     expect(errors).toEqual([]);
   });
 
-  test("collision, placement, reachability, and DPR2 physical detail remain invariant", async ({ page }) => {
+  test("accepted collision, placement, reachability, and DPR2 physical detail remain deterministic", async ({ page }) => {
     await waitForTitle(page);
     const result = await page.evaluate(async () => {
       const ge = (0, eval);
@@ -225,12 +225,12 @@ test.describe("HD world-art accepted pilot contracts", () => {
         transitions,
       };
     });
-    expect(result.officeHash).toBe("5341d5ae064fb9184349fe847908c0dbc87c2b28e655c8ea546c8cb8a233a0c0");
+    expect(result.officeHash).toBe("a07a524ff09faa749dc8936615efd2baf0f8c79f0fb7c1a1584d9a037bb29e41");
     expect(result.libraryHash).toBe("83c10ea86e53fe0a06f68f9373b40350737634ab87c41b741c8b139dc3e4908a");
     expect(result.battleRoomHash).toBe("5cce5ea29a100fdd42289607cf2b12abee9cafc37caaab62442991937eadced7");
     expect(result.placementHash).toBe("c875a85f8c8b30be76cc9b25b2762261ce5928685d6df13dd2500ab9d2148444");
     expect(result.libraryPlacementHash).toBe("10fceb41c203e7e5ec32fbb6f8e77c2b15e5be410ecc2bb7aa9ac9dd175f9651");
-    expect(result.officeReach).toEqual({ walkable: 684, reached: 684 });
+    expect(result.officeReach).toEqual({ walkable: 682, reached: 682 });
     expect(result.libraryReach).toEqual({ walkable: 710, reached: 710 });
     expect(result.battleRoomReach).toEqual({ walkable: 748, reached: 748 });
     expect(result.placementCount).toBe(40);

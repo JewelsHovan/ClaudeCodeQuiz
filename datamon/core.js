@@ -70,7 +70,7 @@
       try { result.state = globalEval("typeof state !== 'undefined' ? state : null"); } catch (_) { result.state = null; }
       try {
         const p = globalEval("player");
-        result.player = p ? { hp: p.hp, slug: p.slug, x: p.x, y: p.y } : null;
+        result.player = p ? { hp: p.hp, slug: p.slug, x: p.x, y: p.y, seated: !!p.seated } : null;
       } catch (_) { result.player = null; }
       try {
         const list = globalEval("npcs");
@@ -79,6 +79,7 @@
           defeated: npc.defeated,
           x: npc.x,
           y: npc.y,
+          seated: !!npc._seated,
         })) : null;
       } catch (_) { result.npcs = null; }
       try {
