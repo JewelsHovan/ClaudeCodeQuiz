@@ -36,7 +36,7 @@ localStorage (per browser + port, so stick with one way of serving it).
 | Input | Action |
 |---|---|
 | Arrows / WASD | Move |
-| SPACE / ENTER / E | Interact, battle, advance dialog |
+| SPACE / ENTER / E | Interact, sit/stand, open the Certification Console, battle, advance dialog |
 | 1–4 or arrows + ENTER | Answer battle questions |
 | Mouse / touch | Click once to step or hold toward a direction; select visible controls |
 | Shift + arrows/WASD or R | Run while moving |
@@ -54,6 +54,14 @@ localStorage (per browser + port, so stick with one way of serving it).
   | **The Lounge** | Mixed, weighted by the real exam percentages | — |
 - A trainer's zone decides their question domain. A fixed top-right location instrument
   names the active room and its purpose without placing labels over the floor.
+- The compact **Evidence** strip reports accumulated study evidence and the next recommended
+  domain. Evidence is coverage × answer accuracy, weighted by the real exam blueprint; it is
+  intentionally not presented as a pass prediction.
+- Face the five-channel **Certification Console** in the north office and interact for detailed
+  coverage, accuracy, due/unseen questions, domain weights, and the next study target.
+- Office chairs are real seats rather than walkable decoration. Six colleagues work seated at
+  domain-matched desks, four chairs remain available to the player, and movement or interaction
+  stands safely back on the approach tile.
 - The south wall has distinct framed portals for the **Library** and **Battle Room**.
   Battle Room rematches restore HP before each encounter, preserve campaign rival progress,
   continue question-learning telemetry, and track separate current/best training streaks.
@@ -76,7 +84,9 @@ localStorage (per browser + port, so stick with one way of serving it).
 ## Files
 
 - `index.html` — page shell
-- `game.js` — engine: overworld, character select, battle adapters, Library, Battle Room, and save
+- `game.js` — engine: overworld, seating, Certification Console, character select, battle adapters, Library, Battle Room, and save
+- `progress.js` — pure canonical-only exam coverage/accuracy/evidence and recommendation model
+- `dialogue.js` — deterministic domain-aware challenge, outcome, rematch, and mentor dialogue
 - `battle-ops.js` — pure Agent Operations reducer and strategic action economy
 - `agent-arena.js` — Incident Command presentation, accessibility, bounded effects/audio
 - `world-art.js` — DPR-aware map caches, accepted HD asset/ambient layer, lazy portraits
@@ -84,6 +94,8 @@ localStorage (per browser + port, so stick with one way of serving it).
 - `questions.js` — 120-question bank (AGENT / MCP / CONFIG / PROMPT / CONTEXT,
   24 per exam domain, each with an explanation), mon names, battle quotes
 - `sprites/` — generated GBA-style pixel trainer sprites (transparent 256px PNGs)
+- `sprites-sit/` — two deterministic rear-facing sitting frames per roster member, loaded only for active seated characters
+- `props-study/` — accepted true-2× local Pillow study-life batch and manifest (console, readiness board, desk kits, task lamp, screen strip)
 - `portraits/` — curated pixel-art busts, loaded only when first displayed
 - `.headshots-offline/` — ignored local identity references for tooling; never requested, tracked, or packaged
 - `headshots/` — verified transparent 1×1 tombstones only, retained to evict stale CDN photo URLs
@@ -169,7 +181,9 @@ switching between Library and Battle Room so no more than two map caches remain 
 DPR1/fractional devices retain safe architectural fallbacks.
 
 The accepted Agent Wing pilot contains true 2× brick/window/material art, seven upgraded
-props, a visual-only collaboration table, and four bounded ambient strips. Its reviewed
+props, a visual-only collaboration table, and four bounded ambient strips. The zero-cost
+study-life batch adds the Certification Console, readiness wall, desk study kits, task light,
+and a reduced-motion-safe console telemetry strip. Its reviewed
 brick, rainy-window, and radiator materials are reused office-wide. The other five zones add
 cache-baked domain instruments (tool bus, calibration rail, context frames, editorial marks,
 and certification compass), while the Library uses continuous staggered slate, brass aisles,
@@ -185,6 +199,8 @@ The deterministic pipeline never writes generated output directly into accepted 
 # Rebuild the zero-cost pilot into ignored staging and prove deterministic identity
 python3 datamon/tools/gen_world_art.py --validate-twice
 python3 datamon/tools/gen_architecture_assets.py --validate-twice
+python3 datamon/tools/gen_sitting_assets.py --validate-twice
+python3 datamon/tools/gen_study_assets.py --validate-twice
 # Validate and produce a review sheet
 python3 datamon/tools/art_pipeline.py validate \
   datamon/.environment-work/staging/batch-agent-wing \

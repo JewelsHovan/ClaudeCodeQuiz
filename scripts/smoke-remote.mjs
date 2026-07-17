@@ -12,7 +12,7 @@ import { chromium } from "playwright";
 const DIST = path.resolve(import.meta.dirname, "..", "dist");
 const RUNTIME_FILES = [
   "index.html", "state.js", "battle-ops.js", "agent-arena.js", "questions.js",
-  "world-art.js", "music.js", "game.js",
+  "progress.js", "dialogue.js", "world-art.js", "music.js", "game.js",
 ];
 
 const baseUrl = process.argv[2];
@@ -129,6 +129,41 @@ try {
     }, expected, { timeout: 5000 });
   }
   console.log(`Public movement passed: W/A/S/D quick taps returned to (${start.x}, ${start.y})`);
+
+  // Exercise explicit seating and the evidence console on the real public runtime.
+  await page.evaluate(() => {
+    const ge = (0, eval), player = ge("player");
+    player.x = player.fx = 14; player.y = player.fy = 21; player.dir = "up"; player.moving = false;
+    ge("interact")();
+  });
+  await page.waitForFunction(() => {
+    try {
+      const ge = (0, eval), player = ge("player"), frames = ge("getSitFrames")(player.slug);
+      return !!player.seated && !!frames && !!frames.idle_0;
+    } catch (_) { return false; }
+  }, null, { timeout: 10000 });
+  await page.keyboard.press("Space");
+  const stood = await page.evaluate(() => {
+    const player = (0, eval)("player");
+    return { x: player.x, y: player.y, seated: player.seated };
+  });
+  if (stood.x !== 14 || stood.y !== 21 || stood.seated !== null) {
+    throw new Error(`public sit/stand contract mismatch: ${JSON.stringify(stood)}`);
+  }
+  await page.evaluate(() => {
+    const ge = (0, eval), player = ge("player");
+    player.x = player.fx = 17; player.y = player.fy = 5; player.dir = "up"; player.moving = false;
+    ge("interact")();
+  });
+  const consoleState = await page.evaluate(() => {
+    const ge = (0, eval), summary = ge("_getEvidenceSummary")();
+    return { open: ge("certConsoleOpen"), evidence: summary.evidencePct, next: summary.recommendationKey };
+  });
+  if (!consoleState.open || consoleState.evidence !== 0 || consoleState.next !== "AGENT") {
+    throw new Error(`public Certification Console mismatch: ${JSON.stringify(consoleState)}`);
+  }
+  await page.keyboard.press("Escape");
+  console.log("Public study office passed: sit/stand assets and Certification Console");
 
   // Exercise the lazy DPR2 architecture path on the public edge, not only office boot.
   await page.evaluate(() => eval("enterBattleRoom")());

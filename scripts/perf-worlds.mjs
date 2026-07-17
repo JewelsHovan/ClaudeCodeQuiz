@@ -72,6 +72,20 @@ async function moveOnce(page, key = "w") {
   return page.evaluate(() => { const p = (0, eval)("player"); return { x: p.x, y: p.y }; });
 }
 
+async function consoleMetrics(page) {
+  const before = await page.evaluate(() => {
+    const ge = (0, eval); ge("certConsoleOpen = true");
+    const first = ge("_getEvidenceSummary")(), second = ge("_getEvidenceSummary")();
+    return { frame: ge("frame"), summaryCacheStable: first === second };
+  });
+  const timing = await frameSample(page);
+  const after = await page.evaluate(() => {
+    const ge = (0, eval), frame = ge("frame"); ge("certConsoleOpen = false");
+    return frame;
+  });
+  return { timing, loopAdvanced: after > before.frame, summaryCacheStable: before.summaryCacheStable };
+}
+
 async function sceneMetrics(page, scene) {
   const frameBefore = await page.evaluate(() => (0, eval)("frame"));
   const timing = await frameSample(page);
@@ -115,6 +129,7 @@ try {
     await page.waitForFunction(() => (0, eval)("state") === "overworld");
 
     const scenes = [await sceneMetrics(page, "office")];
+    const certificationConsole = await consoleMetrics(page);
     await page.evaluate(() => (0, eval)("enterLibrary")());
     await page.waitForFunction(() => (0, eval)("currentMap") === "library", null, { timeout: 15000 });
     scenes.push(await sceneMetrics(page, "library"));
@@ -125,9 +140,13 @@ try {
 
     const architectureRequests = requests.filter(value => value.includes("/environment/accepted/batch-architecture/"));
     const duplicateArchitectureRequests = [...new Set(architectureRequests)].filter(value => architectureRequests.filter(item => item === value).length > 1);
-    const run = { ...config, scenes, errors, requestCount: requests.length, architectureRequests, duplicateArchitectureRequests };
+    const studyRequests = requests.filter(value => value.startsWith("/props-study/") || value.startsWith("/sprites-sit/"));
+    const duplicateStudyRequests = [...new Set(studyRequests)].filter(value => studyRequests.filter(item => item === value).length > 1);
+    const run = { ...config, scenes, certificationConsole, errors, requestCount: requests.length,
+      architectureRequests, duplicateArchitectureRequests, studyRequests, duplicateStudyRequests };
     runs.push(run);
-    console.log(`DPR${config.dpr} CPU${config.cpu}x: ` + scenes.map(item => `${item.scene} p95=${item.timing.p95.toFixed(1)}ms cache=${item.caches.mib.toFixed(1)}MiB`).join(" | "));
+    console.log(`DPR${config.dpr} CPU${config.cpu}x: ` + scenes.map(item => `${item.scene} p95=${item.timing.p95.toFixed(1)}ms cache=${item.caches.mib.toFixed(1)}MiB`).join(" | ") +
+      ` | console p95=${certificationConsole.timing.p95.toFixed(1)}ms`);
     await context.close();
   }
 } finally {
@@ -139,6 +158,11 @@ const violations = [];
 for (const run of runs) {
   if (run.errors.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: ${run.errors.join("; ")}`);
   if (run.duplicateArchitectureRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate architecture requests ${run.duplicateArchitectureRequests.join(", ")}`);
+  if (run.duplicateStudyRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate study requests ${run.duplicateStudyRequests.join(", ")}`);
+  const consoleBudget = run.cpu === 1 ? NORMAL_FRAME_P95_BUDGET_MS : STRESS_FRAME_P95_BUDGET_MS;
+  if (!run.certificationConsole.loopAdvanced) violations.push(`DPR${run.dpr}/CPU${run.cpu}/console: game loop stopped`);
+  if (!run.certificationConsole.summaryCacheStable) violations.push(`DPR${run.dpr}/CPU${run.cpu}/console: evidence summary cache churned`);
+  if (run.certificationConsole.timing.p95 > consoleBudget) violations.push(`DPR${run.dpr}/CPU${run.cpu}/console: frame p95 ${run.certificationConsole.timing.p95.toFixed(2)} ms > ${consoleBudget}`);
   for (const scene of run.scenes) {
     if (!scene.loopAdvanced) violations.push(`DPR${run.dpr}/CPU${run.cpu}/${scene.scene}: game loop stopped`);
     if (scene.timing.samples < 5) violations.push(`DPR${run.dpr}/CPU${run.cpu}/${scene.scene}: insufficient frame samples`);
@@ -157,9 +181,12 @@ const summary = {
   runs,
   normalDpr2: (() => {
     const run = runs.find(item => item.dpr === 2 && item.cpu === 1);
-    return Object.fromEntries(run.scenes.map(scene => [scene.scene, { p95: scene.timing.p95, max: scene.timing.max, cacheMiB: scene.caches.mib }]));
+    return {
+      ...Object.fromEntries(run.scenes.map(scene => [scene.scene, { p95: scene.timing.p95, max: scene.timing.max, cacheMiB: scene.caches.mib }])),
+      certificationConsole: { p95: run.certificationConsole.timing.p95, max: run.certificationConsole.timing.max },
+    };
   })(),
-  allFrameP95: percentile(runs.flatMap(run => run.scenes.map(scene => scene.timing.p95)), 0.95),
+  allFrameP95: percentile(runs.flatMap(run => [run.certificationConsole.timing.p95, ...run.scenes.map(scene => scene.timing.p95)]), 0.95),
 };
 fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
 fs.writeFileSync(OUTPUT, JSON.stringify(summary, null, 2) + "\n");

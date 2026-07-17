@@ -42,7 +42,7 @@ const MAP_DETAIL_SCALE = (typeof DatamonWorldArt !== "undefined")
 const CAM_PAD_TOP = HUD_BOTTOM / TILE;    // 2.25 tiles
 // Collision set. Office floor plan (#021): # brick wall, D desk, P plant, C coffee counter,
 // W window (top wall), O wood column, G glass wall, F solid-furniture footprint, U overhead duct.
-const SOLID = new Set(["#", "D", "P", "C", "W", "O", "G", "F", "U", "B", "S", "L", "A"]);
+const SOLID = new Set(["#", "D", "P", "C", "W", "O", "G", "F", "U", "B", "S", "L", "A", "X"]);
 const TYPE_COLORS = { AGENT: "#3b82f6", MCP: "#a855f7", CONFIG: "#22c55e", PROMPT: "#f97316", CONTEXT: "#06b6d4", MIX: "#f59e0b" };
 const TYPE_NAMES  = { AGENT: "Agent Wing", MCP: "MCP Lab", CONFIG: "Config Bay", PROMPT: "Prompt Studio", CONTEXT: "Context Corner", MIX: "The Lounge" };
 // Exam domains + their weight on the real exam (drives the MIX deck).
@@ -132,6 +132,38 @@ const PROP_PLACEMENTS = [
   { slug: "radiator", col: 16, row: 22 }, { slug: "radiator", col: 29, row: 22 },
 ];
 
+// ---- Seat registry (#047): office-chair placements become explicit interactable seats ----
+// Indexed by "col,row" string. Seats block ordinary walking and accept sit/stand interaction.
+const OFFICE_SEATS = new Map();
+for (const p of PROP_PLACEMENTS) {
+  if (p.slug === "office-chair") OFFICE_SEATS.set(`${p.col},${p.row}`, { col: p.col, row: p.row });
+}
+// Deterministic NPC seat assignment: 2 seats per desk-bearing domain (CONTEXT, PROMPT, MIX).
+// The seat at the desk's chair position is reserved for NPCs.
+const NPC_SEAT_ASSIGNMENTS = new Map([
+  ["2,18", "CONTEXT"], ["6,18", "CONTEXT"],
+  ["14,17", "PROMPT"], ["20,17", "PROMPT"],
+  ["26,16", "MIX"], ["31,16", "MIX"],
+]);
+// Player-available seats (4 total): remaining chairs not in NPC_SEAT_ASSIGNMENTS
+const PLAYER_SEAT_KEYS = ["14,20", "20,20", "26,20", "31,20"];
+
+// ---- Certification Console geometry (#047) ----
+// Solid console at [17,4] and [18,4] with approach at row 5.
+const CONSOLE_CELLS = [[17, 4], [18, 4]];
+
+// ---- Study-life prop placements (#047) ----
+const STUDY_PROP_PLACEMENTS = [
+  { slug: "certification-console", col: 17, row: 4 },
+  { slug: "readiness-board", col: 15, row: 0 },
+  { slug: "desk-study-kit", col: 14, row: 16 },
+  { slug: "desk-study-kit", col: 20, row: 16 },
+  { slug: "desk-study-kit", col: 26, row: 15 },
+  { slug: "desk-study-kit", col: 31, row: 15 },
+  { slug: "task-lamp", col: 20, row: 19 },
+];
+const STUDY_AMBIENT_PLACEMENT = { slug: "screen-ambient", col: 17, row: 4 };
+
 // Library bookshelf bake placements: 8 shelves across the top (cols 4,6,8,10 left + 26,28,30,32 right)
 const LIBRARY_PROP_PLACEMENTS = [4, 6, 8, 10, 26, 28, 30, 32].map(c => ({ slug: "bookshelf", col: c, row: 1 }));
 // Decor/furniture sprites (PRD 006 art overhaul) — baked bottom-anchored on their tile
@@ -199,6 +231,9 @@ function buildMap() {
 
   g[23][24] = "L"; // library door in south wall (OFFICE_DOOR_TILE) — hardcoded to avoid TDZ
   g[23][11] = "A"; // Battle Room portal in south wall (OFFICE_BATTLE_DOOR_TILE) — #046
+
+  // Certification Console cells (#047): solid, approachable from row 5
+  for (const [cx, cy] of CONSOLE_CELLS) g[cy][cx] = "X";
 
   return g;
 }
@@ -406,6 +441,8 @@ function loadTiles() {
 // (or skips), never throwing. Served over http (play.sh); on file:// fetch fails → [].
 const propStore = {};     // slug -> HTMLImageElement (or null on error)
 let propManifest = [];    // array of manifest entries (or [] on failure)
+const studyPropStore = {}; // accepted deterministic study-life cutouts
+let studyPropManifest = [];
 const libStore = {};      // slug -> HTMLImageElement (or null on error) — library assets
 let libManifest = [];     // library manifest entries (or [] on failure)
 function loadProps() {
@@ -417,6 +454,18 @@ function loadProps() {
         loadOne(`props/${m.file}`, propStore, m.slug)));
     })
     .catch(() => { propManifest = []; });
+}
+
+function loadStudyProps() {
+  return fetch("props-study/manifest.json")
+    .then(r => (r.ok ? r.json() : { entries: [] }))
+    .then(manifest => {
+      studyPropManifest = manifest && Array.isArray(manifest.entries)
+        ? manifest.entries.filter(entry => entry.reviewState === "accepted") : [];
+      return Promise.all(studyPropManifest.map(entry =>
+        loadOne(`props-study/${entry.file}`, studyPropStore, entry.slug)));
+    })
+    .catch(() => { studyPropManifest = []; });
 }
 
 // Books (#027): load books.json for the in-game reader. Mirrors loadLibraryAssets() crash-safety.
@@ -568,7 +617,7 @@ const BATTLE_ROOM_DOOR_TILE    = [18, 23];      // "A" in battle room south wall
 const BATTLE_ROOM_ENTRY        = [18, 22];      // land here entering battle room
 let state = "title";    // title | select | overworld | battle | victory | search | minigame
 let selectIdx = 0;
-let player = { slug: null, x: 18, y: 16, fx: 18, fy: 16, dir: "down", moving: false, hp: MAX_HP, dispHp: MAX_HP };
+let player = { slug: null, x: 18, y: 16, fx: 18, fy: 16, dir: "down", moving: false, hp: MAX_HP, dispHp: MAX_HP, seated: null };
 let battleTransition = null;   // {npc, t} — flash + iris wipe into battle
 let npcs = [];          // {slug, x, y, type, defeated}
 let rivalTotal = 0;     // stable denominator for HUD "Rivals bested" (set in placeNPCs)
@@ -584,6 +633,13 @@ let bookPrompt = null;  // {sel, books} — book-picker modal
 let readerState = null; // {book, page, screens, maxPage} — full-canvas reader
 let questionStats = {};  // "CAT:idx" and canonical ID -> {seen, correct, wrong, lastSeen}
 let seenCounter = 0;    // monotonic draw counter — drives lastSeen recency (no Date.now())
+// ---- Certification Console state (#047) ----
+let certConsoleOpen = false;
+let certConsoleSel = 0;
+// ---- Sitting asset cache (#047) ----
+let _sittingAssetStore = {};   // slug -> {idle_0: Image, idle_1: Image}|null
+let _sittingLoaded = new Set();// slugs that have been requested (avoid double-fetch)
+let _sitAnimPhase = 0;         // bounded animation phase for seated idle loop
 function freshProgression() {
   return { badges: [], quests: {}, activities: { battleRoom: { currentStreak: 0, bestStreak: 0, wins: 0 } }, npcDomains: {} };
 }
@@ -627,6 +683,10 @@ function placeNPCs() {
   const rng = mulberry32(20260610);
   const others = ROSTER.filter(s => s !== player.slug);
 
+  // ---- Seated NPC reservations (#047) ----
+  // Pre-reserve the 6 NPC-designated chair cells so they aren't used for standing placement.
+  const reservedSeats = new Set(OFFICE_SEATS.keys());
+
   // "Smart" placement: rank candidate cells so NPCs stand BY the furniture (desks, couches,
   // bar…) and OUT OF the walkways, instead of stranded mid-floor blocking traffic.
   // Cells orthogonally adjacent to any baked prop footprint read as "at your station".
@@ -635,9 +695,10 @@ function placeNPCs() {
     const meta = propManifest.find(m => m.slug === p.slug);
     const tw = (meta && meta.tileW) || 1, th = (meta && meta.tileH) || 1;
     for (let yy = p.row; yy < p.row + th; yy++)
-      for (let xx = p.col; xx < p.col + tw; xx++)
+      for (let xx = p.col; xx < p.col + tw; xx++) {
         for (const [ax, ay] of [[xx, yy + 1], [xx, yy - 1], [xx - 1, yy], [xx + 1, yy]])
           furnitureAdj.add(`${ax},${ay}`);
+      }
   }
   // Main traffic lanes to keep clear: inter-zone aisles (vertical x≈12/24, horizontal y≈11)
   // and a 2-tile margin around every door (incl. the library warp door at 24,23).
@@ -651,6 +712,7 @@ function placeNPCs() {
     if (SOLID.has(map[y][x])) continue;
     if (DOORS.some(([dx, dy]) => Math.abs(dx - x) + Math.abs(dy - y) <= 1)) continue;
     if (Math.abs(x - player.x) + Math.abs(y - player.y) <= 2) continue;
+    if (reservedSeats.has(`${x},${y}`)) continue; // #047: don't place standing NPCs on chairs
     regions[regionOf(x, y)].push([x, y]);
   }
   // Rank each region's cells best-first (score desc; small rng jitter varies ties so the
@@ -684,6 +746,24 @@ function placeNPCs() {
       regions[type].splice(idx, 1);
     }
   });
+  // ---- #047: Assign seated NPCs to reserved chairs ----
+  // Take first 2 NPCs from each desk-bearing domain and place them at their chairs.
+  for (const [seatKey, domain] of NPC_SEAT_ASSIGNMENTS) {
+    var seatDomNPCs = npcs.filter(function(n) {
+      return n.type === domain && !n._seated;
+    });
+    if (seatDomNPCs.length > 0) {
+      var target = seatDomNPCs[0];
+      var coords = seatKey.split(",");
+      target.x = parseInt(coords[0], 10);
+      target.y = parseInt(coords[1], 10);
+      target._seated = true;
+      target.dir = "down";
+      // Preload sitting asset for this NPC
+      loadSitAsset(target.slug);
+    }
+  }
+
   rivalTotal = npcs.length; // stable HUD denominator — set after placement completes
 }
 
@@ -833,6 +913,7 @@ function drawQuestion(category) {
   const legacyKey = cat + ":" + idx;
   const st = questionStats[canonId] || (questionStats[canonId] = { seen: 0, correct: 0, wrong: 0, lastSeen: 0 });
   st.seen++; st.lastSeen = ++seenCounter;
+  _evidenceRevision++;
   // Keep the rollback alias exactly synchronized with the canonical record.
   const leg = questionStats[legacyKey] || (questionStats[legacyKey] = { seen: 0, correct: 0, wrong: 0, lastSeen: 0 });
   leg.seen = st.seen; leg.correct = st.correct; leg.wrong = st.wrong; leg.lastSeen = st.lastSeen;
@@ -873,6 +954,8 @@ function spawnPoof(b) {
 }
 
 function startBattle(npc) {
+  // Player cannot be seated during battle (#047).
+  leaveSeat();
   const monPool = shuffled(MON_NAMES[npc.type === "MIX" ? weightedDomain() : npc.type],
                            mulberry32(Math.floor(Math.random() * 1e9)));
   const level = Math.max(1, 5 + defeated.size * 2 + (TIER_LEVEL_DELTA[difficulty] || 0));
@@ -880,6 +963,16 @@ function startBattle(npc) {
   // Training mode (#046): restore HP before battle, tag encounter for isolation.
   var training = currentMap === "battleRoom";
   if (training) player.hp = MAX_HP;
+  var introMessage;
+  if (typeof DatamonDialogue !== "undefined") {
+    introMessage = training
+      ? DatamonDialogue.trainingRematch(npc.slug, npc.type, displayName)
+      : DatamonDialogue.battleIntro(npc.slug, npc.type, displayName);
+  } else {
+    introMessage = isAgent
+      ? `${displayName(npc.slug)} challenges you to an Agent Operations duel!`
+      : `${displayName(npc.slug)} ${BATTLE_INTROS[Math.floor(Math.random() * BATTLE_INTROS.length)]}`;
+  }
   battle = {
     npc,
     training: training,
@@ -887,9 +980,7 @@ function startBattle(npc) {
     idx: 0,
     phase: "intro", // Agent phase is projected from reducer state before the scene renders
     timerMs: HARD_TIMER_MS,
-    msg: isAgent
-      ? `${displayName(npc.slug)} challenges you to an Agent Operations duel!`
-      : `${displayName(npc.slug)} ${BATTLE_INTROS[Math.floor(Math.random() * BATTLE_INTROS.length)]}`,
+    msg: introMessage,
     sel: 0,
     feedback: null,
     shake: 0,
@@ -1242,11 +1333,17 @@ function _agentSyncPhase(b) {
       b.msgAt = frame;
       break;
     case "victory":
-      b.msg = "You defeated " + displayName(b.npc.slug) + "! \"" + WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)] + "\"";
+      b.msg = "You defeated " + displayName(b.npc.slug) + "! "
+        + (typeof DatamonDialogue !== "undefined"
+          ? '"' + DatamonDialogue.opponentLoss(b.npc.slug, b.npc.type, displayName) + '"'
+          : '"' + WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)] + '"');
       b.msgAt = frame;
       break;
     case "defeat":
-      b.msg = "You blacked out from imposter syndrome... \"" + LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)] + "\"";
+      b.msg = "You blacked out from imposter syndrome... "
+        + (typeof DatamonDialogue !== "undefined"
+          ? '"' + DatamonDialogue.opponentWin(b.npc.slug, b.npc.type, displayName) + '"'
+          : '"' + LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)] + '"');
       b.msgAt = frame;
       break;
   }
@@ -1274,13 +1371,19 @@ function advanceBattle() {
         sendOutCurrentMon(b);
       } else {
         b.phase = "win";
-        b.msg = `You defeated ${displayName(b.npc.slug)}! "${WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)]}"`;
+        b.msg = "You defeated " + displayName(b.npc.slug) + "! "
+          + (typeof DatamonDialogue !== "undefined"
+            ? '"' + DatamonDialogue.opponentLoss(b.npc.slug, b.npc.type, displayName) + '"'
+            : '"' + WIN_QUOTES[Math.floor(Math.random() * WIN_QUOTES.length)] + '"');
         b.msgAt = frame;
         sfx.victory();
       }
     } else if (player.hp <= 0) {
       b.phase = "lose";
-      b.msg = `You blacked out from imposter syndrome... "${LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)]}"`;
+      b.msg = "You blacked out from imposter syndrome... "
+        + (typeof DatamonDialogue !== "undefined"
+          ? '"' + DatamonDialogue.opponentWin(b.npc.slug, b.npc.type, displayName) + '"'
+          : '"' + LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)] + '"');
       b.msgAt = frame;
     } else {
       currentMon().q = drawQuestion(b.npc.type);
@@ -1342,6 +1445,7 @@ function recordOutcome(correct) {
     leg.seen = st.seen;
     leg.lastSeen = st.lastSeen;
   }
+  _evidenceRevision++;
   save();   // persist immediately so a single answer lands in localStorage
 }
 
@@ -1435,7 +1539,10 @@ function attemptRun() {
     if (player.hp <= 0) {
       // route into the existing lose/blackout flow (advanceBattle() handles it on advance)
       b.feedback = { correct: false };
-      b.msg = `You blacked out from imposter syndrome... "${LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)]}"`;
+      b.msg = "You blacked out from imposter syndrome... "
+        + (typeof DatamonDialogue !== "undefined"
+          ? '"' + DatamonDialogue.opponentWin(b.npc.slug, b.npc.type, displayName) + '"'
+          : '"' + LOSE_QUOTES[Math.floor(Math.random() * LOSE_QUOTES.length)] + '"');
       b.msgAt = frame;
       b.phase = "lose";
     } else {
@@ -1568,6 +1675,255 @@ function drawLocationHUD() {
   ctx.fillText(purpose, hudX + 12, hudY + 46);
 }
 
+// ---- Evidence HUD (#047): compact study-readiness strip below location instrument ----
+var _cachedEvidenceHUD = null;
+var _cachedEvidenceSummary = null;
+var _cachedEvidenceRevision = -1;
+var _evidenceRevision = 0;
+function _getEvidenceSummary() {
+  if (_cachedEvidenceRevision === _evidenceRevision) return _cachedEvidenceSummary;
+  _cachedEvidenceRevision = _evidenceRevision;
+  _cachedEvidenceSummary = (typeof DatamonProgress !== "undefined" && typeof QUESTION_BANK !== "undefined")
+    ? DatamonProgress.summarise(QUESTION_BANK, questionStats, seenCounter) : null;
+  if (_cachedEvidenceSummary && _cachedEvidenceSummary.recommendation) {
+    var key = _cachedEvidenceSummary.recommendation.key;
+    _cachedEvidenceHUD = "EVIDENCE " + _cachedEvidenceSummary.evidencePct + "% · " + (TYPE_NAMES[key] || key);
+  } else {
+    _cachedEvidenceHUD = null;
+  }
+  return _cachedEvidenceSummary;
+}
+function _getEvidenceHUD() {
+  _getEvidenceSummary();
+  return _cachedEvidenceHUD;
+}
+function drawEvidenceHUD() {
+  var hudText = _getEvidenceHUD();
+  if (!hudText) return;
+  var hudX = CANVAS_W - 294, hudY = 64, hudW = 286, hudH = 22;
+  ctx.fillStyle = "rgba(15,23,42,0.78)";
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(hudX, hudY, hudW, hudH, 4);
+  else ctx.fillRect(hudX, hudY, hudW, hudH);
+  ctx.fill();
+  // Small accent bar connecting to the location instrument
+  ctx.fillStyle = locationHudAccent();
+  ctx.fillRect(hudX, hudY, 3, hudH);
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "10px monospace";
+  ctx.textAlign = "left";
+  ctx.fillText(hudText, hudX + 12, hudY + 15);
+}
+
+// ---- Certification Console modal (#047) ----
+function drawCertConsole() {
+  // Full-canvas command-center dossier.
+  var bgX = 40, bgY = 40, bgW = CANVAS_W - 80, bgH = CANVAS_H - 80;
+
+  // Scrim
+  ctx.fillStyle = "rgba(8,12,24,0.82)";
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // Main panel
+  ctx.fillStyle = "rgba(12,18,36,0.97)";
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(bgX, bgY, bgW, bgH, 8);
+  else ctx.fillRect(bgX, bgY, bgW, bgH);
+  ctx.fill();
+  ctx.strokeStyle = "#2dd4bf";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Header
+  ctx.fillStyle = "#2dd4bf";
+  ctx.font = "bold 16px monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("CERTIFICATION CONSOLE", bgX + 24, bgY + 34);
+  ctx.fillStyle = "#64748b";
+  ctx.font = "10px monospace";
+  ctx.textAlign = "right";
+  ctx.fillText("ESC to close", bgX + bgW - 24, bgY + 34);
+
+  // Divider
+  ctx.fillStyle = "rgba(45, 212, 191, 0.3)";
+  ctx.fillRect(bgX + 20, bgY + 46, bgW - 40, 1);
+
+  // Progress summary — compute from DatamonProgress
+  var summary = _getEvidenceSummary();
+  if (!summary) {
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "13px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("Study data unavailable — explore the office and battle colleagues!", bgX + bgW / 2, bgY + 90);
+    return;
+  }
+
+  // Overall evidence header
+  var overallY = bgY + 70;
+  ctx.fillStyle = "#e2e8f0";
+  ctx.font = "bold 28px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(summary.evidencePct + "%", bgX + bgW / 2, overallY);
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "11px monospace";
+  ctx.fillText("WEIGHTED STUDY EVIDENCE · NOT A PASS PREDICTION", bgX + bgW / 2, overallY + 20);
+  ctx.fillText(summary.evidenceLabel, bgX + bgW / 2, overallY + 36);
+
+  // Domain rows
+  var rowY = overallY + 56;
+  var rowH = 40;
+  var colLabelsX = bgX + 40;
+  var colNameW = 120, colCovW = 60, colAccW = 60, colEvW = 60, colDueW = 60, colUnseenW = 70;
+
+  // Column headers
+  ctx.fillStyle = "#64748b";
+  ctx.font = "9px monospace";
+  ctx.textAlign = "left";
+  ctx.fillText("DOMAIN", colLabelsX, rowY - 6);
+  ctx.textAlign = "center";
+  var cx = colLabelsX + colNameW;
+  ctx.fillText("COVERAGE", cx + colCovW / 2, rowY - 6);
+  cx += colCovW;
+  ctx.fillText("ACCURACY", cx + colAccW / 2, rowY - 6);
+  cx += colAccW;
+  ctx.fillText("EVIDENCE", cx + colEvW / 2, rowY - 6);
+  cx += colEvW;
+  ctx.fillText("DUE", cx + colDueW / 2, rowY - 6);
+  cx += colDueW;
+  ctx.fillText("UNSEEN", cx + colUnseenW / 2, rowY - 6);
+
+  for (var i = 0; i < summary.domains.length; i++) {
+    var d = summary.domains[i];
+    var ry = rowY + i * rowH;
+    var sel = i === certConsoleSel;
+    var accent = TYPE_COLORS[d.key] || "#94a3b8";
+
+    // Row background
+    if (sel) {
+      ctx.fillStyle = "rgba(148,163,184,0.08)";
+      ctx.fillRect(bgX + 12, ry, bgW - 24, rowH - 2);
+      ctx.fillStyle = accent;
+      ctx.fillRect(bgX + 12, ry, 3, rowH - 2);
+    }
+
+    // Domain name with weight
+    ctx.fillStyle = accent;
+    ctx.font = "bold 13px monospace";
+    ctx.textAlign = "left";
+    var domainLabel = (typeof TYPE_NAMES !== "undefined" ? TYPE_NAMES[d.key] : d.key);
+    ctx.fillText(domainLabel, colLabelsX, ry + 16);
+    ctx.fillStyle = "#64748b";
+    ctx.font = "9px monospace";
+    ctx.fillText("Weight: " + d.weight + "%", colLabelsX, ry + 28);
+
+    // Metrics
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "12px monospace";
+    ctx.textAlign = "center";
+    cx = colLabelsX + colNameW;
+    ctx.fillText(Math.round(d.coverage * 100) + "%", cx + colCovW / 2, ry + 20);
+    cx += colCovW;
+    ctx.fillText(Math.round(d.accuracy * 100) + "%", cx + colAccW / 2, ry + 20);
+    cx += colAccW;
+    ctx.fillText(Math.round(d.evidence * 100) + "%", cx + colEvW / 2, ry + 20);
+    cx += colEvW;
+    ctx.fillStyle = d.due > 0 ? "#f87171" : "#22c55e";
+    ctx.fillText(String(d.due), cx + colDueW / 2, ry + 20);
+    cx += colDueW;
+    ctx.fillStyle = d.unseen > 0 ? "#fbbf24" : "#22c55e";
+    ctx.fillText(String(d.unseen), cx + colUnseenW / 2, ry + 20);
+  }
+
+  // Recommendation
+  var recY = rowY + summary.domains.length * rowH + 16;
+  ctx.fillStyle = "rgba(45, 212, 191, 0.2)";
+  ctx.fillRect(bgX + 20, recY, bgW - 40, 1);
+  if (summary.recommendation) {
+    var rec = summary.recommendation;
+    ctx.fillStyle = "#fbbf24";
+    ctx.font = "bold 12px monospace";
+    ctx.textAlign = "left";
+    ctx.fillText("NEXT STUDY TARGET", bgX + 40, recY + 20);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "12px monospace";
+    var recText = (typeof DatamonProgress !== "undefined")
+      ? DatamonProgress.recommendationText(QUESTION_BANK, questionStats, seenCounter)
+      : "Study " + (typeof TYPE_NAMES !== "undefined" ? TYPE_NAMES[rec.key] : rec.key) + ".";
+    ctx.fillText(recText, bgX + 40, recY + 38);
+  }
+
+  // Keyboard hint
+  ctx.fillStyle = "#64748b";
+  ctx.font = "10px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("\u2191\u2193 navigate domains  \u00b7  ENTER/Space hear detail  \u00b7  ESC close", bgX + bgW / 2, bgY + bgH - 16);
+}
+
+// ---- Certification Console input handling (#047) ----
+function handleCertConsoleKey(key) {
+  if (key === "Escape" || key === "esc") {
+    certConsoleOpen = false;
+    certConsoleSel = 0;
+    sfx.select();
+    if (typeof document !== "undefined") {
+      var announcer = document.getElementById("datamon-announcer");
+      if (announcer) announcer.textContent = "Certification Console closed.";
+    }
+    return true;
+  }
+  if (!certConsoleOpen) return false;
+  var summary = _getEvidenceSummary();
+  var maxSel = summary ? summary.domains.length - 1 : 4;
+  if (key === "ArrowUp" || key === "up") {
+    certConsoleSel = Math.max(0, certConsoleSel - 1);
+    _announceConsoleSelection();
+    return true;
+  }
+  if (key === "ArrowDown" || key === "down") {
+    certConsoleSel = Math.min(maxSel, certConsoleSel + 1);
+    _announceConsoleSelection();
+    return true;
+  }
+  if (key === "Enter" || key === " " || key === "Space") {
+    _announceConsoleDetail();
+    return true;
+  }
+  return false;
+}
+
+function _announceConsoleSelection() {
+  if (typeof document === "undefined") return;
+  var announcer = document.getElementById("datamon-announcer");
+  if (!announcer) return;
+  var summary = _getEvidenceSummary();
+  if (!summary || !summary.domains[certConsoleSel]) return;
+  var d = summary.domains[certConsoleSel];
+  var name = (typeof TYPE_NAMES !== "undefined" ? TYPE_NAMES[d.key] : d.key);
+  announcer.textContent = name + ": " + Math.round(d.evidence * 100) + "% evidence, "
+    + Math.round(d.coverage * 100) + "% coverage, " + Math.round(d.accuracy * 100) + "% accuracy.";
+}
+
+function _announceConsoleDetail() {
+  if (typeof document === "undefined") return;
+  var announcer = document.getElementById("datamon-announcer");
+  if (!announcer) return;
+  var summary = _getEvidenceSummary();
+  if (!summary) return;
+  var selected = summary.domains[certConsoleSel];
+  var text = "Overall study evidence: " + summary.evidencePct + " percent. ";
+  if (selected) {
+    text += (TYPE_NAMES[selected.key] || selected.key) + ": " +
+      Math.round(selected.coverage * 100) + " percent coverage, " +
+      Math.round(selected.accuracy * 100) + " percent accuracy, " +
+      selected.due + " due, " + selected.unseen + " unseen. ";
+  }
+  if (summary.recommendation) {
+    text += "Recommended next: " + (TYPE_NAMES[summary.recommendation.key] || summary.recommendation.key) + ".";
+  }
+  announcer.textContent = text;
+}
+
 // ---------- Input ----------
 const keys = {};
 const agentActivationKeys = new Set();
@@ -1592,7 +1948,7 @@ window.addEventListener("keydown", e => {
   keys[e.key] = true;
   if (code) keys[code] = true; // physical key codes survive Shift/Caps Lock/layout changes
   const pressedDir = KEY_DIR[e.key] || KEY_DIR[code];
-  if (state === "overworld" && pressedDir && !coffeePrompt && !bookPrompt && !readerState && !scout) {
+  if (state === "overworld" && pressedDir && !coffeePrompt && !bookPrompt && !readerState && !scout && !certConsoleOpen) {
     if (player.moving) bufferedDir = pressedDir;
     else {
       // A quick tap must move—not merely turn. Holding/repeat continues through the normal loop.
@@ -1638,6 +1994,7 @@ function handleKey(k) {
       const s = getSave();
       if (s) {
         player.slug = s.player;
+        player.seated = null; certConsoleOpen = false;
         loadWalkAnim(player.slug); // prewarmed at boot; idempotent if already complete
         defeated = new Set(s.defeated);
         placeNPCs();
@@ -1658,7 +2015,8 @@ function handleKey(k) {
       saveCache = undefined;
       defeated = new Set();
       questionStats = {};
-      seenCounter = 0;
+      seenCounter = 0; _evidenceRevision++;
+      resetSitAssetCache();
       seenThisRun = {};
       coffeeUses = 3;
       difficulty = "normal";
@@ -1678,9 +2036,11 @@ function handleKey(k) {
       sfx.confirm();
       player.slug = ROSTER[selectIdx];
       loadWalkAnim(player.slug);
+      resetSitAssetCache();
       defeated = new Set();
       player.hp = MAX_HP;
       player.x = player.fx = 18; player.y = player.fy = 16;
+      player.seated = null; certConsoleOpen = false;
       camFx = camFy = null; stepT = 1; player.moving = false;
       _progression = freshProgression();
       _npcDomains = _progression.npcDomains;
@@ -1693,6 +2053,11 @@ function handleKey(k) {
     }
   } else if (state === "overworld") {
     if (scout) return;                                  // camera pan cinematic — ignore input
+    // Certification Console key handling (#047)
+    if (certConsoleOpen) {
+      handleCertConsoleKey(k);
+      return;
+    }
     if (coffeePrompt) {
       if (k === "ArrowLeft" || k === "ArrowRight" || k === "a" || k === "d" || k === "A" || k === "D") {
         coffeePrompt.sel ^= 1; sfx.select();
@@ -1771,7 +2136,11 @@ function recomputeSearch() {
   searchResults = ROSTER.filter(s => s !== player.slug && (!q || displayName(s).toLowerCase().includes(q)));
   searchSel = 0;
 }
-function openSearch() { state = "search"; searchQuery = ""; recomputeSearch(); sfx.select(); }
+function openSearch() {
+  leaveSeat();
+  certConsoleOpen = false;
+  state = "search"; searchQuery = ""; recomputeSearch(); sfx.select();
+}
 function handleSearchKey(e) {
   const k = e.key;
   if (k === "Escape") { state = "overworld"; sfx.select(); return; }
@@ -1837,17 +2206,21 @@ canvas.addEventListener("pointerdown", e => {
   try { canvas.focus({ preventScroll: true }); } catch (_) { canvas.focus(); }
   if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
   if (typeof DatamonMusic !== "undefined") DatamonMusic.unlock();
+  if (state === "overworld" && certConsoleOpen) return; // modal click is handled once by `click`
   if (state === "overworld" && !coffeePrompt && !bookPrompt && !readerState && !scout) {
     const [mx, my] = canvasPos(e);
     const dir = pointerDirection(mx, my);
     if (dir) {
       // Adjacent pointer interaction (#046): if the tapped direction leads to an
-      // adjacent NPC or interactive door tile, face-and-interact instead of stepping.
+      // adjacent NPC, interactive door tile, free seat, or Certification Console,
+      // face-and-interact instead of stepping.
       player.dir = dir;
       var ft = facingTile();
       var adjacentNpc = npcs.find(function(n) { return n.x === ft[0] && n.y === ft[1]; });
       var adjacentPortal = map[ft[1]] && (map[ft[1]][ft[0]] === "L" || map[ft[1]][ft[0]] === "A");
-      if (!player.moving && (adjacentNpc || adjacentPortal)) {
+      var adjacentSeat = isFreePlayerSeat(ft[0], ft[1]);
+      var adjacentConsole = map[ft[1]] && map[ft[1]][ft[0]] === "X" && currentMap === "office";
+      if (!player.moving && (adjacentNpc || adjacentPortal || adjacentSeat || adjacentConsole)) {
         interact();
         e.preventDefault();
         return;
@@ -1908,6 +2281,24 @@ window.addEventListener("blur", () => {
 canvas.addEventListener("click", e => {
   const [mx, my] = canvasPos(e);
   if (bookPrompt || readerState) return; // swallow clicks behind book modal (keyboard-only UI)
+  if (certConsoleOpen) {
+    var bgX = 40, bgY = 40, bgW = CANVAS_W - 80, bgH = CANVAS_H - 80;
+    if (mx < bgX || mx > bgX + bgW || my < bgY || my > bgY + bgH ||
+        (mx > bgX + bgW - 120 && my < bgY + 52)) {
+      handleCertConsoleKey("Escape");
+    } else {
+      var firstRowY = bgY + 126, rowH = 40;
+      var row = Math.floor((my - firstRowY) / rowH);
+      if (row >= 0 && row < 5) {
+        certConsoleSel = row;
+        _announceConsoleSelection();
+        sfx.select();
+      } else {
+        _announceConsoleDetail();
+      }
+    }
+    return;
+  }
   if (coffeePrompt && coffeePrompt.btns) {
     const hit = coffeePrompt.btns.findIndex(b => mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h);
     if (hit >= 0) { coffeePrompt.sel = hit; handleKey("Enter"); }
@@ -1950,10 +2341,88 @@ canvas.addEventListener("click", e => {
 });
 
 // ---------- Overworld logic ----------
-function walkable(x, y) {
+function walkable(x, y, ignoreSeats) {
   if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return false;
   if (SOLID.has(map[y][x])) return false;
   if (npcs.some(n => n.x === x && n.y === y)) return false;
+  // Office seats block ordinary walking but never leak collision into other maps.
+  if (currentMap === "office" && !ignoreSeats && OFFICE_SEATS.has(`${x},${y}`)) {
+    // Allow walking INTO an unoccupied seat only via sitAt().
+    // Normal pathing treats seats as blocked.
+    return false;
+  }
+  return true;
+}
+
+// ---- Sitting asset loading (#047) ----
+// Lazy-load the two-frame sitting sprite for a slug. Falls back to standing
+// sprite on missing files. Returns the cache entry synchronously (images may
+// still be loading).
+function loadSitAsset(slug) {
+  if (!slug || _sittingLoaded.has(slug)) return;
+  _sittingLoaded.add(slug);
+  var entry = { idle_0: null, idle_1: null, pending: 2 };
+  _sittingAssetStore[slug] = entry;
+  [0, 1].forEach(function(index) {
+    var image = new Image();
+    image.onload = function() {
+      entry["idle_" + index] = image;
+      entry.pending--;
+    };
+    image.onerror = function() { entry.pending--; };
+    image.src = "sprites-sit/" + slug + "/idle_" + index + ".png";
+  });
+}
+
+// Return the sitting frames for a slug, or null if not yet loaded/missing.
+function getSitFrames(slug) {
+  var entry = _sittingAssetStore[slug];
+  if (!entry) return null;
+  return entry;
+}
+function resetSitAssetCache() {
+  _sittingAssetStore = {};
+  _sittingLoaded = new Set();
+}
+
+// Check whether a tile is an unoccupied player seat.
+function isFreePlayerSeat(x, y) {
+  if (currentMap !== "office") return false;
+  var key = `${x},${y}`;
+  if (!PLAYER_SEAT_KEYS.includes(key) || !OFFICE_SEATS.has(key)) return false;
+  if (npcs.some(function(n) { return n.x === x && n.y === y; })) return false;
+  return true;
+}
+
+// Seat the player at a chair tile. Must be called from interaction, not movement.
+function sitAt(x, y) {
+  if (!isFreePlayerSeat(x, y)) return false;
+  var returnX = player.x, returnY = player.y;
+  player.moving = false; stepT = 1; bufferedDir = null; turnStartMs = null;
+  pointerMoveId = null; pointerMoveDir = null;
+  player.x = player.fx = x;
+  player.y = player.fy = y;
+  player.dir = "up";
+  player.seated = { seatX: x, seatY: y, returnX: returnX, returnY: returnY };
+  walkAnimPhase = 0;
+  loadSitAsset(player.slug);
+  showToast("Seated at the study desk. Move or interact to stand.");
+  return true;
+}
+
+// Restore the approach tile so a standing character is never left inside chair art.
+function leaveSeat() {
+  var seat = player.seated;
+  if (!seat) return false;
+  player.seated = null;
+  var candidates = [[seat.returnX, seat.returnY], [seat.seatX, seat.seatY + 1],
+    [seat.seatX - 1, seat.seatY], [seat.seatX + 1, seat.seatY], [seat.seatX, seat.seatY - 1]];
+  var destination = candidates.find(function(pos) { return walkable(pos[0], pos[1]); });
+  if (!destination) destination = [seat.returnX, seat.returnY];
+  player.x = player.fx = destination[0];
+  player.y = player.fy = destination[1];
+  player.moving = false; stepT = 1; bufferedDir = null; turnStartMs = null;
+  pointerMoveId = null; pointerMoveDir = null;
   return true;
 }
 
@@ -1964,9 +2433,48 @@ function facingTile() {
 
 function interact() {
   const [tx, ty] = facingTile();
+
+  // Standing up from a chair: interacting while seated stands you up.
+  if (player.seated) {
+    leaveSeat();
+    sfx.select();
+    return;
+  }
+
+  // Sitting in a chair: facing an unoccupied player seat → sit
+  if (isFreePlayerSeat(tx, ty)) {
+    if (sitAt(tx, ty)) { sfx.confirm(); return; }
+  }
+
+  // Certification Console interaction
+  if (map[ty] && map[ty][tx] === "X" && currentMap === "office") {
+    certConsoleOpen = true;
+    certConsoleSel = 0;
+    toast = null;
+    sfx.select();
+    if (typeof document !== "undefined") {
+      var announcer = document.getElementById("datamon-announcer");
+      if (announcer) announcer.textContent = "Certification Console opened. Study evidence, not a pass prediction. Use arrow keys to navigate, Escape to close.";
+    }
+    setTimeout(_announceConsoleSelection, 0);
+    return;
+  }
+
   const npc = npcs.find(n => n.x === tx && n.y === ty);
   if (npc) {
-    if (npc.defeated) showToast(`${firstName(npc.slug)}: "Good battle earlier. Back to my Jira board..."`);
+    if (npc.defeated) {
+      // Campaign follow-up dialogue (#047)
+      var mentorProgress = null;
+      if (typeof DatamonProgress !== "undefined") {
+        mentorProgress = npc.type === "MIX"
+          ? (_getEvidenceSummary() && _getEvidenceSummary().recommendation)
+          : DatamonProgress.domainSummary(QUESTION_BANK, questionStats, seenCounter, npc.type);
+      }
+      var followUp = (typeof DatamonDialogue !== "undefined")
+        ? DatamonDialogue.campaignFollowUp(npc.slug, npc.type, displayName, mentorProgress)
+        : `${firstName(npc.slug)}: "Good battle earlier. Back to my Jira board..."`;
+      showToast(followUp);
+    }
     else if (npc.type === "AGENT" && typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion()) {
       // Reduced motion skips the triple flash/iris hit-stop entirely.
       sfx.battle();
@@ -1985,11 +2493,11 @@ function interact() {
   if (map[ty] && map[ty][tx] === "D") showToast("A standing desk. Someone left 47 Chrome tabs open.");
   if (map[ty] && map[ty][tx] === "P") showToast("An office plant. It has seen things.");
   if (map[ty] && map[ty][tx] === "L") {
-    if (currentMap === "office") { enterLibrary(); return; }
+    if (currentMap === "office") { leaveSeat(); enterLibrary(); return; }
     if (currentMap === "library") { returnToOffice(); return; }
   }
   if (map[ty] && map[ty][tx] === "A") {
-    if (currentMap === "office") { enterBattleRoom(); return; }
+    if (currentMap === "office") { leaveSeat(); enterBattleRoom(); return; }
     // Library door is "L", Battle Room and return doors are "A"
     if (currentMap === "battleRoom") { returnToOffice(OFFICE_BATTLE_ENTRY[0], OFFICE_BATTLE_ENTRY[1]); return; }
   }
@@ -2049,6 +2557,8 @@ function commitLibraryWarp() {
 }
 
 function enterLibrary() {
+  leaveSeat();
+  certConsoleOpen = false;
   player.moving = false; stepT = 1;
   coffeePrompt = null; scout = null;
   bookPrompt = null; readerState = null;
@@ -2101,6 +2611,8 @@ function commitBattleRoomWarp() {
 }
 
 function enterBattleRoom() {
+  leaveSeat();
+  certConsoleOpen = false;
   player.moving = false; stepT = 1;
   coffeePrompt = null; scout = null;
   bookPrompt = null; readerState = null;
@@ -2117,6 +2629,8 @@ function enterBattleRoom() {
 }
 
 function returnToOffice(entryX, entryY, toastMsg) {
+  leaveSeat();
+  certConsoleOpen = false;
   libraryWarpRequested = false;
   battleRoomWarpRequested = false;
   currentMap = "office"; map = OFFICE_MAP; mapCv = officeMapCv;
@@ -2162,6 +2676,8 @@ function updateOverworld(dt) {
   if (bookPrompt) return;     // book picker open — freeze movement input
   if (readerState) return;    // book reader open — freeze movement input
   if (scout) return;          // search pan-to-person cinematic — freeze movement
+  if (certConsoleOpen) return; // Certification Console open — freeze movement
+  if (player.seated) return;  // Seated — freeze movement until deliberate stand
 
   const WALK_SPEED = 7.5, RUN_SPEED = 12.5; // tiles/sec
   player.running = !!(keys["r"] || keys["R"] || keys["KeyR"] ||
@@ -2216,6 +2732,12 @@ function dirHeld(dir) {
   return false;
 }
 function tryStep(dir) {
+  // Seated: movement stands you up instead of walking.
+  if (player.seated) {
+    leaveSeat();
+    sfx.select();
+    return;
+  }
   const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[dir];
   const nx = player.x + d[0], ny = player.y + d[1];
   if (walkable(nx, ny)) {
@@ -3280,7 +3802,49 @@ function drawHPBar(x, y, w, h, frac, label) {
   }
 }
 
-function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove) {
+function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
+  // ---- Seated pose (#047): draw sitting frame instead of standing sprite ----
+  if (seated) {
+    var sitFrames = getSitFrames(slug);
+    // Slow bounded animation phase advances only while rendered in active scene.
+    // Reduced motion pins to frame 0.
+    var reducedMotion = (typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion && AgentArena.prefersReducedMotion());
+    var sitFrameIdx = reducedMotion ? 0 : (Math.floor(_sitAnimPhase / 30) % 2); // ~0.5 Hz cycle
+    var sitImg = null;
+    if (sitFrames) {
+      sitImg = (sitFrameIdx === 0 ? sitFrames.idle_0 : sitFrames.idle_1)
+        || sitFrames.idle_0 || sitFrames.idle_1;
+    }
+    if (sitImg && sitImg.complete && sitImg.naturalWidth > 0) {
+      // Draw sitting pose: 64×64, bottom-anchored at feet, centred horizontally.
+      var sitH = 64, sitW = 64;
+      ctx.drawImage(sitImg, px(cx - sitW / 2), px(cy + 16 - sitH), sitW, sitH);
+    } else {
+      // Fallback: draw standing mini sprite slightly lower (compressed appearance).
+      var fallbackMini = spriteMini(slug, 48);
+      if (fallbackMini) {
+        ctx.save();
+        ctx.globalAlpha = 0.7;
+        ctx.drawImage(fallbackMini, px(cx - 24), px(cy + 16 - 48), 48, 48);
+        ctx.restore();
+      } else {
+        // Ultimate fallback: simple body shape at chair height.
+        ctx.fillStyle = "#475569";
+        ctx.fillRect(px(cx - 12), px(cy), 24, 24);
+        ctx.drawImage(pixelHead(slug, 16), px(cx - 8), px(cy - 10), 16, 16);
+      }
+    }
+    // Repaint the lower chair shell in front of the folded legs. The full chair is
+    // already cache-baked behind the character, so this creates intentional seating.
+    var chair = propStore["office-chair"];
+    if (chair && chair.naturalWidth > 0) {
+      var cropY = Math.floor(chair.naturalHeight * 0.44);
+      ctx.drawImage(chair, 0, cropY, chair.naturalWidth, chair.naturalHeight - cropY,
+        px(cx - 16), px(cy - 16 + cropY), 32, 32 - cropY);
+    }
+    return;
+  }
+
   // Base overworld size 56px; the player grows ~0.5px/win, capped +14px (→70px at 28 wins).
   const baseSize = isPlayer ? 56 + Math.min(defeated.size * 0.5, 14) : 56;
   const sizeScale = baseSize / 34;            // proportional factor vs. the old 34px base
@@ -4124,6 +4688,36 @@ function buildMapCanvas() {
       c.fillStyle = "#ef4444"; c.fillRect(bx + 8, by + 12, 16, 3);
     }
   }
+
+  // ---- Study-life environment batch (#047): deterministic true-2× cutouts ----
+  // These are cache-baked visuals; only the Certification Console has collision cells.
+  for (var sp = 0; sp < STUDY_PROP_PLACEMENTS.length; sp++) {
+    var studyProp = STUDY_PROP_PLACEMENTS[sp];
+    var spx = studyProp.col * TILE, spy = studyProp.row * TILE;
+    var spImg = studyPropStore[studyProp.slug];
+    var spMeta = studyPropManifest.find(function(m) { return m.slug === studyProp.slug; });
+
+    if (spImg && spMeta) {
+      c.drawImage(spImg, spx + (spMeta.anchorX || 0), spy,
+        spMeta.widthPx, spMeta.heightPx);
+    } else if (studyProp.slug === "certification-console") {
+      c.fillStyle = "#0f1a2e"; c.fillRect(spx, spy, TILE * 2, TILE);
+      c.strokeStyle = "#2dd4bf"; c.lineWidth = 2;
+      c.strokeRect(spx + 1, spy + 1, TILE * 2 - 2, TILE - 2);
+      c.fillStyle = "#2dd4bf"; c.font = "bold 10px monospace"; c.textAlign = "center";
+      c.fillText("CERT", spx + TILE, spy + 20);
+    } else if (studyProp.slug === "readiness-board") {
+      c.fillStyle = "#0f1a2e"; c.fillRect(spx, spy, TILE * 3, TILE);
+      c.strokeStyle = "#2dd4bf"; c.strokeRect(spx + 2, spy + 2, TILE * 3 - 4, TILE - 4);
+    } else if (studyProp.slug === "task-lamp") {
+      c.fillStyle = "#334155"; c.fillRect(spx + 12, spy + TILE - 18, 8, 18);
+      c.fillStyle = "#fbbf24"; c.fillRect(spx + 8, spy + 4, 16, 6);
+    } else if (studyProp.slug === "desk-study-kit") {
+      c.fillStyle = "#1e293b"; c.fillRect(spx + 6, spy + 2, 20, 16);
+      c.fillStyle = "#38bdf8"; c.fillRect(spx + 8, spy + 4, 16, 10);
+    }
+  }
+
   return cv;
 }
 
@@ -4318,6 +4912,20 @@ function drawLivingWorldAmbient() {
     // Lounge: the certification-compass inlay breathes once per cycle.
     ctx.strokeStyle = `rgba(242,179,93,${0.12 + 0.14 * Math.sin(phase * Math.PI)})`;
     ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(sx(29), sy(12.85), 21 + phase * 5, 0, Math.PI * 2); ctx.stroke();
+    // The generated Certification Console telemetry strip animates at a bounded 2 FPS.
+    // DatamonWorldArt pins phase to zero for reduced motion.
+    var ambientMeta = studyPropManifest.find(function(entry) {
+      return entry.slug === STUDY_AMBIENT_PLACEMENT.slug;
+    });
+    var ambientImage = studyPropStore[STUDY_AMBIENT_PLACEMENT.slug];
+    if (ambientMeta && ambientImage && ambientMeta.animation) {
+      var ambientFrames = ambientMeta.animation.frames || 1;
+      var ambientFrame = Math.min(ambientFrames - 1, Math.floor(phase * ambientFrames));
+      var sourceWidth = ambientImage.naturalWidth / ambientFrames;
+      ctx.drawImage(ambientImage, ambientFrame * sourceWidth, 0, sourceWidth, ambientImage.naturalHeight,
+        sx(STUDY_AMBIENT_PLACEMENT.col), sy(STUDY_AMBIENT_PLACEMENT.row) + 7,
+        ambientMeta.widthPx, ambientMeta.heightPx);
+    }
   } else if (currentMap === "library") {
     // Fixed dust positions drift a few pixels; there is no particle allocation or random state.
     for (let i = 0; i < LIBRARY_DUST_POINTS.length; i++) {
@@ -4409,12 +5017,12 @@ function drawOverworld() {
   for (const n of npcs) {
     const sx = (n.x - camFx) * TILE + TILE / 2, sy = (n.y - camFy) * TILE + TILE / 2;
     if (!onScreen(sx, sy)) continue;
-    chars.push({ sx, sy, slug: n.slug, dir: "down", isPlayer: false, bob: !n.defeated, tx: n.x, ty: n.y, npc: n });
+    chars.push({ sx, sy, slug: n.slug, dir: "down", isPlayer: false, bob: !n.defeated, tx: n.x, ty: n.y, npc: n, seated: !!n._seated });
   }
   {
     const sx = (player.fx - camFx) * TILE + TILE / 2, sy = (player.fy - camFy) * TILE + TILE / 2;
     chars.push({ sx, sy, slug: player.slug, dir: player.dir, isPlayer: true, bob: player.moving,
-                 tx: Math.round(player.fx), ty: Math.round(player.fy), npc: null });
+                 tx: Math.round(player.fx), ty: Math.round(player.fy), npc: null, seated: player.seated });
   }
   // Visual-only detail entities join the feet-Y sort but never touch map/SOLID collision.
   if (currentMap === "office" && typeof DatamonWorldArt !== "undefined") {
@@ -4435,7 +5043,7 @@ function drawOverworld() {
         DatamonWorldArt.drawAmbientEntry(ctx, "hd-amb-table", camFx, camFy, TILE);
       }
     } else {
-      drawCharacter(c.sx, c.sy, c.slug, c.dir, c.isPlayer, c.bob, isSolidTile(c.tx, c.ty - 1));
+      drawCharacter(c.sx, c.sy, c.slug, c.dir, c.isPlayer, c.bob, isSolidTile(c.tx, c.ty - 1), c.seated);
     }
   }
 
@@ -4512,23 +5120,40 @@ function drawOverworld() {
   drawLocationHUD();
   announceLocation(locationHudLabel(), locationHudPurpose());
 
+  // ---- Evidence HUD strip (#047): compact study-readiness below location instrument ----
+  drawEvidenceHUD();
+
   ctx.fillStyle = "rgba(148,163,184,0.55)"; ctx.font = "11px monospace"; ctx.textAlign = "left";
   ctx.fillText("/  find a colleague", 12, CANVAS_H - 14);
 
-  // facing hint
+  // One contextual facing hint covers colleagues, free seats, and the study console.
   const [tx, ty] = facingTile();
-  const target = npcs.find(n => n.x === tx && n.y === ty && !n.defeated);
-  // In the Battle Room, all NPCs are always challengeable (defeated=false).
-  if (target && !scout) {
-    ctx.fillStyle = "rgba(15,23,42,0.85)";
-    var actionVerb = currentMap === "battleRoom" ? "train against" : "battle";
-    var msg = "SPACE: " + actionVerb + " " + displayName(target.slug) + " [" + target.type + "]";
-    ctx.font = "bold 14px monospace";
-    const w = ctx.measureText(msg).width + 24;
-    ctx.fillRect(CANVAS_W / 2 - w / 2, CANVAS_H - 44, w, 30);
-    ctx.fillStyle = TYPE_COLORS[target.type]; ctx.textAlign = "center";
-    ctx.fillText(msg, CANVAS_W / 2, CANVAS_H - 24);
+  const facingNpc = npcs.find(n => n.x === tx && n.y === ty);
+  var hint = null, hintColor = "#2dd4bf";
+  if (player.seated) {
+    hint = "SPACE / MOVE: stand up";
+  } else if (facingNpc && !scout) {
+    var actionVerb = facingNpc.defeated ? "talk with"
+      : (currentMap === "battleRoom" ? "train against" : "battle");
+    hint = "SPACE: " + actionVerb + " " + displayName(facingNpc.slug) + " [" + facingNpc.type + "]";
+    hintColor = TYPE_COLORS[facingNpc.type];
+  } else if (isFreePlayerSeat(tx, ty)) {
+    hint = "SPACE: sit at study desk";
+    hintColor = "#fbbf24";
+  } else if (currentMap === "office" && map[ty] && map[ty][tx] === "X") {
+    hint = "SPACE: open Certification Console";
   }
+  if (hint && !certConsoleOpen) {
+    ctx.fillStyle = "rgba(15,23,42,0.90)";
+    ctx.font = "bold 14px monospace";
+    const hintW = ctx.measureText(hint).width + 24;
+    ctx.fillRect(CANVAS_W / 2 - hintW / 2, CANVAS_H - 44, hintW, 30);
+    ctx.fillStyle = hintColor; ctx.textAlign = "center";
+    ctx.fillText(hint, CANVAS_W / 2, CANVAS_H - 24);
+  }
+
+  // Modal is last so no navigation prompt or character can paint over it.
+  if (certConsoleOpen) drawCertConsole();
 }
 
 // battle layout rects (for mouse hit testing)
@@ -5007,6 +5632,10 @@ function loop(t) {
   lastT = t;
   dtF = dt * 60;
   frame += dtF;
+  // Advance seated idle animation phase (#047). Slow bounded phase (0.5 Hz).
+  // Reduced motion pins frame 0 — handled in drawCharacter at load time.
+  _sitAnimPhase += dtF;
+  if (_sitAnimPhase > 120) _sitAnimPhase -= 120; // wrap to keep bounded (2 sec cycle)
   if (state === "overworld") updateOverworld(dt);
   if (state === "transition" && battleTransition) {
     battleTransition.t += dtF;
@@ -5077,7 +5706,7 @@ loadWalkAnim(getSave()?.player);
 // Boot: load office assets + shared library assets (lib-door) but NOT full library.
 // Full library assets load lazily on first warp.
 Promise.all([
-  loadImages(), loadTiles(), loadProps(),
+  loadImages(), loadTiles(), loadProps(), loadStudyProps(),
   hdOfficePromise,
   // Load only shared library dependencies needed by the office entrance
   fetch("library/assets/manifest.json")
