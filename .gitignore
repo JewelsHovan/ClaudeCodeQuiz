@@ -57,6 +57,7 @@ datamon/.headshots-offline/
 datamon/.gba-gen-cache/
 datamon/.walk-gen-cache/
 datamon/.battlemon-ai-raw/
+datamon/.battle-arena-ai-raw/
 
 # Environment art pipeline staging, review, and history (#044)
 datamon/.environment-work/

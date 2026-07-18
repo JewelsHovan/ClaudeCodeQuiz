@@ -31,15 +31,15 @@
 
   var GEOMETRY = Object.freeze({
     PLAYER_ANCHOR: Object.freeze([160, 408]),
-    OPPONENT_ANCHOR: Object.freeze([657, 260]),
+    OPPONENT_ANCHOR: Object.freeze([657, 208]),
     PLAYER_VISIBLE_HEIGHT: 172,
     OPPONENT_VISIBLE_HEIGHT: 156,
     BATTLEMON_CENTER_X: 502,
     BATTLEMON_CENTER_Y: 246,
     BATTLEMON_DRAW_SIZE: 128,
     STAGE_BOTTOM: 432,
-    OPPONENT_PLATE: Object.freeze([24, 24, 366, 112]),
-    PLAYER_PLATE: Object.freeze([430, 330, 776, 404]),
+    OPPONENT_PLATE: Object.freeze([18, 16, 310, 86]),
+    PLAYER_PLATE: Object.freeze([500, 340, 782, 412]),
   });
   // Vertical scale stays exactly 1 in every pose so the reviewed 172px/156px visible-height
   // contract remains true at semantic endpoints and the far trainer can never dominate.
@@ -205,6 +205,23 @@
   var _sheetPromises = Object.create(null);
   var _failedSheets = Object.create(null);
   var _fallbackSheets = Object.create(null);
+  var _activeSheetIds = null;
+
+  function setActiveEncounter(ids) {
+    var next = Object.create(null);
+    if (Array.isArray(ids)) {
+      for (var index = 0; index < ids.length; index++) {
+        if (typeof ids[index] === "string" && ids[index]) next[ids[index]] = true;
+      }
+    }
+    _activeSheetIds = next;
+    var resident = Object.keys(_sheetImages);
+    for (var residentIndex = 0; residentIndex < resident.length; residentIndex++) {
+      if (!next[resident[residentIndex]]) delete _sheetImages[resident[residentIndex]];
+    }
+    _fallbackSheets = Object.create(null);
+    return Object.keys(next).length;
+  }
 
   function _basePath(value) {
     if (typeof value !== "string" || !value) return "battlemons/";
@@ -264,7 +281,12 @@
         clearTimeout(timeout);
         delete _sheetPromises[id];
         if (failed) _failedSheets[id] = true;
-        if (value) _sheetImages[id] = value;
+        if (value && (_activeSheetIds === null || _activeSheetIds[id])) {
+          _sheetImages[id] = value;
+          // A fallback may have been painted while this sheet decoded. It is cheap to recreate
+          // on a later failure, so do not retain it alongside accepted art.
+          delete _fallbackSheets[entry.domain];
+        }
         resolve(value);
       }
       image.onload = function() {
@@ -360,6 +382,9 @@
       inFlightSheetCount: Object.keys(_sheetPromises).length,
       failedSheetCount: Object.keys(_failedSheets).length,
       fallbackDomainCount: Object.keys(_fallbackSheets).length,
+      activeSheetCount: _activeSheetIds === null ? 0 : Object.keys(_activeSheetIds).length,
+      loadedSheetDecodedBytes: Object.keys(_sheetImages).length * SHEET_WIDTH * SHEET_HEIGHT * 4,
+      fallbackDecodedBytes: Object.keys(_fallbackSheets).length * SHEET_WIDTH * SHEET_HEIGHT * 4,
       alphaCacheSize: _alphaBoundsCount,
     });
   }
@@ -379,6 +404,7 @@
     resolveBattlemonState: resolveBattlemonState,
     computeAlphaBounds: computeAlphaBounds,
     loadManifest: loadManifest,
+    setActiveEncounter: setActiveEncounter,
     requestSheet: requestSheet,
     drawBattlemonFrame: drawBattlemonFrame,
     getManifestEntry: getManifestEntry,

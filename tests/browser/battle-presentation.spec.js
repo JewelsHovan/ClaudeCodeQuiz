@@ -44,7 +44,7 @@ test.describe("Classic certification-stage presentation and Battlemon art", () =
     expect(observed.requests.filter(path => /^\/battlemons\/.*\.png$/.test(path))).toEqual([]);
     expect(await page.evaluate(() => window.DatamonBattlePresentation.getDiagnostics())).toEqual({
       manifestStatus:"accepted",manifestEntryCount:35,loadedSheetCount:0,inFlightSheetCount:0,
-      failedSheetCount:0,fallbackDomainCount:0,alphaCacheSize:0,
+      failedSheetCount:0,fallbackDomainCount:0,activeSheetCount:0,loadedSheetDecodedBytes:0,fallbackDecodedBytes:0,alphaCacheSize:0,
     });
 
     const battle = await startClassic(page, "MCP");
@@ -56,6 +56,10 @@ test.describe("Classic certification-stage presentation and Battlemon art", () =
     }, battle.unique);
     const pngRequests = observed.requests.filter(path => /^\/battlemons\/.*\.png$/.test(path));
     expect(pngRequests.sort()).toEqual([...new Set(battle.ids)].map(id => `/battlemons/${id}.png`).sort());
+    const diagnostics=await page.evaluate(()=>window.DatamonBattlePresentation.getDiagnostics());
+    expect(diagnostics.activeSheetCount).toBe(battle.unique);
+    expect(diagnostics.loadedSheetDecodedBytes).toBe(battle.unique*768*128*4);
+    expect(diagnostics.fallbackDecodedBytes).toBe(0);
     expect(await page.evaluate(() => {
       const ge=(0,eval),b=ge("battle");
       return b.mons.every(mon=>window.DatamonBattlePresentation.getManifestEntry(mon.id)?.name===mon.name);
@@ -83,7 +87,7 @@ test.describe("Classic certification-stage presentation and Battlemon art", () =
     expect(result.rows.find(row => row.slug === "jonathan-kim")?.source).toEqual([87,8,83,240]);
     expect(result.rotated).toBe(1); expect(result.scaled).toBe(1);
     expect(result.geometry.PLAYER_ANCHOR).toEqual([160,408]);
-    expect(result.geometry.OPPONENT_ANCHOR).toEqual([657,260]);
+    expect(result.geometry.OPPONENT_ANCHOR).toEqual([657,208]);
     expect(result.geometry.PLAYER_VISIBLE_HEIGHT/result.geometry.OPPONENT_VISIBLE_HEIGHT).toBeLessThanOrEqual(1.11);
     expect(result.geometry.PLAYER_PLATE[3]).toBeLessThan(result.geometry.STAGE_BOTTOM);
     expect(observed.errors).toEqual([]); expect(observed.failures).toEqual([]);
@@ -117,14 +121,13 @@ test.describe("Classic certification-stage presentation and Battlemon art", () =
       ge("frame = 100");
       b.phase="feedback";b.feedback={correct:true};b.faintAt=70;b.attackAt=100;b.shake=14;
       b.poof=[{x:0,y:0,vx:1,vy:1,life:10}];
-      const originalFillRect=context.fillRect,originalDraw=context.drawImage,originalFill=context.fill;
+      const originalFillRect=context.fillRect,originalDraw=context.drawImage;
       const flashes=[],monFrames=[];let signalFills=0;
-      context.fillRect=function(x,y,w,h){const style=String(context.fillStyle);if(w>=800&&(/rgba\(239/.test(style)||/rgba\(255/.test(style)))flashes.push(style);return originalFillRect.call(this,x,y,w,h);};
+      context.fillRect=function(x,y,w,h){const style=String(context.fillStyle);if(w>=800&&(/rgba\(239/.test(style)||/rgba\(255/.test(style)))flashes.push(style);if(w<=30&&h<=25&&["#fbbf24","#22c55e","#fb7185"].includes(style))signalFills++;return originalFillRect.call(this,x,y,w,h);};
       context.drawImage=function(...args){if(args[0]?.naturalWidth===768)monFrames.push({sx:args[1],alpha:context.globalAlpha});return originalDraw.call(this,...args);};
-      context.fill=function(...args){signalFills++;return originalFill.call(this,...args);};
       Math.random=()=>{throw new Error("reduced-motion draw consumed random shake");};
       try { ge("drawBattle")(); }
-      finally { Math.random=originalRandom;context.fillRect=originalFillRect;context.drawImage=originalDraw;context.fill=originalFill; }
+      finally { Math.random=originalRandom;context.fillRect=originalFillRect;context.drawImage=originalDraw; }
       return{shake:b.shake,poof:b.poof.length,flashes,monFrames,signalFills,
         states:[window.DatamonBattlePresentation.resolveTrainerPose("player",b.phase,b.feedback,false),window.DatamonBattlePresentation.resolveTrainerPose("opponent",b.phase,b.feedback,false)]};
     });

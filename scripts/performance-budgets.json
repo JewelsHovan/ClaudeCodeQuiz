@@ -11,5 +11,7 @@
   "agentArenaMaxFrameSamples": 120,
   "musicActiveFrameP95Ms": 34,
   "musicActiveFrameSamples": 90,
-  "musicMaxVoices": 24
+  "musicMaxVoices": 24,
+  "classicArenaFirstAuthoredPaintMs": 2500,
+  "classicBattlePresentationDecodedMiB": 8
 }

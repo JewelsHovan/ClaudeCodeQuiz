@@ -14,9 +14,9 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
 const DATAMON = path.join(ROOT, "datamon");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
-const RUNTIME_SCRIPTS = ["state.js", "battle-presentation.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js"];
+const RUNTIME_SCRIPTS = ["state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js"];
 const PAYLOAD_ALLOWLIST = [
-  "index.html", "game.js", "battle-presentation.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "state.js",
+  "index.html", "game.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "state.js",
   "progress.js", "dialogue-runtime.js", "dialogue.js",
   "world-art.js", "world-layout.js", "music.js",
   "portraits/*.png", "headshots/*.png", "sprites/*.png", "sprites-walk/**/*.png",
@@ -24,6 +24,7 @@ const PAYLOAD_ALLOWLIST = [
   "tiles/*.png", "props/*.png", "props/manifest.json", "props-study/*.png", "props-study/manifest.json",
   "props-wayfinding/*.png", "props-wayfinding/manifest.json",
   "battlemons/*.png", "battlemons/manifest.json",
+  "battle-arenas/*.png", "battle-arenas/manifest.json",
   "library/*.json", "library/assets/*.png", "library/assets/manifest.json",
   "environment/manifest.json", "environment/accepted/*/*.png",
 ];
@@ -49,7 +50,7 @@ function payloadFiles() {
   // promoted immutable environment batch). Private staging/review/raw paths match no pattern.
   const existing = [];
   const allowedTopDirectories = new Set([
-    "portraits", "headshots", "sprites", "sprites-walk", "sprites-sit", "tiles", "props", "props-study", "props-wayfinding", "library", "environment", "battlemons",
+    "portraits", "headshots", "sprites", "sprites-walk", "sprites-sit", "tiles", "props", "props-study", "props-wayfinding", "library", "environment", "battlemons", "battle-arenas",
   ]);
   function walk(dir, prefix = "") {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

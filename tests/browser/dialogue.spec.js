@@ -194,6 +194,7 @@ test.describe("Portrait dialogue, certification prologue, and seated challenge s
     await page.evaluate(() => {const ge=(0,eval),b=ge("battle");b.phase="question";Math.random=()=>0;ge("attemptRun")();});
     expect(await page.evaluate(slug => {const ge=(0,eval),npc=ge("npcs").find(n=>n.slug===slug);return{state:ge("state"),seated:npc._seated,restore:ge("encounterSeatRestore")};}, target.slug))
       .toEqual({state:"overworld",seated:true,restore:null});
+    await page.waitForFunction(()=>window.DatamonBattleArena.getDiagnostics().inFlightArenaCount===0);
 
     target = await positionAtSeatedNonAgent(page);
     await page.keyboard.press("Space");
@@ -216,6 +217,7 @@ test.describe("Portrait dialogue, certification prologue, and seated challenge s
     expect(await page.evaluate(slug => {const ge=(0,eval),npc=ge("npcs").find(n=>n.slug===slug);return{script:ge("dialogueSession.script.id"),seated:npc._seated,defeated:npc.defeated,restore:ge("encounterSeatRestore")};}, target.slug))
       .toEqual({script:`campaign-outcome:${target.slug}:win`,seated:true,defeated:true,restore:null});
     await progressDialogue(page, 0, "overworld");
+    await page.waitForFunction(()=>window.DatamonBattleArena.getDiagnostics().inFlightArenaCount===0);
     expect(observed.errors).toEqual([]); expect(observed.failures).toEqual([]);
   });
 

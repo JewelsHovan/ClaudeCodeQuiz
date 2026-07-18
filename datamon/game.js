@@ -778,7 +778,6 @@ let mapCv = null;        // active pre-rendered map (points to officeMapCv or li
 let officeMapCv = null;  // pre-rendered office map — built once at boot
 let libraryMapCv = null; // pre-rendered library map — built once at boot
 let battleRoomMapCv = null; // pre-rendered battle room map — built on first entry (#046)
-let battleGrad = null; // battle backdrop gradient — built once at boot
 let stepStartFx = 0, stepStartFy = 0, stepT = 1; // eased-step progress (0..1); 1 = idle
 let gaitPhase = 0; // physical gait phase (radians); distance-locked for shadows/dust/fallback
 let prevE = 0;     // previous frame's eased step progress; drives slide-free gait delta
@@ -1140,17 +1139,26 @@ function startBattle(npc, portraitLed) {
     dmgAt: 0,
     poof: [],
   };
-  // Preload encounter Battlemon sheets (classic only).
+  // Retain only this encounter's Battlemon sheets (classic only). Stale in-flight decodes
+  // cannot repopulate a later encounter, and Agent Operations releases classic residents.
   // No mon PNGs load on the title screen; only the encounter's 1-3 sheets load here.
-  if (typeof DatamonBattlePresentation !== "undefined" && !isAgent) {
-    var seenIds = {};
-    for (var mi = 0; mi < battle.mons.length; mi++) {
-      var mon = battle.mons[mi];
-      if (mon.id && !seenIds[mon.id]) {
-        seenIds[mon.id] = true;
-        DatamonBattlePresentation.requestSheet(mon.id);
+  if (typeof DatamonBattlePresentation !== "undefined") {
+    var seenIds = {}, encounterIds = [];
+    if (!isAgent) {
+      for (var mi = 0; mi < battle.mons.length; mi++) {
+        var mon = battle.mons[mi];
+        if (mon.id && !seenIds[mon.id]) { seenIds[mon.id] = true; encounterIds.push(mon.id); }
       }
     }
+    DatamonBattlePresentation.setActiveEncounter(encounterIds);
+    for (var assetIndex = 0; assetIndex < encounterIds.length; assetIndex++) {
+      DatamonBattlePresentation.requestSheet(encounterIds[assetIndex]);
+    }
+  }
+  // One authored domain arena is requested per classic encounter. It is presentation-only,
+  // consumes no RNG, and the loader keeps at most one decoded background resident.
+  if (typeof DatamonBattleArena !== "undefined" && !isAgent) {
+    DatamonBattleArena.requestArena(monDomain);
   }
   // Agent Operations: initialise reducer-owned encounter state, presentation arena,
   // and draw bridge, then route the initial turn through the one adapter.
@@ -5031,7 +5039,7 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
 // Draw a trainer bottom-anchored at (cx, baseY). Existing callers omit poseParams;
 // classic battles provide one frozen semantic pose. Decoded alpha bounds make `h` the
 // visible character height rather than the transparent source-square height.
-function drawTrainer(slug, cx, baseY, h, bobAmp, poseParams, mirrorPose) {
+function drawTrainer(slug, cx, baseY, h, bobAmp, poseParams, mirrorPose, imageOverride) {
   var yOff = bobAmp ? Math.sin(frame / 16) * bobAmp : 0;
   var dx = poseParams ? poseParams.dx : 0;
   var dy = poseParams ? poseParams.dy : 0;
@@ -5041,7 +5049,7 @@ function drawTrainer(slug, cx, baseY, h, bobAmp, poseParams, mirrorPose) {
   var alpha = poseParams ? poseParams.alpha / 255 : 1;
   if (mirrorPose) { dx = -dx; rotation = -rotation; }
 
-  var image = sprites[slug];
+  var image = imageOverride || sprites[slug];
   var bounds = image && typeof DatamonBattlePresentation !== "undefined"
     ? DatamonBattlePresentation.computeAlphaBounds(image) : null;
   var sourceX = bounds ? bounds.x : 0;
@@ -6595,42 +6603,30 @@ function drawBattle() {
   var mon = currentMon();
   var monColor = TYPE_COLORS[mon.domain] || typeColor;
 
-  // ---- Certification proving-ground backdrop ----
+  // ---- Authored certification arena ----
+  var Arena = typeof DatamonBattleArena !== "undefined" ? DatamonBattleArena : null;
   ctx.fillStyle = "#07111f";
   ctx.fillRect(-20, 0, CANVAS_W + 40, CANVAS_H);
-  ctx.fillStyle = "#0b1729";
-  ctx.fillRect(-20, 0, CANVAS_W + 40, GEO ? GEO.STAGE_BOTTOM : 432);
-
-  // Depth bands
-  var depthColors = ["#14243a", "#102036", "#0c1a2d"];
-  for (var di = 0; di < 3; di++) {
-    ctx.fillStyle = depthColors[di];
-    ctx.fillRect(-20, 118 + di * 126, CANVAS_W + 40, 1);
+  if (Arena) Arena.drawArena(ctx, mon.domain, 0, 0, CANVAS_W, GEO ? GEO.STAGE_BOTTOM : 432);
+  else {
+    ctx.fillStyle = "#0b1729";
+    ctx.fillRect(0, 0, CANVAS_W, GEO ? GEO.STAGE_BOTTOM : 432);
   }
-
-  // Evidence ring and conduit use the active species domain, not a decorative fixed hue.
-  if (GEO) {
-    ctx.globalAlpha = 0.62;
-    ctx.strokeStyle = monColor;
-    ctx.lineWidth = 3;
+  // A restrained projector core gives intro a focal endpoint before sendout. It is static
+  // under reduced motion and never replaces Battlemon semantic frames.
+  if (GEO && b.phase === "intro") {
+    var beaconPhase = reducedMotion ? 0 : Math.floor(frame / 8) % 3;
+    ctx.fillStyle = monColor; ctx.globalAlpha = 0.64;
     ctx.beginPath();
-    ctx.ellipse(GEO.BATTLEMON_CENTER_X, GEO.BATTLEMON_CENTER_Y, 88, 85, 0, 0, 7);
-    ctx.stroke();
+    ctx.moveTo(GEO.BATTLEMON_CENTER_X, GEO.BATTLEMON_CENTER_Y + 5 - beaconPhase);
+    ctx.lineTo(GEO.BATTLEMON_CENTER_X + 7, GEO.BATTLEMON_CENTER_Y + 12);
+    ctx.lineTo(GEO.BATTLEMON_CENTER_X, GEO.BATTLEMON_CENTER_Y + 19 + beaconPhase);
+    ctx.lineTo(GEO.BATTLEMON_CENTER_X - 7, GEO.BATTLEMON_CENTER_Y + 12);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 0.28;
+    ctx.fillRect(GEO.BATTLEMON_CENTER_X - 13 - beaconPhase * 2, GEO.BATTLEMON_CENTER_Y + 27,
+      26 + beaconPhase * 4, 2);
     ctx.globalAlpha = 1;
-    ctx.strokeStyle = "rgba(251,191,36,0.31)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(GEO.BATTLEMON_CENTER_X, GEO.BATTLEMON_CENTER_Y, 70, 67, 0, 0, 7);
-    ctx.stroke();
-
-    // Conduit packets
-    ctx.fillStyle = "rgba(251,191,36,0.59)";
-    var conduitStartX = GEO.PLAYER_ANCHOR[0] + 50;
-    var conduitEndX = GEO.BATTLEMON_CENTER_X - 64;
-    for (var cx = conduitStartX; cx < conduitEndX; cx += 34) {
-      var cy = 360 - (cx - conduitStartX) / 4;
-      ctx.fillRect(cx, cy, 8, 4);
-    }
   }
 
   // ---- Entrance easing (reduced motion: no slide) ----
@@ -6641,26 +6637,8 @@ function drawBattle() {
     oppX += (1 - ee) * 220;
     plyX -= (1 - ee) * 220;
   }
-
-  // ---- Grounding platforms ----
-  var oppBaseY = GEO ? GEO.OPPONENT_ANCHOR[1] : 260;
+  var oppBaseY = GEO ? GEO.OPPONENT_ANCHOR[1] : 208;
   var plyBaseY = GEO ? GEO.PLAYER_ANCHOR[1] : 408;
-  ctx.fillStyle = "rgba(100,116,139,0.22)";
-  ctx.beginPath(); ctx.ellipse(oppX, oppBaseY - 8, 77, 18, 0, 0, 7); ctx.fill();
-  ctx.strokeStyle = "rgba(148,163,184,0.31)"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.ellipse(oppX, oppBaseY - 8, 77, 18, 0, 0, 7); ctx.stroke();
-  ctx.fillStyle = "rgba(100,116,139,0.18)";
-  ctx.beginPath(); ctx.ellipse(plyX, plyBaseY - 8, 77, 18, 0, 0, 7); ctx.fill();
-  ctx.strokeStyle = "rgba(148,163,184,0.27)"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.ellipse(plyX, plyBaseY - 8, 77, 18, 0, 0, 7); ctx.stroke();
-
-  // Battlemon plinth shadow
-  if (GEO) {
-    ctx.fillStyle = "rgba(0,0,0,0.31)";
-    ctx.beginPath();
-    ctx.ellipse(GEO.BATTLEMON_CENTER_X, GEO.BATTLEMON_CENTER_Y + 64, 49, 10, 0, 0, 7);
-    ctx.fill();
-  }
 
   // ---- Resolve trainer poses from existing combat state only ----
   var impactActive = !!(b.attackAt && frame >= b.attackAt && frame - b.attackAt < 16);
@@ -6671,14 +6649,16 @@ function drawBattle() {
   var oppParams = BPS ? BPS.POSE_PARAMS[opponentPose] : null;
   var plyParams = BPS ? BPS.POSE_PARAMS[playerPose] : null;
 
-  // Transform around the feet; the opponent pose mirrors direction without allocating a copy.
+  // The existing rear walk frame turns the candidate into the confrontation without generating
+  // new identity art. It is already selected-player-lazy; missing frames keep the front fallback.
+  var playerRear = walkAnim[player.slug] && walkAnim[player.slug].up && walkAnim[player.slug].up[0];
   drawTrainer(b.npc.slug, oppX, oppBaseY, oppH, reducedMotion ? 0 : 2, oppParams, true);
-  drawTrainer(player.slug, plyX, plyBaseY, plyH, 0, plyParams, false);
+  drawTrainer(player.slug, plyX, plyBaseY, plyH, 0, plyParams, false, playerRear || null);
 
-  // Static semantic marks remain visible under reduced motion; only their movement is removed.
+  // Semantic cues are grounded at each authored platform rather than floating debug chevrons.
   if (BPS) {
-    drawPoseSignal(plyX, plyBaseY - plyH * 0.72, "player", "#fbbf24", playerPose);
-    drawPoseSignal(oppX, oppBaseY - oppH * 0.72, "opponent", typeColor, opponentPose);
+    drawPoseSignal(plyX, plyBaseY - 5, "player", "#fbbf24", playerPose);
+    drawPoseSignal(oppX, oppBaseY - 5, "opponent", typeColor, opponentPose);
   }
 
   // ---- Battlemon rendering: state derives from existing timestamps ----
@@ -6734,48 +6714,42 @@ function drawBattle() {
     ctx.globalAlpha = 1;
   }
 
-  // ---- Opponent info plate (GEO: [24,24,366,112]) ----
-  var oppPlate = GEO ? GEO.OPPONENT_PLATE : [36, 36, 366, 120];
-  ctx.fillStyle = "rgba(15,23,42,0.9)";
-  ctx.fillRect(oppPlate[0], oppPlate[1], oppPlate[2] - oppPlate[0], oppPlate[3] - oppPlate[1]);
-  ctx.strokeStyle = typeColor; ctx.lineWidth = 2;
-  ctx.strokeRect(oppPlate[0], oppPlate[1], oppPlate[2] - oppPlate[0], oppPlate[3] - oppPlate[1]);
-  ctx.drawImage(pixelHead(b.npc.slug, 56), oppPlate[0] + 12, oppPlate[1] + 12, 56, 56);
-  ctx.strokeStyle = typeColor; ctx.lineWidth = 2;
-  ctx.strokeRect(oppPlate[0] + 12, oppPlate[1] + 12, 56, 56);
-  var oTx = oppPlate[0] + 80;
-  ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 16px monospace"; ctx.textAlign = "left";
-  ctx.fillText(displayName(b.npc.slug), oTx, oppPlate[1] + 26);
-  ctx.fillStyle = typeColor; ctx.font = "bold 12px monospace";
-  ctx.fillText(b.npc.type + " TRAINER · " + TYPE_NAMES[b.npc.type], oTx, oppPlate[1] + 46);
-  ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
-  ctx.fillText(mon.name.toUpperCase() + " Lv." + mon.level, oTx, oppPlate[1] + 64);
+  // ---- Compact diegetic telemetry modules ----
+  var oppPlate = GEO ? GEO.OPPONENT_PLATE : [18, 16, 310, 86];
+  var oW = oppPlate[2] - oppPlate[0], oH = oppPlate[3] - oppPlate[1];
+  ctx.fillStyle = "rgba(5,12,26,0.94)"; ctx.fillRect(oppPlate[0], oppPlate[1], oW, oH);
+  ctx.fillStyle = typeColor; ctx.fillRect(oppPlate[0], oppPlate[1], oW, 4);
+  ctx.strokeStyle = "rgba(226,232,240,0.62)"; ctx.lineWidth = 1; ctx.strokeRect(oppPlate[0], oppPlate[1], oW, oH);
+  ctx.drawImage(pixelHead(b.npc.slug, 48), oppPlate[0] + 8, oppPlate[1] + 13, 44, 44);
+  ctx.strokeStyle = typeColor; ctx.lineWidth = 2; ctx.strokeRect(oppPlate[0] + 8, oppPlate[1] + 13, 44, 44);
+  var oTx = oppPlate[0] + 62, opponentName = displayName(b.npc.slug);
+  ctx.fillStyle = "#f1f5f9"; ctx.font = "bold " + fitFont(opponentName, oW - 76, 14) + "px monospace"; ctx.textAlign = "left";
+  ctx.fillText(opponentName, oTx, oppPlate[1] + 22);
+  ctx.fillStyle = typeColor; ctx.font = "bold 10px monospace";
+  ctx.fillText(b.npc.type + " // " + TYPE_NAMES[b.npc.type], oTx, oppPlate[1] + 39);
+  ctx.fillStyle = "#b6c2d5"; ctx.font = "10px monospace";
+  ctx.fillText(mon.name.toUpperCase() + "  Lv." + mon.level, oTx, oppPlate[1] + 56);
   for (var i = 0; i < b.mons.length; i++) {
     ctx.fillStyle = b.mons[i].alive ? typeColor : "#334155";
-    ctx.beginPath();
-    ctx.arc(oppPlate[2] - 32 - (b.mons.length - 1 - i) * 16, oppPlate[1] + 56, 5, 0, 7);
-    ctx.fill();
+    ctx.fillRect(oppPlate[2] - 13 - (b.mons.length - i) * 11, oppPlate[1] + 63, 7, 3);
   }
 
-  // ---- Player info plate (GEO: [430,330,776,404]) ----
-  var plyPlate = GEO ? GEO.PLAYER_PLATE : [430, 300, 776, 370];
+  var plyPlate = GEO ? GEO.PLAYER_PLATE : [500, 340, 782, 412];
   var pW = plyPlate[2] - plyPlate[0], pH = plyPlate[3] - plyPlate[1];
-  ctx.fillStyle = "rgba(15,23,42,0.9)";
-  ctx.fillRect(plyPlate[0], plyPlate[1], pW, pH);
-  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2;
-  ctx.strokeRect(plyPlate[0], plyPlate[1], pW, pH);
-  ctx.drawImage(pixelHead(player.slug, 48), plyPlate[0] + 8, plyPlate[1] + 12, 48, 48);
-  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2;
-  ctx.strokeRect(plyPlate[0] + 8, plyPlate[1] + 12, 48, 48);
-  var pTx = plyPlate[0] + 68;
-  ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 15px monospace"; ctx.textAlign = "left";
-  ctx.fillText("YOU (" + firstName(player.slug) + ")", pTx, plyPlate[1] + 24);
+  ctx.fillStyle = "rgba(5,12,26,0.94)"; ctx.fillRect(plyPlate[0], plyPlate[1], pW, pH);
+  ctx.fillStyle = "#ef5e6a"; ctx.fillRect(plyPlate[0], plyPlate[1], pW, 4);
+  ctx.strokeStyle = "rgba(226,232,240,0.62)"; ctx.lineWidth = 1; ctx.strokeRect(plyPlate[0], plyPlate[1], pW, pH);
+  ctx.drawImage(pixelHead(player.slug, 48), plyPlate[0] + 8, plyPlate[1] + 14, 44, 44);
+  ctx.strokeStyle = "#ef5e6a"; ctx.lineWidth = 2; ctx.strokeRect(plyPlate[0] + 8, plyPlate[1] + 14, 44, 44);
+  var pTx = plyPlate[0] + 62;
+  ctx.fillStyle = "#f1f5f9"; ctx.font = "bold 13px monospace"; ctx.textAlign = "left";
+  ctx.fillText("YOU // " + firstName(player.slug).toUpperCase(), pTx, plyPlate[1] + 22);
   var maxHp = battleMaxHp(b);
-  drawHPBar(pTx, plyPlate[1] + 40, 175, 12, Math.min(1, player.dispHp / maxHp));
-  ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
-  ctx.fillText(Math.round(player.dispHp) + "/" + maxHp, pTx + 182, plyPlate[1] + 51);
+  drawHPBar(pTx, plyPlate[1] + 32, 142, 10, Math.min(1, player.dispHp / maxHp));
+  ctx.fillStyle = "#b6c2d5"; ctx.font = "10px monospace";
+  ctx.fillText(Math.round(player.dispHp) + "/" + maxHp, pTx + 150, plyPlate[1] + 41);
   ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 9px monospace";
-  ctx.fillText("MISS -" + battleWrongDamage(b) + " · CORRECT +" + battleCorrectHeal(b) + " HP", pTx, plyPlate[1] + 66);
+  ctx.fillText("MISS -" + battleWrongDamage(b) + "  //  CORRECT +" + battleCorrectHeal(b) + " HP", pTx, plyPlate[1] + 59);
 
   // floating damage number
   if (b.dmgAt) {
@@ -6874,35 +6848,25 @@ function drawBattle() {
   ctx.restore();
 }
 
-// Draw a semantic pose signal mark near a trainer.
+// Grounded semantic cue: the authored platforms carry state instead of floating chevrons.
 function drawPoseSignal(cx, cy, side, color, pose) {
   if (pose === "idle") return;
   var dir = side === "player" ? 1 : -1;
+  ctx.fillStyle = pose === "hit" ? "#fb7185" : color;
   if (pose === "challenge" || pose === "command") {
     for (var i = 0; i < 3; i++) {
-      var x = cx + dir * (34 + i * 9);
-      ctx.beginPath();
-      ctx.moveTo(x, cy - 7);
-      ctx.lineTo(x + dir * 7, cy);
-      ctx.lineTo(x, cy + 7);
-      if (pose === "command") ctx.closePath();
-      ctx.strokeStyle = color;
-      ctx.fillStyle = color;
-      ctx.lineWidth = 2;
-      if (pose === "command") ctx.fill(); else ctx.stroke();
+      var x = cx + dir * (25 + i * 10);
+      ctx.fillRect(x - (dir < 0 ? 6 : 0), cy - i * 2, pose === "command" ? 7 : 5, 2);
     }
   } else if (pose === "win") {
-    ctx.strokeStyle = color; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(cx - 12, cy); ctx.lineTo(cx - 12, cy - 18); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 27); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx + 12, cy); ctx.lineTo(cx + 12, cy - 18); ctx.stroke();
+    ctx.fillRect(cx - 12, cy - 13, 3, 13);
+    ctx.fillRect(cx - 1, cy - 21, 3, 21);
+    ctx.fillRect(cx + 10, cy - 13, 3, 13);
   } else if (pose === "loss") {
-    ctx.strokeStyle = color; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(cx - 10, cy - 8); ctx.lineTo(cx + 10, cy + 8); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx + 10, cy - 8); ctx.lineTo(cx - 10, cy + 8); ctx.stroke();
+    ctx.fillRect(cx - 9, cy - 5, 18, 3);
   } else if (pose === "hit") {
-    ctx.strokeStyle = "#fb7185"; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(cx - 12, cy - 10); ctx.lineTo(cx + 12, cy + 10); ctx.stroke();
+    ctx.save(); ctx.translate(cx, cy - 5); ctx.rotate(-dir * 0.45);
+    ctx.fillRect(-12, -2, 24, 4); ctx.restore();
   }
 }
 
@@ -7283,9 +7247,6 @@ function loop(t) {
 ctx.fillStyle = "#0f172a"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 20px monospace"; ctx.textAlign = "center";
 ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
-battleGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-battleGrad.addColorStop(0, "#1e293b");
-battleGrad.addColorStop(1, "#0f172a");
 // Initialize presentation systems without creating an AudioContext before user activation.
 if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.init();
 if (typeof DatamonMusic !== "undefined") DatamonMusic.init({ muted: muted, scene: "title" });
@@ -7301,6 +7262,8 @@ var hdOfficePromise = hdManifestPromise.then(function() {
 // a classic encounter has selected its 1–3 immutable species IDs.
 var battlePresentationManifestPromise = (typeof DatamonBattlePresentation !== "undefined")
   ? DatamonBattlePresentation.loadManifest() : Promise.resolve(null);
+var battleArenaManifestPromise = (typeof DatamonBattleArena !== "undefined")
+  ? DatamonBattleArena.loadManifest() : Promise.resolve(null);
 // Prewarm only the saved player without delaying the title screen. A new run preloads its
 // highlighted character when character select opens.
 loadWalkAnim(getSave()?.player);
@@ -7311,6 +7274,7 @@ Promise.all([
   loadWayfindingAssets(),
   hdOfficePromise,
   battlePresentationManifestPromise,
+  battleArenaManifestPromise,
   // Load only shared library dependencies needed by the office entrance
   fetch("library/assets/manifest.json")
     .then(r => (r.ok ? r.json() : []))

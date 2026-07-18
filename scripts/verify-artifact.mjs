@@ -9,7 +9,7 @@ import vm from "node:vm";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
-const RUNTIME_SCRIPTS = ["state.js", "battle-presentation.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js"];
+const RUNTIME_SCRIPTS = ["state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js"];
 
 function walk(dir, sub = "", result = []) {
   const current = path.join(dir, sub);
@@ -43,7 +43,7 @@ const expectedManifest = payload.map(file => `${file.path}\t${file.size}`).join(
 const actualManifest = fs.readFileSync(path.join(DIST, "file-manifest.txt"), "utf8");
 const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
 const payloadPaths = new Set(payload.map(file => file.path));
-const requiredRuntime = ["index.html", "state.js", "battle-presentation.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js", "sprites-sit/manifest.json", "props-study/manifest.json", "props-wayfinding/manifest.json", "battlemons/manifest.json"];
+const requiredRuntime = ["index.html", "state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js", "sprites-sit/manifest.json", "props-study/manifest.json", "props-wayfinding/manifest.json", "battlemons/manifest.json", "battle-arenas/manifest.json"];
 for (const runtimeFile of requiredRuntime) {
   if (!payloadPaths.has(runtimeFile)) throw new Error(`Missing packaged runtime file: dist/${runtimeFile}`);
 }
@@ -347,6 +347,96 @@ if (battlemonManifestBytes.toString("utf8") !== JSON.stringify(battlemonManifest
   throw new Error("Packaged Battlemon manifest serialization is not canonical");
 }
 
+// The generated domain theaters are independently pinned rather than trusted through their
+// own manifest: exact model/review/batch, taxonomy, files, RGB dimensions, bytes, and aggregate.
+const ARENA_DOMAINS = ["AGENT", "MCP", "CONFIG", "PROMPT", "CONTEXT"];
+const arenaContext = { window: {}, console };
+vm.runInNewContext(fs.readFileSync(path.join(DIST, "battle-arena.js"), "utf8"), arenaContext);
+const packagedArenaApi = arenaContext.window.DatamonBattleArena;
+if (!packagedArenaApi || JSON.stringify(Array.from(packagedArenaApi.DOMAINS)) !== JSON.stringify(ARENA_DOMAINS)) {
+  throw new Error("Packaged battle-arena taxonomy is not canonical");
+}
+const arenaManifestPath = path.join(DIST, "battle-arenas/manifest.json");
+const arenaManifestBytes = fs.readFileSync(arenaManifestPath);
+const arenaManifest = JSON.parse(arenaManifestBytes);
+const ARENA_ROOT_KEYS = ["assetCount", "authorizationCapUsd", "authorizationSpendUsd", "batch", "batchSha256", "domains", "entries", "format", "generationCostUsd", "height", "model", "paletteMax", "priorArtSpendUsd", "provenance", "provider", "review", "reviewState", "schemaVersion", "width"];
+const ARENA_ENTRY_KEYS = ["costUsd", "domain", "file", "height", "id", "promptSha256", "promptVersion", "rawSha256", "referenceSha256", "sha256", "width"];
+const EXPECTED_ARENA_REVIEW_SHA256 = "d0ae7e26a4408e97c1419f7214e4bae1fb84616cecc64b50c64a0729c6706aee";
+const EXPECTED_ARENA_GRAYSCALE_SHA256 = "81b5fc61d8f2dd8571f3e5a877c7b9ed2d6bf108ca24030149bb14e5cada670a";
+const EXPECTED_ARENA_BATCH_SHA256 = "e5115a1545f9554bc0465c167da8d0c02f46787ff09cc97652bdef3519a05837";
+const EXPECTED_ARENA_COSTS = [0.178344, 0.180256, 0.17836, 0.178376, 0.178368];
+const EXPECTED_ARENA_PROMPT_VERSIONS = [2, 1, 2, 2, 2];
+const EXPECTED_ARENA_PROMPT_HASHES = [
+  "3483ddaeabd106962831e3bf0798db9507a2ab1b1c5ec734b83f0731eb0b8b72", "e9111f2fe56a68b35ab392cf50f4aecb5cc3c003a0c386b06998a7b9df5be3d3",
+  "60027a7f5a9a46c60680a6cf70e914b08b99e8eb41a4a2c63b26838591f1fa19", "ab5e074a799d1a0d1640e1dc8c7d6f2db2b15fb19ec8ed2fcc4e29b10aa17beb",
+  "ebe83fb0ad0bba1cccf048c14be549cce4160a96cc8bebb6b1f58d9c4daf68d5",
+];
+const EXPECTED_ARENA_REFERENCE_HASHES = [
+  "5f3bd5d12429d0844690adec6553973be8125b8600666df679d36c7819d0fd16", "1012e391f2d42ef1dd160427cd62f12964b6d7a6747f2e57679abce2f00cf8d6",
+  "5f3bd5d12429d0844690adec6553973be8125b8600666df679d36c7819d0fd16", "5f3bd5d12429d0844690adec6553973be8125b8600666df679d36c7819d0fd16",
+  "5f3bd5d12429d0844690adec6553973be8125b8600666df679d36c7819d0fd16",
+];
+const EXPECTED_ARENA_RAW_HASHES = [
+  "c2c5d41d451a4fc670f481eb7bc13c030f368a7256f19ce033ae103b6afc1a16", "5f3bd5d12429d0844690adec6553973be8125b8600666df679d36c7819d0fd16",
+  "0753f68c501d7470302ffbd03a2b32c94c79450e1b3e42e68734ef7d8c00668e", "991448508c5a795f409cb62f64b1912edc5c919e809d59d6ea2fc235b6d1413b",
+  "d63b16e7fc514e5df37600db6f86bfd988e7609ac9a018f9d46055f80f1cb6a5",
+];
+const EXPECTED_ARENA_IMAGE_HASHES = [
+  "4ee9fecdad95275f848c78f772118f68fb567114c5fbec3d41493526a6857002", "4456b708ddc1ec09eb25b6a6e4334721db6380233ef9315ad703557ad7292434",
+  "cdff01a5f03d30113b49ffec90158bff4a750ad7fde34e3b65025ed7db13046a", "399dcd1e2ad5d6b87519a0540261b4c88ebbede53e35753047a8fa740fa7d105",
+  "d28bc538462f230854e76626880306deedc09f8628212ae3f142645d9de4d0f9",
+];
+if (JSON.stringify(Object.keys(arenaManifest).sort()) !== JSON.stringify(ARENA_ROOT_KEYS) ||
+    arenaManifest.schemaVersion !== 1 || arenaManifest.batch !== "classic-domain-arenas-v1" ||
+    arenaManifest.reviewState !== "accepted" || arenaManifest.provider !== "openrouter" ||
+    arenaManifest.model !== "openai/gpt-5.4-image-2" ||
+    arenaManifest.provenance !== "openrouter:openai/gpt-5.4-image-2+deterministic-pillow-arena-v1" ||
+    arenaManifest.width !== 1600 || arenaManifest.height !== 864 || arenaManifest.format !== "RGB" ||
+    arenaManifest.paletteMax !== 256 || arenaManifest.assetCount !== 5 ||
+    arenaManifest.authorizationCapUsd !== 50 || arenaManifest.priorArtSpendUsd !== 5.917484 ||
+    arenaManifest.generationCostUsd !== 0.893704 || arenaManifest.authorizationSpendUsd !== 6.811188 ||
+    JSON.stringify(arenaManifest.domains) !== JSON.stringify(ARENA_DOMAINS) ||
+    arenaManifest.review?.reviewed !== true || arenaManifest.review?.contactSheetSha256 !== EXPECTED_ARENA_REVIEW_SHA256 ||
+    arenaManifest.review?.grayscaleContactSheetSha256 !== EXPECTED_ARENA_GRAYSCALE_SHA256 ||
+    JSON.stringify(Object.keys(arenaManifest.review || {}).sort()) !== JSON.stringify(["contactSheetSha256", "grayscaleContactSheetSha256", "reviewed"]) ||
+    arenaManifest.batchSha256 !== EXPECTED_ARENA_BATCH_SHA256 || !Array.isArray(arenaManifest.entries) || arenaManifest.entries.length !== 5 ||
+    !packagedArenaApi.normalizeManifest(arenaManifest)) {
+  throw new Error("Packaged battle arena manifest identity/schema is not canonical");
+}
+const arenaAggregate = createHash("sha256"), arenaHashes = new Set(), declaredArenaFiles = [];
+let arenaBytes = 0;
+for (let index = 0; index < ARENA_DOMAINS.length; index++) {
+  const domain = ARENA_DOMAINS[index], id = domain.toLowerCase(), entry = arenaManifest.entries[index];
+  const expectedPath = `battle-arenas/${id}.png`;
+  if (!entry || JSON.stringify(Object.keys(entry).sort()) !== JSON.stringify(ARENA_ENTRY_KEYS) ||
+      entry.id !== id || entry.domain !== domain || entry.file !== `${id}.png` ||
+      entry.width !== 1600 || entry.height !== 864 || entry.costUsd !== EXPECTED_ARENA_COSTS[index] ||
+      entry.promptVersion !== EXPECTED_ARENA_PROMPT_VERSIONS[index] ||
+      entry.promptSha256 !== EXPECTED_ARENA_PROMPT_HASHES[index] ||
+      entry.referenceSha256 !== EXPECTED_ARENA_REFERENCE_HASHES[index] ||
+      entry.rawSha256 !== EXPECTED_ARENA_RAW_HASHES[index] || entry.sha256 !== EXPECTED_ARENA_IMAGE_HASHES[index]) {
+    throw new Error(`Noncanonical packaged arena declaration at index ${index}`);
+  }
+  if (!payloadPaths.has(expectedPath)) throw new Error(`Missing packaged arena: ${expectedPath}`);
+  const data = fs.readFileSync(path.join(DIST, expectedPath)); const hash = createHash("sha256").update(data).digest("hex");
+  const png = data.length >= 26 && data.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+  if (hash !== entry.sha256 || !png || data.readUInt32BE(16) !== 1600 || data.readUInt32BE(20) !== 864 || data[24] !== 8 || data[25] !== 2) {
+    throw new Error(`Packaged arena bytes/dimensions mismatch: ${expectedPath}`);
+  }
+  arenaAggregate.update(data); arenaHashes.add(hash); arenaBytes += data.length; declaredArenaFiles.push(expectedPath);
+}
+if (arenaAggregate.digest("hex") !== EXPECTED_ARENA_BATCH_SHA256 || arenaHashes.size !== 5 || arenaBytes > 8 * 1024 * 1024) {
+  throw new Error("Packaged arena aggregate/distinctness/byte budget mismatch");
+}
+const packagedArenaFiles = payload.filter(file => /^battle-arenas\/.*\.png$/.test(file.path)).map(file => file.path).sort();
+if (JSON.stringify(packagedArenaFiles) !== JSON.stringify(declaredArenaFiles.sort()) ||
+    payload.some(file => file.path.startsWith("battle-arenas-source/") || file.path.startsWith(".battle-arena-ai-raw/"))) {
+  throw new Error("Packaged arena file set or private-source exclusion mismatch");
+}
+if (arenaManifestBytes.toString("utf8") !== JSON.stringify(arenaManifest, null, 2) + "\n") {
+  throw new Error("Packaged arena manifest serialization is not canonical");
+}
+
 const headshotTombstones = payload.filter(file => /^headshots\/[^/]+\.png$/.test(file.path));
 const tombstoneSlugs = headshotTombstones.map(file => path.basename(file.path, ".png")).sort();
 if (JSON.stringify(tombstoneSlugs) !== JSON.stringify(portraitSlugs)) {
@@ -364,6 +454,7 @@ for (const file of headshotTombstones) {
 
 const forbiddenSegments = [
   ".headshots-offline/", ".environment-work/", ".gba-gen-cache/", ".walk-gen-cache/",
+  ".battlemon-ai-raw/", ".battle-arena-ai-raw/", "battle-arenas-source/",
   ".design/refs/", "/raw/", "/review/", "/history/", "contact-sheet",
 ];
 for (const file of payload) {

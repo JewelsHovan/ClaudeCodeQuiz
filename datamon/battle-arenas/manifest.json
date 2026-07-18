@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "batch": "classic-domain-arenas-v1",
+  "reviewState": "accepted",
+  "review": {
+    "contactSheetSha256": "d0ae7e26a4408e97c1419f7214e4bae1fb84616cecc64b50c64a0729c6706aee",
+    "grayscaleContactSheetSha256": "81b5fc61d8f2dd8571f3e5a877c7b9ed2d6bf108ca24030149bb14e5cada670a",
+    "reviewed": true
+  },
+  "provider": "openrouter",
+  "model": "openai/gpt-5.4-image-2",
+  "provenance": "openrouter:openai/gpt-5.4-image-2+deterministic-pillow-arena-v1",
+  "width": 1600,
+  "height": 864,
+  "format": "RGB",
+  "paletteMax": 256,
+  "assetCount": 5,
+  "domains": [
+    "AGENT",
+    "MCP",
+    "CONFIG",
+    "PROMPT",
+    "CONTEXT"
+  ],
+  "entries": [
+    {
+      "id": "agent",
+      "domain": "AGENT",
+      "file": "agent.png",
+      "promptVersion": 2,
+      "promptSha256": "3483ddaeabd106962831e3bf0798db9507a2ab1b1c5ec734b83f0731eb0b8b72",
+      "referenceSha256": "5f3bd5d12429d0844690adec6553973be8125b8600666df679d36c7819d0fd16",
+      "rawSha256": "c2c5d41d451a4fc670f481eb7bc13c030f368a7256f19ce033ae103b6afc1a16",
+      "costUsd": 0.178344,
+      "sha256": "4ee9fecdad95275f848c78f772118f68fb567114c5fbec3d41493526a6857002",
+      "width": 1600,
+      "height": 864
+    },
+    {
+      "id": "mcp",
+      "domain": "MCP",
+      "file": "mcp.png",
+      "promptVersion": 1,
+      "promptSha256": "e9111f2fe56a68b35ab392cf50f4aecb5cc3c003a0c386b06998a7b9df5be3d3",
+      "referenceSha256": "1012e391f2d42ef1dd160427cd62f12964b6d7a6747f2e57679abce2f00cf8d6",
+      "rawSha256": "5f3bd5d12429d0844690adec6553973be8125b8600666df679d36c7819d0fd16",
+      "costUsd": 0.180256,
+      "sha256": "4456b708ddc1ec09eb25b6a6e4334721db6380233ef9315ad703557ad7292434",
+      "width": 1600,
+      "height": 864
+    },
+    {
+      "id": "config",
+      "domain": "CONFIG",
+      "file": "config.png",
+      "promptVersion": 2,
+      "promptSha256": "60027a7f5a9a46c60680a6cf70e914b08b99e8eb41a4a2c63b26838591f1fa19",
+      "referenceSha256": "5f3bd5d12429d0844690adec6553973be8125b8600666df679d36c7819d0fd16",
+      "rawSha256": "0753f68c501d7470302ffbd03a2b32c94c79450e1b3e42e68734ef7d8c00668e",
+      "costUsd": 0.17836,
+      "sha256": "cdff01a5f03d30113b49ffec90158bff4a750ad7fde34e3b65025ed7db13046a",
+      "width": 1600,
+      "height": 864
+    },
+    {
+      "id": "prompt",
+      "domain": "PROMPT",
+      "file": "prompt.png",
+      "promptVersion": 2,
+      "promptSha256": "ab5e074a799d1a0d1640e1dc8c7d6f2db2b15fb19ec8ed2fcc4e29b10aa17beb",
+      "referenceSha256": "5f3bd5d12429d0844690adec6553973be8125b8600666df679d36c7819d0fd16",
+      "rawSha256": "991448508c5a795f409cb62f64b1912edc5c919e809d59d6ea2fc235b6d1413b",
+      "costUsd": 0.178376,
+      "sha256": "399dcd1e2ad5d6b87519a0540261b4c88ebbede53e35753047a8fa740fa7d105",
+      "width": 1600,
+      "height": 864
+    },
+    {
+      "id": "context",
+      "domain": "CONTEXT",
+      "file": "context.png",
+      "promptVersion": 2,
+      "promptSha256": "ebe83fb0ad0bba1cccf048c14be549cce4160a96cc8bebb6b1f58d9c4daf68d5",
+      "referenceSha256": "5f3bd5d12429d0844690adec6553973be8125b8600666df679d36c7819d0fd16",
+      "rawSha256": "d63b16e7fc514e5df37600db6f86bfd988e7609ac9a018f9d46055f80f1cb6a5",
+      "costUsd": 0.178368,
+      "sha256": "d28bc538462f230854e76626880306deedc09f8628212ae3f142645d9de4d0f9",
+      "width": 1600,
+      "height": 864
+    }
+  ],
+  "batchSha256": "e5115a1545f9554bc0465c167da8d0c02f46787ff09cc97652bdef3519a05837",
+  "authorizationCapUsd": 50,
+  "priorArtSpendUsd": 5.917484,
+  "generationCostUsd": 0.893704,
+  "authorizationSpendUsd": 6.811188
+}

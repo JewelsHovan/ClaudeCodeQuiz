@@ -39,6 +39,13 @@ function loadBattlePresentationValidator() {
   return context.window.DatamonBattlePresentation;
 }
 
+function loadBattleArenaValidator() {
+  const source = fs.readFileSync(fromRoot("datamon/battle-arena.js"), "utf8");
+  const context = { window: {}, console };
+  vm.runInNewContext(source, context, { filename: "datamon/battle-arena.js" });
+  return context.window.DatamonBattleArena;
+}
+
 function paeth(a, b, c) {
   const p = a + b - c;
   const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
@@ -116,6 +123,7 @@ const propManifest = readJson("datamon/props/manifest.json");
 const libraryManifest = readJson("datamon/library/assets/manifest.json");
 const battlemonManifest = readJson("datamon/battlemons/manifest.json");
 const battlemonSourceManifest = readJson("datamon/battlemons-source/manifest.json");
+const battleArenaManifest = readJson("datamon/battle-arenas/manifest.json");
 let envManifest = [];
 try { envManifest = readJson("datamon/environment/manifest.json"); } catch (_) { /* optional */ }
 
@@ -186,6 +194,24 @@ for (const entry of battlemonManifest.entries) {
     `Battlemon source declaration mismatch: ${entry.id}`);
 }
 assert.ok(battlemonBytes <= 2 * 1024 * 1024, "Battlemon PNG byte budget exceeded");
+
+const battleArena = loadBattleArenaValidator();
+const acceptedArenaManifest = battleArena.normalizeManifest(battleArenaManifest);
+assert.ok(acceptedArenaManifest && acceptedArenaManifest.size === 5,
+  "Battle arena manifest must pass the strict runtime contract");
+let arenaBytes = 0; const arenaAggregate = createHash("sha256");
+for (const entry of battleArenaManifest.entries) {
+  const file = fromRoot(`datamon/battle-arenas/${entry.file}`);
+  assert.ok(fs.existsSync(file), `missing battle arena: ${entry.file}`);
+  const data = fs.readFileSync(file); arenaBytes += data.length; arenaAggregate.update(data);
+  assert.equal(createHash("sha256").update(data).digest("hex"), entry.sha256,
+    `battle arena hash mismatch: ${entry.file}`);
+  assert.ok(data.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) &&
+    data.readUInt32BE(16) === 1600 && data.readUInt32BE(20) === 864 && data[24] === 8 && data[25] === 2,
+  `battle arena PNG geometry/mode mismatch: ${entry.file}`);
+}
+assert.equal(arenaAggregate.digest("hex"), battleArenaManifest.batchSha256, "battle arena aggregate mismatch");
+assert.ok(arenaBytes <= 8 * 1024 * 1024, "battle arena PNG byte budget exceeded");
 
 // The additive manifest may be empty before G1, but any active member must pass the same
 // exact sourceScale/frame/alpha/detail contract in JavaScript as it does in Python.

@@ -100,7 +100,7 @@ describe("DatamonBattlePresentation taxonomy and immutable geometry", () => {
   it("pins the reviewed stage and modest 1.11-or-less perspective ratio", () => {
     const geometry = api.GEOMETRY;
     assert.deepEqual(Array.from(geometry.PLAYER_ANCHOR), [160, 408]);
-    assert.deepEqual(Array.from(geometry.OPPONENT_ANCHOR), [657, 260]);
+    assert.deepEqual(Array.from(geometry.OPPONENT_ANCHOR), [657, 208]);
     assert.equal(geometry.PLAYER_VISIBLE_HEIGHT, 172);
     assert.equal(geometry.OPPONENT_VISIBLE_HEIGHT, 156);
     assert.ok(geometry.PLAYER_VISIBLE_HEIGHT / geometry.OPPONENT_VISIBLE_HEIGHT <= 1.11);
@@ -225,8 +225,31 @@ describe("bounded alpha scanning and lazy loading", () => {
     assert.equal(loaded.drawCalls.at(-1)[1], 3 * 128);
     assert.deepEqual(JSON.parse(JSON.stringify(loaded.api.getDiagnostics())), {
       manifestStatus: "accepted", manifestEntryCount: 35, loadedSheetCount: 1,
-      inFlightSheetCount: 0, failedSheetCount: 0, fallbackDomainCount: 0, alphaCacheSize: 0,
+      inFlightSheetCount: 0, failedSheetCount: 0, fallbackDomainCount: 0, activeSheetCount: 0,
+      loadedSheetDecodedBytes: 768*128*4, fallbackDecodedBytes: 0, alphaCacheSize: 0,
     });
+  });
+
+  it("retains only the current encounter's accepted sheets", async () => {
+    const loaded = loadModule(), first="mcp-schema-mismatch", second="config-hook-loop";
+    assert.equal(loaded.api.setActiveEncounter([first]),1);await loaded.api.requestSheet(first);
+    assert.equal(loaded.api.getDiagnostics().loadedSheetCount,1);
+    assert.equal(loaded.api.setActiveEncounter([second]),1);
+    assert.equal(loaded.api.getDiagnostics().loadedSheetCount,0);
+    await loaded.api.requestSheet(second);
+    const diagnostics=loaded.api.getDiagnostics();
+    assert.equal(diagnostics.activeSheetCount,1);assert.equal(diagnostics.loadedSheetCount,1);
+    assert.equal(diagnostics.loadedSheetDecodedBytes,768*128*4);
+  });
+
+  it("releases a transient domain fallback as soon as accepted art decodes", async () => {
+    const loaded = loadModule();
+    const id = "mcp-schema-mismatch", pending = loaded.api.requestSheet(id);
+    assert.equal(loaded.api.drawBattlemonFrame({ drawImage() {} }, "MCP", id, "idle-a", 0, 0, 128, 128), false);
+    assert.equal(loaded.api.getDiagnostics().fallbackDecodedBytes, 768*128*4);
+    await pending;
+    assert.equal(loaded.api.getDiagnostics().fallbackDomainCount, 0);
+    assert.equal(loaded.api.getDiagnostics().fallbackDecodedBytes, 0);
   });
 
   it("bounds a stalled manifest and converges to rejected fallbacks", async () => {
@@ -269,6 +292,7 @@ describe("bounded alpha scanning and lazy loading", () => {
     const diagnostics = loaded.api.getDiagnostics();
     assert.equal(diagnostics.failedSheetCount, 1);
     assert.equal(diagnostics.fallbackDomainCount, 1);
+    assert.equal(diagnostics.fallbackDecodedBytes, 768*128*4);
     assert.ok(diagnostics.loadedSheetCount <= 35);
   });
 });
