@@ -159,6 +159,18 @@
         result.walkSlugs = [];
         result.walkFrames = 0;
       }
+      try {
+        result.locomotion = {
+          phase: globalEval("locomotionPhase"),
+          active: !!globalEval("locomotionActive"),
+          contacts: globalEval("locomotionContactCount"),
+          profile: globalEval("locomotionProfile.name"),
+          metadata: Object.keys(globalEval("walkAnimMeta") || {}).filter(function(slug) {
+            return !!globalEval("walkAnimMeta")[slug];
+          }).length,
+          pilotSlugs: Object.keys(globalEval("locomotionPilot") || {}).sort(),
+        };
+      } catch (_) { result.locomotion = null; }
       return result;
     },
 

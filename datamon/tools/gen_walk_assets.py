@@ -304,8 +304,82 @@ def slice_sheet(sheet_path: Path, tag: str) -> list[Image.Image] | None:
     return frames
 
 
+ANCHOR_ALPHA_THRESHOLD = 128
+ANCHOR_HEAD_END = 0.27
+ANCHOR_TORSO_END = 0.58
+ANCHOR_METHOD = "alpha-head-torso-midpoint-v1"
+CYCLE_DISTANCE_TILES = 2
+
+
+def frame_anchor(frame: Image.Image, frame_index: int) -> dict:
+    """Return a stable visual-body X and visible-foot Y for one accepted frame.
+
+    Whole-silhouette centering moves the torso opposite a wide stride. The midpoint of the
+    alpha-weighted head and torso centers bounds residual head/torso jitter below one logical
+    pixel at the 56px runtime height across the accepted roster.
+    """
+    rgba = np.asarray(frame.convert("RGBA"))
+    alpha = rgba[:, :, 3]
+    ys, _xs = np.where(alpha >= ANCHOR_ALPHA_THRESHOLD)
+    if not len(ys):
+        raise ValueError("walk frame has no visible alpha")
+    y0, y1 = int(ys.min()), int(ys.max())
+    visible_h = y1 - y0 + 1
+
+    def weighted_x(start: float, end: float) -> float:
+        sy = max(0, int(y0 + start * visible_h))
+        ey = min(frame.height, int(y0 + end * visible_h) + 1)
+        weights = alpha[sy:ey].astype(np.float64) / 255.0
+        if not weights.size or weights.sum() <= 0:
+            raise ValueError("walk frame anchor band has no alpha")
+        xs = np.arange(frame.width, dtype=np.float64)[None, :]
+        return float((weights * xs).sum() / weights.sum())
+
+    head_x = weighted_x(0.0, ANCHOR_HEAD_END)
+    torso_x = weighted_x(ANCHOR_HEAD_END, ANCHOR_TORSO_END)
+    return {
+        "bodyX": round((head_x + torso_x) / 2.0, 4),
+        "contactFoot": "left" if frame_index == 0 else "right" if frame_index == 2 else None,
+        "footY": y1,
+        "height": frame.height,
+        "phase": frame_index / NFRAMES,
+        "width": frame.width,
+    }
+
+
+def anchor_manifest(slug: str, dirs: dict[str, list[Image.Image]] | None = None) -> dict:
+    if dirs is None:
+        dirs = {
+            direction: [Image.open(OUT_ROOT / slug / f"{direction}_{index}.png").convert("RGBA")
+                        for index in range(NFRAMES)]
+            for direction in ("down", "up", "left", "right")
+        }
+    frames = {
+        f"{direction}_{index}": frame_anchor(dirs[direction][index], index)
+        for direction in ("down", "up", "left", "right")
+        for index in range(NFRAMES)
+    }
+    return {
+        "anchorMethod": ANCHOR_METHOD,
+        "cycleDistanceTiles": CYCLE_DISTANCE_TILES,
+        "frameCount": NFRAMES,
+        "frames": frames,
+        "schemaVersion": 1,
+        "slug": slug,
+    }
+
+
+def write_anchor_manifest(slug: str, dirs: dict[str, list[Image.Image]] | None = None) -> Path:
+    out = OUT_ROOT / slug
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / "manifest.json"
+    payload = json.dumps(anchor_manifest(slug, dirs), sort_keys=True, separators=(",", ":")) + "\n"
+    path.write_text(payload, encoding="utf-8")
+    return path
+
+
 def bake(slug: str, mirror_side: bool) -> bool:
-    """Cached raw sheets -> sprites-walk/<slug>/{down,up,left,right}_{0..3}.png + review sheet."""
+    """Cached raw sheets -> sprites-walk/<slug>/{down,up,left,right}_{0..3}.png + anchors/review."""
     sheets = {v: CACHE / f"{slug}-{v}.png" for v in VIEWS}
     missing = [v for v, p in sheets.items() if not p.exists()]
     if missing:
@@ -329,6 +403,7 @@ def bake(slug: str, mirror_side: bool) -> bool:
     for d, frames in dirs.items():
         for i, f in enumerate(frames):
             f.save(out / f"{d}_{i}.png")
+    write_anchor_manifest(slug, dirs)
     review(slug, dirs)
     print(f"[ok] {slug}: 16 frames -> {out.relative_to(REPO)}")
     return True
@@ -361,6 +436,7 @@ def main() -> int:
     ap.add_argument("--provider", choices=["openai", "gemini"], default="gemini",
                     help="image provider (openai uses the latest configured GPT Image 2 snapshot)")
     ap.add_argument("--pipeline-only", action="store_true", help="never call the API; slice/bake cached sheets")
+    ap.add_argument("--anchors-only", action="store_true", help="write manifests from existing accepted frames; never call an API")
     ap.add_argument("--workers", type=int, help="parallel calls (default: 1 OpenAI, 3 Gemini)")
     ap.add_argument("--mirror-side", default="", help="slugs whose side sheet walks LEFT (bake flipped)")
     args = ap.parse_args()
@@ -373,10 +449,21 @@ def main() -> int:
             sys.stderr.write(f"unknown slugs: {unknown}\n")
             return 2
         slugs = want
-    if not args.force:
-        slugs = [s for s in slugs if not (OUT_ROOT / s / "down_0.png").exists()]
     if args.limit:
         slugs = slugs[: args.limit]
+    if args.anchors_only:
+        failed = []
+        for slug in slugs:
+            try:
+                path = write_anchor_manifest(slug)
+                print(f"[anchors] {slug}: {path.relative_to(REPO)}")
+            except (FileNotFoundError, ValueError, OSError) as exc:
+                failed.append(slug)
+                sys.stderr.write(f"[anchors] {slug}: {exc}\n")
+        print(f"wrote anchors for {len(slugs) - len(failed)}/{len(slugs)} characters")
+        return 0 if not failed else 1
+    if not args.force:
+        slugs = [s for s in slugs if not (OUT_ROOT / s / "down_0.png").exists()]
     if not slugs:
         print("nothing to do (all selected slugs already have sprites-walk output)")
         return 0
@@ -387,8 +474,9 @@ def main() -> int:
         if not ic:
             sys.stderr.write("image-compass not found (set IMAGE_COMPASS_DIR)\n")
             return 2
-        if not os.environ.get("GEMINI_API_KEY"):
-            sys.stderr.write("GEMINI_API_KEY not set\n")
+        required_key = "OPENAI_API_KEY" if args.provider == "openai" else "GEMINI_API_KEY"
+        if not os.environ.get(required_key):
+            sys.stderr.write(f"{required_key} not set\n")
             return 2
         jobs = [
             (s, v) for s in slugs for v in VIEWS

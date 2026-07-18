@@ -18,17 +18,24 @@ const WAYFINDING_FILES = ["props-wayfinding/manifest.json", ...wayfindingManifes
 const BATTLEMON_FILES = ["battlemons/manifest.json", ...battlemonManifest.entries.map(entry => `battlemons/${entry.file}`)];
 const BATTLE_ARENA_FILES = ["battle-arenas/manifest.json", ...battleArenaManifest.entries.map(entry => `battle-arenas/${entry.file}`)];
 const EXPANDED_ROSTER = ["andrea-vreugdenhil", "elina-gu", "jewoo-lee", "milen-thomas", "minh-ngoc-do", "oyku-cildir", "saransh-padhy", "wild-guevera"];
+const LOCOMOTION_PILOT = ["alex-andrianavalontsalama", "julien-hovan", "veronica-marallag"];
 const CHARACTER_RELEASE_FILES = [
   ...sittingManifest.entries.map(entry => `portraits/${entry.slug}.png`),
   ...EXPANDED_ROSTER.flatMap(slug => [
-    `headshots/${slug}.png`, `sprites/${slug}.png`,
+    `headshots/${slug}.png`, `sprites/${slug}.png`, `sprites-walk/${slug}/manifest.json`,
     ...["down", "left", "right", "up"].flatMap(direction => [0,1,2,3].map(frame => `sprites-walk/${slug}/${direction}_${frame}.png`)),
     `sprites-sit/${slug}/idle_0.png`, `sprites-sit/${slug}/idle_1.png`,
+  ]),
+  ...LOCOMOTION_PILOT.flatMap(slug => [
+    `sprites-locomotion-pilot/${slug}/manifest.json`,
+    ...["down", "left", "right", "up"].map(direction => `sprites-locomotion-pilot/${slug}/idle_${direction}.png`),
+    ...["run", "walk"].flatMap(motion => ["down", "left", "right", "up"].flatMap(direction =>
+      [0,1,2,3,4,5,6,7].map(frame => `sprites-locomotion-pilot/${slug}/${motion}_${direction}_${frame}.png`))),
   ]),
 ];
 const RUNTIME_FILES = [
   "index.html", "state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js",
-  "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js",
+  "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "locomotion.js", "game.js",
   ...WAYFINDING_FILES, ...BATTLEMON_FILES, ...BATTLE_ARENA_FILES, ...CHARACTER_RELEASE_FILES,
 ];
 

@@ -400,20 +400,72 @@ function loadImages() {
 // Only the player uses these frames, so load one slug on demand instead of blocking boot on
 // every roster member's PNGs. Missing files leave gaps and drawCharacter falls back safely to spriteMini.
 const walkAnim = {};      // slug -> {down:[img×4], up:[...], left:[...], right:[...]}
+const walkAnimMeta = {};  // slug -> validated per-frame body/visible-foot anchors
 const walkAnimLoads = {}; // slug -> in-flight/completed Promise (deduplicates hover/preload)
+const locomotionPilot = {}; // bounded pilot slug -> authored eight-frame walk/run + metadata
+const LOCOMOTION_PILOT_SLUGS = new Set(["julien-hovan", "veronica-marallag", "alex-andrianavalontsalama"]);
 const WALK_DIRS = ["down", "up", "left", "right"];
+
+function loadLocomotionPilot(slug) {
+  if (!LOCOMOTION_PILOT_SLUGS.has(slug)) return Promise.resolve();
+  return fetch(`sprites-locomotion-pilot/${slug}/manifest.json`)
+    .then(function(response) { return response.ok ? response.json() : null; })
+    .then(function(raw) {
+      var manifest = typeof DatamonLocomotion !== "undefined"
+        ? DatamonLocomotion.normalizePilotManifest(raw) : null;
+      if (!manifest) return;
+      var jobs = [], refs = [];
+      ["idle", "walk", "run"].forEach(function(motion) {
+        WALK_DIRS.forEach(function(direction) {
+          var count = motion === "idle" ? manifest.idleFrameCount : manifest.frameCount;
+          for (var index = 0; index < count; index++) {
+            refs.push({ motion: motion, direction: direction, index: index });
+            jobs.push(new Promise(function(resolve) {
+              var image = new Image();
+              image.onload = function() { resolve(image); };
+              image.onerror = function() { resolve(null); };
+              image.src = motion === "idle"
+                ? `sprites-locomotion-pilot/${slug}/idle_${direction}.png`
+                : `sprites-locomotion-pilot/${slug}/${motion}_${direction}_${index}.png`;
+            }));
+          }
+        });
+      });
+      return Promise.all(jobs).then(function(images) {
+        if (images.some(function(image) { return !image; })) return;
+        var motions = { idle: { down: [], up: [], left: [], right: [] }, walk: { down: [], up: [], left: [], right: [] }, run: { down: [], up: [], left: [], right: [] } };
+        for (var i = 0; i < images.length; i++) {
+          var ref = refs[i], frame = images[i];
+          var anchor = manifest.motions[ref.motion].frames[`${ref.direction}_${ref.index}`];
+          if (!anchor || anchor.width !== frame.width || anchor.height !== frame.height) return;
+          motions[ref.motion][ref.direction][ref.index] = frame;
+        }
+        locomotionPilot[slug] = { manifest: manifest, motions: motions };
+      });
+    })
+    .catch(function() { /* accepted four-frame art remains the fail-safe */ });
+}
+
 function loadWalkAnim(slug) {
   if (!slug || !ROSTER.includes(slug)) return Promise.resolve();
   if (walkAnimLoads[slug]) return walkAnimLoads[slug];
   walkAnim[slug] = { down: [], up: [], left: [], right: [] };
-  walkAnimLoads[slug] = Promise.all(WALK_DIRS.flatMap(dir =>
+  var metadataLoad = fetch(`sprites-walk/${slug}/manifest.json`)
+    .then(function(response) { return response.ok ? response.json() : null; })
+    .then(function(raw) {
+      walkAnimMeta[slug] = typeof DatamonLocomotion !== "undefined"
+        ? DatamonLocomotion.normalizeAnchorManifest(raw) : null;
+    })
+    .catch(function() { walkAnimMeta[slug] = null; });
+  var frameLoads = WALK_DIRS.flatMap(dir =>
     [0, 1, 2, 3].map(i => new Promise(resolve => {
       const img = new Image();
       img.onload = () => { walkAnim[slug][dir][i] = img; resolve(); };
       img.onerror = () => { resolve(); };
       img.src = `sprites-walk/${slug}/${dir}_${i}.png`;
     }))
-  ));
+  );
+  walkAnimLoads[slug] = Promise.all([metadataLoad, loadLocomotionPilot(slug), ...frameLoads]);
   return walkAnimLoads[slug];
 }
 
@@ -778,11 +830,13 @@ let mapCv = null;        // active pre-rendered map (points to officeMapCv or li
 let officeMapCv = null;  // pre-rendered office map — built once at boot
 let libraryMapCv = null; // pre-rendered library map — built once at boot
 let battleRoomMapCv = null; // pre-rendered battle room map — built on first entry (#046)
-let stepStartFx = 0, stepStartFy = 0, stepT = 1; // eased-step progress (0..1); 1 = idle
-let gaitPhase = 0; // physical gait phase (radians); distance-locked for shadows/dust/fallback
-let prevE = 0;     // previous frame's eased step progress; drives slide-free gait delta
-let walkAnimPhase = 0; // sprite-frame phase in frames; time-based so 4-frame art does not flicker
-const WALK_ANIM_FPS = 9, RUN_ANIM_FPS = 13;
+let stepStartFx = 0, stepStartFy = 0, stepT = 1; // linear progress through the active grid step (0..1)
+let locomotionPhase = 0; // normalized full gait cycle; derived only from actual rendered travel
+let locomotionActive = false; // true across a continuous buffered/held chain, false at a real stop
+let locomotionContactCount = 0; // bounded diagnostics counter; reset only by explicit test/lifecycle seams
+let locomotionProfile = typeof DatamonLocomotion !== "undefined"
+  ? DatamonLocomotion.profile("balanced")
+  : { name: "fallback", walkTilesPerSecond: 5, runTilesPerSecond: 8.5, walkCycleTiles: 2, runCycleTiles: 2 };
 // Footfall dust (PRD 004 / #017). World-space puffs spawned at each gait contact crossing
 // while the player moves; ticked + pruned every frame so the array never grows unbounded.
 // {x,y in tile coords; dx,dy drift in tiles/frame; life counts down to 0 then pruned}.
@@ -3051,7 +3105,7 @@ function sitAt(x, y) {
   player.y = player.fy = y;
   player.dir = "up";
   player.seated = { seatX: x, seatY: y, returnX: returnX, returnY: returnY };
-  walkAnimPhase = 0;
+  locomotionPhase = 0; locomotionActive = false;
   loadSitAsset(player.slug);
   showToast("Seated at the study desk. Move or interact to stand.");
   return true;
@@ -3717,74 +3771,125 @@ const KEY_DIR = {
 let turnStartMs = null;  // wall-clock when tap-to-turn window opened; null when closed
 let bufferedDir = null;  // direction pressed mid-slide; consumed at slide end
 let pointerMoveId = null, pointerMoveDir = null; // click steps once; pointer hold walks continuously
+function locomotionReducedMotion() {
+  if (typeof DatamonWorldArt !== "undefined" && DatamonWorldArt.isReducedMotion) {
+    return DatamonWorldArt.isReducedMotion();
+  }
+  return !!(typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion && AgentArena.prefersReducedMotion());
+}
+
+function heldMovementDirection() {
+  if (dirHeld("up")) return "up";
+  if (dirHeld("down")) return "down";
+  if (dirHeld("left")) return "left";
+  if (dirHeld("right")) return "right";
+  return pointerMoveDir || null;
+}
+
+function emitFootfallContact(foot) {
+  locomotionContactCount = Math.min(1000000, locomotionContactCount + 1);
+  if (state === "overworld") sfx.move();
+  if (locomotionReducedMotion()) return;
+  const count = player.running ? 3 : 1;
+  const side = foot === "right" ? 1 : -1;
+  for (let i = 0; i < count; i++) {
+    dustParticles.push({
+      x: player.fx + side * 0.045 + (Math.random() - 0.5) * 0.12,
+      y: player.fy + 0.5, // character footY resolves to tile bottom (center + TILE/2)
+      dx: (Math.random() - 0.5) * 0.012,
+      dy: -0.018 - Math.random() * 0.008,
+      life: 10 + Math.floor(Math.random() * 3),
+      maxLife: 12,
+    });
+  }
+}
+
+function applyLocomotionResult(result) {
+  if (!result) return;
+  locomotionPhase = result.phase;
+  for (const contact of result.contacts) emitFootfallContact(contact.foot);
+}
+
+function continueHeldMovement() {
+  if (bufferedDir) {
+    consumeBuffered(true);
+    return player.moving;
+  }
+  const dir = heldMovementDirection();
+  if (!dir) return false;
+  player.dir = dir;
+  tryStep(dir, true);
+  return player.moving;
+}
+
 function updateOverworld(dt) {
-  // Footfall dust: drift + age every particle, then prune the dead ones. Runs every frame
-  // (moving OR idle) so the array is always bounded — idle simply spawns nothing below.
-  for (const d of dustParticles) { d.x += d.dx; d.y += d.dy; d.life--; }
+  // Secondary puffs use logical 60Hz ticks but are integrated from elapsed time, so their
+  // lifetime/drift is equivalent on 30/60/120Hz displays.
+  const particleTicks = Math.max(0, dt * 60);
+  for (const d of dustParticles) {
+    d.x += d.dx * particleTicks;
+    d.y += d.dy * particleTicks;
+    d.life -= particleTicks;
+  }
   if (dustParticles.length) dustParticles = dustParticles.filter(d => d.life > 0);
 
-  if (coffeePrompt) return;   // modal coffee dialog open — freeze movement input
-  if (bookPrompt) return;     // book picker open — freeze movement input
-  if (readerState) return;    // book reader open — freeze movement input
-  if (mentorReview) return;   // #049: mentor review modal — freeze movement
-  if (scout) return;          // search pan-to-person cinematic — freeze movement
-  if (certConsoleOpen) return; // Certification Console open — freeze movement
-  if (player.seated) return;  // Seated — freeze movement until deliberate stand
+  if (coffeePrompt) return;
+  if (bookPrompt) return;
+  if (readerState) return;
+  if (mentorReview) return;
+  if (scout) return;
+  if (certConsoleOpen) return;
+  if (player.seated) return;
 
   const moveMultiplier = currentMovementMultiplier();
-  const WALK_SPEED = 7.5 * moveMultiplier, RUN_SPEED = 12.5 * moveMultiplier; // CAFFEINE-adjusted tiles/sec
   player.running = !!(keys["r"] || keys["R"] || keys["KeyR"] ||
     keys["Shift"] || keys["ShiftLeft"] || keys["ShiftRight"]);
+  const baseSpeed = player.running ? locomotionProfile.runTilesPerSecond : locomotionProfile.walkTilesPerSecond;
+  const speed = Math.max(0.1, baseSpeed * moveMultiplier);
+
   if (player.moving) {
-    const speed = player.running ? RUN_SPEED : WALK_SPEED;
-    stepT = Math.min(1, stepT + speed * dt);              // speed=7.5/12.5 → walk/run cadence
-    const e = stepT * stepT * (3 - 2 * stepT);            // smoothstep ease-in/out
-    const prevGait = gaitPhase;                           // remember phase before advancing
-    gaitPhase += Math.abs(e - prevE) * Math.PI * 2;       // physical effects track eased travel
-    walkAnimPhase += dt * (player.running ? RUN_ANIM_FPS : WALK_ANIM_FPS);
-    prevE = e;
-    // Footfall contact = descending zero-crossing of sin(2*phase) (two per gait cycle = L/R
-    // foot). Spawn a small dust burst there: 2 walking, 4 running. World-space, near the feet.
-    if (Math.sin(2 * prevGait) > 0 && Math.sin(2 * gaitPhase) <= 0) {
-      const count = player.running ? 4 : 2;
-      for (let i = 0; i < count; i++) {
-        dustParticles.push({
-          x: player.fx + (Math.random() - 0.5) * 0.25,   // jitter around feet (tiles)
-          y: player.fy + 0.34,                           // just below sprite centre
-          dx: (Math.random() - 0.5) * 0.018,             // outward drift
-          dy: -0.022 - Math.random() * 0.012,            // upward drift
-          life: 12 + Math.floor(Math.random() * 3),      // 12–14 frames (~0.2s @ 60fps)
-          maxLife: 14,
-        });
+    // Consume the complete distance budget. Carrying fractional overflow into a buffered next
+    // tile removes the old one-frame deceleration/acceleration pulse at every grid boundary.
+    let budget = Math.max(0, speed * dt);
+    let guard = 0;
+    while (player.moving && budget > 1e-9 && guard++ < 4) {
+      const cycleTiles = player.running ? locomotionProfile.runCycleTiles : locomotionProfile.walkCycleTiles;
+      const activeFrames = locomotionPilot[player.slug] ? 8 : 4;
+      const result = DatamonLocomotion.advanceTile({
+        startX: stepStartFx, startY: stepStartFy, targetX: player.x, targetY: player.y,
+        stepT: stepT, phase: locomotionPhase,
+      }, budget, cycleTiles, activeFrames);
+      stepT = result.stepT;
+      player.fx = result.x;
+      player.fy = result.y;
+      budget = result.remainingBudget;
+      applyLocomotionResult(result);
+
+      if (result.complete) {
+        player.fx = player.x;
+        player.fy = player.y;
+        player.moving = false;
+        stepT = 1;
+        if (!continueHeldMovement()) locomotionActive = false;
       }
-    }
-    player.fx = stepStartFx + (player.x - stepStartFx) * e;
-    player.fy = stepStartFy + (player.y - stepStartFy) * e;
-    if (stepT >= 1) {
-      player.fx = player.x; player.fy = player.y; player.moving = false;
-      if (bufferedDir) consumeBuffered();
     }
     return;
   }
-  gaitPhase = 0; walkAnimPhase = 0; prevE = 0;
-  let dir = null;
-  if (dirHeld("up")) dir = "up";
-  else if (dirHeld("down")) dir = "down";
-  else if (dirHeld("left")) dir = "left";
-  else if (dirHeld("right")) dir = "right";
-  else if (pointerMoveDir) dir = pointerMoveDir;
+
+  locomotionActive = false;
+  const dir = heldMovementDirection();
   if (!dir) { turnStartMs = null; return; }
   if (dir !== player.dir) { player.dir = dir; turnStartMs = performance.now(); return; }
   // tap window open: released before TAP_TURN_MS means turn-only
   if (turnStartMs !== null && performance.now() - turnStartMs < TAP_TURN_MS) return;
   turnStartMs = null;
-  tryStep(dir);
+  tryStep(dir, false);
 }
 function dirHeld(dir) {
   for (const k in KEY_DIR) if (KEY_DIR[k] === dir && keys[k]) return true;
   return false;
 }
-function tryStep(dir) {
+function tryStep(dir, continuing) {
   // Seated: the first movement press stands you up instead of walking. Clear that
   // direction's held-key state so a render tick between keydown and keyup cannot also
   // advance one tile; a later repeat/new press may move normally.
@@ -3797,17 +3902,24 @@ function tryStep(dir) {
   const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[dir];
   const nx = player.x + d[0], ny = player.y + d[1];
   if (walkable(nx, ny)) {
-    stepStartFx = player.fx; stepStartFy = player.fy; stepT = 0; prevE = 0;   // begin eased step
-    player.x = nx; player.y = ny; player.moving = true;
-    if (state === "overworld") sfx.move();
+    stepStartFx = player.fx;
+    stepStartFy = player.fy;
+    stepT = 0;
+    player.x = nx;
+    player.y = ny;
+    player.moving = true;
+    locomotionActive = true;
+  } else if (continuing) {
+    locomotionActive = false;
   }
 }
-function consumeBuffered() {
+function consumeBuffered(continuing) {
   const dir = bufferedDir, wasFacing = player.dir;
-  bufferedDir = null; turnStartMs = null;
+  bufferedDir = null;
+  turnStartMs = null;
   player.dir = dir;
   if (dir !== wasFacing && !dirHeld(dir)) return; // tap during slide → turn-only at stop
-  tryStep(dir);
+  tryStep(dir, !!continuing);
 }
 
 // ---------- Drawing helpers ----------
@@ -4939,38 +5051,34 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
   const sizeScale = baseSize / 34;            // proportional factor vs. the old 34px base
   const footY = cy + 16;                      // tile bottom (cy + TILE/2) — feet anchored here
 
-  // Procedural deformation of the character's OWN per-character sprite (PRD 004 / #016).
-  // Applied ONLY to the moving player; the idle player and every NPC are exactly still.
-  // Locked, live-validated params: bob A=1.5px, squash sq=0.02 walk / 0.12 run,
-  // sway K*stride*sin(p) (stride 0.06 walk / 0.11 run, K=26). Phase p = gaitPhase, which
-  // advances from eased travel in updateOverworld() (so feet never slide). Sway is a
-  // translate ONLY — no shear/skew (the user explicitly rejected head-tilt).
+  // Procedural deformation remains only as a missing-walk-art fallback. Its phase now comes
+  // from the same traveled-distance clock as authored frames and footfall effects. Reduced
+  // motion removes this optional deformation while preserving essential player translation.
   let bobOff = 0, sway = 0, scaleX = 1, scaleY = 1;
-  if (isPlayer && player.moving) {
-    const p = gaitPhase;
-    const A = 1.5;
-    const sq = player.running ? 0.12 : 0.02;
-    const stride = player.running ? 0.11 : 0.06, K = 26;
-    bobOff = A * (Math.sin(p) - 0.2 * Math.sin(2 * p));   // asymmetric vertical bob (px)
-    scaleY = 1 + Math.sin(2 * p) * sq;                    // footfall-timed squash/stretch
-    scaleX = 1 / scaleY;                                  // volume-conserving (foot-anchored)
-    sway   = K * stride * Math.sin(p);                    // whole-sprite X translate
+  const reducedLocomotion = locomotionReducedMotion();
+  if (isPlayer && player.moving && !reducedLocomotion) {
+    const p = locomotionPhase * Math.PI * 2;
+    const A = 1.2;
+    const sq = player.running ? 0.08 : 0.02;
+    const stride = player.running ? 0.08 : 0.045, K = 26;
+    bobOff = A * (Math.sin(p) - 0.2 * Math.sin(2 * p));
+    scaleY = 1 + Math.sin(2 * p) * sq;
+    scaleX = 1 / scaleY;
+    sway = K * stride * Math.sin(p);
   }
 
-  // Footfall ground-shadow (PRD 004 / #017): an elliptical shadow under the moving player's
-  // feet that squashes WIDER + DARKER at footfall contact and thins/fades at the airborne
-  // phase. contact = -sin(2p) peaks (+1) exactly at the squash contact instant. Player only —
-  // NPCs are always idle (no gaitPhase), and the idle player skips this entirely. Drawn before
-  // the sprite so it sits behind the character.
+  // The grounding shadow shares authored left/right contact markers. It remains as a static,
+  // low-contrast grounding cue under reduced motion; only the optional pulse is removed.
   if (isPlayer && player.moving) {
-    const contact = -Math.sin(2 * gaitPhase);             // +1 at footfall, -1 airborne
-    const shadowW = (baseSize * 0.5) * (1 + contact * 0.3);  // ±30% width swing
-    const shadowAlpha = Math.max(0, 0.18 + contact * 0.1);   // ~0.08 airborne … 0.28 contact
+    const contact = reducedLocomotion || typeof DatamonLocomotion === "undefined"
+      ? 0 : DatamonLocomotion.contactWeight(locomotionPhase);
+    const shadowW = (baseSize * 0.46) * (1 + contact * 0.18);
+    const shadowAlpha = Math.max(0.08, 0.16 + contact * 0.06);
     ctx.save();
     ctx.globalAlpha = shadowAlpha;
     ctx.fillStyle = "#000";
     ctx.beginPath();
-    ctx.ellipse(px(cx), px(footY + 2), shadowW / 2, 3, 0, 0, Math.PI * 2);
+    ctx.ellipse(px(cx), px(footY + 1), shadowW / 2, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -4982,22 +5090,51 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
   // covers anything behind it — no clip needed. (The previous clip-to-tile truncated
   // 44–58px sprites to 32px whenever a wall sat above, decapitating them — the
   // "headless legs near walls" bug. Removed.)
-  // Real 4-direction walk/run frames (when available for this slug). The frames ARE the
-  // animation, so skip the procedural squash/sway/bob deform entirely. Sprite playback uses
-  // a capped time-based frame phase (9 FPS walk / 13 FPS run); tying four frames to each
-  // 7.5/12.5 tiles-per-second step made them flash at 30/50 FPS. Idle shows frame 0. Drawn
-  // bottom-centre, feet at footY, preserving the portrait aspect ratio. Player-only for now.
-  const anim = isPlayer ? walkAnim[slug] : null;
-  if (anim) {
-    const frames = (anim[dir] && anim[dir].length === 4) ? anim[dir] : anim.down;
+  // Authored locomotion is moving-only; the pilot adds true directional neutral idle art.
+  // Non-pilot idle falls through to the accepted neutral trainer miniature instead of freezing
+  // on frame 0's extended contact pose. Frame, shadow, dust, and SFX share locomotionPhase.
+  // Per-frame metadata pins a stable visual body root and visible-foot/canvas ground.
+  const pilot = isPlayer ? locomotionPilot[slug] : null;
+  if (pilot && !player.moving) {
+    const idleDir = (pilot.motions.idle[dir] && pilot.motions.idle[dir][0]) ? dir : "down";
+    const idleImage = pilot.motions.idle[idleDir][0];
+    if (idleImage) {
+      const idleH = baseSize, idleW = idleH * (idleImage.width / idleImage.height);
+      const idleMiniature = walkMini(idleImage, `${slug}:idle:${idleDir}:0`, idleW, idleH);
+      const idleAnchor = typeof DatamonLocomotion !== "undefined"
+        ? DatamonLocomotion.resolveFrameAnchor(pilot.manifest.motions.idle, idleDir, 0, idleImage.width, idleImage.height)
+        : { bodyX: idleImage.width / 2, footY: idleImage.height };
+      const idleScale = idleH / idleImage.height;
+      ctx.drawImage(idleMiniature, px(cx - idleAnchor.bodyX * idleScale), px(footY - idleAnchor.footY * idleScale), idleW, idleH);
+      return;
+    }
+  }
+  const motionName = player.running ? "run" : "walk";
+  const anim = pilot ? pilot.motions[motionName] : (isPlayer ? walkAnim[slug] : null);
+  const frameCount = pilot ? pilot.manifest.frameCount : 4;
+  const animMeta = pilot ? pilot.manifest.motions[motionName] : walkAnimMeta[slug];
+  if (anim && player.moving) {
+    const frameDir = (anim[dir] && anim[dir].length === frameCount) ? dir : "down";
+    const frames = anim[frameDir];
     if (frames && frames.length) {
-      const fi = player.moving ? (Math.floor(walkAnimPhase) % 4) : 0;
-      const fimg = frames[fi] || frames[0];
+      const requestedFrame = typeof DatamonLocomotion !== "undefined"
+        ? DatamonLocomotion.frameIndex(locomotionPhase, frameCount) : 0;
+      const actualFrame = frames[requestedFrame] ? requestedFrame : 0;
+      const fimg = frames[actualFrame];
       if (fimg) {
-        const H = baseSize;                          // match overworld character height
-        const W = H * (fimg.width / fimg.height);    // preserve portrait aspect (no stretch)
-        const m = walkMini(fimg, `${slug}:${dir}:${fi}`, W, H);   // HQ downscale (no NN aliasing)
-        ctx.drawImage(m, px(cx - W / 2), px(footY - H), W, H);
+        const H = baseSize;
+        const W = H * (fimg.width / fimg.height);
+        const m = walkMini(fimg, `${slug}:${motionName}:${frameDir}:${actualFrame}`, W, H);
+        const anchor = typeof DatamonLocomotion !== "undefined"
+          ? DatamonLocomotion.resolveFrameAnchor(animMeta, frameDir, actualFrame, fimg.width, fimg.height)
+          : { bodyX: fimg.width / 2, footY: fimg.height };
+        const frameScale = H / fimg.height;
+        let frameY = footY - anchor.footY * frameScale;
+        if (pilot && motionName === "run") {
+          const authoredGround = animMeta.groundY[frameDir];
+          if (Number.isFinite(authoredGround)) frameY = footY - authoredGround * frameScale;
+        }
+        ctx.drawImage(m, px(cx - anchor.bodyX * frameScale), px(frameY), W, H);
         return;
       }
     }
@@ -6281,8 +6418,10 @@ function drawOverworld() {
   const targetCamY = Math.max(-CAM_PAD_TOP, Math.min(MAP_H - VIEW_H, foY - VIEW_H / 2 + 0.5));
   if (camFx === null) { camFx = targetCamX; camFy = targetCamY; }       // first frame: snap, no glide-in
   else {
-    camFx += (targetCamX - camFx) * 0.12;
-    camFy += (targetCamY - camFy) * 0.12;
+    const cameraFollow = typeof DatamonLocomotion !== "undefined"
+      ? DatamonLocomotion.cameraFactor(dtF / 60, 0.12, 60) : 0.12;
+    camFx += (targetCamX - camFx) * cameraFollow;
+    camFy += (targetCamY - camFy) * cameraFollow;
   }
   camFx = Math.max(0, Math.min(MAP_W - VIEW_W, camFx));                 // re-clamp to map bounds
   camFy = Math.max(-CAM_PAD_TOP, Math.min(MAP_H - VIEW_H, camFy));

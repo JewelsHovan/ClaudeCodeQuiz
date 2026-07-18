@@ -9,7 +9,7 @@ import vm from "node:vm";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
-const RUNTIME_SCRIPTS = ["state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js"];
+const RUNTIME_SCRIPTS = ["state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "locomotion.js", "game.js"];
 
 function walk(dir, sub = "", result = []) {
   const current = path.join(dir, sub);
@@ -43,7 +43,7 @@ const expectedManifest = payload.map(file => `${file.path}\t${file.size}`).join(
 const actualManifest = fs.readFileSync(path.join(DIST, "file-manifest.txt"), "utf8");
 const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
 const payloadPaths = new Set(payload.map(file => file.path));
-const requiredRuntime = ["index.html", "state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js", "sprites-sit/manifest.json", "props-study/manifest.json", "props-wayfinding/manifest.json", "battlemons/manifest.json", "battle-arenas/manifest.json"];
+const requiredRuntime = ["index.html", "state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "locomotion.js", "game.js", "sprites-sit/manifest.json", "props-study/manifest.json", "props-wayfinding/manifest.json", "battlemons/manifest.json", "battle-arenas/manifest.json"];
 for (const runtimeFile of requiredRuntime) {
   if (!payloadPaths.has(runtimeFile)) throw new Error(`Missing packaged runtime file: dist/${runtimeFile}`);
 }
@@ -121,6 +121,65 @@ const packagedWalkFrames = payload.filter(file => /^sprites-walk\/.*\.png$/.test
   .map(file => file.path).sort();
 if (JSON.stringify(packagedWalkFrames) !== JSON.stringify(expectedWalkFrames)) {
   throw new Error("Packaged walk frames must be the exact 16-frame set for every ROSTER slug");
+}
+const locomotionContext = { window: {}, console, Math, Number, Object, Array };
+vm.runInNewContext(fs.readFileSync(path.join(DIST, "locomotion.js"), "utf8"), locomotionContext, { filename: "dist/locomotion.js" });
+const locomotionApi = locomotionContext.window.DatamonLocomotion;
+const expectedWalkManifests = canonicalRosterSlugs.map(slug => `sprites-walk/${slug}/manifest.json`).sort();
+const packagedWalkManifests = payload.filter(file => /^sprites-walk\/[^/]+\/manifest\.json$/.test(file.path))
+  .map(file => file.path).sort();
+if (JSON.stringify(packagedWalkManifests) !== JSON.stringify(expectedWalkManifests)) {
+  throw new Error("Packaged walk-anchor manifests must exactly match ROSTER");
+}
+for (const slug of canonicalRosterSlugs) {
+  const manifestPath = `sprites-walk/${slug}/manifest.json`;
+  const raw = JSON.parse(fs.readFileSync(path.join(DIST, manifestPath), "utf8"));
+  if (raw.slug !== slug || !locomotionApi.normalizeAnchorManifest(raw)) {
+    throw new Error(`Invalid packaged walk-anchor manifest: ${manifestPath}`);
+  }
+}
+
+// The authored eight-frame walk/true-run experiment is deliberately bounded. Shipping any
+// fourth slug would silently turn a reviewed pilot into an unapproved full-roster rollout.
+const LOCOMOTION_PILOT = ["alex-andrianavalontsalama", "julien-hovan", "veronica-marallag"];
+const expectedPilotFiles = LOCOMOTION_PILOT.flatMap(slug => [
+  `sprites-locomotion-pilot/${slug}/manifest.json`,
+  ...["down", "left", "right", "up"].map(direction => `sprites-locomotion-pilot/${slug}/idle_${direction}.png`),
+  ...["run", "walk"].flatMap(motion => ["down", "left", "right", "up"].flatMap(direction =>
+    [0,1,2,3,4,5,6,7].map(frame => `sprites-locomotion-pilot/${slug}/${motion}_${direction}_${frame}.png`))),
+]).sort();
+const packagedPilotFiles = payload.filter(file => file.path.startsWith("sprites-locomotion-pilot/"))
+  .map(file => file.path).sort();
+if (JSON.stringify(packagedPilotFiles) !== JSON.stringify(expectedPilotFiles)) {
+  throw new Error("Packaged locomotion pilot must be the exact reviewed three-character set");
+}
+for (const slug of LOCOMOTION_PILOT) {
+  const manifestPath = `sprites-locomotion-pilot/${slug}/manifest.json`;
+  const raw = JSON.parse(fs.readFileSync(path.join(DIST, manifestPath), "utf8"));
+  const manifest = locomotionApi.normalizePilotManifest(raw);
+  if (raw.slug !== slug || !manifest) throw new Error(`Invalid locomotion pilot manifest: ${manifestPath}`);
+  for (const direction of ["down", "left", "right", "up"]) {
+    const relative = `sprites-locomotion-pilot/${slug}/idle_${direction}.png`;
+    const data = fs.readFileSync(path.join(DIST, relative));
+    const width = data.length >= 24 && data.subarray(1,4).toString("ascii") === "PNG" ? data.readUInt32BE(16) : 0;
+    const height = width ? data.readUInt32BE(20) : 0;
+    const anchor = manifest.motions.idle.frames[`${direction}_0`];
+    if (width !== anchor.width || height !== anchor.height || height !== 240) {
+      throw new Error(`Locomotion pilot idle/metadata mismatch: ${relative}`);
+    }
+  }
+  for (const motion of ["walk", "run"]) for (const direction of ["down", "left", "right", "up"]) {
+    for (let frame = 0; frame < 8; frame++) {
+      const relative = `sprites-locomotion-pilot/${slug}/${motion}_${direction}_${frame}.png`;
+      const data = fs.readFileSync(path.join(DIST, relative));
+      const width = data.length >= 24 && data.subarray(1,4).toString("ascii") === "PNG" ? data.readUInt32BE(16) : 0;
+      const height = width ? data.readUInt32BE(20) : 0;
+      const anchor = manifest.motions[motion].frames[`${direction}_${frame}`];
+      if (width !== anchor.width || height !== anchor.height || height !== 240) {
+        throw new Error(`Locomotion pilot frame/metadata mismatch: ${relative}`);
+      }
+    }
+  }
 }
 
 // Sitting art is executable presentation data: package exactly two declared frames for
