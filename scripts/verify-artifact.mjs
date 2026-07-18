@@ -4,11 +4,12 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import vm from "node:vm";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
-const RUNTIME_SCRIPTS = ["state.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js"];
+const RUNTIME_SCRIPTS = ["state.js", "battle-presentation.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js"];
 
 function walk(dir, sub = "", result = []) {
   const current = path.join(dir, sub);
@@ -42,7 +43,7 @@ const expectedManifest = payload.map(file => `${file.path}\t${file.size}`).join(
 const actualManifest = fs.readFileSync(path.join(DIST, "file-manifest.txt"), "utf8");
 const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
 const payloadPaths = new Set(payload.map(file => file.path));
-const requiredRuntime = ["index.html", "state.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js", "sprites-sit/manifest.json", "props-study/manifest.json", "props-wayfinding/manifest.json"];
+const requiredRuntime = ["index.html", "state.js", "battle-presentation.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js", "sprites-sit/manifest.json", "props-study/manifest.json", "props-wayfinding/manifest.json", "battlemons/manifest.json"];
 for (const runtimeFile of requiredRuntime) {
   if (!payloadPaths.has(runtimeFile)) throw new Error(`Missing packaged runtime file: dist/${runtimeFile}`);
 }
@@ -217,6 +218,133 @@ if (wayfindingManifest.batch_sha256 !== wayfindingAggregate.digest("hex")) {
 const packagedWayfinding = payload.filter(file => /^props-wayfinding\/.*\.png$/.test(file.path)).map(file => file.path).sort();
 if (JSON.stringify(packagedWayfinding) !== JSON.stringify(declaredWayfinding.sort())) {
   throw new Error("Packaged wayfinding PNG set must exactly match the nine declared assets");
+}
+
+// Classic Battlemon art is independently pinned: questions.js, the pure presentation
+// taxonomy, the strict manifest, and the exact public PNG set must all agree with this
+// release contract. Runtime declarations cannot bless coordinated species drift.
+const EXPECTED_BATTLEMONS = {
+  AGENT: ["Rogue Subagent", "Infinite Loop", "Stop Reason", "Task Spawner", "Orphan Process", "Stale Coordinator", "Fork Bomb"],
+  MCP: ["Schema Mismatch", "Tool Sprawl", "Stdio Zombie", "JSON-RPC Gremlin", "Deprecated SSE", "Scope Creep Server", "isError Imp"],
+  CONFIG: ["Hook Loop", "Permission Prompt", "CLAUDE.md Bloat", "Settings Drift", "Deny Rule", "Headless Hang", "Exit Code 2"],
+  PROMPT: ["Prompt Injector", "XML Tag Soup", "Vague Modifier", "Hallucinator", "Malformed JSON", "Chatty Preamble", "Forced Enum"],
+  CONTEXT: ["Context Rot", "Lost Middle", "Token Gobbler", "Cache Miss", "Compaction Crash", "Rate Limiter", "Stale Summary"],
+};
+const BATTLEMON_DOMAINS = Object.keys(EXPECTED_BATTLEMONS);
+const BATTLEMON_STATES = ["idle-a", "idle-b", "sendout", "attack", "hit", "faint"];
+const battlemonId = (domain, name) => `${domain.toLowerCase()}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+const expectedBattlemonEntries = BATTLEMON_DOMAINS.flatMap(domain =>
+  EXPECTED_BATTLEMONS[domain].map((name, variant) => ({ domain, name, variant, id: battlemonId(domain, name) }))
+);
+const questionContext = {};
+vm.runInNewContext(`${fs.readFileSync(path.join(DIST, "questions.js"), "utf8")}\nglobalThis.__MON_NAMES__ = MON_NAMES;`, questionContext);
+if (JSON.stringify(questionContext.__MON_NAMES__) !== JSON.stringify(EXPECTED_BATTLEMONS)) {
+  throw new Error("Packaged MON_NAMES taxonomy does not match the accepted 35 Battlemon species");
+}
+const presentationContext = { window: {}, console };
+vm.runInNewContext(fs.readFileSync(path.join(DIST, "battle-presentation.js"), "utf8"), presentationContext);
+const packagedPresentation = presentationContext.window.DatamonBattlePresentation;
+const packagedPresentationNames = Object.fromEntries(BATTLEMON_DOMAINS.map(domain => [domain, Array.from(packagedPresentation.CANONICAL_NAMES[domain] || [])]));
+if (JSON.stringify(packagedPresentationNames) !== JSON.stringify(EXPECTED_BATTLEMONS) ||
+    expectedBattlemonEntries.some(entry => packagedPresentation.battlemonId(entry.domain, entry.name) !== entry.id)) {
+  throw new Error("Packaged battle-presentation taxonomy/IDs are not canonical");
+}
+const battlemonManifestPath = path.join(DIST, "battlemons/manifest.json");
+const battlemonManifestBytes = fs.readFileSync(battlemonManifestPath);
+const battlemonManifest = JSON.parse(battlemonManifestBytes);
+const BATTLEMON_ROOT_KEYS = ["assetCount", "batch", "batchSha256", "entries", "format", "frameCount", "frameHeight", "frameWidth", "layout", "provenance", "reviewState", "schemaVersion", "sourceBatch", "sourceModel", "sourceReviewSha256", "states"];
+const BATTLEMON_ENTRY_KEYS = ["domain", "file", "frameHeight", "frameWidth", "frames", "id", "name", "sha256", "silhouetteFamily", "sourceSha256", "variant"];
+const EXPECTED_BATTLEMON_SOURCE_REVIEW_SHA256 = "e1c6f919d5a8a0cd43c6ca9e4159f9370712324cc4d3225197881a2fb58dcb30";
+const EXPECTED_BATTLEMON_BATCH_SHA256 = "8a55786fb9fd46dfddd887954355fec2a497c1fe6e3190468f228f5640702f1b";
+if (JSON.stringify(Object.keys(battlemonManifest).sort()) !== JSON.stringify(BATTLEMON_ROOT_KEYS) ||
+    battlemonManifest.schemaVersion !== 1 || battlemonManifest.batch !== "classic-battlemon-v2" ||
+    battlemonManifest.reviewState !== "accepted" || battlemonManifest.provenance !== "reviewed-openrouter-gemini3pro+pillow-animation-v1" ||
+    battlemonManifest.sourceBatch !== "battlemon-ai-sources-v1" || battlemonManifest.sourceModel !== "google/gemini-3-pro-image" ||
+    battlemonManifest.sourceReviewSha256 !== EXPECTED_BATTLEMON_SOURCE_REVIEW_SHA256 ||
+    battlemonManifest.batchSha256 !== EXPECTED_BATTLEMON_BATCH_SHA256 ||
+    battlemonManifest.format !== "RGBA" || battlemonManifest.layout !== "horizontal" ||
+    battlemonManifest.frameCount !== 6 || battlemonManifest.frameWidth !== 128 || battlemonManifest.frameHeight !== 128 ||
+    battlemonManifest.assetCount !== 35 || JSON.stringify(battlemonManifest.states) !== JSON.stringify(BATTLEMON_STATES) ||
+    !/^[0-9a-f]{64}$/.test(battlemonManifest.batchSha256 || "") || !Array.isArray(battlemonManifest.entries) ||
+    battlemonManifest.entries.length !== 35) {
+  throw new Error("Packaged Battlemon manifest identity/schema is not canonical");
+}
+const reviewedSourceManifest = JSON.parse(fs.readFileSync(path.join(ROOT, "datamon/battlemons-source/manifest.json"), "utf8"));
+const BATTLEMON_SOURCE_ROOT_KEYS = ["batch", "entries", "model", "provenance", "provider", "review", "reviewState", "schemaVersion", "sourceSize"];
+const BATTLEMON_SOURCE_ENTRY_KEYS = ["domain", "file", "height", "id", "name", "promptSha256", "rawSha256", "sourceSha256", "width"];
+if (JSON.stringify(Object.keys(reviewedSourceManifest).sort()) !== JSON.stringify(BATTLEMON_SOURCE_ROOT_KEYS) ||
+    reviewedSourceManifest.schemaVersion !== 1 || reviewedSourceManifest.batch !== "battlemon-ai-sources-v1" ||
+    reviewedSourceManifest.reviewState !== "accepted" || reviewedSourceManifest.provider !== "openrouter" ||
+    reviewedSourceManifest.model !== "google/gemini-3-pro-image" ||
+    reviewedSourceManifest.provenance !== "openrouter:google/gemini-3-pro-image+deterministic-pillow-v1" ||
+    reviewedSourceManifest.sourceSize !== 128 || reviewedSourceManifest.review?.contactSheetSha256 !== battlemonManifest.sourceReviewSha256 ||
+    !Array.isArray(reviewedSourceManifest.entries) || reviewedSourceManifest.entries.length !== 35) {
+  throw new Error("Reviewed Battlemon AI source manifest is not canonical");
+}
+const reviewedSourcesById = new Map();
+for (let index = 0; index < expectedBattlemonEntries.length; index++) {
+  const expected = expectedBattlemonEntries[index], entry = reviewedSourceManifest.entries[index];
+  if (!entry || JSON.stringify(Object.keys(entry).sort()) !== JSON.stringify(BATTLEMON_SOURCE_ENTRY_KEYS) ||
+      entry.id !== expected.id || entry.name !== expected.name || entry.domain !== expected.domain ||
+      entry.file !== `${expected.id}.png` || entry.width !== 128 || entry.height !== 128 ||
+      !/^[0-9a-f]{64}$/.test(entry.promptSha256 || "") || !/^[0-9a-f]{64}$/.test(entry.rawSha256 || "") ||
+      !/^[0-9a-f]{64}$/.test(entry.sourceSha256 || "")) {
+    throw new Error(`Reviewed Battlemon source declaration is not canonical at index ${index}`);
+  }
+  reviewedSourcesById.set(entry.id, entry);
+}
+const reviewedSourceRoot = path.join(ROOT, "datamon/battlemons-source");
+const reviewedSourceFiles = walk(reviewedSourceRoot).map(file => file.path).sort();
+const expectedReviewedSourceFiles = ["manifest.json", ...expectedBattlemonEntries.map(entry => `${entry.id}.png`)].sort();
+if (JSON.stringify(reviewedSourceFiles) !== JSON.stringify(expectedReviewedSourceFiles) ||
+    payload.some(file => file.path.startsWith("battlemons-source/"))) {
+  throw new Error("Reviewed Battlemon sources must be exact and excluded from the public artifact");
+}
+
+const declaredBattlemonFiles = [];
+const battlemonAggregate = createHash("sha256");
+const battlemonHashesByDomain = Object.fromEntries(BATTLEMON_DOMAINS.map(domain => [domain, new Set()]));
+let battlemonBytes = 0;
+for (let index = 0; index < expectedBattlemonEntries.length; index++) {
+  const expected = expectedBattlemonEntries[index], entry = battlemonManifest.entries[index];
+  const expectedPath = `battlemons/${expected.id}.png`;
+  if (!entry || JSON.stringify(Object.keys(entry).sort()) !== JSON.stringify(BATTLEMON_ENTRY_KEYS) ||
+      entry.id !== expected.id || entry.name !== expected.name || entry.domain !== expected.domain ||
+      entry.variant !== expected.variant || entry.file !== `${expected.id}.png` ||
+      entry.frameWidth !== 128 || entry.frameHeight !== 128 ||
+      JSON.stringify(entry.frames) !== JSON.stringify(BATTLEMON_STATES) ||
+      entry.silhouetteFamily !== expected.domain.toLowerCase() ||
+      !/^[0-9a-f]{64}$/.test(entry.sourceSha256 || "") || !/^[0-9a-f]{64}$/.test(entry.sha256 || "")) {
+    throw new Error(`Noncanonical packaged Battlemon declaration at index ${index}`);
+  }
+  if (!payloadPaths.has(expectedPath)) throw new Error(`Missing packaged Battlemon sheet: ${expectedPath}`);
+  const reviewedSource = path.join(ROOT, "datamon/battlemons-source", `${expected.id}.png`);
+  if (reviewedSourcesById.get(expected.id)?.sourceSha256 !== entry.sourceSha256 || !fs.existsSync(reviewedSource) ||
+      createHash("sha256").update(fs.readFileSync(reviewedSource)).digest("hex") !== entry.sourceSha256) {
+    throw new Error(`Reviewed Battlemon source hash mismatch: ${expected.id}`);
+  }
+  const data = fs.readFileSync(path.join(DIST, expectedPath));
+  const hash = createHash("sha256").update(data).digest("hex");
+  const png = data.length >= 26 && data.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+  if (hash !== entry.sha256 || !png || data.readUInt32BE(16) !== 768 || data.readUInt32BE(20) !== 128 ||
+      data[24] !== 8 || data[25] !== 6) {
+    throw new Error(`Packaged Battlemon bytes/dimensions mismatch: ${expectedPath}`);
+  }
+  battlemonAggregate.update(data); battlemonBytes += data.length;
+  battlemonHashesByDomain[expected.domain].add(hash);
+  declaredBattlemonFiles.push(expectedPath);
+}
+if (battlemonManifest.batchSha256 !== battlemonAggregate.digest("hex")) throw new Error("Packaged Battlemon aggregate hash mismatch");
+if (battlemonBytes > 2 * 1024 * 1024) throw new Error("Packaged Battlemon PNG byte budget exceeded");
+for (const domain of BATTLEMON_DOMAINS) {
+  if (battlemonHashesByDomain[domain].size !== 7) throw new Error(`Packaged ${domain} species sheets are not individually distinct`);
+}
+const packagedBattlemonFiles = payload.filter(file => /^battlemons\/.*\.png$/.test(file.path)).map(file => file.path).sort();
+if (JSON.stringify(packagedBattlemonFiles) !== JSON.stringify(declaredBattlemonFiles.sort())) {
+  throw new Error("Packaged Battlemon PNG set must exactly match the 35 canonical sheets");
+}
+if (battlemonManifestBytes.toString("utf8") !== JSON.stringify(battlemonManifest, null, 2) + "\n") {
+  throw new Error("Packaged Battlemon manifest serialization is not canonical");
 }
 
 const headshotTombstones = payload.filter(file => /^headshots\/[^/]+\.png$/.test(file.path));

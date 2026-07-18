@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
@@ -29,6 +30,13 @@ function loadWorldArtValidator() {
   const context = { window: {}, console, Math, Uint8ClampedArray };
   vm.runInNewContext(source, context, { filename: "datamon/world-art.js" });
   return context.window.DatamonWorldArt;
+}
+
+function loadBattlePresentationValidator() {
+  const source = fs.readFileSync(fromRoot("datamon/battle-presentation.js"), "utf8");
+  const context = { window: {}, console };
+  vm.runInNewContext(source, context, { filename: "datamon/battle-presentation.js" });
+  return context.window.DatamonBattlePresentation;
 }
 
 function paeth(a, b, c) {
@@ -106,6 +114,8 @@ const cloze = readJson("datamon/library/cloze.json");
 const diagrams = readJson("datamon/library/diagrams.json");
 const propManifest = readJson("datamon/props/manifest.json");
 const libraryManifest = readJson("datamon/library/assets/manifest.json");
+const battlemonManifest = readJson("datamon/battlemons/manifest.json");
+const battlemonSourceManifest = readJson("datamon/battlemons-source/manifest.json");
 let envManifest = [];
 try { envManifest = readJson("datamon/environment/manifest.json"); } catch (_) { /* optional */ }
 
@@ -151,6 +161,31 @@ for (const book of books) assert.ok(librarySlugs.has(book.cover_slug), `missing 
 for (const diagram of diagrams) {
   if (diagram.sprite_slug) assert.ok(librarySlugs.has(diagram.sprite_slug), `missing diagram sprite: ${diagram.sprite_slug}`);
 }
+
+const battlePresentation = loadBattlePresentationValidator();
+const acceptedBattlemonManifest = battlePresentation.normalizeManifest(battlemonManifest);
+assert.ok(acceptedBattlemonManifest && acceptedBattlemonManifest.size === 35,
+  "Battlemon manifest must pass the strict runtime taxonomy/schema contract");
+let battlemonBytes = 0;
+assert.equal(battlemonSourceManifest.reviewState, "accepted", "Battlemon AI source batch must be reviewed");
+assert.equal(battlemonSourceManifest.model, "google/gemini-3-pro-image", "Battlemon source model drift");
+assert.equal(battlemonSourceManifest.review?.contactSheetSha256, battlemonManifest.sourceReviewSha256,
+  "Battlemon runtime/source review receipts must match");
+const battlemonSources = new Map(battlemonSourceManifest.entries.map(entry => [entry.id, entry]));
+for (const entry of battlemonManifest.entries) {
+  const file = fromRoot(`datamon/battlemons/${entry.file}`);
+  const source = fromRoot(`datamon/battlemons-source/${entry.id}.png`);
+  assert.ok(fs.existsSync(file), `missing Battlemon sheet: ${entry.file}`);
+  assert.ok(fs.existsSync(source), `missing reviewed Battlemon source: ${entry.id}`);
+  const data = fs.readFileSync(file); battlemonBytes += data.length;
+  assert.equal(createHash("sha256").update(data).digest("hex"), entry.sha256,
+    `Battlemon hash mismatch: ${entry.file}`);
+  assert.equal(createHash("sha256").update(fs.readFileSync(source)).digest("hex"), entry.sourceSha256,
+    `Battlemon source hash mismatch: ${entry.id}`);
+  assert.equal(battlemonSources.get(entry.id)?.sourceSha256, entry.sourceSha256,
+    `Battlemon source declaration mismatch: ${entry.id}`);
+}
+assert.ok(battlemonBytes <= 2 * 1024 * 1024, "Battlemon PNG byte budget exceeded");
 
 // The additive manifest may be empty before G1, but any active member must pass the same
 // exact sourceScale/frame/alpha/detail contract in JavaScript as it does in Python.

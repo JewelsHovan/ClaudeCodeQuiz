@@ -1,0 +1,726 @@
+{
+  "schemaVersion": 1,
+  "batch": "classic-battlemon-v2",
+  "reviewState": "accepted",
+  "provenance": "reviewed-openrouter-gemini3pro+pillow-animation-v1",
+  "sourceBatch": "battlemon-ai-sources-v1",
+  "sourceModel": "google/gemini-3-pro-image",
+  "sourceReviewSha256": "e1c6f919d5a8a0cd43c6ca9e4159f9370712324cc4d3225197881a2fb58dcb30",
+  "format": "RGBA",
+  "layout": "horizontal",
+  "frameCount": 6,
+  "frameWidth": 128,
+  "frameHeight": 128,
+  "states": [
+    "idle-a",
+    "idle-b",
+    "sendout",
+    "attack",
+    "hit",
+    "faint"
+  ],
+  "assetCount": 35,
+  "entries": [
+    {
+      "id": "agent-rogue-subagent",
+      "name": "Rogue Subagent",
+      "domain": "AGENT",
+      "variant": 0,
+      "file": "agent-rogue-subagent.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "6b2fd4c91398379d5a32eab231fe92c33b7a446619cc2de7fb482318ef7741dc",
+      "sha256": "833403994452844b3f792c47d362e03fa66d6c89ff961827be5c8dcec301ecf2",
+      "silhouetteFamily": "agent"
+    },
+    {
+      "id": "agent-infinite-loop",
+      "name": "Infinite Loop",
+      "domain": "AGENT",
+      "variant": 1,
+      "file": "agent-infinite-loop.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "1b2658703409529bba6c63bd0340e8c39761f627c55cdc51709f00dddf19af2e",
+      "sha256": "f7c09c4f8da441c8179ec2b0789e24d881c1eee5afdca76fe2f89efb67e67576",
+      "silhouetteFamily": "agent"
+    },
+    {
+      "id": "agent-stop-reason",
+      "name": "Stop Reason",
+      "domain": "AGENT",
+      "variant": 2,
+      "file": "agent-stop-reason.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "296d53dc355f2ccec01f668e9c458e69a78586e4603fa8d2a0b34bf164880d00",
+      "sha256": "f0ee242f4bff532f5bd5585893d3e4b0d0093b9f93456ba85a8a0b57423cce79",
+      "silhouetteFamily": "agent"
+    },
+    {
+      "id": "agent-task-spawner",
+      "name": "Task Spawner",
+      "domain": "AGENT",
+      "variant": 3,
+      "file": "agent-task-spawner.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "0af00ad088d42a65def9f7b1c3457c7514372955a81aa664cb12373b724c3c2f",
+      "sha256": "340c3f7478eafe9d2838b22fc39d3c4807a2875115b29fa2e43d34a3c3d05bed",
+      "silhouetteFamily": "agent"
+    },
+    {
+      "id": "agent-orphan-process",
+      "name": "Orphan Process",
+      "domain": "AGENT",
+      "variant": 4,
+      "file": "agent-orphan-process.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "969ade5e72282bb81747a7aecc21f8856c0e146a2d9d86509efa611f62a9f95d",
+      "sha256": "a19937ce279ead8b543cba5a0f289589a455fce29f184c9edffd5cb8c5bf16f1",
+      "silhouetteFamily": "agent"
+    },
+    {
+      "id": "agent-stale-coordinator",
+      "name": "Stale Coordinator",
+      "domain": "AGENT",
+      "variant": 5,
+      "file": "agent-stale-coordinator.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "8d3f795c0ab6a401f9d724948f3489efcc0c532a19f8da499cf255e6a010b96b",
+      "sha256": "3734c9680928dbefea2c932d84dc7ab4892ae4668ea31a97f3d3ad312c0d8f2f",
+      "silhouetteFamily": "agent"
+    },
+    {
+      "id": "agent-fork-bomb",
+      "name": "Fork Bomb",
+      "domain": "AGENT",
+      "variant": 6,
+      "file": "agent-fork-bomb.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "4b6ede0249d768676fbbc977de33043346543a3d272840e88c8355fd6cfc999f",
+      "sha256": "278cc84660442c4732559edc71d680e36e8e4bf34166dcdbdfc3654ba91b6204",
+      "silhouetteFamily": "agent"
+    },
+    {
+      "id": "mcp-schema-mismatch",
+      "name": "Schema Mismatch",
+      "domain": "MCP",
+      "variant": 0,
+      "file": "mcp-schema-mismatch.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "73c17b73e5e77e1ac94e172e408dd7718a2464e2628258a091ca69af1484f0e5",
+      "sha256": "76f7130038a4b4d6494ef14fdde461ac389402e96a50dfd13b426621ce9fd850",
+      "silhouetteFamily": "mcp"
+    },
+    {
+      "id": "mcp-tool-sprawl",
+      "name": "Tool Sprawl",
+      "domain": "MCP",
+      "variant": 1,
+      "file": "mcp-tool-sprawl.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "299a04da333fb35e11c547b3a0466d802534eeef1a38451cce44cd3ad2cfd538",
+      "sha256": "e5caee7618b42cb0bd4cdb573ed21e9768a6c40c0f3996cc45197d6f5207ebc0",
+      "silhouetteFamily": "mcp"
+    },
+    {
+      "id": "mcp-stdio-zombie",
+      "name": "Stdio Zombie",
+      "domain": "MCP",
+      "variant": 2,
+      "file": "mcp-stdio-zombie.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "afd2fab3833aac729e235f633e8ad0f9b8888a7b363cf11d0dad2def3e068941",
+      "sha256": "a1f36950b9d9f5bc305a2a2d7642722b7fd0cf705b379e64f847361634b9dd60",
+      "silhouetteFamily": "mcp"
+    },
+    {
+      "id": "mcp-json-rpc-gremlin",
+      "name": "JSON-RPC Gremlin",
+      "domain": "MCP",
+      "variant": 3,
+      "file": "mcp-json-rpc-gremlin.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "aafae616a8f56d829d200f17f27c4374ee4e56fc2994e63fe0f0f5675d8f40dc",
+      "sha256": "79d9d4f0bf3f24869037ca022e92284ecf6b9e69a445a86d5b5b29284ba8731f",
+      "silhouetteFamily": "mcp"
+    },
+    {
+      "id": "mcp-deprecated-sse",
+      "name": "Deprecated SSE",
+      "domain": "MCP",
+      "variant": 4,
+      "file": "mcp-deprecated-sse.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "2915d945e441d5f0ed84d24cf5afbfb432b3d04a79906e2552c31784dd5e7e6d",
+      "sha256": "e0900b4d9bbe2fa1a259bcb235381e022de5958d9c6241c78a2a3f3ee14b8413",
+      "silhouetteFamily": "mcp"
+    },
+    {
+      "id": "mcp-scope-creep-server",
+      "name": "Scope Creep Server",
+      "domain": "MCP",
+      "variant": 5,
+      "file": "mcp-scope-creep-server.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "6d69ed238f954280b679cae8ad3a8aea486d9b98378eae4f3401d3c33fc1449d",
+      "sha256": "8d65f798b2f512673530d619cfbe49dbfc7e985198f442a6b653b43f44b526a0",
+      "silhouetteFamily": "mcp"
+    },
+    {
+      "id": "mcp-iserror-imp",
+      "name": "isError Imp",
+      "domain": "MCP",
+      "variant": 6,
+      "file": "mcp-iserror-imp.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "05813a551b8ffa48263abc751f3e32ece192e5de009dadf206403468a6ac667b",
+      "sha256": "5bfb70b43fa525914d945cd2503fd85bffe447e335c9d4a36417eda05e663a7f",
+      "silhouetteFamily": "mcp"
+    },
+    {
+      "id": "config-hook-loop",
+      "name": "Hook Loop",
+      "domain": "CONFIG",
+      "variant": 0,
+      "file": "config-hook-loop.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "55be9b9d859304a150599634daa8ee00cf8145f2ad13a49f70c78a411d6f5726",
+      "sha256": "41dbbc236ed317ed49e060de5adeeb9d0143dec46ede9fb390df019e611fad5f",
+      "silhouetteFamily": "config"
+    },
+    {
+      "id": "config-permission-prompt",
+      "name": "Permission Prompt",
+      "domain": "CONFIG",
+      "variant": 1,
+      "file": "config-permission-prompt.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "4fc459cc3acc1b3901c15c93d654cc2ccea9e23589e34515e5b045bfdd97ceb0",
+      "sha256": "83547e1ffd36150090eece8970e69bbe295b9cd9eeb64427500ef14460fbfded",
+      "silhouetteFamily": "config"
+    },
+    {
+      "id": "config-claude-md-bloat",
+      "name": "CLAUDE.md Bloat",
+      "domain": "CONFIG",
+      "variant": 2,
+      "file": "config-claude-md-bloat.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "452fe15c5d79d9b8b2b19c5c81a71c9335de2e3b5fc03add8c0feacef5a37e8c",
+      "sha256": "20b3e72562eb574ed9afc9d8e56ffc24dd2e1e6b36941fb4d381eb62ad4d22e1",
+      "silhouetteFamily": "config"
+    },
+    {
+      "id": "config-settings-drift",
+      "name": "Settings Drift",
+      "domain": "CONFIG",
+      "variant": 3,
+      "file": "config-settings-drift.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "c3aafb6d945d241de9781b0c49123117a92ec629282aaeb7e33fd3a0d11d8804",
+      "sha256": "cbf3a5c5dd0da70d5517c7be02c3d24ead1c2d4e64e2efa51fd3f0a8d43dde03",
+      "silhouetteFamily": "config"
+    },
+    {
+      "id": "config-deny-rule",
+      "name": "Deny Rule",
+      "domain": "CONFIG",
+      "variant": 4,
+      "file": "config-deny-rule.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "49e40111d08c122c92430cf4aecc5a4316e671df85eddd4cd1aeaebb18c96cb0",
+      "sha256": "383fdb918cfc029b7a63a0c51842a57d3b83685c562730d475670933ed2ec65a",
+      "silhouetteFamily": "config"
+    },
+    {
+      "id": "config-headless-hang",
+      "name": "Headless Hang",
+      "domain": "CONFIG",
+      "variant": 5,
+      "file": "config-headless-hang.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "7000523a9006fac0308463923db4fe5f79838d59d80b0d4e79a98929bdd00a2d",
+      "sha256": "93c9e8b0788f5a221ae6c8fa915f218bb61f7bdf4ed2c83d20cb062c607d9dbc",
+      "silhouetteFamily": "config"
+    },
+    {
+      "id": "config-exit-code-2",
+      "name": "Exit Code 2",
+      "domain": "CONFIG",
+      "variant": 6,
+      "file": "config-exit-code-2.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "4bbb2dd863a82cc04ccaca115e935e108181cad48d11092239c18b457e77c03b",
+      "sha256": "12c4a56b8bf2d531d8cff5e902e141bae294f6db780e62a983db7541dd1b6ba2",
+      "silhouetteFamily": "config"
+    },
+    {
+      "id": "prompt-prompt-injector",
+      "name": "Prompt Injector",
+      "domain": "PROMPT",
+      "variant": 0,
+      "file": "prompt-prompt-injector.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "76f41fd9dcf997e66391371993db68b39ad04bd8ba7563f907b21885ffe83cc4",
+      "sha256": "64b26304e78c834964ff6b15c4b08cf41b3b4e555486395810b29d145d647de2",
+      "silhouetteFamily": "prompt"
+    },
+    {
+      "id": "prompt-xml-tag-soup",
+      "name": "XML Tag Soup",
+      "domain": "PROMPT",
+      "variant": 1,
+      "file": "prompt-xml-tag-soup.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "6719738a901d6fbb3baaa5eafeabca6aacfe27c85466ed6704eff4fdaae81914",
+      "sha256": "9f83387f83f0de6c26443fdf44ecde12415a89a6aa55fc40413454667af3c6f2",
+      "silhouetteFamily": "prompt"
+    },
+    {
+      "id": "prompt-vague-modifier",
+      "name": "Vague Modifier",
+      "domain": "PROMPT",
+      "variant": 2,
+      "file": "prompt-vague-modifier.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "e34b10865a98651e88d5ca27941d02a7a74cd908ff8042606f0d210ef05353d4",
+      "sha256": "048d4f22c1f2c4a19573a279bbf9508f272666229e158ca0a94525f369de9c31",
+      "silhouetteFamily": "prompt"
+    },
+    {
+      "id": "prompt-hallucinator",
+      "name": "Hallucinator",
+      "domain": "PROMPT",
+      "variant": 3,
+      "file": "prompt-hallucinator.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "9add06863cb6d9206bb8b677f20e16b656fb9b022ea8c309c48a367d4bae701c",
+      "sha256": "ca285a3fd729142b8ebda6ca9cc0ecb421a16e62fca9eea378e22bf0a0ea9c0d",
+      "silhouetteFamily": "prompt"
+    },
+    {
+      "id": "prompt-malformed-json",
+      "name": "Malformed JSON",
+      "domain": "PROMPT",
+      "variant": 4,
+      "file": "prompt-malformed-json.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "37183c1ea2390208e8a6c2261615d2b0ba8d089e626e4aef3a5cd4d7c9185366",
+      "sha256": "739a5e9ee8bf6a01c5454f3d2c73a0b4546094c31e0bf3a6627e14594980705b",
+      "silhouetteFamily": "prompt"
+    },
+    {
+      "id": "prompt-chatty-preamble",
+      "name": "Chatty Preamble",
+      "domain": "PROMPT",
+      "variant": 5,
+      "file": "prompt-chatty-preamble.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "6434a89efcc64c25df0df26a9551220f834faac11970fc7c73ecbf5487319fb1",
+      "sha256": "011c10d6da6f8688c6b56355931fde12d49844b31cd308c1dcd6daa19c77fb36",
+      "silhouetteFamily": "prompt"
+    },
+    {
+      "id": "prompt-forced-enum",
+      "name": "Forced Enum",
+      "domain": "PROMPT",
+      "variant": 6,
+      "file": "prompt-forced-enum.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "2f4cbf725b53ac196b048426e21f865cda8c4d5f98ed09c14008ea3e3dc890ae",
+      "sha256": "2b51a0abb4ad5e8dbc698a3c1edbbeb611e29923f4e0d700c52a857cb1e4d262",
+      "silhouetteFamily": "prompt"
+    },
+    {
+      "id": "context-context-rot",
+      "name": "Context Rot",
+      "domain": "CONTEXT",
+      "variant": 0,
+      "file": "context-context-rot.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "c39e3d05206b1ea85e565b1369273185fe8be28b71af5ed90d61c6a75bb73e46",
+      "sha256": "a6e96ab1a3a86ed6e67ae9ee8d06a3033685cca2b5a524f9695eb5e1f8c5821d",
+      "silhouetteFamily": "context"
+    },
+    {
+      "id": "context-lost-middle",
+      "name": "Lost Middle",
+      "domain": "CONTEXT",
+      "variant": 1,
+      "file": "context-lost-middle.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "e9647bba9aa5bab5def5e6d7dce042af1d9dfaa6deb25fbfe6c6e6725ded82c3",
+      "sha256": "1ee09c3165cbc4c86bd03501ce0e006a9fb8628fe67f203145f85ed3a469b9db",
+      "silhouetteFamily": "context"
+    },
+    {
+      "id": "context-token-gobbler",
+      "name": "Token Gobbler",
+      "domain": "CONTEXT",
+      "variant": 2,
+      "file": "context-token-gobbler.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "d3fce6f1ae37d3f44ed4e43936a0662109e9ceeb00933959e2dbda007117a130",
+      "sha256": "777496aec270e3bbf26e18fe1b3a325a0a4c2d70a336c971a91acaee1a85a52f",
+      "silhouetteFamily": "context"
+    },
+    {
+      "id": "context-cache-miss",
+      "name": "Cache Miss",
+      "domain": "CONTEXT",
+      "variant": 3,
+      "file": "context-cache-miss.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "08ce971d99121e6f2c5a2dcab0db107470bdc8f176a94cd271df733211aa704c",
+      "sha256": "bdd9bd3c5208ae13a7c8662f5c45d17b2c80bb0817bf07e46cc5645ea339d1c2",
+      "silhouetteFamily": "context"
+    },
+    {
+      "id": "context-compaction-crash",
+      "name": "Compaction Crash",
+      "domain": "CONTEXT",
+      "variant": 4,
+      "file": "context-compaction-crash.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "3a48cdb787a8b0f887bfcd54b04c35a7e5dadb988d8af7867644884cb3bdf867",
+      "sha256": "cd4aa929775b5c4425fef08ac363c166e59c139b8a243e6221da134038e9fd87",
+      "silhouetteFamily": "context"
+    },
+    {
+      "id": "context-rate-limiter",
+      "name": "Rate Limiter",
+      "domain": "CONTEXT",
+      "variant": 5,
+      "file": "context-rate-limiter.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "ad90c11b01eed5643fa88396ea0f98e34d1d1e6f5c9fca7b7f0bc0ec45b99f14",
+      "sha256": "617aeb72cd511b36bc2a68f6c92303587373b407c5cdb4d19670d78be3b89ef4",
+      "silhouetteFamily": "context"
+    },
+    {
+      "id": "context-stale-summary",
+      "name": "Stale Summary",
+      "domain": "CONTEXT",
+      "variant": 6,
+      "file": "context-stale-summary.png",
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "frames": [
+        "idle-a",
+        "idle-b",
+        "sendout",
+        "attack",
+        "hit",
+        "faint"
+      ],
+      "sourceSha256": "39be44cd2842d90cb511272d1a3a4ae31410e6f9b6ccb2b8972905444d041e2a",
+      "sha256": "0aa2713069c52c88ade3585f556208742d066533568564f5a2a0e6e982f59a08",
+      "silhouetteFamily": "context"
+    }
+  ],
+  "batchSha256": "8a55786fb9fd46dfddd887954355fec2a497c1fe6e3190468f228f5640702f1b"
+}

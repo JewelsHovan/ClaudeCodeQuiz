@@ -1088,7 +1088,10 @@ function startBattle(npc, portraitLed) {
   leaveSeat();
   clearMentorReview(); // #049: modal must not survive battle start
   const matchup = resolveAttributeMatchup(npc.slug);
-  const monPool = shuffled(MON_NAMES[npc.type === "MIX" ? weightedDomain() : npc.type],
+  // MIX chooses one visual species pool exactly once, matching the pre-presentation RNG
+  // contract. Presentation IDs never consume extra randomness or affect question selection.
+  const monDomain = npc.type === "MIX" ? weightedDomain() : npc.type;
+  const monPool = shuffled(MON_NAMES[monDomain],
                            mulberry32(Math.floor(Math.random() * 1e9)));
   const level = Math.max(1, 5 + defeated.size * 2 + (TIER_LEVEL_DELTA[difficulty] || 0));
   const isAgent = npc.type === "AGENT";
@@ -1116,6 +1119,10 @@ function startBattle(npc, portraitLed) {
     attributes: matchup,
     mons: Array.from({ length: monCount }, (_, i) => ({
       name: monPool[i % monPool.length], level: level + i, q: null, alive: true,
+      domain: monDomain,
+      id: typeof DatamonBattlePresentation !== "undefined"
+        ? DatamonBattlePresentation.battlemonId(monDomain, monPool[i % monPool.length])
+        : null,
     })),
     idx: 0,
     phase: "intro", // Agent phase is projected from reducer state before the scene renders
@@ -1133,6 +1140,18 @@ function startBattle(npc, portraitLed) {
     dmgAt: 0,
     poof: [],
   };
+  // Preload encounter Battlemon sheets (classic only).
+  // No mon PNGs load on the title screen; only the encounter's 1-3 sheets load here.
+  if (typeof DatamonBattlePresentation !== "undefined" && !isAgent) {
+    var seenIds = {};
+    for (var mi = 0; mi < battle.mons.length; mi++) {
+      var mon = battle.mons[mi];
+      if (mon.id && !seenIds[mon.id]) {
+        seenIds[mon.id] = true;
+        DatamonBattlePresentation.requestSheet(mon.id);
+      }
+    }
+  }
   // Agent Operations: initialise reducer-owned encounter state, presentation arena,
   // and draw bridge, then route the initial turn through the one adapter.
   if (isAgent && typeof DatamonBattleOps !== "undefined") {
@@ -5009,17 +5028,41 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
   }
 }
 
-// Draw a trainer sprite bottom-anchored at (cx, baseY) with given height.
-// Falls back to the pixelated headshot if no generated sprite exists.
-function drawTrainer(slug, cx, baseY, h, bobAmp = 0) {
-  const yOff = bobAmp ? Math.sin(frame / 16) * bobAmp : 0;
-  const img = sprites[slug];
-  if (img) {
-    ctx.drawImage(img, px(cx - h / 2), px(baseY - h + yOff), h, h);
+// Draw a trainer bottom-anchored at (cx, baseY). Existing callers omit poseParams;
+// classic battles provide one frozen semantic pose. Decoded alpha bounds make `h` the
+// visible character height rather than the transparent source-square height.
+function drawTrainer(slug, cx, baseY, h, bobAmp, poseParams, mirrorPose) {
+  var yOff = bobAmp ? Math.sin(frame / 16) * bobAmp : 0;
+  var dx = poseParams ? poseParams.dx : 0;
+  var dy = poseParams ? poseParams.dy : 0;
+  var rotation = poseParams ? poseParams.rotation : 0;
+  var scaleX = poseParams ? poseParams.scaleX : 1;
+  var scaleY = poseParams ? poseParams.scaleY : 1;
+  var alpha = poseParams ? poseParams.alpha / 255 : 1;
+  if (mirrorPose) { dx = -dx; rotation = -rotation; }
+
+  var image = sprites[slug];
+  var bounds = image && typeof DatamonBattlePresentation !== "undefined"
+    ? DatamonBattlePresentation.computeAlphaBounds(image) : null;
+  var sourceX = bounds ? bounds.x : 0;
+  var sourceY = bounds ? bounds.y : 0;
+  var sourceW = bounds ? bounds.w : (image ? image.naturalWidth : 64);
+  var sourceH = bounds ? bounds.h : (image ? image.naturalHeight : 64);
+  var visibleW = h * sourceW / Math.max(1, sourceH);
+
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.translate(px(cx + dx), px(baseY + dy + yOff));
+  ctx.rotate(rotation * Math.PI / 180);
+  ctx.scale(scaleX, scaleY);
+  if (image) {
+    ctx.drawImage(image, sourceX, sourceY, sourceW, sourceH,
+      -visibleW / 2, -h, visibleW, h);
   } else {
-    const s = Math.round(h * 0.7);
-    ctx.drawImage(pixelHead(slug, 64), px(cx - s / 2), px(baseY - s + yOff), s, s);
+    var fallbackSize = h * 0.7;
+    ctx.drawImage(pixelHead(slug, 64), -fallbackSize / 2, -fallbackSize, fallbackSize, fallbackSize);
   }
+  ctx.restore();
 }
 
 // ---------- Scenes ----------
@@ -6534,112 +6577,209 @@ function _agentDrawBattle(b) {
 }
 
 function drawBattle() {
-  const b = battle;
+  var b = battle;
   if (b.agentOps) { _agentDrawBattle(b); return; }
-  const shakeX = b.shake > 0 ? (Math.random() - 0.5) * b.shake : 0;
-  if (b.shake > 0) b.shake = Math.max(0, b.shake - dtF);
+  var BPS = typeof DatamonBattlePresentation !== "undefined" ? DatamonBattlePresentation : null;
+  var GEO = BPS ? BPS.GEOMETRY : null;
+  var reducedMotion = typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion
+    ? AgentArena.prefersReducedMotion()
+    : !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  var shakeX = !reducedMotion && b.shake > 0 ? (Math.random() - 0.5) * b.shake : 0;
+  if (reducedMotion) b.shake = 0;
+  else if (b.shake > 0) b.shake = Math.max(0, b.shake - dtF);
 
   ctx.save();
   ctx.translate(shakeX, 0);
 
-  // backdrop
-  ctx.fillStyle = battleGrad; ctx.fillRect(-20, 0, CANVAS_W + 40, CANVAS_H);
+  var typeColor = TYPE_COLORS[b.npc.type];
+  var mon = currentMon();
+  var monColor = TYPE_COLORS[mon.domain] || typeColor;
 
-  const typeColor = TYPE_COLORS[b.npc.type];
-  const mon = currentMon();
+  // ---- Certification proving-ground backdrop ----
+  ctx.fillStyle = "#07111f";
+  ctx.fillRect(-20, 0, CANVAS_W + 40, CANVAS_H);
+  ctx.fillStyle = "#0b1729";
+  ctx.fillRect(-20, 0, CANVAS_W + 40, GEO ? GEO.STAGE_BOTTOM : 432);
 
-  // entrance: trainers + platforms slide in from the sides
-  const ee = 1 - Math.pow(1 - Math.min(1, (frame - b.startF) / 30), 3);
-  const oppX = CANVAS_W - 200 + (1 - ee) * 280;
-  const plyX = 190 - (1 - ee) * 280;
+  // Depth bands
+  var depthColors = ["#14243a", "#102036", "#0c1a2d"];
+  for (var di = 0; di < 3; di++) {
+    ctx.fillStyle = depthColors[di];
+    ctx.fillRect(-20, 118 + di * 126, CANVAS_W + 40, 1);
+  }
 
-  // platforms
-  ctx.fillStyle = "rgba(148,163,184,0.18)";
-  ctx.beginPath(); ctx.ellipse(oppX, 252, 130, 30, 0, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(plyX, 404, 130, 30, 0, 0, 7); ctx.fill();
+  // Evidence ring and conduit use the active species domain, not a decorative fixed hue.
+  if (GEO) {
+    ctx.globalAlpha = 0.62;
+    ctx.strokeStyle = monColor;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(GEO.BATTLEMON_CENTER_X, GEO.BATTLEMON_CENTER_Y, 88, 85, 0, 0, 7);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(251,191,36,0.31)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(GEO.BATTLEMON_CENTER_X, GEO.BATTLEMON_CENTER_Y, 70, 67, 0, 0, 7);
+    ctx.stroke();
 
-  // opponent trainer sprite, standing on the far platform
-  drawTrainer(b.npc.slug, oppX, 268, 256, 4);
+    // Conduit packets
+    ctx.fillStyle = "rgba(251,191,36,0.59)";
+    var conduitStartX = GEO.PLAYER_ANCHOR[0] + 50;
+    var conduitEndX = GEO.BATTLEMON_CENTER_X - 64;
+    for (var cx = conduitStartX; cx < conduitEndX; cx += 34) {
+      var cy = 360 - (cx - conduitStartX) / 4;
+      ctx.fillRect(cx, cy, 8, 4);
+    }
+  }
 
-  // player trainer sprite, near platform
-  drawTrainer(player.slug, plyX, 420, 192, 0);
+  // ---- Entrance easing (reduced motion: no slide) ----
+  var ee = reducedMotion ? 1 : (1 - Math.pow(1 - Math.min(1, (frame - b.startF) / 30), 3));
+  var oppX = GEO ? GEO.OPPONENT_ANCHOR[0] : 657;
+  var plyX = GEO ? GEO.PLAYER_ANCHOR[0] : 160;
+  if (!reducedMotion) {
+    oppX += (1 - ee) * 220;
+    plyX -= (1 - ee) * 220;
+  }
 
-  // ---- the mon: scale-in on sendout, idle bob, lunge on hit, fall+fade on faint ----
-  const MON_X = 440, MON_Y = 238;
+  // ---- Grounding platforms ----
+  var oppBaseY = GEO ? GEO.OPPONENT_ANCHOR[1] : 260;
+  var plyBaseY = GEO ? GEO.PLAYER_ANCHOR[1] : 408;
+  ctx.fillStyle = "rgba(100,116,139,0.22)";
+  ctx.beginPath(); ctx.ellipse(oppX, oppBaseY - 8, 77, 18, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(148,163,184,0.31)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(oppX, oppBaseY - 8, 77, 18, 0, 0, 7); ctx.stroke();
+  ctx.fillStyle = "rgba(100,116,139,0.18)";
+  ctx.beginPath(); ctx.ellipse(plyX, plyBaseY - 8, 77, 18, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(148,163,184,0.27)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(plyX, plyBaseY - 8, 77, 18, 0, 0, 7); ctx.stroke();
+
+  // Battlemon plinth shadow
+  if (GEO) {
+    ctx.fillStyle = "rgba(0,0,0,0.31)";
+    ctx.beginPath();
+    ctx.ellipse(GEO.BATTLEMON_CENTER_X, GEO.BATTLEMON_CENTER_Y + 64, 49, 10, 0, 0, 7);
+    ctx.fill();
+  }
+
+  // ---- Resolve trainer poses from existing combat state only ----
+  var impactActive = !!(b.attackAt && frame >= b.attackAt && frame - b.attackAt < 16);
+  var playerPose = BPS ? BPS.resolveTrainerPose("player", b.phase, b.feedback, impactActive) : "idle";
+  var opponentPose = BPS ? BPS.resolveTrainerPose("opponent", b.phase, b.feedback, impactActive) : "idle";
+  var oppH = GEO ? GEO.OPPONENT_VISIBLE_HEIGHT : 156;
+  var plyH = GEO ? GEO.PLAYER_VISIBLE_HEIGHT : 172;
+  var oppParams = BPS ? BPS.POSE_PARAMS[opponentPose] : null;
+  var plyParams = BPS ? BPS.POSE_PARAMS[playerPose] : null;
+
+  // Transform around the feet; the opponent pose mirrors direction without allocating a copy.
+  drawTrainer(b.npc.slug, oppX, oppBaseY, oppH, reducedMotion ? 0 : 2, oppParams, true);
+  drawTrainer(player.slug, plyX, plyBaseY, plyH, 0, plyParams, false);
+
+  // Static semantic marks remain visible under reduced motion; only their movement is removed.
+  if (BPS) {
+    drawPoseSignal(plyX, plyBaseY - plyH * 0.72, "player", "#fbbf24", playerPose);
+    drawPoseSignal(oppX, oppBaseY - oppH * 0.72, "opponent", typeColor, opponentPose);
+  }
+
+  // ---- Battlemon rendering: state derives from existing timestamps ----
+  var monState = "idle-a";
+  var monX = GEO ? GEO.BATTLEMON_CENTER_X : 502;
+  var monY = GEO ? GEO.BATTLEMON_CENTER_Y : 246;
+  var monSize = GEO ? GEO.BATTLEMON_DRAW_SIZE : 128;
   if (b.sendoutAt > 0 && b.phase !== "intro") {
-    let monX = MON_X, monY = MON_Y, scale = 1, alpha = 1;
-    const sT = frame - b.sendoutAt;
-    if (sT < 16) scale = Math.max(0.05, sT / 16);
-    monY += Math.sin(frame / 13) * 5;
-    if (b.attackAt) {
-      const aT = frame - b.attackAt;
-      if (aT < 16) { const l = Math.sin((aT / 16) * Math.PI); monX -= l * 170; monY += l * 110; }
+    if (BPS) monState = BPS.resolveBattlemonState(b.phase, frame, b.attackAt, b.faintAt, reducedMotion);
+    var presentationScale = 1;
+    var monAlpha = 1;
+    if (!reducedMotion) {
+      var sendoutElapsed = frame - b.sendoutAt;
+      if (b.phase === "sendout" && sendoutElapsed < 16) {
+        presentationScale = Math.max(0.05, sendoutElapsed / 16);
+      }
+      if (monState === "idle-a" || monState === "idle-b") monY += Math.sin(frame / 13) * 3;
+      if (monState === "attack") {
+        var attackProgress = Math.max(0, Math.min(1, (frame - b.attackAt) / 16));
+        monX -= Math.sin(attackProgress * Math.PI) * 80;
+      }
+      if (monState === "faint") {
+        var faintElapsed = Math.max(0, frame - b.faintAt - 8);
+        monY += faintElapsed * faintElapsed * 0.12;
+        monAlpha = Math.max(0, 1 - faintElapsed / 28);
+      }
     }
-    if (b.faintAt) {
-      const fT = frame - b.faintAt;
-      monY += fT * fT * 0.25;
-      alpha = Math.max(0, 1 - fT / 24);
-    }
-    if (alpha > 0) {
-      ctx.fillStyle = "rgba(0,0,0,0.25)";
-      ctx.beginPath(); ctx.ellipse(MON_X, MON_Y + 58, 40 * scale, 9 * scale, 0, 0, 7); ctx.fill();
-      const sz = 88 * scale;
-      ctx.globalAlpha = alpha;
-      ctx.drawImage(monSpriteCv(mon.name, typeColor), px(monX - sz / 2), px(monY - sz / 2), sz, sz);
+    var drawSize = monSize * presentationScale;
+    if (monAlpha > 0) {
+      ctx.globalAlpha = monAlpha;
+      if (BPS && mon.domain && mon.id) {
+        BPS.drawBattlemonFrame(ctx, mon.domain, mon.id, monState,
+          px(monX - drawSize / 2), px(monY - drawSize / 2), drawSize, drawSize);
+      } else {
+        ctx.drawImage(monSpriteCv(mon.name, monColor),
+          px(monX - drawSize / 2), px(monY - drawSize / 2), drawSize, drawSize);
+      }
       ctx.globalAlpha = 1;
     }
   }
 
-  // sendout poof particles
-  b.poof = b.poof.filter(p => { p.life -= dtF; return p.life > 0; });
-  for (const p of b.poof) {
-    p.x += p.vx * dtF; p.y += p.vy * dtF;
-    ctx.globalAlpha = Math.min(1, p.life / 16);
-    ctx.fillStyle = "#e2e8f0";
-    ctx.fillRect(px(MON_X + p.x), px(MON_Y + p.y), 4, 4);
+  // Sendout poof particles are bounded and absent under reduced motion.
+  if (reducedMotion) b.poof.length = 0;
+  else {
+    b.poof = b.poof.filter(function(particle) { particle.life -= dtF; return particle.life > 0; });
+    for (var particleIndex = 0; particleIndex < b.poof.length; particleIndex++) {
+      var particle = b.poof[particleIndex];
+      particle.x += particle.vx * dtF; particle.y += particle.vy * dtF;
+      ctx.globalAlpha = Math.min(1, particle.life / 16);
+      ctx.fillStyle = "#e2e8f0";
+      ctx.fillRect(px(monX + particle.x), px(monY + particle.y), 4, 4);
+    }
+    ctx.globalAlpha = 1;
   }
-  ctx.globalAlpha = 1;
 
-  // opponent info plate
+  // ---- Opponent info plate (GEO: [24,24,366,112]) ----
+  var oppPlate = GEO ? GEO.OPPONENT_PLATE : [36, 36, 366, 120];
   ctx.fillStyle = "rgba(15,23,42,0.9)";
-  ctx.fillRect(36, 36, 330, 84);
-  ctx.strokeStyle = typeColor; ctx.lineWidth = 2; ctx.strokeRect(36, 36, 330, 84);
-  // FE face portrait (#023): small framed bust at the plate's left, tinted to the type colour
-  ctx.drawImage(pixelHead(b.npc.slug, 56), 48, 48, 56, 56);
-  ctx.strokeStyle = typeColor; ctx.lineWidth = 2; ctx.strokeRect(48, 48, 56, 56);
-  const oTx = 116;
+  ctx.fillRect(oppPlate[0], oppPlate[1], oppPlate[2] - oppPlate[0], oppPlate[3] - oppPlate[1]);
+  ctx.strokeStyle = typeColor; ctx.lineWidth = 2;
+  ctx.strokeRect(oppPlate[0], oppPlate[1], oppPlate[2] - oppPlate[0], oppPlate[3] - oppPlate[1]);
+  ctx.drawImage(pixelHead(b.npc.slug, 56), oppPlate[0] + 12, oppPlate[1] + 12, 56, 56);
+  ctx.strokeStyle = typeColor; ctx.lineWidth = 2;
+  ctx.strokeRect(oppPlate[0] + 12, oppPlate[1] + 12, 56, 56);
+  var oTx = oppPlate[0] + 80;
   ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 16px monospace"; ctx.textAlign = "left";
-  ctx.fillText(displayName(b.npc.slug), oTx, 62);
+  ctx.fillText(displayName(b.npc.slug), oTx, oppPlate[1] + 26);
   ctx.fillStyle = typeColor; ctx.font = "bold 12px monospace";
-  ctx.fillText(`${b.npc.type} TRAINER · ${TYPE_NAMES[b.npc.type]}`, oTx, 82);
+  ctx.fillText(b.npc.type + " TRAINER · " + TYPE_NAMES[b.npc.type], oTx, oppPlate[1] + 46);
   ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
-  ctx.fillText(`${mon.name.toUpperCase()} Lv.${mon.level}`, oTx, 100);
-  for (let i = 0; i < b.mons.length; i++) {
+  ctx.fillText(mon.name.toUpperCase() + " Lv." + mon.level, oTx, oppPlate[1] + 64);
+  for (var i = 0; i < b.mons.length; i++) {
     ctx.fillStyle = b.mons[i].alive ? typeColor : "#334155";
-    ctx.beginPath(); ctx.arc(350 - (b.mons.length - 1 - i) * 16, 92, 5, 0, 7); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(oppPlate[2] - 32 - (b.mons.length - 1 - i) * 16, oppPlate[1] + 56, 5, 0, 7);
+    ctx.fill();
   }
 
-  // player info plate (HP bar drains smoothly via dispHp)
-  const pbX = CANVAS_W - 366;
+  // ---- Player info plate (GEO: [430,330,776,404]) ----
+  var plyPlate = GEO ? GEO.PLAYER_PLATE : [430, 300, 776, 370];
+  var pW = plyPlate[2] - plyPlate[0], pH = plyPlate[3] - plyPlate[1];
   ctx.fillStyle = "rgba(15,23,42,0.9)";
-  ctx.fillRect(pbX, 300, 330, 70);
-  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2; ctx.strokeRect(pbX, 300, 330, 70);
-  // FE face portrait (#023): small framed bust at the plate's left
-  ctx.drawImage(pixelHead(player.slug, 48), pbX + 8, 312, 48, 48);
-  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2; ctx.strokeRect(pbX + 8, 312, 48, 48);
-  const pTx = pbX + 68;
+  ctx.fillRect(plyPlate[0], plyPlate[1], pW, pH);
+  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2;
+  ctx.strokeRect(plyPlate[0], plyPlate[1], pW, pH);
+  ctx.drawImage(pixelHead(player.slug, 48), plyPlate[0] + 8, plyPlate[1] + 12, 48, 48);
+  ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2;
+  ctx.strokeRect(plyPlate[0] + 8, plyPlate[1] + 12, 48, 48);
+  var pTx = plyPlate[0] + 68;
   ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 15px monospace"; ctx.textAlign = "left";
-  ctx.fillText("YOU (" + firstName(player.slug) + ")", pTx, 324);
-  const maxHp = battleMaxHp(b);
-  drawHPBar(pTx, 340, 175, 12, Math.min(1, player.dispHp / maxHp));
+  ctx.fillText("YOU (" + firstName(player.slug) + ")", pTx, plyPlate[1] + 24);
+  var maxHp = battleMaxHp(b);
+  drawHPBar(pTx, plyPlate[1] + 40, 175, 12, Math.min(1, player.dispHp / maxHp));
   ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace";
-  ctx.fillText(Math.round(player.dispHp) + "/" + maxHp, pTx + 182, 351);
+  ctx.fillText(Math.round(player.dispHp) + "/" + maxHp, pTx + 182, plyPlate[1] + 51);
   ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 9px monospace";
-  ctx.fillText("MISS -" + battleWrongDamage(b) + " · CORRECT +" + battleCorrectHeal(b) + " HP", pTx, 366);
+  ctx.fillText("MISS -" + battleWrongDamage(b) + " · CORRECT +" + battleCorrectHeal(b) + " HP", pTx, plyPlate[1] + 66);
 
   // floating damage number
   if (b.dmgAt) {
-    const dT = frame - b.dmgAt;
+    var dT = frame - b.dmgAt;
     if (dT < 45) {
       ctx.globalAlpha = Math.max(0, 1 - dT / 45);
       ctx.fillStyle = "#f87171"; ctx.font = "bold 22px monospace"; ctx.textAlign = "center";
@@ -6648,38 +6788,37 @@ function drawBattle() {
     }
   }
 
-  // text/question box
-  const { bx, by, bw, bh } = layoutChoices();
+  // ---- text/question box (unchanged geometry below y=432) ----
+  var layout = layoutChoices();
+  var bx = layout.bx, by = layout.by, bw = layout.bw, bh = layout.bh;
   ctx.fillStyle = "rgba(15,23,42,0.95)";
   ctx.fillRect(bx, by, bw, bh);
   ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 3; ctx.strokeRect(bx, by, bw, bh);
 
   if (b.phase === "question") {
-    const q = mon.q;
-    // up to 2 lines at 14px; drop to 12px / 3 lines for extra-long questions
-    let qFont = "bold 14px monospace", lh = 17, qy = by + 22;
-    let qLines = wrapTextMemo(`[${q.cat}] ${q.q}`, bw - 110, qFont);
+    var q = mon.q;
+    var qFont = "bold 14px monospace", lh = 17, qy = by + 22;
+    var qLines = wrapTextMemo("[" + q.cat + "] " + q.q, bw - 110, qFont);
     if (qLines.length > 2) {
       qFont = "bold 12px monospace"; lh = 15; qy = by + 18;
-      qLines = wrapTextMemo(`[${q.cat}] ${q.q}`, bw - 110, qFont);
+      qLines = wrapTextMemo("[" + q.cat + "] " + q.q, bw - 110, qFont);
     }
     ctx.fillStyle = "#facc15"; ctx.font = qFont; ctx.textAlign = "left";
-    qLines.slice(0, 3).forEach((ln, i) => ctx.fillText(ln, bx + 14, qy + i * lh));
-    for (let i = 0; i < 4; i++) {
-      const [x, y, w, h] = CHOICE_RECTS[i];
-      const isSel = i === b.sel;
+    qLines.slice(0, 3).forEach(function(ln, i) { ctx.fillText(ln, bx + 14, qy + i * lh); });
+    for (var i = 0; i < 4; i++) {
+      var cr = CHOICE_RECTS[i];
+      var isSel = i === b.sel;
       ctx.fillStyle = isSel ? "#facc15" : "#1e293b";
-      ctx.fillRect(x, y, w, h);
-      if (isSel) { ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h); }
+      ctx.fillRect(cr[0], cr[1], cr[2], cr[3]);
+      if (isSel) { ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2; ctx.strokeRect(cr[0], cr[1], cr[2], cr[3]); }
       ctx.fillStyle = isSel ? "#0f172a" : "#e2e8f0";
       ctx.font = "13px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      const lines = wrapTextMemo(`${i + 1}. ${q.c[i]}`, w - 20, "13px monospace");
-      if (lines.length === 1) ctx.fillText(lines[0], x + 10, y + h / 2);
-      else lines.slice(0, 2).forEach((ln, j) => ctx.fillText(ln, x + 10, y + h / 2 + (j - 0.5) * 15));
+      var clines = wrapTextMemo((i + 1) + ". " + q.c[i], cr[2] - 20, "13px monospace");
+      if (clines.length === 1) ctx.fillText(clines[0], cr[0] + 10, cr[1] + cr[3] / 2);
+      else clines.slice(0, 2).forEach(function(ln, j) { ctx.fillText(ln, cr[0] + 10, cr[1] + cr[3] / 2 + (j - 0.5) * 15); });
       ctx.textBaseline = "alphabetic";
     }
-    // Run (flee) button — top-right of the question box, above the choice grid
-    const [rrx, rry, rrw, rrh] = RUN_RECT;
+    var rrx = RUN_RECT[0], rry = RUN_RECT[1], rrw = RUN_RECT[2], rrh = RUN_RECT[3];
     ctx.fillStyle = "#7f1d1d";
     ctx.fillRect(rrx, rry, rrw, rrh);
     ctx.strokeStyle = "#f87171"; ctx.lineWidth = 2; ctx.strokeRect(rrx, rry, rrw, rrh);
@@ -6688,25 +6827,22 @@ function drawBattle() {
     ctx.fillText("RUN (R)", rrx + rrw / 2, rry + rrh / 2);
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 
-    // Hard-mode countdown — rendered in the gap above the question box; Easy/Normal show nothing.
     if (difficulty === "hard") {
-      const remMs = Math.max(0, b.timerMs);
-      const secs = Math.ceil(remMs / 1000);
-      const frac = Math.max(0, Math.min(1, remMs / battleTimerLimit(b)));
-      const low = remMs < 10000;
-      const barW = 220, barH = 12, tcx = CANVAS_W / 2, tby = by - 34;
-      const col = low ? "#f87171" : "#facc15";
+      var remMs = Math.max(0, b.timerMs);
+      var secs = Math.ceil(remMs / 1000);
+      var frac = Math.max(0, Math.min(1, remMs / battleTimerLimit(b)));
+      var low = remMs < 10000;
+      var barW = 220, barH = 12, tcx = CANVAS_W / 2, tby = by - 34;
+      var col = low ? "#f87171" : "#facc15";
       ctx.fillStyle = col; ctx.font = "bold 16px monospace"; ctx.textAlign = "center";
-      ctx.fillText(`⏱ ${secs}s`, tcx, tby - 4);
-      // track + fill
+      ctx.fillText("⏱ " + secs + "s", tcx, tby - 4);
       ctx.fillStyle = "#0f172a"; ctx.fillRect(tcx - barW / 2, tby + 4, barW, barH);
       ctx.fillStyle = col; ctx.fillRect(tcx - barW / 2, tby + 4, barW * frac, barH);
       ctx.strokeStyle = "#334155"; ctx.lineWidth = 1; ctx.strokeRect(tcx - barW / 2, tby + 4, barW, barH);
       ctx.textAlign = "left";
     }
   } else {
-    // typewriter message reveal — wrap once per message, reveal by char count
-    const shown = Math.floor((frame - b.msgAt + 1) * TEXT_SPEED());
+    var shown = Math.floor((frame - b.msgAt + 1) * TEXT_SPEED());
     if (!b._cachedMsgLines || b._cachedMsg !== b.msg) {
       b._cachedMsg = b.msg;
       b._cachedMsgLines = wrapTextMemo(b.msg, bw - 32, "bold 15px monospace");
@@ -6715,28 +6851,59 @@ function drawBattle() {
       : (b.feedback && !b.feedback.correct && b.phase === "feedback") || b.phase === "lose" ? "#f87171" : "#e2e8f0";
     ctx.font = "bold 15px monospace"; ctx.textAlign = "left";
     typewriterSlice(b._cachedMsgLines, Math.max(0, shown)).slice(0, 5)
-      .forEach((ln, i) => ctx.fillText(ln, bx + 16, by + 30 + i * 22));
+      .forEach(function(ln, i) { ctx.fillText(ln, bx + 16, by + 30 + i * 22); });
     if (shown >= b.msg.length && Math.floor(frame / 25) % 2 === 0) {
       ctx.fillStyle = "#94a3b8"; ctx.font = "12px monospace"; ctx.textAlign = "right";
       ctx.fillText("ENTER ▸", bx + bw - 14, by + bh - 12);
     }
   }
 
-  // red flash when you take a hit
-  if (b.attackAt) {
-    const aT = frame - b.attackAt;
-    if (aT < 14) {
-      ctx.fillStyle = `rgba(239,68,68,${(0.32 * (1 - aT / 14)).toFixed(3)})`;
+  // Full-canvas flashes are motion effects and disappear under reduced motion.
+  if (!reducedMotion && b.attackAt) {
+    var flashElapsed = frame - b.attackAt;
+    if (flashElapsed < 14) {
+      ctx.fillStyle = "rgba(239,68,68," + (0.32 * (1 - flashElapsed / 14)).toFixed(3) + ")";
       ctx.fillRect(-20, 0, CANVAS_W + 40, CANVAS_H);
     }
   }
-  // white flash as the battle scene appears
-  const wT = frame - b.startF;
-  if (wT < 14) {
-    ctx.fillStyle = `rgba(255,255,255,${(1 - wT / 14).toFixed(3)})`;
+  var entranceFlashElapsed = frame - b.startF;
+  if (!reducedMotion && entranceFlashElapsed < 14) {
+    ctx.fillStyle = "rgba(255,255,255," + (1 - entranceFlashElapsed / 14).toFixed(3) + ")";
     ctx.fillRect(-20, 0, CANVAS_W + 40, CANVAS_H);
   }
   ctx.restore();
+}
+
+// Draw a semantic pose signal mark near a trainer.
+function drawPoseSignal(cx, cy, side, color, pose) {
+  if (pose === "idle") return;
+  var dir = side === "player" ? 1 : -1;
+  if (pose === "challenge" || pose === "command") {
+    for (var i = 0; i < 3; i++) {
+      var x = cx + dir * (34 + i * 9);
+      ctx.beginPath();
+      ctx.moveTo(x, cy - 7);
+      ctx.lineTo(x + dir * 7, cy);
+      ctx.lineTo(x, cy + 7);
+      if (pose === "command") ctx.closePath();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2;
+      if (pose === "command") ctx.fill(); else ctx.stroke();
+    }
+  } else if (pose === "win") {
+    ctx.strokeStyle = color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx - 12, cy); ctx.lineTo(cx - 12, cy - 18); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 27); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 12, cy); ctx.lineTo(cx + 12, cy - 18); ctx.stroke();
+  } else if (pose === "loss") {
+    ctx.strokeStyle = color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx - 10, cy - 8); ctx.lineTo(cx + 10, cy + 8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 10, cy - 8); ctx.lineTo(cx - 10, cy + 8); ctx.stroke();
+  } else if (pose === "hit") {
+    ctx.strokeStyle = "#fb7185"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(cx - 12, cy - 10); ctx.lineTo(cx + 12, cy + 10); ctx.stroke();
+  }
 }
 
 // Pokemon-style battle transition: triple white flash, then an iris wipe to black.
@@ -7130,6 +7297,10 @@ var hdOfficePromise = hdManifestPromise.then(function() {
   return (typeof DatamonWorldArt !== "undefined")
     ? DatamonWorldArt.loadScene("office") : [];
 });
+// Validate only the small taxonomy manifest at boot. No Battlemon PNG is requested until
+// a classic encounter has selected its 1–3 immutable species IDs.
+var battlePresentationManifestPromise = (typeof DatamonBattlePresentation !== "undefined")
+  ? DatamonBattlePresentation.loadManifest() : Promise.resolve(null);
 // Prewarm only the saved player without delaying the title screen. A new run preloads its
 // highlighted character when character select opens.
 loadWalkAnim(getSave()?.player);
@@ -7139,6 +7310,7 @@ Promise.all([
   loadImages(), loadTiles(), loadProps(), loadStudyProps(),
   loadWayfindingAssets(),
   hdOfficePromise,
+  battlePresentationManifestPromise,
   // Load only shared library dependencies needed by the office entrance
   fetch("library/assets/manifest.json")
     .then(r => (r.ok ? r.json() : []))

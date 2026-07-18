@@ -12,7 +12,9 @@ import { chromium } from "playwright";
 const DIST = path.resolve(import.meta.dirname, "..", "dist");
 const wayfindingManifest = JSON.parse(fs.readFileSync(path.join(DIST, "props-wayfinding/manifest.json"), "utf8"));
 const sittingManifest = JSON.parse(fs.readFileSync(path.join(DIST, "sprites-sit/manifest.json"), "utf8"));
+const battlemonManifest = JSON.parse(fs.readFileSync(path.join(DIST, "battlemons/manifest.json"), "utf8"));
 const WAYFINDING_FILES = ["props-wayfinding/manifest.json", ...wayfindingManifest.entries.map(entry => `props-wayfinding/${entry.file}`)];
+const BATTLEMON_FILES = ["battlemons/manifest.json", ...battlemonManifest.entries.map(entry => `battlemons/${entry.file}`)];
 const EXPANDED_ROSTER = ["andrea-vreugdenhil", "elina-gu", "jewoo-lee", "milen-thomas", "minh-ngoc-do", "oyku-cildir", "saransh-padhy", "wild-guevera"];
 const CHARACTER_RELEASE_FILES = [
   ...sittingManifest.entries.map(entry => `portraits/${entry.slug}.png`),
@@ -23,9 +25,9 @@ const CHARACTER_RELEASE_FILES = [
   ]),
 ];
 const RUNTIME_FILES = [
-  "index.html", "state.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js",
+  "index.html", "state.js", "battle-presentation.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js",
   "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "game.js",
-  ...WAYFINDING_FILES, ...CHARACTER_RELEASE_FILES,
+  ...WAYFINDING_FILES, ...BATTLEMON_FILES, ...CHARACTER_RELEASE_FILES,
 ];
 
 const baseUrl = process.argv[2];
@@ -278,8 +280,33 @@ try {
       return !current.moving && current.x === start.x && current.y === start.y - 1;
     } catch (_) { return false; }
   }, training.start, { timeout: 5000 });
+
+  // Exercise the accepted classic stage and encounter-only Battlemon loader at the edge.
+  const classic = await page.evaluate(() => {
+    const ge=(0,eval),npc=ge("npcs").find(value=>value.type!=="AGENT");
+    ge("startBattle")(npc);
+    const b=ge("battle"),geometry=window.DatamonBattlePresentation.GEOMETRY;
+    return {type:npc.type,ids:b.mons.map(mon=>mon.id),domains:b.mons.map(mon=>mon.domain),
+      unique:new Set(b.mons.map(mon=>mon.id)).size,phase:b.phase,
+      ratio:geometry.PLAYER_VISIBLE_HEIGHT/geometry.OPPONENT_VISIBLE_HEIGHT};
+  });
+  if (classic.phase!=="intro"||classic.ids.some(id=>!id)||classic.domains.some(domain=>domain!==classic.type)||classic.ratio>1.11) {
+    throw new Error(`public classic presentation identity mismatch: ${JSON.stringify(classic)}`);
+  }
+  await page.waitForFunction(unique => {
+    const diagnostics=window.DatamonBattlePresentation.getDiagnostics();
+    return diagnostics.manifestStatus==="accepted"&&diagnostics.loadedSheetCount>=unique&&diagnostics.inFlightSheetCount===0;
+  }, classic.unique, {timeout:10000});
+  const classicQuestion = await page.evaluate(() => {
+    const ge=(0,eval);ge("advanceBattle")();ge("advanceBattle")();
+    const b=ge("battle"),mon=ge("currentMon")();
+    return{phase:b.phase,id:mon.id,sheet:!!window.DatamonBattlePresentation.getManifestEntry(mon.id)};
+  });
+  if (classicQuestion.phase!=="question"||!classicQuestion.id||!classicQuestion.sheet) {
+    throw new Error(`public classic battle did not reach an accepted Battlemon question: ${JSON.stringify(classicQuestion)}`);
+  }
   if (errors.length) throw new Error(errors.join("\n"));
-  console.log(`Public Battle Room passed: ${training.rivals} repeatable rivals and DPR2 movement`);
+  console.log(`Public Battle Room passed: ${training.rivals} rivals, DPR2 movement, and ${classic.unique} lazy classic Battlemon sheet(s)`);
 } finally {
   await browser.close();
 }

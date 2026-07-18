@@ -133,6 +133,28 @@ async function mentorMetrics(page) {
   return { timing, opened: before.open, loopAdvanced: after.frame > before.frame, closed: !after.open };
 }
 
+async function classicBattleMetrics(page) {
+  const before = await page.evaluate(() => {
+    const ge=(0,eval),npc=ge("npcs").find(value=>value.type!=="AGENT");
+    ge("startBattle")(npc);ge("advanceBattle")();ge("advanceBattle")();
+    const b=ge("battle");
+    return{frame:ge("frame"),ids:b.mons.map(mon=>mon.id),unique:new Set(b.mons.map(mon=>mon.id)).size};
+  });
+  await page.waitForFunction(unique => {
+    const d=window.DatamonBattlePresentation.getDiagnostics();
+    return d.loadedSheetCount>=unique&&d.inFlightSheetCount===0;
+  }, before.unique, {timeout:10000});
+  const timing = await frameSample(page);
+  const after = await page.evaluate(() => {
+    const ge=(0,eval),b=ge("battle"),d=window.DatamonBattlePresentation.getDiagnostics();
+    const result={frame:ge("frame"),state:ge("state"),phase:b&&b.phase,loaded:d.loadedSheetCount,inFlight:d.inFlightSheetCount};
+    ge("battle = null");ge('state = "overworld"');
+    return result;
+  });
+  return{timing,loopAdvanced:after.frame>before.frame,stayedInteractive:after.state==="battle"&&after.phase==="question",
+    requested:before.unique,loaded:after.loaded,inFlight:after.inFlight};
+}
+
 async function sceneMetrics(page, scene) {
   const frameBefore = await page.evaluate(() => (0, eval)("frame"));
   const timing = await frameSample(page);
@@ -189,6 +211,7 @@ try {
     await page.evaluate(() => (0, eval)("enterBattleRoom")());
     await page.waitForFunction(() => (0, eval)("currentMap") === "battleRoom", null, { timeout: 15000 });
     scenes.push(await sceneMetrics(page, "battleRoom"));
+    const classicBattle = await classicBattleMetrics(page);
 
     const architectureRequests = requests.filter(value => value.includes("/environment/accepted/batch-architecture/"));
     const duplicateArchitectureRequests = [...new Set(architectureRequests)].filter(value => architectureRequests.filter(item => item === value).length > 1);
@@ -196,15 +219,18 @@ try {
     const duplicateStudyRequests = [...new Set(studyRequests)].filter(value => studyRequests.filter(item => item === value).length > 1);
     const wayfindingRequests = requests.filter(value => value.startsWith("/props-wayfinding/"));
     const duplicateWayfindingRequests = [...new Set(wayfindingRequests)].filter(value => wayfindingRequests.filter(item => item === value).length > 1);
-    const run = { ...config, scenes, dialogue, seatedHandoff, certificationConsole, mentorReview, errors, requestCount: requests.length,
+    const battlemonRequests = requests.filter(value => value.startsWith("/battlemons/"));
+    const duplicateBattlemonRequests = [...new Set(battlemonRequests)].filter(value => battlemonRequests.filter(item => item === value).length > 1);
+    const run = { ...config, scenes, dialogue, seatedHandoff, certificationConsole, mentorReview, classicBattle, errors, requestCount: requests.length,
       architectureRequests, duplicateArchitectureRequests, studyRequests, duplicateStudyRequests,
-      wayfindingRequests, duplicateWayfindingRequests };
+      wayfindingRequests, duplicateWayfindingRequests, battlemonRequests, duplicateBattlemonRequests };
     runs.push(run);
     console.log(`DPR${config.dpr} CPU${config.cpu}x: ` + scenes.map(item => `${item.scene} p95=${item.timing.p95.toFixed(1)}ms cache=${item.caches.mib.toFixed(1)}MiB`).join(" | ") +
       ` | dialogue p95=${dialogue.timing.p95.toFixed(1)}ms` +
       ` | handoff p95=${seatedHandoff.timing.p95.toFixed(1)}ms` +
       ` | console p95=${certificationConsole.timing.p95.toFixed(1)}ms` +
-      ` | mentor p95=${mentorReview.timing.p95.toFixed(1)}ms`);
+      ` | mentor p95=${mentorReview.timing.p95.toFixed(1)}ms` +
+      ` | classic p95=${classicBattle.timing.p95.toFixed(1)}ms`);
     await context.close();
   }
 } finally {
@@ -218,7 +244,9 @@ for (const run of runs) {
   if (run.duplicateArchitectureRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate architecture requests ${run.duplicateArchitectureRequests.join(", ")}`);
   if (run.duplicateStudyRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate study requests ${run.duplicateStudyRequests.join(", ")}`);
   if (run.duplicateWayfindingRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate wayfinding requests ${run.duplicateWayfindingRequests.join(", ")}`);
+  if (run.duplicateBattlemonRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate Battlemon requests ${run.duplicateBattlemonRequests.join(", ")}`);
   if (run.wayfindingRequests.length !== 10) violations.push(`DPR${run.dpr}/CPU${run.cpu}: expected 10 wayfinding requests, got ${run.wayfindingRequests.length}`);
+  if (run.battlemonRequests.length !== run.classicBattle.requested + 1) violations.push(`DPR${run.dpr}/CPU${run.cpu}: expected one Battlemon manifest plus ${run.classicBattle.requested} sheets, got ${run.battlemonRequests.length}`);
   const consoleBudget = run.cpu === 1 ? NORMAL_FRAME_P95_BUDGET_MS : STRESS_FRAME_P95_BUDGET_MS;
   if (!run.dialogue.loopAdvanced || !run.dialogue.stayedOpen || run.dialogue.script !== "certification-prologue-v1") violations.push(`DPR${run.dpr}/CPU${run.cpu}/dialogue: lifecycle failed`);
   if (run.dialogue.timing.p95 > consoleBudget) violations.push(`DPR${run.dpr}/CPU${run.cpu}/dialogue: frame p95 ${run.dialogue.timing.p95.toFixed(2)} ms > ${consoleBudget}`);
@@ -230,6 +258,8 @@ for (const run of runs) {
   if (!run.mentorReview.opened || !run.mentorReview.closed) violations.push(`DPR${run.dpr}/CPU${run.cpu}/mentor: modal lifecycle failed`);
   if (!run.mentorReview.loopAdvanced) violations.push(`DPR${run.dpr}/CPU${run.cpu}/mentor: game loop stopped`);
   if (run.mentorReview.timing.p95 > consoleBudget) violations.push(`DPR${run.dpr}/CPU${run.cpu}/mentor: frame p95 ${run.mentorReview.timing.p95.toFixed(2)} ms > ${consoleBudget}`);
+  if (!run.classicBattle.loopAdvanced || !run.classicBattle.stayedInteractive || run.classicBattle.inFlight !== 0 || run.classicBattle.loaded < run.classicBattle.requested) violations.push(`DPR${run.dpr}/CPU${run.cpu}/classic: lifecycle/lazy-load bound failed`);
+  if (run.classicBattle.timing.p95 > consoleBudget) violations.push(`DPR${run.dpr}/CPU${run.cpu}/classic: frame p95 ${run.classicBattle.timing.p95.toFixed(2)} ms > ${consoleBudget}`);
   for (const scene of run.scenes) {
     if (!scene.loopAdvanced) violations.push(`DPR${run.dpr}/CPU${run.cpu}/${scene.scene}: game loop stopped`);
     if (scene.timing.samples < 5) violations.push(`DPR${run.dpr}/CPU${run.cpu}/${scene.scene}: insufficient frame samples`);
@@ -252,9 +282,10 @@ const summary = {
       ...Object.fromEntries(run.scenes.map(scene => [scene.scene, { p95: scene.timing.p95, max: scene.timing.max, cacheMiB: scene.caches.mib }])),
       certificationConsole: { p95: run.certificationConsole.timing.p95, max: run.certificationConsole.timing.max },
       mentorReview: { p95: run.mentorReview.timing.p95, max: run.mentorReview.timing.max },
+      classicBattle: { p95: run.classicBattle.timing.p95, max: run.classicBattle.timing.max },
     };
   })(),
-  allFrameP95: percentile(runs.flatMap(run => [run.certificationConsole.timing.p95, run.mentorReview.timing.p95, ...run.scenes.map(scene => scene.timing.p95)]), 0.95),
+  allFrameP95: percentile(runs.flatMap(run => [run.certificationConsole.timing.p95, run.mentorReview.timing.p95, run.classicBattle.timing.p95, ...run.scenes.map(scene => scene.timing.p95)]), 0.95),
 };
 fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
 fs.writeFileSync(OUTPUT, JSON.stringify(summary, null, 2) + "\n");

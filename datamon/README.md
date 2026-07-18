@@ -99,9 +99,14 @@ localStorage (per browser + port, so stick with one way of serving it).
   **Debugging** adjusts miss damage (15–35), **Vibes** sets player max HP (90–110) and classic
   opponent team size (1–3), and **Jargon** restores 0–8 HP after a correct answer. The battle
   intro toast and persistent HUD expose the resolved values.
-- In classic battles a correct answer faints the current mon; a wrong answer applies the
-  matchup's miss damage. Every outcome still shows the expected answer and a one-line
-  explanation (ENTER skips the typewriter, then advances).
+- Classic battles use a certification proving-ground stage with alpha-normalized trainer
+  proportions: the near candidate is only 10.3% larger than the far colleague. Challenge,
+  command, hit, win, and loss poses are presentation-only and derive from existing battle
+  phases. Each of the 35 named Battlemon species has a stable six-state local pixel-art sheet;
+  five shape-distinct domain families remain identifiable without color. A correct answer
+  faints the current mon; a wrong answer applies the matchup's miss damage. Every outcome
+  still shows the expected answer and a one-line explanation (ENTER skips the typewriter,
+  then advances).
 - HP at 0 = blackout from imposter syndrome; you respawn in the lounge at attribute-derived max HP.
 - The **coffee machines** (bottom corners) fully restore HP.
 - Defeat all 36 rivals to become a **Claude Certified Architect**.
@@ -119,6 +124,7 @@ localStorage (per browser + port, so stick with one way of serving it).
 - `progress.js` — pure canonical evidence/recommendation plus mentor-review selection and telemetry reducer
 - `dialogue-runtime.js` — pure immutable scene reducer, exact-once input tokens, choices/effects, and safe displacement
 - `dialogue.js` — deterministic domain lines plus declarative prologue/challenge/mentor portrait scenes
+- `battle-presentation.js` — pure classic trainer/Battlemon identity, pose, manifest, lazy-load, and fallback contract
 - `battle-ops.js` — pure Agent Operations reducer and strategic action economy
 - `agent-arena.js` — Incident Command presentation, accessibility, bounded effects/audio
 - `world-art.js` — DPR-aware map caches, accepted HD asset/ambient layer, lazy portraits
@@ -127,6 +133,8 @@ localStorage (per browser + port, so stick with one way of serving it).
 - `questions.js` — 120-question bank (AGENT / MCP / CONFIG / PROMPT / CONTEXT,
   24 per exam domain, each with an explanation), mon names, battle quotes
 - `sprites/` — generated GBA-style pixel trainer sprites (transparent 256px PNGs)
+- `battlemons-source/` — exact 35-source reviewed Gemini concept batch; tracked provenance, never public
+- `battlemons/` — exact 35-sheet deterministic classic Battlemon runtime batch plus strict accepted manifest
 - `sprites-sit/` — two deterministic rear-facing sitting frames per roster member, loaded only for active seated characters
 - `props-study/` — accepted true-2× local Pillow study-life batch (Console, desk kits, task lamp, screen strip)
 - `props-wayfinding/` — accepted true-2× domain friezes and Context/Battle/Library surrounds
@@ -177,6 +185,45 @@ correct index `a`, one-line explanation `x`). Keep `q` ≤ 150 chars, choices �
 Runtime output is `sprites/<slug>.png`, `portraits/<slug>.png`, sixteen files under
 `sprites-walk/<slug>/`, and two files under `sprites-sit/<slug>/`. Packaging verifies that
 all four public asset sets exactly match the roster; missing portraits still fall back to initials.
+
+## Classic Battlemon art regeneration
+
+The 35 creature identities are reviewed generative-AI source art from the pinned OpenRouter
+model `google/gemini-3-pro-image`; the model was selected after a documented multi-model
+shootout. The network path is explicit, billable, spend-capped, and writes full-resolution
+responses only to ignored `datamon/.battlemon-ai-raw/`. Deterministic Pillow processing removes
+the keyed background, retains the principal connected component, limits the palette, and
+produces tracked 128×128 sources under `battlemons-source/`. A contact-sheet hash is the human
+review receipt; an unaccepted source batch cannot feed public art.
+
+```bash
+# Explicit billable path. A preflight reservation and measured usage enforce this session cap.
+OPENROUTER_API_KEY=... python3 datamon/tools/gen_battlemon_ai_sources.py \
+  --generate --missing-only --max-spend 6 --concurrency 4
+
+# Offline candidate conversion; inspect both t53-battlemon-ai-sources review sheets.
+python3 datamon/tools/gen_battlemon_ai_sources.py --pipeline-only
+python3 datamon/tools/gen_battlemon_ai_sources.py --accept <reviewed-contact-sheet-sha256>
+python3 datamon/tools/gen_battlemon_ai_sources.py --validate
+
+# Offline, deterministic six-state derivation and atomic public promotion.
+python3 datamon/tools/gen_battle_assets.py --validate-twice
+python3 datamon/tools/gen_battle_assets.py --validate
+```
+
+Each canonical name receives a stable `<domain>-<name>` ID and one 768×128 RGBA runtime sheet
+containing `idle-a`, `idle-b`, `sendout`, `attack`, `hit`, and `faint`. Validation pins the AI
+provider/model and review receipt, taxonomy/order, source and runtime hashes, exact file sets,
+RGBA dimensions, binary alpha, distinct states, canonical JSON, no nested extras, and a 2 MiB
+runtime PNG budget. Source/runtime candidates validate before atomic swaps with rollback.
+Full-resolution responses and review sheets are never packaged; independently hashed reviewed
+source sprites remain repository evidence but are also excluded from the public artifact.
+
+At runtime the title fetches only the public manifest. A classic encounter coalesces requests
+for its 1–3 sheets; malformed or missing art cannot authorize an arbitrary URL and falls back
+to a cached shape-coded domain silhouette. Rollback removes `battle-presentation.js`,
+`battlemons-source/`, and `battlemons/` together and restores the prior classic renderer; no save
+migration is involved.
 
 ## Tileset regen
 
