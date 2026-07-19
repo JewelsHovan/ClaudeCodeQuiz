@@ -614,15 +614,15 @@
           "frame": 0,
           "file": "sprites-sit/tabarek-al-khalidi/idle_0.png",
           "source": "sprites-walk/tabarek-al-khalidi/up_0.png",
-          "sourceSha256": "36e0feeea5a37bbbe77031c919c0d1d23b0dd50aa96d085f03f5fbdfcbb2f111",
-          "sha256": "82bcf110ce21ce2b9bfc90e43cf03ac8aac4d23a9e365811ac94620895038dc6"
+          "sourceSha256": "e7e08c53fa0003eaeb431979164b379d803920e10d7e5810f4bc2678c67d63ff",
+          "sha256": "8df2f6b0d8d46ac99b3e24df7cfe4e0e909d7dccb7063e214f7469f64f8cc825"
         },
         {
           "frame": 1,
           "file": "sprites-sit/tabarek-al-khalidi/idle_1.png",
           "source": "sprites-walk/tabarek-al-khalidi/up_0.png",
-          "sourceSha256": "36e0feeea5a37bbbe77031c919c0d1d23b0dd50aa96d085f03f5fbdfcbb2f111",
-          "sha256": "9eb586bf8ec5fb2661f2e982683aac63b471f38afd39722f25bdc152fa1b78c3"
+          "sourceSha256": "e7e08c53fa0003eaeb431979164b379d803920e10d7e5810f4bc2678c67d63ff",
+          "sha256": "46616f07693946cf1e465bf14430a93b196d8458840924ad38ce6ef00c91266f"
         }
       ]
     },
@@ -741,7 +741,7 @@
       ]
     }
   ],
-  "batch_sha256": "53676a89ebd74334fe0233f5f5cd9fd23af72fab85bfdf820501eb9bf3ebdc31",
+  "batch_sha256": "3687abdf256a5eca4a01bfd624b25f44474ba9350e12a4bd8eb4a87eb7faace3",
   "roster_count": 37,
   "frame_count": 74
 }

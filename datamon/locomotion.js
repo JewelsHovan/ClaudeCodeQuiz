@@ -5,6 +5,10 @@
   "use strict";
 
   var EPSILON = 1e-9;
+  // Authored 240px locomotion canvases reserve a stable 8px crown and 8px sole margin,
+  // leaving 224px of upright visible character. Normalize that visible span—not the whole
+  // transparent canvas—to the standing trainer height so idle and movement retain one scale.
+  var AUTHORED_VISIBLE_RATIO = 14 / 15;
   var DIRECTIONS = Object.freeze(["down", "up", "left", "right"]);
   var CONTACT_MARKERS = Object.freeze([
     Object.freeze({ phase: 0, foot: "left" }),
@@ -105,6 +109,11 @@
 
   function contactWeight(phase) {
     return Math.cos(positiveModulo(phase, 1) * Math.PI * 4);
+  }
+
+  function authoredFrameScale(sourceHeight, targetVisibleHeight) {
+    if (!finite(sourceHeight) || sourceHeight <= 0 || !finite(targetVisibleHeight) || targetVisibleHeight <= 0) return 1;
+    return targetVisibleHeight / (sourceHeight * AUTHORED_VISIBLE_RATIO);
   }
 
   function cameraFactor(dtSeconds, referencePerFrame, referenceHz) {
@@ -235,6 +244,7 @@
 
   var API = {
     EPSILON: EPSILON,
+    AUTHORED_VISIBLE_RATIO: AUTHORED_VISIBLE_RATIO,
     DIRECTIONS: DIRECTIONS,
     CONTACT_MARKERS: CONTACT_MARKERS,
     PROFILES: PROFILES,
@@ -246,6 +256,7 @@
     contactAtPhase: contactAtPhase,
     frameIndex: frameIndex,
     contactWeight: contactWeight,
+    authoredFrameScale: authoredFrameScale,
     cameraFactor: cameraFactor,
     normalizeAnchorManifest: normalizeAnchorManifest,
     normalizePilotManifest: normalizePilotManifest,

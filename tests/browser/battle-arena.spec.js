@@ -41,27 +41,29 @@ test.describe("Authored classic domain arenas", () => {
     expect(observed.errors).toEqual([]);expect(observed.failures).toEqual([]);
   });
 
-  test("player uses the packaged rear identity and revised authored geometry without changing lower controls", async ({ page }) => {
+  test("player uses the original front-facing identity and revised authored geometry without changing lower controls", async ({ page }) => {
     const observed=await boot(page);const battle=await start(page,"MCP");
     await page.waitForFunction(domain=>window.DatamonBattleArena.getDiagnostics().activeDomain===domain,battle.domain);
     const result=await page.evaluate(()=>{
-      const ge=(0,eval),context=ge("ctx"),original=context.drawImage,calls=[],rearStates=[];ge("advanceBattle")();ge("advanceBattle")();
+      const ge=(0,eval),context=ge("ctx"),original=context.drawImage,calls=[],frontStates=[],rearStates=[];ge("advanceBattle")();ge("advanceBattle")();
       context.drawImage=function(...args){calls.push(args);return original.apply(this,args);};
       try{
         for(const [label,phase,feedback] of [["intro","intro",null],["sendout","sendout",null],["question","question",null],
           ["correct","feedback",{correct:true}],["wrong","feedback",{correct:false}],["win","win",{correct:true}],["lose","lose",{correct:false}]]){
           const b=ge("battle");b.phase=phase;b.feedback=feedback;calls.length=0;ge("drawBattle")();
+          if(calls.some(args=>String(args[0]?.src||"").includes("sprites/oyku-cildir.png")))frontStates.push(label);
           if(calls.some(args=>String(args[0]?.src||"").includes("sprites-walk/oyku-cildir/up_0.png")))rearStates.push(label);
         }
       }finally{context.drawImage=original;}
       const arena=calls.find(args=>args[0]?.naturalWidth===1600&&args[0]?.naturalHeight===864);ge("battle").phase="question";ge("battle").feedback=null;
-      return{rearStates,arena:!!arena,geometry:window.DatamonBattlePresentation.GEOMETRY,
+      return{frontStates,rearStates,arena:!!arena,geometry:window.DatamonBattlePresentation.GEOMETRY,
         choices:ge("CHOICE_RECTS").map(value=>value.slice()),run:ge("RUN_RECT").slice(),phase:ge("battle").phase};
     });
-    expect(result.rearStates).toEqual(["intro","sendout","question","correct","wrong","win","lose"]);expect(result.arena).toBe(true);expect(result.phase).toBe("question");
+    expect(result.frontStates).toEqual(["intro","sendout","question","correct","wrong","win","lose"]);expect(result.rearStates).toEqual([]);expect(result.arena).toBe(true);expect(result.phase).toBe("question");
     await page.emulateMedia({reducedMotion:"reduce"});
-    expect(await page.evaluate(()=>{const ge=(0,eval),b=ge("battle"),context=ge("ctx"),original=context.drawImage,seen=[];context.drawImage=function(...args){if(String(args[0]?.src||"").includes("sprites-walk/oyku-cildir/up_0.png"))seen.push(b.phase);return original.apply(this,args);};try{for(const phase of ["feedback","win","lose"]){b.phase=phase;b.feedback={correct:phase!=="feedback"};ge("drawBattle")();}}finally{context.drawImage=original;}return seen;})).toEqual(["feedback","win","lose"]);
-    expect(result.geometry.PLAYER_ANCHOR).toEqual([160,408]);expect(result.geometry.OPPONENT_ANCHOR).toEqual([657,208]);
+    expect(await page.evaluate(()=>{const ge=(0,eval),b=ge("battle"),context=ge("ctx"),original=context.drawImage,seen=[];context.drawImage=function(...args){if(String(args[0]?.src||"").includes("sprites/oyku-cildir.png"))seen.push(b.phase);return original.apply(this,args);};try{for(const phase of ["feedback","win","lose"]){b.phase=phase;b.feedback={correct:phase!=="feedback"};ge("drawBattle")();}}finally{context.drawImage=original;}return seen;})).toEqual(["feedback","win","lose"]);
+    expect(result.geometry.PLAYER_ANCHOR).toEqual([151,340]);expect(result.geometry.OPPONENT_ANCHOR).toEqual([683,158]);
+    expect([result.geometry.BATTLEMON_CENTER_X,result.geometry.BATTLEMON_CENTER_Y]).toEqual([495,170]);
     expect(result.geometry.OPPONENT_VISIBLE_HEIGHT).toBe(156);expect(result.geometry.PLAYER_VISIBLE_HEIGHT).toBe(172);
     expect(result.choices).toEqual([[36,490,358,42],[406,490,358,42],[36,540,358,42],[406,540,358,42]]);
     expect(result.run).toEqual([688,440,76,26]);

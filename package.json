@@ -11,6 +11,7 @@
     "test:browser": "npm run package && playwright test tests/browser/ --project=chromium",
     "test:performance": "npm run package && node scripts/perf-baseline.mjs --runs 3 && node scripts/perf-worlds.mjs",
     "test:locomotion": "npm run package && node scripts/eval-locomotion.mjs",
+    "edit:battle-layout": "node scripts/battle-layout-editor.mjs",
     "package": "node scripts/package-datamon.mjs && node scripts/verify-artifact.mjs",
     "smoke:remote": "node scripts/smoke-remote.mjs"
   },

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DATAMON Stage Calibration</title>
+<style>
+  :root{color-scheme:dark;--ink:#07101d;--panel:#0c1727;--line:#263b50;--paper:#dce9ef;--muted:#88a0af;--cyan:#55e6d1;--orange:#ff9b54;--pink:#ff7190;--grid:#182a3b}
+  *{box-sizing:border-box} body{margin:0;background:#050a11;color:var(--paper);font:14px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background-image:linear-gradient(rgba(85,230,209,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(85,230,209,.035) 1px,transparent 1px);background-size:24px 24px}
+  header{display:flex;gap:24px;align-items:end;justify-content:space-between;padding:22px max(20px,calc((100vw - 1440px)/2));border-bottom:1px solid var(--line);background:rgba(5,10,17,.94)}
+  h1{font-size:clamp(20px,3vw,34px);line-height:1;margin:0;letter-spacing:-.04em} .kicker{color:var(--cyan);font-size:11px;letter-spacing:.16em;margin-bottom:8px}.lede{color:var(--muted);max-width:560px;margin:0}
+  main{max-width:1440px;margin:auto;padding:22px 20px 36px;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+  .stage-shell{position:relative;border:1px solid #385066;background:#02060b;padding:8px;box-shadow:0 20px 70px rgba(0,0,0,.45)}
+  canvas{display:block;width:100%;aspect-ratio:800/432;background:#07111f;image-rendering:pixelated;cursor:crosshair;touch-action:none}
+  .stage-note{display:flex;justify-content:space-between;gap:12px;padding:9px 3px 0;color:var(--muted);font-size:11px}.stage-note strong{color:var(--paper)}
+  aside{display:grid;gap:12px}.module{background:rgba(12,23,39,.97);border:1px solid var(--line);padding:14px;box-shadow:inset 3px 0 0 var(--accent,var(--cyan))}.module h2{font-size:12px;letter-spacing:.1em;margin:0 0 11px;color:var(--accent,var(--cyan))}.module p{margin:6px 0;color:var(--muted);font-size:11px}
+  label{display:grid;gap:5px;color:var(--muted);font-size:10px;letter-spacing:.08em}.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}select,button{font:inherit;color:var(--paper);background:#111f31;border:1px solid #34506a;border-radius:0}select{width:100%;padding:8px}button{cursor:pointer;padding:8px 10px}button:hover,button:focus-visible{border-color:var(--cyan);outline:none;background:#172d3d}button:active{transform:translateY(1px)}
+  .entity{--accent:var(--cyan)}.entity[data-key="OPPONENT_ANCHOR"]{--accent:var(--pink)}.entity[data-key="BATTLEMON_CENTER"]{--accent:var(--orange)}.entity.selected{border-color:var(--accent);background:#0e1b2d}.coords{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.coords output{font-size:18px;font-weight:800;color:var(--paper)}.coords span{color:var(--muted);font-size:10px}
+  .nudge{display:grid;grid-template-columns:repeat(3,38px);grid-template-rows:repeat(2,32px);gap:4px;justify-content:center}.nudge button{padding:0}.nudge .up{grid-column:2}.nudge .left{grid-column:1}.nudge .down{grid-column:2}.nudge .right{grid-column:3}
+  .toggles{display:flex;gap:8px;flex-wrap:wrap}.toggle[aria-pressed="true"]{background:#153d3b;border-color:var(--cyan);color:#bafff5}.save{width:100%;padding:14px 12px;background:var(--cyan);border-color:#bafff5;color:#04120f;font-weight:900;letter-spacing:.06em}.save:hover,.save:focus-visible{background:#86f7e6;color:#04120f}.saved{color:#8bf5a8!important}.error{color:#ff8da5!important}
+  .help{font-size:10px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;margin-top:10px}.key{display:inline-block;border:1px solid #40566a;padding:1px 5px;color:#c6d4dd;background:#101b29}
+  @media(max-width:980px){main{grid-template-columns:1fr}aside{grid-template-columns:repeat(3,1fr)}.module:first-child,.module:last-child{grid-column:1/-1}}
+  @media(max-width:680px){header{display:block}.lede{margin-top:12px}aside{grid-template-columns:1fr}.module:first-child,.module:last-child{grid-column:auto}.stage-note{display:block}.stage-note span{display:block;margin-top:4px}}
+</style>
+</head>
+<body>
+<header>
+  <div><div class="kicker">DATAMON // STAGE CALIBRATION</div><h1>Place the combatants by eye.</h1></div>
+  <p class="lede">Drag each character directly onto its authored platform. Use the arrow keys for the final pixel, then save once—the assistant can read the result without you typing coordinates.</p>
+</header>
+<main>
+  <section>
+    <div class="stage-shell"><canvas id="stage" width="800" height="432" aria-label="Interactive DATAMON battle stage"></canvas></div>
+    <div class="stage-note"><strong>Drag a figure · click to select · arrows nudge 1px · Shift + arrows nudge 5px</strong><span>Crosshairs mark the saved anchor, not the sprite center.</span></div>
+  </section>
+  <aside>
+    <section class="module">
+      <h2>PREVIEW FEED</h2>
+      <div class="row">
+        <label>DOMAIN<select id="domain"><option>AGENT</option><option>MCP</option><option>CONFIG</option><option selected>PROMPT</option><option>CONTEXT</option></select></label>
+        <label>STATE<select id="phase"><option value="sendout" selected>SENDOUT</option><option value="question">QUESTION</option></select></label>
+      </div>
+      <div class="toggles" style="margin-top:10px"><button class="toggle" id="guides" aria-pressed="true">GUIDES</button><button class="toggle" id="hud" aria-pressed="true">HUD CLEARANCE</button><button id="reset">RESET</button></div>
+    </section>
+    <section class="module entity" data-key="PLAYER_ANCHOR"><h2>01 // PLAYER</h2><div class="coords"><output>—</output><span>BASE X / Y</span></div><div class="nudge"><button class="up" data-dx="0" data-dy="-1">↑</button><button class="left" data-dx="-1" data-dy="0">←</button><button class="down" data-dx="0" data-dy="1">↓</button><button class="right" data-dx="1" data-dy="0">→</button></div></section>
+    <section class="module entity" data-key="BATTLEMON_CENTER"><h2>02 // BATTLEMON</h2><div class="coords"><output>—</output><span>CENTER X / Y</span></div><div class="nudge"><button class="up" data-dx="0" data-dy="-1">↑</button><button class="left" data-dx="-1" data-dy="0">←</button><button class="down" data-dx="0" data-dy="1">↓</button><button class="right" data-dx="1" data-dy="0">→</button></div></section>
+    <section class="module entity" data-key="OPPONENT_ANCHOR"><h2>03 // OPPONENT</h2><div class="coords"><output>—</output><span>BASE X / Y</span></div><div class="nudge"><button class="up" data-dx="0" data-dy="-1">↑</button><button class="left" data-dx="-1" data-dy="0">←</button><button class="down" data-dx="0" data-dy="1">↓</button><button class="right" data-dx="1" data-dy="0">→</button></div></section>
+    <section class="module">
+      <button class="save" id="save">SAVE FOR ASSISTANT</button>
+      <p id="status">Nothing saved in this session.</p>
+      <div class="help"><span class="key">Tab</span> changes controls · <span class="key">1</span>/<span class="key">2</span>/<span class="key">3</span> selects a figure · <span class="key">Shift</span> makes a 5px nudge.</div>
+    </section>
+  </aside>
+</main>
+<script>
+(() => {
+  const canvas=document.querySelector('#stage'),ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=false;
+  const domain=document.querySelector('#domain'),phase=document.querySelector('#phase'),status=document.querySelector('#status');
+  const state={current:null,geometry:null,selected:'PLAYER_ANCHOR',guides:true,hud:true,drag:null,images:{},bounds:{}};
+  const colors={PLAYER_ANCHOR:'#55e6d1',BATTLEMON_CENTER:'#ff9b54',OPPONENT_ANCHOR:'#ff7190'};
+  const files={player:'/asset/sprites/ethan-pirso.png',opponent:'/asset/sprites/andrea-vreugdenhil.png',battlemon:'/asset/battlemons/prompt-forced-enum.png'};
+  const backgrounds={AGENT:'agent',MCP:'mcp',CONFIG:'config',PROMPT:'prompt',CONTEXT:'context'};
+  function copyGeometry(g){return{PLAYER_ANCHOR:[...g.PLAYER_ANCHOR],OPPONENT_ANCHOR:[...g.OPPONENT_ANCHOR],BATTLEMON_CENTER:[...g.BATTLEMON_CENTER]}}
+  function load(src){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=src})}
+  async function alphaBounds(image){const c=document.createElement('canvas');c.width=image.naturalWidth;c.height=image.naturalHeight;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(image,0,0);const p=x.getImageData(0,0,c.width,c.height).data;let minX=c.width,minY=c.height,maxX=-1,maxY=-1;for(let y=0;y<c.height;y++)for(let xx=0;xx<c.width;xx++)if(p[(y*c.width+xx)*4+3]){minX=Math.min(minX,xx);minY=Math.min(minY,y);maxX=Math.max(maxX,xx);maxY=Math.max(maxY,y)}return{x:minX,y:minY,w:maxX-minX+1,h:maxY-minY+1}}
+  function shadow(x,y,width,alpha){const bands=[.42,.72,.9,1,.9,.72,.42];ctx.save();ctx.fillStyle='#030711';ctx.globalAlpha=alpha;bands.forEach((factor,i)=>{const w=Math.max(2,Math.round(width*factor));ctx.fillRect(Math.round(x-w/2),Math.round(y-bands.length+i),w,1)});ctx.restore()}
+  function poseFor(key){if(phase.value!=='sendout')return{dx:0,dy:0,rotation:0,scaleX:1};if(key==='OPPONENT_ANCHOR')return{dx:-12,dy:-3,rotation:4,scaleX:1.02};return{dx:0,dy:0,rotation:0,scaleX:1}}
+  function trainer(key,image,height){const base=state.geometry[key],pose=poseFor(key),b=state.bounds[key],w=height*b.w/b.h;shadow(base[0]+pose.dx,base[1]+pose.dy,key==='PLAYER_ANCHOR'?54:46,key==='PLAYER_ANCHOR'?.3:.24);ctx.save();ctx.translate(Math.round(base[0]+pose.dx),Math.round(base[1]+pose.dy));ctx.rotate(pose.rotation*Math.PI/180);ctx.scale(pose.scaleX,1);ctx.drawImage(image,b.x,b.y,b.w,b.h,-w/2,-height,w,height);ctx.restore();return{x:base[0]+pose.dx-w/2,y:base[1]+pose.dy-height,w,h:height}}
+  function battlemon(){const [x,y]=state.geometry.BATTLEMON_CENTER,index=phase.value==='sendout'?2:0,size=128;shadow(x,y+size*.44,88,.32);ctx.drawImage(state.images.battlemon,index*128,0,128,128,Math.round(x-size/2),Math.round(y-size/2),size,size);return{x:x-64,y:y-64,w:128,h:128}}
+  function hudClearance(){if(!state.hud)return;for(const [r,label,color] of [[[18,16,292,70],'OPPONENT HUD','#ff7190'],[[500,340,282,72],'PLAYER HUD','#55e6d1']]){ctx.fillStyle='rgba(5,12,26,.78)';ctx.fillRect(...r);ctx.strokeStyle=color;ctx.lineWidth=1;ctx.strokeRect(...r);ctx.fillStyle=color;ctx.font='bold 9px ui-monospace,monospace';ctx.fillText(label,r[0]+8,r[1]+15)}}
+  function guide(key){if(!state.guides)return;const [x,y]=state.geometry[key],c=colors[key];ctx.save();ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(x-12,y);ctx.lineTo(x+12,y);ctx.moveTo(x,y-12);ctx.lineTo(x,y+12);ctx.stroke();ctx.setLineDash([]);ctx.fillRect(x-2,y-2,4,4);if(state.selected===key){ctx.font='bold 9px ui-monospace,monospace';ctx.fillText(key.replace('_ANCHOR','').replace('_CENTER',''),x+8,y-8)}ctx.restore()}
+  function render(){if(!state.geometry||!state.images.background)return;ctx.clearRect(0,0,800,432);ctx.drawImage(state.images.background,0,0,800,432);state.hit={};state.hit.PLAYER_ANCHOR=trainer('PLAYER_ANCHOR',state.images.player,172);state.hit.OPPONENT_ANCHOR=trainer('OPPONENT_ANCHOR',state.images.opponent,156);state.hit.BATTLEMON_CENTER=battlemon();hudClearance();Object.keys(colors).forEach(guide);updateCards()}
+  async function setBackground(){state.images.background=await load('/asset/battle-arenas/'+backgrounds[domain.value]+'.png');render()}
+  function updateCards(){document.querySelectorAll('.entity').forEach(card=>{const key=card.dataset.key;card.classList.toggle('selected',key===state.selected);card.querySelector('output').textContent=state.geometry[key].join(' / ')})}
+  function select(key){state.selected=key;render()}
+  function nudge(key,dx,dy,step=1){state.geometry[key][0]=Math.round(state.geometry[key][0]+dx*step);state.geometry[key][1]=Math.round(state.geometry[key][1]+dy*step);select(key)}
+  function point(event){const rect=canvas.getBoundingClientRect();return{x:(event.clientX-rect.left)*800/rect.width,y:(event.clientY-rect.top)*432/rect.height}}
+  canvas.addEventListener('pointerdown',event=>{const p=point(event),keys=['OPPONENT_ANCHOR','BATTLEMON_CENTER','PLAYER_ANCHOR'];let key=keys.find(k=>{const r=state.hit[k];return p.x>=r.x-8&&p.x<=r.x+r.w+8&&p.y>=r.y-8&&p.y<=r.y+r.h+8});if(!key)key=keys.reduce((best,k)=>{const q=state.geometry[k],d=(p.x-q[0])**2+(p.y-q[1])**2;return!best||d<best.d?{key:k,d}:best},null).key;select(key);state.drag={key,start:p,base:[...state.geometry[key]]};canvas.setPointerCapture(event.pointerId)});
+  canvas.addEventListener('pointermove',event=>{if(!state.drag)return;const p=point(event),d=state.drag;state.geometry[d.key]=[Math.round(d.base[0]+p.x-d.start.x),Math.round(d.base[1]+p.y-d.start.y)];render()});
+  canvas.addEventListener('pointerup',()=>state.drag=null);canvas.addEventListener('pointercancel',()=>state.drag=null);
+  document.querySelectorAll('.entity').forEach(card=>{card.addEventListener('click',event=>{const key=card.dataset.key;select(key);const b=event.target.closest('[data-dx]');if(b)nudge(key,Number(b.dataset.dx),Number(b.dataset.dy),event.shiftKey?5:1)})});
+  document.addEventListener('keydown',event=>{const map={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(['1','2','3'].includes(event.key)){select(['PLAYER_ANCHOR','BATTLEMON_CENTER','OPPONENT_ANCHOR'][Number(event.key)-1]);return}if(map[event.key]){event.preventDefault();nudge(state.selected,...map[event.key],event.shiftKey?5:1)}});
+  domain.addEventListener('change',setBackground);phase.addEventListener('change',render);
+  for(const id of ['guides','hud'])document.querySelector('#'+id).addEventListener('click',event=>{state[id]=!state[id];event.currentTarget.setAttribute('aria-pressed',String(state[id]));render()});
+  document.querySelector('#reset').addEventListener('click',()=>{state.geometry=copyGeometry(state.current);status.className='';status.textContent='Reset to the current game values.';render()});
+  document.querySelector('#save').addEventListener('click',async()=>{status.className='';status.textContent='Saving…';try{const response=await fetch('/api/layout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({geometry:state.geometry,preview:{domain:domain.value,phase:phase.value}})}),result=await response.json();if(!response.ok)throw new Error(result.error||'Save failed');status.className='saved';status.textContent='Saved. Tell the assistant: “done positioning.”'}catch(error){status.className='error';status.textContent=error.message}});
+  (async()=>{try{const config=await fetch('/api/config').then(r=>r.json());if(config.error)throw new Error(config.error);state.current=copyGeometry(config.current);const initial=config.draft||{geometry:config.current,preview:{domain:'PROMPT',phase:'sendout'}};state.geometry=copyGeometry(initial.geometry);domain.value=initial.preview?.domain||'PROMPT';phase.value=initial.preview?.phase||'sendout';[state.images.player,state.images.opponent,state.images.battlemon]=await Promise.all([load(files.player),load(files.opponent),load(files.battlemon)]);[state.bounds.PLAYER_ANCHOR,state.bounds.OPPONENT_ANCHOR]=await Promise.all([alphaBounds(state.images.player),alphaBounds(state.images.opponent)]);await setBackground();status.textContent=config.draft?'Loaded your last saved draft.':'Ready—drag the figures into place.'}catch(error){status.className='error';status.textContent=error.message}})();
+})();
+</script>
+</body>
+</html>

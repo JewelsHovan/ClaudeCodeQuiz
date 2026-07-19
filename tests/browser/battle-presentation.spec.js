@@ -86,8 +86,9 @@ test.describe("Classic certification-stage presentation and Battlemon art", () =
     expect(result.rows.every(row => row.dest[3] === 172)).toBe(true);
     expect(result.rows.find(row => row.slug === "jonathan-kim")?.source).toEqual([87,8,83,240]);
     expect(result.rotated).toBe(1); expect(result.scaled).toBe(1);
-    expect(result.geometry.PLAYER_ANCHOR).toEqual([160,408]);
-    expect(result.geometry.OPPONENT_ANCHOR).toEqual([657,208]);
+    expect(result.geometry.PLAYER_ANCHOR).toEqual([151,340]);
+    expect(result.geometry.OPPONENT_ANCHOR).toEqual([683,158]);
+    expect([result.geometry.BATTLEMON_CENTER_X,result.geometry.BATTLEMON_CENTER_Y]).toEqual([495,170]);
     expect(result.geometry.PLAYER_VISIBLE_HEIGHT/result.geometry.OPPONENT_VISIBLE_HEIGHT).toBeLessThanOrEqual(1.11);
     expect(result.geometry.PLAYER_PLATE[3]).toBeLessThan(result.geometry.STAGE_BOTTOM);
     expect(observed.errors).toEqual([]); expect(observed.failures).toEqual([]);

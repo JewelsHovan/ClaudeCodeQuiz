@@ -5099,12 +5099,14 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
     const idleDir = (pilot.motions.idle[dir] && pilot.motions.idle[dir][0]) ? dir : "down";
     const idleImage = pilot.motions.idle[idleDir][0];
     if (idleImage) {
-      const idleH = baseSize, idleW = idleH * (idleImage.width / idleImage.height);
+      const idleScale = typeof DatamonLocomotion !== "undefined"
+        ? DatamonLocomotion.authoredFrameScale(idleImage.height, baseSize)
+        : baseSize / idleImage.height;
+      const idleH = idleImage.height * idleScale, idleW = idleImage.width * idleScale;
       const idleMiniature = walkMini(idleImage, `${slug}:idle:${idleDir}:0`, idleW, idleH);
       const idleAnchor = typeof DatamonLocomotion !== "undefined"
         ? DatamonLocomotion.resolveFrameAnchor(pilot.manifest.motions.idle, idleDir, 0, idleImage.width, idleImage.height)
         : { bodyX: idleImage.width / 2, footY: idleImage.height };
-      const idleScale = idleH / idleImage.height;
       ctx.drawImage(idleMiniature, px(cx - idleAnchor.bodyX * idleScale), px(footY - idleAnchor.footY * idleScale), idleW, idleH);
       return;
     }
@@ -5122,13 +5124,18 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
       const actualFrame = frames[requestedFrame] ? requestedFrame : 0;
       const fimg = frames[actualFrame];
       if (fimg) {
-        const H = baseSize;
-        const W = H * (fimg.width / fimg.height);
+        // The generated frame includes transparent composition margins. Scale its canonical
+        // visible 224/240 span to the same 56px standing model instead of shrinking the whole
+        // source canvas into 56px; crouch/flight height changes remain authored motion.
+        const frameScale = typeof DatamonLocomotion !== "undefined"
+          ? DatamonLocomotion.authoredFrameScale(fimg.height, baseSize)
+          : baseSize / fimg.height;
+        const H = fimg.height * frameScale;
+        const W = fimg.width * frameScale;
         const m = walkMini(fimg, `${slug}:${motionName}:${frameDir}:${actualFrame}`, W, H);
         const anchor = typeof DatamonLocomotion !== "undefined"
           ? DatamonLocomotion.resolveFrameAnchor(animMeta, frameDir, actualFrame, fimg.width, fimg.height)
           : { bodyX: fimg.width / 2, footY: fimg.height };
-        const frameScale = H / fimg.height;
         let frameY = footY - anchor.footY * frameScale;
         if (pilot && motionName === "run") {
           const authoredGround = animMeta.groundY[frameDir];
@@ -5144,10 +5151,14 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
   // lead-in, making the recorded face-player direction visible without retaining rival sheets.
   if (!isPlayer && challengeFacingFrame && challengeFacingFrame.slug === slug && challengeFacingFrame.image) {
     var facingImage = challengeFacingFrame.image;
-    var facingH = baseSize;
-    var facingW = facingH * (facingImage.width / facingImage.height);
+    var facingScale = typeof DatamonLocomotion !== "undefined"
+      ? DatamonLocomotion.authoredFrameScale(facingImage.height, baseSize)
+      : baseSize / facingImage.height;
+    var facingH = facingImage.height * facingScale;
+    var facingW = facingImage.width * facingScale;
     var facingMini = walkMini(facingImage, "challenge:" + slug + ":" + challengeFacingFrame.dir, facingW, facingH);
-    ctx.drawImage(facingMini, px(cx - facingW / 2), px(footY - facingH), facingW, facingH);
+    var facingFootY = facingImage.height * 0.95; // authored 228/240 visible-foot baseline
+    ctx.drawImage(facingMini, px(cx - facingW / 2), px(footY - facingFootY * facingScale), facingW, facingH);
     return;
   }
 
@@ -6723,6 +6734,20 @@ function _agentDrawBattle(b) {
   ctx.restore();
 }
 
+// Compact pixel-banded contact shadow. Keeping every band above the authored ground
+// coordinate preserves the platform lip while visually seating feet/claws on its surface.
+function drawBattleContactShadow(cx, groundY, width, alpha) {
+  var bands = [0.42, 0.72, 0.9, 1, 0.9, 0.72, 0.42];
+  ctx.save();
+  ctx.fillStyle = "#030711";
+  ctx.globalAlpha *= alpha;
+  for (var band = 0; band < bands.length; band++) {
+    var bandWidth = Math.max(2, Math.round(width * bands[band]));
+    ctx.fillRect(px(cx - bandWidth / 2), px(groundY - bands.length + band), bandWidth, 1);
+  }
+  ctx.restore();
+}
+
 function drawBattle() {
   var b = battle;
   if (b.agentOps) { _agentDrawBattle(b); return; }
@@ -6770,14 +6795,14 @@ function drawBattle() {
 
   // ---- Entrance easing (reduced motion: no slide) ----
   var ee = reducedMotion ? 1 : (1 - Math.pow(1 - Math.min(1, (frame - b.startF) / 30), 3));
-  var oppX = GEO ? GEO.OPPONENT_ANCHOR[0] : 657;
-  var plyX = GEO ? GEO.PLAYER_ANCHOR[0] : 160;
+  var oppX = GEO ? GEO.OPPONENT_ANCHOR[0] : 683;
+  var plyX = GEO ? GEO.PLAYER_ANCHOR[0] : 151;
   if (!reducedMotion) {
     oppX += (1 - ee) * 220;
     plyX -= (1 - ee) * 220;
   }
-  var oppBaseY = GEO ? GEO.OPPONENT_ANCHOR[1] : 208;
-  var plyBaseY = GEO ? GEO.PLAYER_ANCHOR[1] : 408;
+  var oppBaseY = GEO ? GEO.OPPONENT_ANCHOR[1] : 158;
+  var plyBaseY = GEO ? GEO.PLAYER_ANCHOR[1] : 340;
 
   // ---- Resolve trainer poses from existing combat state only ----
   var impactActive = !!(b.attackAt && frame >= b.attackAt && frame - b.attackAt < 16);
@@ -6788,11 +6813,19 @@ function drawBattle() {
   var oppParams = BPS ? BPS.POSE_PARAMS[opponentPose] : null;
   var plyParams = BPS ? BPS.POSE_PARAMS[playerPose] : null;
 
-  // The existing rear walk frame turns the candidate into the confrontation without generating
-  // new identity art. It is already selected-player-lazy; missing frames keep the front fallback.
-  var playerRear = walkAnim[player.slug] && walkAnim[player.slug].up && walkAnim[player.slug].up[0];
+  // Classic battles retain the original front-facing trainer identity. Directional overworld
+  // frames remain locomotion-only; reusing the rear frame here made the selected character less
+  // recognizable and diverged from the established battle presentation.
+  // Follow semantic pose offsets so contact remains attached during challenge/command/hit states.
+  // Opponent horizontal offsets are mirrored by drawTrainer; vertical offsets are not.
+  var oppShadowX = oppX - (oppParams ? oppParams.dx : 0);
+  var oppShadowY = oppBaseY + (oppParams ? oppParams.dy : 0);
+  var plyShadowX = plyX + (plyParams ? plyParams.dx : 0);
+  var plyShadowY = plyBaseY + (plyParams ? plyParams.dy : 0);
+  drawBattleContactShadow(oppShadowX, oppShadowY, 46 * (oppParams ? oppParams.scaleX : 1), 0.24);
+  drawBattleContactShadow(plyShadowX, plyShadowY, 54 * (plyParams ? plyParams.scaleX : 1), 0.3);
   drawTrainer(b.npc.slug, oppX, oppBaseY, oppH, reducedMotion ? 0 : 2, oppParams, true);
-  drawTrainer(player.slug, plyX, plyBaseY, plyH, 0, plyParams, false, playerRear || null);
+  drawTrainer(player.slug, plyX, plyBaseY, plyH, 0, plyParams, false);
 
   // Semantic cues are grounded at each authored platform rather than floating debug chevrons.
   if (BPS) {
@@ -6802,8 +6835,8 @@ function drawBattle() {
 
   // ---- Battlemon rendering: state derives from existing timestamps ----
   var monState = "idle-a";
-  var monX = GEO ? GEO.BATTLEMON_CENTER_X : 502;
-  var monY = GEO ? GEO.BATTLEMON_CENTER_Y : 246;
+  var monX = GEO ? GEO.BATTLEMON_CENTER_X : 495;
+  var monY = GEO ? GEO.BATTLEMON_CENTER_Y : 170;
   var monSize = GEO ? GEO.BATTLEMON_DRAW_SIZE : 128;
   if (b.sendoutAt > 0 && b.phase !== "intro") {
     if (BPS) monState = BPS.resolveBattlemonState(b.phase, frame, b.attackAt, b.faintAt, reducedMotion);
@@ -6827,6 +6860,8 @@ function drawBattle() {
     }
     var drawSize = monSize * presentationScale;
     if (monAlpha > 0) {
+      var monGroundY = (GEO ? GEO.BATTLEMON_CENTER_Y : 170) + monSize * 0.44;
+      drawBattleContactShadow(monX, monGroundY, 88 * presentationScale, 0.32 * monAlpha);
       ctx.globalAlpha = monAlpha;
       if (BPS && mon.domain && mon.id) {
         BPS.drawBattlemonFrame(ctx, mon.domain, mon.id, monState,

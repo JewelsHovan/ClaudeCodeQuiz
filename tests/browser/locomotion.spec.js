@@ -88,7 +88,7 @@ test.describe("distance-matched overworld locomotion", () => {
     expect(result.active).toBe(false);
     expect(result.idleDraw[0]).toBeGreaterThan(15);
     expect(result.idleDraw[0]).toBeLessThan(56);
-    expect(result.idleDraw[1]).toBe(56);
+    expect(result.idleDraw[1]).toBe(60); // 224px visible span maps to the 56px standing model
     expect(observed.errors).toEqual([]); expect(observed.failures).toEqual([]);
   });
 
@@ -130,7 +130,8 @@ test.describe("distance-matched overworld locomotion", () => {
           ge("drawCharacter")(320,240,p.slug,"right",true,true,false,false);
           var runDraw=calls.at(-1),runMeta=pilot.manifest.motions.run.frames.right_3;
         } finally { context.drawImage=original;p.moving=false;p.running=false; }
-        const walkScale=56/walkMeta.height,runScale=56/runMeta.height;
+        const walkScale=DatamonLocomotion.authoredFrameScale(walkMeta.height,56);
+        const runScale=DatamonLocomotion.authoredFrameScale(runMeta.height,56);
         return{draw:[walkDraw[1],walkDraw[2],walkDraw[3],walkDraw[4]],frameCount:pilot.manifest.frameCount,
           resolvedBody:walkDraw[1]+walkMeta.bodyX*walkScale,resolvedFoot:walkDraw[2]+walkMeta.footY*walkScale,
           flightFoot:runDraw[2]+runMeta.footY*runScale,runGround:pilot.manifest.motions.run.groundY.right,
@@ -140,7 +141,7 @@ test.describe("distance-matched overworld locomotion", () => {
       expect(result.frameCount).toBe(8);
       expect(Math.abs(result.resolvedBody-320)).toBeLessThanOrEqual(0.55);
       expect(Math.abs(result.resolvedFoot-256)).toBeLessThanOrEqual(0.55);
-      expect(result.draw[2]).toBeGreaterThan(20); expect(result.draw[3]).toBe(56);
+      expect(result.draw[2]).toBeGreaterThan(20); expect(result.draw[3]).toBe(60);
       expect(result.cacheKeys).toHaveLength(1);
       expect(result.runCacheKeys).toHaveLength(1);
       expect(256-result.flightFoot).toBeGreaterThan(3); // authored both-feet-airborne pose

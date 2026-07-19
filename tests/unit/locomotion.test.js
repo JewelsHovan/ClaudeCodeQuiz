@@ -97,6 +97,14 @@ describe("DatamonLocomotion presentation helpers", () => {
     assert.ok(Math.abs(api.contactWeight(0.25) + 1) < 1e-12);
   });
 
+  it("normalizes authored canvas margins to the standing model scale", () => {
+    assert.equal(api.AUTHORED_VISIBLE_RATIO, 14 / 15);
+    assert.equal(api.authoredFrameScale(240, 56), 0.25);
+    assert.equal(240 * api.authoredFrameScale(240, 56), 60);
+    assert.equal(api.authoredFrameScale(0, 56), 1);
+    assert.equal(api.authoredFrameScale(240, NaN), 1);
+  });
+
   it("preserves the old 60Hz camera response and matches elapsed time at 120Hz", () => {
     assert.ok(Math.abs(api.cameraFactor(1 / 60) - 0.12) < 1e-12);
     const sixtyRetention = Math.pow(1 - api.cameraFactor(1 / 60), 60);

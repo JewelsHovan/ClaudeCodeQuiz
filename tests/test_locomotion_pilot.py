@@ -13,6 +13,7 @@ PILOT_ROOT = ROOT / "datamon" / "sprites-locomotion-pilot"
 PILOT = {"julien-hovan", "veronica-marallag", "alex-andrianavalontsalama"}
 DIRECTIONS = ("down", "up", "left", "right")
 MOTIONS = ("walk", "run")
+RUNTIME_FRAME_SCALE = 56 / 224  # authored 240px canvas has a canonical 224px visible span
 
 
 class LocomotionPilotTests(unittest.TestCase):
@@ -47,6 +48,7 @@ class LocomotionPilotTests(unittest.TestCase):
                     alpha = np.asarray(image)[:, :, 3]; ys, xs = np.where(alpha >= 128)
                     self.assertLessEqual(int(xs.max() - xs.min() + 1), int((ys.max() - ys.min() + 1) * .62))
                     self.assertEqual(anchor["footY"], int(ys.max()))
+                    self.assertGreaterEqual((int(ys.max()) - int(ys.min()) + 1) * RUNTIME_FRAME_SCALE, 54)
 
     def test_frames_match_metadata_and_every_authored_cycle_has_eight_distinct_poses(self):
         for slug in PILOT:
@@ -85,8 +87,8 @@ class LocomotionPilotTests(unittest.TestCase):
                         band = alpha[int(y0 + start * visible_h):int(y0 + end * visible_h) + 1].astype(float) / 255
                         return float((band * np.arange(alpha.shape[1])[None, :]).sum() / band.sum())
                     body_x = frames[f"{direction}_{index}"]["bodyX"]
-                    head_offsets.append((weighted_x(0, .27) - body_x) * 56 / 240)
-                    torso_offsets.append((weighted_x(.27, .58) - body_x) * 56 / 240)
+                    head_offsets.append((weighted_x(0, .27) - body_x) * RUNTIME_FRAME_SCALE)
+                    torso_offsets.append((weighted_x(.27, .58) - body_x) * RUNTIME_FRAME_SCALE)
                 self.assertLessEqual(max(head_offsets) - min(head_offsets), .75, f"{slug}/{direction}/head")
                 self.assertLessEqual(max(torso_offsets) - min(torso_offsets), .75, f"{slug}/{direction}/torso")
 

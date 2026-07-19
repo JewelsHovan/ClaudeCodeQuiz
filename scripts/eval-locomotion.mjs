@@ -80,8 +80,9 @@ async function rootJitter(page, mode="pilot-walk") {
           for(let y=sy;y<ey;y++)for(let x=0;x<image.width;x++){const alpha=data[(y*image.width+x)*4+3]/255;sum+=alpha;weightedX+=alpha*x;}
           return weightedX/Math.max(sum,1);
         }
-        head.push((weighted(0,.27)-anchor.bodyX)*56/image.height);
-        torso.push((weighted(.27,.58)-anchor.bodyX)*56/image.height);
+        const runtimeScale=window.DatamonLocomotion.authoredFrameScale(image.height,56);
+        head.push((weighted(0,.27)-anchor.bodyX)*runtimeScale);
+        torso.push((weighted(.27,.58)-anchor.bodyX)*runtimeScale);
       }
       headMax=Math.max(headMax,Math.max(...head)-Math.min(...head));
       torsoMax=Math.max(torsoMax,Math.max(...torso)-Math.min(...torso));

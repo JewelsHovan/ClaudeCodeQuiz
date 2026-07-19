@@ -29,13 +29,16 @@
     "sha256", "silhouetteFamily", "sourceSha256", "variant",
   ]);
 
+  // Ground contacts follow the top surfaces baked into every accepted arena. These are
+  // intentionally inset from the platform rims so trainers and Battlemons do not read as
+  // standing on the near vertical fascia.
   var GEOMETRY = Object.freeze({
-    PLAYER_ANCHOR: Object.freeze([160, 408]),
-    OPPONENT_ANCHOR: Object.freeze([657, 208]),
+    PLAYER_ANCHOR: Object.freeze([151, 340]),
+    OPPONENT_ANCHOR: Object.freeze([683, 158]),
     PLAYER_VISIBLE_HEIGHT: 172,
     OPPONENT_VISIBLE_HEIGHT: 156,
-    BATTLEMON_CENTER_X: 502,
-    BATTLEMON_CENTER_Y: 246,
+    BATTLEMON_CENTER_X: 495,
+    BATTLEMON_CENTER_Y: 170,
     BATTLEMON_DRAW_SIZE: 128,
     STAGE_BOTTOM: 432,
     OPPONENT_PLATE: Object.freeze([18, 16, 310, 86]),

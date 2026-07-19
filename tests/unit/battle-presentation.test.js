@@ -99,8 +99,9 @@ describe("DatamonBattlePresentation taxonomy and immutable geometry", () => {
 
   it("pins the reviewed stage and modest 1.11-or-less perspective ratio", () => {
     const geometry = api.GEOMETRY;
-    assert.deepEqual(Array.from(geometry.PLAYER_ANCHOR), [160, 408]);
-    assert.deepEqual(Array.from(geometry.OPPONENT_ANCHOR), [657, 208]);
+    assert.deepEqual(Array.from(geometry.PLAYER_ANCHOR), [151, 340]);
+    assert.deepEqual(Array.from(geometry.OPPONENT_ANCHOR), [683, 158]);
+    assert.deepEqual([geometry.BATTLEMON_CENTER_X, geometry.BATTLEMON_CENTER_Y], [495, 170]);
     assert.equal(geometry.PLAYER_VISIBLE_HEIGHT, 172);
     assert.equal(geometry.OPPONENT_VISIBLE_HEIGHT, 156);
     assert.ok(geometry.PLAYER_VISIBLE_HEIGHT / geometry.OPPONENT_VISIBLE_HEIGHT <= 1.11);
