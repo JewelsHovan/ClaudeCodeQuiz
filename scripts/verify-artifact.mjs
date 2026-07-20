@@ -43,7 +43,7 @@ const expectedManifest = payload.map(file => `${file.path}\t${file.size}`).join(
 const actualManifest = fs.readFileSync(path.join(DIST, "file-manifest.txt"), "utf8");
 const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
 const payloadPaths = new Set(payload.map(file => file.path));
-const requiredRuntime = ["index.html", "state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "locomotion.js", "game.js", "sprites-sit/manifest.json", "props-study/manifest.json", "props-wayfinding/manifest.json", "battlemons/manifest.json", "battle-arenas/manifest.json"];
+const requiredRuntime = ["index.html", "state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "locomotion.js", "game.js", "sprites-idle/manifest.json", "sprites-sit/manifest.json", "props-study/manifest.json", "props-wayfinding/manifest.json", "battlemons/manifest.json", "battle-arenas/manifest.json"];
 for (const runtimeFile of requiredRuntime) {
   if (!payloadPaths.has(runtimeFile)) throw new Error(`Missing packaged runtime file: dist/${runtimeFile}`);
 }
@@ -178,6 +178,47 @@ for (const slug of LOCOMOTION_PILOT) {
       if (width !== anchor.width || height !== anchor.height || height !== 240) {
         throw new Error(`Locomotion pilot frame/metadata mismatch: ${relative}`);
       }
+    }
+  }
+}
+
+// Directional idle art is one strict reviewed batch: manifest + exactly four PNGs per slug,
+// canonical roster/directions, content-addressed hashes, and no private generation residue.
+const idleManifest = JSON.parse(fs.readFileSync(path.join(DIST, "sprites-idle/manifest.json"), "utf8"));
+const normalizedIdleManifest = locomotionApi.normalizeIdleManifest(idleManifest, canonicalRosterSlugs);
+if (!normalizedIdleManifest || idleManifest.reviewState !== "accepted" || idleManifest.slugCount !== canonicalRosterSlugs.length ||
+    idleManifest.assetCount !== canonicalRosterSlugs.length * 4 || idleManifest.generation.callCap !== 50 ||
+    idleManifest.generation.totalCalls > 50) {
+  throw new Error("Packaged idle manifest is not the canonical reviewed full-roster batch");
+}
+const expectedIdleFiles = ["sprites-idle/manifest.json", ...canonicalRosterSlugs.flatMap(slug =>
+  ["down", "left", "right", "up"].map(direction => `sprites-idle/${slug}/idle_${direction}.png`)
+)].sort();
+const packagedIdleFiles = payload.filter(file => file.path.startsWith("sprites-idle/"))
+  .map(file => file.path).sort();
+if (JSON.stringify(packagedIdleFiles) !== JSON.stringify(expectedIdleFiles)) {
+  throw new Error("Packaged directional idle payload must be the exact reviewed 37×4 set");
+}
+for (const slug of canonicalRosterSlugs) {
+  const entry = idleManifest.entries.find(value => value.slug === slug);
+  if (!entry || entry.reviewState !== "accepted") throw new Error(`Missing accepted idle entry: ${slug}`);
+  for (const direction of ["down", "left", "right", "up"]) {
+    const frame = entry.directions[direction];
+    const relative = `sprites-idle/${slug}/idle_${direction}.png`;
+    if (!frame || frame.file !== `${slug}/idle_${direction}.png` || !/^[0-9a-f]{64}$/.test(frame.sha256 || "")) {
+      throw new Error(`Invalid idle declaration: ${relative}`);
+    }
+    const data = fs.readFileSync(path.join(DIST, relative));
+    const width = data.length >= 24 && data.subarray(1,4).toString("ascii") === "PNG" ? data.readUInt32BE(16) : 0;
+    const height = width ? data.readUInt32BE(20) : 0;
+    if (width !== frame.width || height !== frame.height || height !== 240) {
+      throw new Error(`Directional idle PNG/metadata mismatch: ${relative}`);
+    }
+    const hash = createHash("sha256").update(data).digest("hex");
+    if (hash !== frame.sha256) throw new Error(`Directional idle hash mismatch: ${relative}`);
+    const anchor = locomotionApi.resolveIdleFrame(normalizedIdleManifest, slug, direction, width, height);
+    if (!anchor.metadata || anchor.footY !== 228 || anchor.rootY === null) {
+      throw new Error(`Directional idle anchor mismatch: ${relative}`);
     }
   }
 }

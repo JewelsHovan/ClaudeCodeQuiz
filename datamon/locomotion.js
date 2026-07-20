@@ -231,6 +231,61 @@
     });
   }
 
+  function normalizeIdleManifest(raw, expectedRoster) {
+    if (!raw || typeof raw !== "object" || raw.schemaVersion !== 1 || raw.reviewState !== "accepted") return null;
+    if (!Array.isArray(raw.roster) || !Array.isArray(raw.entries) || !Array.isArray(raw.directions)) return null;
+    if (JSON.stringify(raw.directions) !== JSON.stringify(DIRECTIONS)) return null;
+    if (!raw.canvas || raw.canvas.height !== 240 || raw.canvas.groundY !== 228 || raw.canvas.runtimeModelVisibleHeight !== 56) return null;
+    if (!finite(raw.canvas.runtimeVisibleRatio) || Math.abs(raw.canvas.runtimeVisibleRatio - AUTHORED_VISIBLE_RATIO) > EPSILON) return null;
+    var roster = raw.roster.slice();
+    if (!roster.length || raw.slugCount !== roster.length || raw.assetCount !== roster.length * DIRECTIONS.length || raw.entries.length !== roster.length) return null;
+    var canonicalRoster = roster.slice().sort();
+    if (JSON.stringify(roster) !== JSON.stringify(canonicalRoster)) return null;
+    if (Array.isArray(expectedRoster) && JSON.stringify(roster) !== JSON.stringify(expectedRoster.slice())) return null;
+    var bySlug = {};
+    for (var i = 0; i < raw.entries.length; i++) {
+      var entry = raw.entries[i];
+      if (!entry || typeof entry !== "object" || entry.slug !== roster[i] || entry.reviewState !== "accepted") return null;
+      if (!entry.source || typeof entry.source !== "object" || !entry.directions || typeof entry.directions !== "object") return null;
+      var directions = {};
+      for (var d = 0; d < DIRECTIONS.length; d++) {
+        var direction = DIRECTIONS[d];
+        var value = entry.directions[direction];
+        if (!value || typeof value !== "object") return null;
+        if (value.file !== entry.slug + "/idle_" + direction + ".png" || typeof value.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(value.sha256)) return null;
+        if (!Number.isInteger(value.width) || value.width <= 0 || !Number.isInteger(value.height) || value.height !== raw.canvas.height) return null;
+        if (!finite(value.bodyX) || value.bodyX < 0 || value.bodyX >= value.width) return null;
+        if (!finite(value.footY) || value.footY !== raw.canvas.groundY) return null;
+        if (!finite(value.rootY) || value.rootY < 0 || value.rootY >= value.height) return null;
+        if (value.phase !== 0 || (value.contactFoot || null) !== null) return null;
+        directions[direction] = Object.freeze({
+          file: value.file,
+          sha256: value.sha256,
+          width: value.width,
+          height: value.height,
+          bodyX: value.bodyX,
+          footY: value.footY,
+          rootY: value.rootY,
+          phase: 0,
+          contactFoot: null,
+        });
+      }
+      bySlug[entry.slug] = Object.freeze({ slug: entry.slug, directions: Object.freeze(directions) });
+    }
+    return Object.freeze({
+      schemaVersion: 1,
+      roster: Object.freeze(roster.slice()),
+      directions: DIRECTIONS,
+      canvas: Object.freeze({
+        height: raw.canvas.height,
+        groundY: raw.canvas.groundY,
+        runtimeModelVisibleHeight: raw.canvas.runtimeModelVisibleHeight,
+        runtimeVisibleRatio: raw.canvas.runtimeVisibleRatio,
+      }),
+      entriesBySlug: Object.freeze(bySlug),
+    });
+  }
+
   function resolveFrameAnchor(manifest, direction, index, imageWidth, imageHeight) {
     var width = finite(imageWidth) && imageWidth > 0 ? imageWidth : 1;
     var height = finite(imageHeight) && imageHeight > 0 ? imageHeight : 1;
@@ -240,6 +295,17 @@
     if (!value || value.width !== width || value.height !== height) return fallback;
     return { bodyX: value.bodyX, footY: value.footY,
       rootY: finite(value.rootY) ? value.rootY : null, width: width, height: height, metadata: true };
+  }
+
+  function resolveIdleFrame(manifest, slug, direction, imageWidth, imageHeight) {
+    var width = finite(imageWidth) && imageWidth > 0 ? imageWidth : 1;
+    var height = finite(imageHeight) && imageHeight > 0 ? imageHeight : 1;
+    var fallback = { bodyX: width / 2, footY: height, rootY: null, width: width, height: height, metadata: false };
+    if (!manifest || !manifest.entriesBySlug || !DIRECTIONS.includes(direction) || typeof slug !== "string") return fallback;
+    var entry = manifest.entriesBySlug[slug];
+    var value = entry && entry.directions ? entry.directions[direction] : null;
+    if (!value || value.width !== width || value.height !== height) return fallback;
+    return { bodyX: value.bodyX, footY: value.footY, rootY: value.rootY, width: width, height: height, metadata: true };
   }
 
   var API = {
@@ -260,7 +326,9 @@
     cameraFactor: cameraFactor,
     normalizeAnchorManifest: normalizeAnchorManifest,
     normalizePilotManifest: normalizePilotManifest,
+    normalizeIdleManifest: normalizeIdleManifest,
     resolveFrameAnchor: resolveFrameAnchor,
+    resolveIdleFrame: resolveIdleFrame,
   };
 
   global.DatamonLocomotion = Object.freeze(API);

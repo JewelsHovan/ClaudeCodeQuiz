@@ -96,6 +96,14 @@ function shuffled(arr, rng) {
 //         C coffee counter (heal) · F solid-furniture footprint (prop baked on top) ·
 //         U overhead duct · ~ rug · . hardwood floor
 const DOORS = [[7, 15], [11, 23], [24, 23]]; // meeting room + Battle Room + Library approaches
+// Door surrounds are baked once for static-map/title continuity, then repainted in the
+// feet-depth pass so characters north of/in a threshold pass behind its lintel and posts.
+// They remain collision-free: the transparent centre and existing route geometry are unchanged.
+const WAYFINDING_SURROUND_PLACEMENTS = Object.freeze([
+  Object.freeze({ id: "door-context-surround", door: DOORS[0], accent: TYPE_COLORS.CONTEXT }),
+  Object.freeze({ id: "door-battle-surround",  door: DOORS[1], accent: "#ef4444" }),
+  Object.freeze({ id: "door-library-surround", door: DOORS[2], accent: "#f2b35d" }),
+]);
 
 // Baked decoration layer (#021): {slug, col, row} where (col,row) is the prop's footprint
 // TOP-LEFT tile. Drawn behind characters in buildMapCanvas() (see the prop-bake loop there).
@@ -467,6 +475,150 @@ function loadWalkAnim(slug) {
   );
   walkAnimLoads[slug] = Promise.all([metadataLoad, loadLocomotionPilot(slug), ...frameLoads]);
   return walkAnimLoads[slug];
+}
+
+const idleManifestState = { manifest: null, promise: null, failed: false, seq: 0 };
+const idleImageState = new Map(); // key -> {slug,dir,status,image,promise,lastUsed,pinned,requestSeq}
+const IDLE_RESIDENT_LIMIT = 40;   // player 4 directions + at most one current direction per 36 NPCs
+let idleUseTick = 0;
+let idleRequestSeq = 0;
+
+function idleDirection(dir) {
+  return WALK_DIRS.includes(dir) ? dir : "down";
+}
+function idleKey(slug, dir) {
+  return `${slug}:${idleDirection(dir)}`;
+}
+function idleLoadedRecords() {
+  return [...idleImageState.values()].filter(function(record) { return record.status === "loaded" && record.image; });
+}
+function trimIdleImageCache() {
+  var loaded = idleLoadedRecords();
+  if (loaded.length <= IDLE_RESIDENT_LIMIT) return;
+  loaded.sort(function(a, b) {
+    if (!!a.pinned !== !!b.pinned) return a.pinned ? 1 : -1;
+    return a.lastUsed - b.lastUsed;
+  });
+  while (loaded.length > IDLE_RESIDENT_LIMIT) {
+    var record = loaded.shift();
+    if (!record || record.pinned) break;
+    idleImageState.delete(record.key);
+  }
+}
+function markIdleUse(record, pinned) {
+  if (!record) return;
+  if (pinned) record.pinned = true;
+  record.lastUsed = ++idleUseTick;
+}
+function pinPlayerIdleDirections(slug) {
+  idleImageState.forEach(function(record) {
+    record.pinned = record.slug === slug && WALK_DIRS.includes(record.dir);
+  });
+  trimIdleImageCache();
+}
+function resolveIdleEntry(slug, dir) {
+  var manifest = idleManifestState.manifest;
+  var entry = manifest && manifest.entriesBySlug ? manifest.entriesBySlug[slug] : null;
+  return entry && entry.directions ? entry.directions[idleDirection(dir)] : null;
+}
+function ensureIdleManifest() {
+  if (idleManifestState.manifest) return Promise.resolve(idleManifestState.manifest);
+  if (idleManifestState.failed) return Promise.resolve(null);
+  if (idleManifestState.promise) return idleManifestState.promise;
+  var seq = ++idleManifestState.seq;
+  idleManifestState.promise = fetch("sprites-idle/manifest.json")
+    .then(function(response) { return response.ok ? response.json() : null; })
+    .then(function(raw) {
+      if (seq !== idleManifestState.seq) return idleManifestState.manifest;
+      var manifest = typeof DatamonLocomotion !== "undefined"
+        ? DatamonLocomotion.normalizeIdleManifest(raw, ROSTER) : null;
+      idleManifestState.promise = null;
+      idleManifestState.manifest = manifest;
+      idleManifestState.failed = !manifest;
+      return manifest;
+    })
+    .catch(function() {
+      if (seq === idleManifestState.seq) {
+        idleManifestState.promise = null;
+        idleManifestState.failed = true;
+      }
+      return null;
+    });
+  return idleManifestState.promise;
+}
+function loadIdleDirection(slug, dir, pinned) {
+  var direction = idleDirection(dir);
+  var key = idleKey(slug, direction);
+  var record = idleImageState.get(key);
+  if (record) {
+    markIdleUse(record, pinned);
+    return record.promise || Promise.resolve(record.image || null);
+  }
+  var entry = resolveIdleEntry(slug, direction);
+  if (!entry) return Promise.resolve(null);
+  record = {
+    key: key, slug: slug, dir: direction, status: "pending", image: null,
+    lastUsed: ++idleUseTick, pinned: !!pinned, requestSeq: ++idleRequestSeq, promise: null,
+  };
+  idleImageState.set(key, record);
+  record.promise = new Promise(function(resolve) {
+    var image = new Image();
+    image.onload = function() {
+      if (idleImageState.get(key) !== record || record.status !== "pending") return resolve(null);
+      if (image.naturalWidth !== entry.width || image.naturalHeight !== entry.height) {
+        record.status = "failed";
+        record.image = null;
+        record.promise = Promise.resolve(null);
+        return resolve(null);
+      }
+      record.status = "loaded";
+      record.image = image;
+      record.promise = Promise.resolve(image);
+      markIdleUse(record, pinned);
+      trimIdleImageCache();
+      resolve(image);
+    };
+    image.onerror = function() {
+      if (idleImageState.get(key) !== record) return resolve(null);
+      record.status = "failed";
+      record.image = null;
+      record.promise = Promise.resolve(null);
+      resolve(null);
+    };
+    image.src = `sprites-idle/${entry.file}`;
+  });
+  return record.promise;
+}
+function getLoadedIdleDirection(slug, dir, pinned) {
+  var record = idleImageState.get(idleKey(slug, dir));
+  if (!record || record.status !== "loaded" || !record.image) return null;
+  markIdleUse(record, pinned);
+  return record.image;
+}
+function primePlayerIdleDirections(slug) {
+  if (!slug || !ROSTER.includes(slug)) return Promise.resolve(null);
+  pinPlayerIdleDirections(slug);
+  return ensureIdleManifest().then(function(manifest) {
+    if (!manifest) return null;
+    return Promise.all(WALK_DIRS.map(function(direction) {
+      return loadIdleDirection(slug, direction, true);
+    }));
+  });
+}
+function primeVisibleNpcIdleDirections(onScreenFn) {
+  if (!idleManifestState.manifest || typeof onScreenFn !== "function") return;
+  for (const npc of npcs) {
+    if (npc._seated) continue;
+    const sx = (npc.x - camFx) * TILE + TILE / 2, sy = (npc.y - camFy) * TILE + TILE / 2;
+    if (!onScreenFn(sx, sy)) continue;
+    loadIdleDirection(npc.slug, npc.dir || "down", false);
+  }
+}
+function gameplayIdleBootstrap(slug) {
+  ensureIdleManifest().then(function(manifest) {
+    if (!manifest) return null;
+    return primePlayerIdleDirections(slug);
+  });
 }
 
 // One ephemeral directional frame lets a seated challenger visibly face the displaced
@@ -2624,6 +2776,7 @@ function handleKey(k) {
         restorePlayerHp(true);
         player.seated = null; certConsoleOpen = false; clearMentorReview(); resetDialogueLifecycle();
         loadWalkAnim(player.slug); // prewarmed at boot; idempotent if already complete
+        gameplayIdleBootstrap(player.slug);
         defeated = new Set(s.defeated);
         placeNPCs();
         if (npcs.every(n => n.defeated)) { state = "victory"; }
@@ -2667,6 +2820,7 @@ function handleKey(k) {
       sfx.confirm();
       player.slug = ROSTER[selectIdx];
       loadWalkAnim(player.slug);
+      gameplayIdleBootstrap(player.slug);
       resetSitAssetCache();
       defeated = new Set();
       restorePlayerHp(true);
@@ -5090,27 +5244,9 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
   // covers anything behind it — no clip needed. (The previous clip-to-tile truncated
   // 44–58px sprites to 32px whenever a wall sat above, decapitating them — the
   // "headless legs near walls" bug. Removed.)
-  // Authored locomotion is moving-only; the pilot adds true directional neutral idle art.
-  // Non-pilot idle falls through to the accepted neutral trainer miniature instead of freezing
-  // on frame 0's extended contact pose. Frame, shadow, dust, and SFX share locomotionPhase.
-  // Per-frame metadata pins a stable visual body root and visible-foot/canvas ground.
+  // Movement keeps its existing locomotion contracts; standing now prefers the reviewed
+  // directional idle package and falls back safely to the front-facing trainer miniature.
   const pilot = isPlayer ? locomotionPilot[slug] : null;
-  if (pilot && !player.moving) {
-    const idleDir = (pilot.motions.idle[dir] && pilot.motions.idle[dir][0]) ? dir : "down";
-    const idleImage = pilot.motions.idle[idleDir][0];
-    if (idleImage) {
-      const idleScale = typeof DatamonLocomotion !== "undefined"
-        ? DatamonLocomotion.authoredFrameScale(idleImage.height, baseSize)
-        : baseSize / idleImage.height;
-      const idleH = idleImage.height * idleScale, idleW = idleImage.width * idleScale;
-      const idleMiniature = walkMini(idleImage, `${slug}:idle:${idleDir}:0`, idleW, idleH);
-      const idleAnchor = typeof DatamonLocomotion !== "undefined"
-        ? DatamonLocomotion.resolveFrameAnchor(pilot.manifest.motions.idle, idleDir, 0, idleImage.width, idleImage.height)
-        : { bodyX: idleImage.width / 2, footY: idleImage.height };
-      ctx.drawImage(idleMiniature, px(cx - idleAnchor.bodyX * idleScale), px(footY - idleAnchor.footY * idleScale), idleW, idleH);
-      return;
-    }
-  }
   const motionName = player.running ? "run" : "walk";
   const anim = pilot ? pilot.motions[motionName] : (isPlayer ? walkAnim[slug] : null);
   const frameCount = pilot ? pilot.manifest.frameCount : 4;
@@ -5160,6 +5296,27 @@ function drawCharacter(cx, cy, slug, dir, isPlayer, bob, wallAbove, seated) {
     var facingFootY = facingImage.height * 0.95; // authored 228/240 visible-foot baseline
     ctx.drawImage(facingMini, px(cx - facingW / 2), px(footY - facingFootY * facingScale), facingW, facingH);
     return;
+  }
+
+  if (!isPlayer || !player.moving) {
+    var idleDir = idleDirection(dir);
+    var idleImage = getLoadedIdleDirection(slug, idleDir, isPlayer);
+    if (!idleImage) loadIdleDirection(slug, idleDir, isPlayer);
+    if (idleImage) {
+      var idleScale = typeof DatamonLocomotion !== "undefined"
+        ? DatamonLocomotion.authoredFrameScale(idleImage.height, baseSize)
+        : baseSize / idleImage.height;
+      var idleH = idleImage.height * idleScale;
+      var idleW = idleImage.width * idleScale;
+      var idleMiniature = walkMini(idleImage, `${slug}:idle:${idleDir}:manifest`, idleW, idleH);
+      var idleAnchor = typeof DatamonLocomotion !== "undefined"
+        ? DatamonLocomotion.resolveIdleFrame(idleManifestState.manifest, slug, idleDir, idleImage.width, idleImage.height)
+        : { bodyX: idleImage.width / 2, footY: idleImage.height, metadata: true };
+      if (idleAnchor && idleAnchor.metadata) {
+        ctx.drawImage(idleMiniature, px(cx - idleAnchor.bodyX * idleScale), px(footY - idleAnchor.footY * idleScale), idleW, idleH);
+        return;
+      }
+    }
   }
 
   const mini = spriteMini(slug, baseSize);
@@ -5924,6 +6081,38 @@ function drawLibraryArchitecture(c, ds) {
   c.restore();
 }
 
+// One geometry contract drives both the cache-baked landmark and its runtime foreground
+// repaint. sortY is the centreline of the southernmost occupied tile, matching the existing
+// character sy key; a character crosses in front only after its feet move south of the frame.
+function wayfindingSurroundGeometry(surround, cameraX, cameraY) {
+  var camX = Number.isFinite(cameraX) ? cameraX : 0;
+  var camY = Number.isFinite(cameraY) ? cameraY : 0;
+  var width = 96, height = 64;
+  var left = (surround.door[0] - camX) * TILE - TILE;
+  var top = (surround.door[1] + 1 - camY) * TILE - height;
+  return { left: left, top: top, width: width, height: height,
+    sortY: top + height - TILE / 2 };
+}
+
+function drawWayfindingSurround(target, surround, geometry) {
+  var image = wayfindingStore[surround.id];
+  var meta = wayfindingManifest.find(function(entry) { return entry.id === surround.id; });
+  if (image && meta) {
+    target.drawImage(image, geometry.left, geometry.top, geometry.width, geometry.height);
+    return;
+  }
+  // Fail-closed fallback retains opaque frame mass as well as the transparent portal opening,
+  // so malformed/missing art cannot reintroduce character-through-post overlap.
+  target.fillStyle = "#0f1a2e";
+  target.fillRect(geometry.left + 4, geometry.top + 6, 88, 16);
+  target.fillRect(geometry.left + 5, geometry.top + 22, 22, 40);
+  target.fillRect(geometry.left + 69, geometry.top + 22, 22, 40);
+  target.strokeStyle = surround.accent; target.lineWidth = 2;
+  target.strokeRect(geometry.left + 4, geometry.top + 6, 88, 16);
+  target.strokeRect(geometry.left + 5, geometry.top + 22, 22, 40);
+  target.strokeRect(geometry.left + 69, geometry.top + 22, 22, 40);
+}
+
 function buildMapCanvas() {
   const cv = document.createElement("canvas");
   cv.width  = Math.round(MAP_W * TILE * MAP_DETAIL_SCALE);
@@ -6112,26 +6301,10 @@ function buildMapCanvas() {
     }
   }
 
-  var surroundPlacements = [
-    { id: "door-context-surround", door: DOORS[0], accent: TYPE_COLORS.CONTEXT },
-    { id: "door-battle-surround",  door: DOORS[1], accent: "#ef4444" },
-    { id: "door-library-surround", door: DOORS[2], accent: "#f2b35d" },
-  ];
-  for (var si = 0; si < surroundPlacements.length; si++) {
-    var surround = surroundPlacements[si];
-    var surroundImg = wayfindingStore[surround.id];
-    var surroundMeta = wayfindingManifest.find(function(entry) { return entry.id === surround.id; });
-    var left = surround.door[0] * TILE - TILE;
-    var top = (surround.door[1] + 1) * TILE - 64;
-    if (surroundImg && surroundMeta) {
-      c.drawImage(surroundImg, left, top, surroundMeta.widthPx, surroundMeta.heightPx);
-    } else {
-      // Existing portal remains visible in the transparent center; this adds only posts/lintel.
-      c.strokeStyle = surround.accent; c.lineWidth = 2;
-      c.strokeRect(left + 4, top + 6, 88, 16);
-      c.strokeRect(left + 5, top + 22, 22, 40);
-      c.strokeRect(left + 69, top + 22, 22, 40);
-    }
+  for (var si = 0; si < WAYFINDING_SURROUND_PLACEMENTS.length; si++) {
+    var surround = WAYFINDING_SURROUND_PLACEMENTS[si];
+    var surroundGeometry = wayfindingSurroundGeometry(surround, 0, 0);
+    drawWayfindingSurround(c, surround, surroundGeometry);
   }
 
   return cv;
@@ -6476,6 +6649,8 @@ function drawOverworld() {
   const isSolidTile = (tx, ty) =>
     ty >= 0 && ty < MAP_H && tx >= 0 && tx < MAP_W && SOLID.has(map[ty][tx]);
 
+  primeVisibleNpcIdleDirections(onScreen);
+
   const chars = [];
   for (const n of npcs) {
     const sx = (n.x - camFx) * TILE + TILE / 2, sy = (n.y - camFy) * TILE + TILE / 2;
@@ -6499,10 +6674,24 @@ function drawOverworld() {
       chars.push({ worldArt: item, sx, top, sy: top + e.heightPx, tx: p.col, ty: p.row });
     }
   }
-  chars.sort((a, b) => (a.sy - b.sy) || (a.sx - b.sx));   // back-to-front, tie-break x
+  // Repaint each threshold frame at its physical base depth. The cache copy remains the
+  // backplate; this sorted copy supplies the missing foreground occlusion without changing
+  // collision, route widths, or transparent openings. At an exact threshold tie the frame wins.
+  if (currentMap === "office") {
+    for (const surround of WAYFINDING_SURROUND_PLACEMENTS) {
+      const geometry = wayfindingSurroundGeometry(surround, camFx, camFy);
+      if (geometry.left + geometry.width < -TILE || geometry.left > CANVAS_W + TILE ||
+          geometry.top + geometry.height < -TILE || geometry.top > CANVAS_H + TILE) continue;
+      chars.push({ wayfindingSurround: surround, geometry: geometry,
+        sx: geometry.left, sy: geometry.sortY, sortRank: 1 });
+    }
+  }
+  chars.sort((a, b) => (a.sy - b.sy) || ((a.sortRank || 0) - (b.sortRank || 0)) || (a.sx - b.sx));
 
   for (const c of chars) {
-    if (c.worldArt) {
+    if (c.wayfindingSurround) {
+      drawWayfindingSurround(ctx, c.wayfindingSurround, c.geometry);
+    } else if (c.worldArt) {
       const e = c.worldArt.entry;
       ctx.drawImage(c.worldArt.image, c.sx, c.top, e.widthPx, e.heightPx);
       if (e.id === "hd-collaboration-table") {
@@ -6824,7 +7013,9 @@ function drawBattle() {
   var plyShadowY = plyBaseY + (plyParams ? plyParams.dy : 0);
   drawBattleContactShadow(oppShadowX, oppShadowY, 46 * (oppParams ? oppParams.scaleX : 1), 0.24);
   drawBattleContactShadow(plyShadowX, plyShadowY, 54 * (plyParams ? plyParams.scaleX : 1), 0.3);
-  drawTrainer(b.npc.slug, oppX, oppBaseY, oppH, reducedMotion ? 0 : 2, oppParams, true);
+  // Resting trainers stay planted on their platforms. Action feedback still uses the
+  // bounded semantic poses above, but there is no perpetual sine-wave bob at idle.
+  drawTrainer(b.npc.slug, oppX, oppBaseY, oppH, 0, oppParams, true);
   drawTrainer(player.slug, plyX, plyBaseY, plyH, 0, plyParams, false);
 
   // Semantic cues are grounded at each authored platform rather than floating debug chevrons.

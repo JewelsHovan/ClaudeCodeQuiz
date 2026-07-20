@@ -88,6 +88,66 @@ test.describe("Certification Spine office wayfinding and mentor reviews", () => 
     await context.close();
   });
 
+  test("collision-free destination surrounds occlude characters at threshold depth", async ({ browser }) => {
+    for (const deviceScaleFactor of [1, 2]) {
+      const context = await browser.newContext({ viewport: { width: 1407, height: 853 }, deviceScaleFactor });
+      const page = await context.newPage();
+      const { errors, failedRequests } = await setup(page);
+      await page.waitForFunction(() => Object.values((0,eval)("wayfindingStore")).filter(Boolean).length === 9);
+
+      const result = await page.evaluate(() => {
+        const ge=(0,eval), placements=ge("WAYFINDING_SURROUND_PLACEMENTS"), p=ge("player"), c=ge("ctx");
+        const originalCharacter=ge("drawCharacter"), originalDrawImage=c.drawImage;
+        window.__surroundOrder=[];
+        window.__surroundCharacter=function(...args){if(args[4])window.__surroundOrder.push("player");};
+        window.__originalSurroundCharacter=originalCharacter;
+        ge("drawCharacter = window.__surroundCharacter");
+        c.drawImage=function(...args){
+          if(args[0]===window.__targetSurround)window.__surroundOrder.push("surround");
+          return originalDrawImage.apply(this,args);
+        };
+        function orderAt(surround,x,y){
+          p.seated=null;p.moving=false;p.x=p.fx=x;p.y=p.fy=y;
+          ge("camFx = null");ge("camFy = null");
+          window.__targetSurround=ge("wayfindingStore")[surround.id];
+          window.__surroundOrder=[];
+          ge("drawOverworld")();
+          return window.__surroundOrder.slice();
+        }
+        let north, threshold, south;
+        try {
+          north=placements.map(surround=>orderAt(surround,surround.door[0]+1,surround.door[1]-1));
+          threshold=orderAt(placements[0],placements[0].door[0],placements[0].door[1]);
+          south=orderAt(placements[0],placements[0].door[0]+1,placements[0].door[1]+1);
+        } finally {
+          c.drawImage=originalDrawImage;
+          ge("drawCharacter = window.__originalSurroundCharacter");
+          delete window.__targetSurround;delete window.__surroundOrder;
+          delete window.__surroundCharacter;delete window.__originalSurroundCharacter;
+        }
+        return {
+          ids:placements.map(item=>item.id), north, threshold, south,
+          geometry:placements.map(item=>ge("wayfindingSurroundGeometry")(item,0,0)),
+          sideCellsWalkable:placements.map(item=>ge("walkable")(item.door[0]+1,item.door[1]-1)),
+          manifestCollision:placements.map(item=>ge("wayfindingManifest").find(entry=>entry.id===item.id).collision),
+        };
+      });
+
+      expect(result.ids).toEqual(["door-context-surround","door-battle-surround","door-library-surround"]);
+      expect(result.north).toEqual([["player","surround"],["player","surround"],["player","surround"]]);
+      expect(result.threshold).toEqual(["player","surround"]);
+      expect(result.south).toEqual(["surround","player"]);
+      expect(result.sideCellsWalkable).toEqual([true,true,true]);
+      expect(result.manifestCollision).toEqual(["none","none","none"]);
+      for (const geometry of result.geometry) {
+        expect(geometry.width).toBe(96); expect(geometry.height).toBe(64);
+        expect(geometry.sortY).toBe(geometry.top+geometry.height-16);
+      }
+      expect(errors).toEqual([]);expect(failedRequests).toEqual([]);
+      await context.close();
+    }
+  });
+
   test("malformed wayfinding metadata fails closed to bounded navigation fallbacks", async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 1407, height: 853 }, deviceScaleFactor: 2 });
     const page = await context.newPage();
@@ -95,8 +155,19 @@ test.describe("Certification Spine office wayfinding and mentor reviews", () => 
     malformed.unexpected = "must fail exact schema";
     await page.route("**/props-wayfinding/manifest.json", route => route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(malformed)}));
     const {errors,failedRequests,requests}=await setup(page);
-    const fallback=await page.evaluate(() => {const ge=(0,eval),p=ge("player");p.x=p.fx=11;p.y=p.fy=22;p.dir="down";return{manifest:ge("wayfindingManifest").length,store:Object.keys(ge("wayfindingStore")).length,map:[ge("officeMapCv").width,ge("officeMapCv").height],pathCells:ge("OFFICE_PATH_MASK").size,preview:ge("officeDestinationPreview")().label};});
-    expect(fallback).toEqual({manifest:0,store:0,map:[2304,1536],pathCells:189,preview:"Battle Room"});
+    const fallback=await page.evaluate(() => {
+      const ge=(0,eval),p=ge("player"),surround=ge("WAYFINDING_SURROUND_PLACEMENTS")[1];
+      p.x=p.fx=11;p.y=p.fy=22;p.dir="down";
+      const fills=[],strokes=[],target={fillStyle:"",strokeStyle:"",lineWidth:0,
+        fillRect:(...args)=>fills.push(args),strokeRect:(...args)=>strokes.push(args)};
+      ge("drawWayfindingSurround")(target,surround,ge("wayfindingSurroundGeometry")(surround,0,0));
+      return{manifest:ge("wayfindingManifest").length,store:Object.keys(ge("wayfindingStore")).length,
+        map:[ge("officeMapCv").width,ge("officeMapCv").height],pathCells:ge("OFFICE_PATH_MASK").size,
+        preview:ge("officeDestinationPreview")().label,fills,strokes};
+    });
+    expect(fallback).toEqual({manifest:0,store:0,map:[2304,1536],pathCells:189,preview:"Battle Room",
+      fills:[[324,710,88,16],[325,726,22,40],[389,726,22,40]],
+      strokes:[[324,710,88,16],[325,726,22,40],[389,726,22,40]]});
     expect(count(requests,"/props-wayfinding/")).toEqual(["/props-wayfinding/manifest.json"]);
     expect(errors).toEqual([]);expect(failedRequests).toEqual([]);
     await context.close();

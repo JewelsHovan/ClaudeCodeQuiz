@@ -144,6 +144,47 @@ describe("DatamonLocomotion presentation helpers", () => {
     });
   });
 
+  function idleManifest() {
+    const entries = [];
+    for (const slug of ["alex-andrianavalontsalama", "julien-hovan"]) {
+      const directions = {};
+      for (const direction of ["down", "up", "left", "right"]) {
+        directions[direction] = {
+          file: `${slug}/idle_${direction}.png`, sha256: "a".repeat(64),
+          width: 96, height: 240, bodyX: 47.5, footY: 228, rootY: 138, phase: 0, contactFoot: null,
+        };
+      }
+      entries.push({ slug, reviewState: "accepted", source: { kind: "pilot-copy" }, directions });
+    }
+    return {
+      schemaVersion: 1, reviewState: "accepted", slugCount: 2, assetCount: 8,
+      roster: ["alex-andrianavalontsalama", "julien-hovan"], directions: ["down", "up", "left", "right"],
+      canvas: { height: 240, groundY: 228, runtimeModelVisibleHeight: 56, runtimeVisibleRatio: 14 / 15 },
+      entries,
+    };
+  }
+
+  it("accepts the strict idle package manifest and resolves per-slug directional anchors", () => {
+    const normalized = api.normalizeIdleManifest(idleManifest(), ["alex-andrianavalontsalama", "julien-hovan"]);
+    assert.ok(normalized);
+    assert.ok(Object.isFrozen(normalized));
+    assert.deepEqual(JSON.parse(JSON.stringify(api.resolveIdleFrame(normalized, "julien-hovan", "left", 96, 240))), {
+      bodyX: 47.5, footY: 228, rootY: 138, width: 96, height: 240, metadata: true,
+    });
+  });
+
+  it("fails closed on malformed idle package metadata and falls back to front-sprite anchoring", () => {
+    const wrongRoster = idleManifest(); wrongRoster.roster = ["julien-hovan", "alex-andrianavalontsalama"];
+    assert.equal(api.normalizeIdleManifest(wrongRoster, ["alex-andrianavalontsalama", "julien-hovan"]), null);
+    const wrongPath = idleManifest(); wrongPath.entries[0].directions.left.file = "alex-andrianavalontsalama/idle_right.png";
+    assert.equal(api.normalizeIdleManifest(wrongPath, ["alex-andrianavalontsalama", "julien-hovan"]), null);
+    const wrongGround = idleManifest(); wrongGround.entries[1].directions.down.footY = 227;
+    assert.equal(api.normalizeIdleManifest(wrongGround, ["alex-andrianavalontsalama", "julien-hovan"]), null);
+    assert.deepEqual(JSON.parse(JSON.stringify(api.resolveIdleFrame(null, "julien-hovan", "down", 120, 240))), {
+      bodyX: 60, footY: 240, rootY: null, width: 120, height: 240, metadata: false,
+    });
+  });
+
   function pilotManifest() {
     const motions = {};
     for (const motion of ["walk", "run"]) {

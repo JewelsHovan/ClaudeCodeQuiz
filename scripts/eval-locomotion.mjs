@@ -13,7 +13,7 @@ const OUT = path.join(ROOT, "test-results", "locomotion-evaluation");
 const PORT = 8751, URL = `http://127.0.0.1:${PORT}/`;
 const PROFILES = ["gba", "balanced", "fast"];
 const PILOT_SLUGS = ["julien-hovan", "veronica-marallag", "alex-andrianavalontsalama"];
-const MAX_CV = 0.05, MAX_PHASE_ERROR = 0.01;
+const MAX_CV = 0.05, MAX_PHASE_ERROR = 0.01, MAX_REQUESTS = 340;
 
 function percentile(values, fraction) {
   const sorted=[...values].sort((a,b)=>a-b);
@@ -130,7 +130,7 @@ async function evaluateProfile(browser, profile, dpr=1) {
   const phaseError=Math.min(Math.abs(runtime.phase-expected),1-Math.abs(runtime.phase-expected));
   const result={candidate:profile,dpr,durationMs:samples.at(-1).t-samples[0].t,velocity,frames,phaseError,...runtime,errors,failed};
   result.valid=errors.length===0&&failed.length===0&&runtime.metadata&&velocity.cv<=MAX_CV&&phaseError<=MAX_PHASE_ERROR&&
-    runtime.contacts>=6&&runtime.rootJitter&&runtime.rootJitter.max<=.75&&runtime.requestCount<=320&&frames.p95<=20;
+    runtime.contacts>=6&&runtime.rootJitter&&runtime.rootJitter.max<=.75&&runtime.requestCount<=MAX_REQUESTS&&frames.p95<=20;
   await context.close();
   const videoPath=await video.path(),target=path.join(OUT,`${profile}-dpr${dpr}.webm`);
   fs.renameSync(videoPath,target);result.video=path.relative(ROOT,target);
@@ -179,7 +179,7 @@ async function evaluateArtMode(browser, slug, mode) {
   const rootBudget=mode==="pilot-run"?1.25:.75;
   return{slug,mode,durationMs:samples.at(-1).t-samples[0].t,...runtime,errors,failed,
     valid:errors.length===0&&failed.length===0&&runtime.frameCount===(mode==="legacy-walk"?4:8)&&
-      runtime.rootJitter&&runtime.rootJitter.max<=rootBudget&&runtime.requestCount<=320&&runtime.frames.p95<=20,
+      runtime.rootJitter&&runtime.rootJitter.max<=rootBudget&&runtime.requestCount<=MAX_REQUESTS&&runtime.frames.p95<=20,
     video:path.relative(ROOT,target)};
 }
 
@@ -204,7 +204,7 @@ try{
     return preference.indexOf(a.candidate)-preference.indexOf(b.candidate);
   });
   const selected=valid[0]?.candidate||null;
-  const ledger={schemaVersion:1,evaluator:"distance-phase-v1",constraints:{maxVelocityCv:MAX_CV,maxPhaseError:MAX_PHASE_ERROR,maxWalkRootJitterPx:.75,maxRunRootJitterPx:1.25,maxRequests:320,maxFrameP95Ms:20},
+  const ledger={schemaVersion:1,evaluator:"distance-phase-v1",constraints:{maxVelocityCv:MAX_CV,maxPhaseError:MAX_PHASE_ERROR,maxWalkRootJitterPx:.75,maxRunRootJitterPx:1.25,maxRequests:MAX_REQUESTS,maxFrameP95Ms:20},
     selectionPolicy:"correctness -> velocity CV -> phase error -> balanced/gba/fast tie preference",selected,trials,
     artComparison:{policy:"three fixed representative identities × legacy walk / 8-frame walk / distinct run",trials:artTrials}};
   fs.writeFileSync(path.join(OUT,"ledger.json"),JSON.stringify(ledger,null,2)+"\n");

@@ -260,6 +260,8 @@ try {
     const duplicateArchitectureRequests = [...new Set(architectureRequests)].filter(value => architectureRequests.filter(item => item === value).length > 1);
     const studyRequests = requests.filter(value => value.startsWith("/props-study/") || value.startsWith("/sprites-sit/"));
     const duplicateStudyRequests = [...new Set(studyRequests)].filter(value => studyRequests.filter(item => item === value).length > 1);
+    const idleRequests = requests.filter(value => value.startsWith("/sprites-idle/"));
+    const duplicateIdleRequests = [...new Set(idleRequests)].filter(value => idleRequests.filter(item => item === value).length > 1);
     const wayfindingRequests = requests.filter(value => value.startsWith("/props-wayfinding/"));
     const duplicateWayfindingRequests = [...new Set(wayfindingRequests)].filter(value => wayfindingRequests.filter(item => item === value).length > 1);
     const battlemonRequests = requests.filter(value => value.startsWith("/battlemons/"));
@@ -268,6 +270,7 @@ try {
     const duplicateBattleArenaRequests = [...new Set(battleArenaRequests)].filter(value => battleArenaRequests.filter(item => item === value).length > 1);
     const run = { ...config, scenes, dialogue, seatedHandoff, certificationConsole, mentorReview, classicBattle, classicSequence, errors, requestCount: requests.length,
       architectureRequests, duplicateArchitectureRequests, studyRequests, duplicateStudyRequests,
+      idleRequests, duplicateIdleRequests,
       wayfindingRequests, duplicateWayfindingRequests, battlemonRequests, duplicateBattlemonRequests,
       battleArenaRequests, duplicateBattleArenaRequests };
     runs.push(run);
@@ -289,9 +292,11 @@ for (const run of runs) {
   if (run.errors.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: ${run.errors.join("; ")}`);
   if (run.duplicateArchitectureRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate architecture requests ${run.duplicateArchitectureRequests.join(", ")}`);
   if (run.duplicateStudyRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate study requests ${run.duplicateStudyRequests.join(", ")}`);
+  if (run.duplicateIdleRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate idle requests ${run.duplicateIdleRequests.join(", ")}`);
   if (run.duplicateWayfindingRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate wayfinding requests ${run.duplicateWayfindingRequests.join(", ")}`);
   if (run.duplicateBattlemonRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate Battlemon requests ${run.duplicateBattlemonRequests.join(", ")}`);
   if (run.duplicateBattleArenaRequests.length) violations.push(`DPR${run.dpr}/CPU${run.cpu}: duplicate battle arena requests ${run.duplicateBattleArenaRequests.join(", ")}`);
+  if (run.idleRequests.length < 5 || run.idleRequests.length > 41) violations.push(`DPR${run.dpr}/CPU${run.cpu}: expected 5..41 idle manifest/image requests, got ${run.idleRequests.length}`);
   if (run.wayfindingRequests.length !== 10) violations.push(`DPR${run.dpr}/CPU${run.cpu}: expected 10 wayfinding requests, got ${run.wayfindingRequests.length}`);
   const expectedBattlemonRequests=1+run.classicBattle.requested+run.classicSequence.requested;
   if (run.battlemonRequests.length !== expectedBattlemonRequests) violations.push(`DPR${run.dpr}/CPU${run.cpu}: expected ${expectedBattlemonRequests} Battlemon manifest/sheet requests, got ${run.battlemonRequests.length}`);

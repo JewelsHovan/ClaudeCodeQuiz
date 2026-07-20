@@ -94,6 +94,42 @@ test.describe("Classic certification-stage presentation and Battlemon art", () =
     expect(observed.errors).toEqual([]); expect(observed.failures).toEqual([]);
   });
 
+  test("resting classic trainers stay planted while action poses remain available", async ({ page }) => {
+    const observed = await boot(page);
+    await startClassic(page, "MCP");
+    const result = await page.evaluate(() => {
+      const ge=(0,eval),b=ge("battle"),originalTrainer=ge("drawTrainer"),calls=[];
+      ge("advanceBattle")(); // intro -> sendout
+      ge("advanceBattle")(); // sendout -> question with an assigned question
+      const poseParams=window.DatamonBattlePresentation.POSE_PARAMS;
+      window.__captureBattleTrainer=function(...args){
+        calls.push({
+          slug:args[0],bobAmp:args[4],
+          pose:Object.keys(poseParams).find(name=>poseParams[name]===args[5]),
+        });
+      };
+      ge("drawTrainer = window.__captureBattleTrainer");
+      try {
+        ge("frame = 48");b.phase="question";b.feedback=null;b.attackAt=0;b.shake=0;
+        ge("drawBattle")();
+        ge("frame = 72");b.phase="feedback";b.feedback={correct:true};
+        ge("drawBattle")();
+      } finally {
+        window.__originalBattleTrainer=originalTrainer;
+        ge("drawTrainer = window.__originalBattleTrainer");
+        delete window.__captureBattleTrainer;delete window.__originalBattleTrainer;
+      }
+      return calls;
+    });
+    expect(result).toEqual([
+      {slug:"veronica-marallag",bobAmp:0,pose:"idle"},
+      {slug:"julien-hovan",bobAmp:0,pose:"idle"},
+      {slug:"veronica-marallag",bobAmp:0,pose:"hit"},
+      {slug:"julien-hovan",bobAmp:0,pose:"command"},
+    ]);
+    expect(observed.errors).toEqual([]); expect(observed.failures).toEqual([]);
+  });
+
   test("MIX chooses one species domain without presentation RNG or telemetry drift", async ({ page }) => {
     const observed = await boot(page);
     const result = await page.evaluate(() => {
