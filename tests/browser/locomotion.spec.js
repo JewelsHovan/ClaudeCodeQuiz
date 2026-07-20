@@ -23,7 +23,10 @@ async function setup(page) {
     p.slug="julien-hovan";p.moving=false;p.seated=null;p.running=false;
     ge("npcs.length=0");ge("bufferedDir=null");ge("locomotionPhase=0");ge("locomotionContactCount=0");
     ge("locomotionProfile=DatamonLocomotion.profile('balanced')");
-    await ge("loadWalkAnim")("julien-hovan");
+    await Promise.all([
+      ge("loadWalkAnim")("julien-hovan"),
+      ge("primePlayerIdleDirections")("julien-hovan"),
+    ]);
     // Find a clear eastbound lane long enough to measure a continuous five-tile hold.
     let start=null;
     for(let y=2;y<22&&!start;y++)for(let x=2;x<28&&!start;x++){
