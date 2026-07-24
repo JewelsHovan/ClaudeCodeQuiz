@@ -27,7 +27,7 @@
         50
       ],
       "width": [
-        19,
+        18,
         26
       ],
       "height": [
@@ -44,15 +44,15 @@
           "frame": 0,
           "file": "sprites-sit/alex-andrianavalontsalama/idle_0.png",
           "source": "sprites-walk/alex-andrianavalontsalama/up_0.png",
-          "sourceSha256": "c0ceb5e0c2ee2d52be77f404894005803cd9f84181c04a48b37f2b4c260feb1e",
-          "sha256": "33c2043e9e7e07e720b501714d18597380e2ca7d365a34056066fb115b9c6033"
+          "sourceSha256": "2f152442ca0c492d52c8536dc19a5ff516da694c9e582b15cb3fa2cce3e8e9eb",
+          "sha256": "4fc36a04b997cf46b5f0cd9e75c6e8971db2d4730fb250908d788f9303d5b04a"
         },
         {
           "frame": 1,
           "file": "sprites-sit/alex-andrianavalontsalama/idle_1.png",
           "source": "sprites-walk/alex-andrianavalontsalama/up_0.png",
-          "sourceSha256": "c0ceb5e0c2ee2d52be77f404894005803cd9f84181c04a48b37f2b4c260feb1e",
-          "sha256": "cf9794c52a46281f94b2e1134eca4d5c48a71488ef1e3c345a8d79062d00f7e4"
+          "sourceSha256": "2f152442ca0c492d52c8536dc19a5ff516da694c9e582b15cb3fa2cce3e8e9eb",
+          "sha256": "c80e5e49064dfd3927277aa38ec1eb61d37643e03d06780de20e21dc7b120632"
         }
       ]
     },
@@ -82,15 +82,15 @@
           "frame": 0,
           "file": "sprites-sit/antonia-nistor/idle_0.png",
           "source": "sprites-walk/antonia-nistor/up_0.png",
-          "sourceSha256": "76aea6e6a209cade1ec1f954fbbca577d11959f44ddaa0471d9847562f8f458e",
-          "sha256": "1d65c5d3de9540feed46ac6acf80c114a0bb39d4de0114278ec72dfefc8fd4ba"
+          "sourceSha256": "e0988c85d89052fa155af6e83a4e9fc6350e38b83ae4c0c0074b154d294cd112",
+          "sha256": "2174e4c33072eb412b0a651ac0c600b3023132b9d0f2dc8dbf9159a69d3b8116"
         },
         {
           "frame": 1,
           "file": "sprites-sit/antonia-nistor/idle_1.png",
           "source": "sprites-walk/antonia-nistor/up_0.png",
-          "sourceSha256": "76aea6e6a209cade1ec1f954fbbca577d11959f44ddaa0471d9847562f8f458e",
-          "sha256": "a9be492b2354ae07ad30b2e567662463978b5d38de6fabcf076071207c6cb461"
+          "sourceSha256": "e0988c85d89052fa155af6e83a4e9fc6350e38b83ae4c0c0074b154d294cd112",
+          "sha256": "59407cb291ce3598d6386d896b121ba171c4548b0a4d0aa269f6f5a2d10ee4cc"
         }
       ]
     },
@@ -101,15 +101,15 @@
           "frame": 0,
           "file": "sprites-sit/aurelien-bouffanais/idle_0.png",
           "source": "sprites-walk/aurelien-bouffanais/up_0.png",
-          "sourceSha256": "273de79dca75b943f6dbb907729d16fe2f4f250122633daade7cbe369aa74552",
-          "sha256": "b250bf4b71a7829de73b9f19ef182b45f373bf4be3325ea6c9666def04811345"
+          "sourceSha256": "7d0b17f6a527a7e3881ffb4a9fdf72831e2c884d426662c2b15452aa554194d2",
+          "sha256": "32e854b855650eba8810ab303198d18b117ecb36700ed176701fdf04f87defd2"
         },
         {
           "frame": 1,
           "file": "sprites-sit/aurelien-bouffanais/idle_1.png",
           "source": "sprites-walk/aurelien-bouffanais/up_0.png",
-          "sourceSha256": "273de79dca75b943f6dbb907729d16fe2f4f250122633daade7cbe369aa74552",
-          "sha256": "71f3c0a6181a3143dc8ad119d34a28af8214fcb5632d7db05fcb31301913f51c"
+          "sourceSha256": "7d0b17f6a527a7e3881ffb4a9fdf72831e2c884d426662c2b15452aa554194d2",
+          "sha256": "e1c72d70749bb3fe5745c5bcd5b4202d8498a14163bfed2c9c5aa82dd61f8263"
         }
       ]
     },
@@ -215,15 +215,15 @@
           "frame": 0,
           "file": "sprites-sit/felicia-gorgacheva/idle_0.png",
           "source": "sprites-walk/felicia-gorgacheva/up_0.png",
-          "sourceSha256": "f12278113a8ca74726655e0808a1fa2d22860d71b322fd4cfc81ccee63c885bf",
-          "sha256": "5d43b409a954f02226151495bfd1762dad52c1b636cd67721456c0e2d4d53700"
+          "sourceSha256": "c0fa9bc7d01487646e722dcb43c24a3d8bc2ef3ec921e4890b3d6c50c15f9f14",
+          "sha256": "0463d3ae325b2a40ec8eeff68785f97b573a92303e7bb495529fcd19e0108f3c"
         },
         {
           "frame": 1,
           "file": "sprites-sit/felicia-gorgacheva/idle_1.png",
           "source": "sprites-walk/felicia-gorgacheva/up_0.png",
-          "sourceSha256": "f12278113a8ca74726655e0808a1fa2d22860d71b322fd4cfc81ccee63c885bf",
-          "sha256": "80312f7852e80a9e92d78965ab9f976506f860382d55b69e8a3e256f7c8b88c8"
+          "sourceSha256": "c0fa9bc7d01487646e722dcb43c24a3d8bc2ef3ec921e4890b3d6c50c15f9f14",
+          "sha256": "58f8bbb5b53a10e84fbe4d4de2ceaa1f296dc12eb0cae7c18f4aefce6a128fd3"
         }
       ]
     },
@@ -272,15 +272,15 @@
           "frame": 0,
           "file": "sprites-sit/guillaume-pregent/idle_0.png",
           "source": "sprites-walk/guillaume-pregent/up_0.png",
-          "sourceSha256": "e44c298ca2b8ed3dd70d268fea5d9aff7e7e37076b37ad0b64726079cdb53df4",
-          "sha256": "b5534451805d8e751356c7bcf4858c47f2fff76593f7ece4826b45f27b86dda1"
+          "sourceSha256": "29e598dcf143d76a73949bb7f8764dad87ff910c163d55fab45765e2fc013765",
+          "sha256": "43423bc163c9ccbd0b90ff89eb6ad7857c951403df845111d99df79a90257ea3"
         },
         {
           "frame": 1,
           "file": "sprites-sit/guillaume-pregent/idle_1.png",
           "source": "sprites-walk/guillaume-pregent/up_0.png",
-          "sourceSha256": "e44c298ca2b8ed3dd70d268fea5d9aff7e7e37076b37ad0b64726079cdb53df4",
-          "sha256": "9e6519e9e2ac7ffe83478200631064fbad5c2be568b3fd837221d31f3ae1c638"
+          "sourceSha256": "29e598dcf143d76a73949bb7f8764dad87ff910c163d55fab45765e2fc013765",
+          "sha256": "342a5f1b269c84aeae1c8d8106826c4173503542b8b1da59217177d27b04dc64"
         }
       ]
     },
@@ -405,15 +405,15 @@
           "frame": 0,
           "file": "sprites-sit/megane-darnaud/idle_0.png",
           "source": "sprites-walk/megane-darnaud/up_0.png",
-          "sourceSha256": "a4fa50b730f03f6a8edfb70b3193c01d3383623e0f466bda89878a6bdc9190ac",
-          "sha256": "d846fcac65ebd3afb0d409a21c8a47f25bc875b79eb27e2940359d183e35ac32"
+          "sourceSha256": "5753d0d6b87e5bcccfadde8fd99ed3b7b2772d4bbac108e8ab1153f1350b480b",
+          "sha256": "9fd0edaf47a6fce0ed1b2727154406f70a363ada81890a70d295cf86e3f10a0c"
         },
         {
           "frame": 1,
           "file": "sprites-sit/megane-darnaud/idle_1.png",
           "source": "sprites-walk/megane-darnaud/up_0.png",
-          "sourceSha256": "a4fa50b730f03f6a8edfb70b3193c01d3383623e0f466bda89878a6bdc9190ac",
-          "sha256": "c9010e97bbed6b12e14f47b85b3ae9f81d4a81dc655031c46ee0265bb1021d28"
+          "sourceSha256": "5753d0d6b87e5bcccfadde8fd99ed3b7b2772d4bbac108e8ab1153f1350b480b",
+          "sha256": "9dc6e939e57a1c5b3630a16840229ce77fa378fb2bd831773acc421dd4bb2b8f"
         }
       ]
     },
@@ -443,15 +443,15 @@
           "frame": 0,
           "file": "sprites-sit/minh-ngoc-do/idle_0.png",
           "source": "sprites-walk/minh-ngoc-do/up_0.png",
-          "sourceSha256": "b5737458be8a3a02766b850d2e0022fda9e2e190e3ce9cc0f8b9f5069a6aaf3b",
-          "sha256": "05837eee8604b78beb67d394fd9b1f0a891c499f2e8ba83f8193ebbf6d2819e2"
+          "sourceSha256": "24c729c64400df4e4795a03b154f185702d30576cf42b7f5a124bbe48416770b",
+          "sha256": "b7a2d0ca001f660e6073976901437829023626e5acccb7bedb9f7214daa505e3"
         },
         {
           "frame": 1,
           "file": "sprites-sit/minh-ngoc-do/idle_1.png",
           "source": "sprites-walk/minh-ngoc-do/up_0.png",
-          "sourceSha256": "b5737458be8a3a02766b850d2e0022fda9e2e190e3ce9cc0f8b9f5069a6aaf3b",
-          "sha256": "bc10cc9f7803eae6e5ca9ce19b050fe5b7258b789d0f96080f737b062808c6f2"
+          "sourceSha256": "24c729c64400df4e4795a03b154f185702d30576cf42b7f5a124bbe48416770b",
+          "sha256": "ed2f042a26506fccdf93225f48c6ddb366747c98a47fc527cdd80a4c7af35bbf"
         }
       ]
     },
@@ -652,15 +652,15 @@
           "frame": 0,
           "file": "sprites-sit/veronica-marallag/idle_0.png",
           "source": "sprites-walk/veronica-marallag/up_0.png",
-          "sourceSha256": "14293f6dd08e36afc191e92823125b43207d76d11e9f4583ac4c6714a93c60f4",
-          "sha256": "06c7481f3265ea49a159ebcf727a446b06f7d367c9c0c2cdd5c5f58c377842d9"
+          "sourceSha256": "557fbff277a4aee01a37263897745a90b6e151f967f7678c5cdceaea8fc07564",
+          "sha256": "3237327177ec5bb1a956efdb34b3c7045d0a96189a626dec322348d6bf931c18"
         },
         {
           "frame": 1,
           "file": "sprites-sit/veronica-marallag/idle_1.png",
           "source": "sprites-walk/veronica-marallag/up_0.png",
-          "sourceSha256": "14293f6dd08e36afc191e92823125b43207d76d11e9f4583ac4c6714a93c60f4",
-          "sha256": "af3e538d889234acdabe2a13ac97b4eb9c210763c3da77727d062c43a89e8a5c"
+          "sourceSha256": "557fbff277a4aee01a37263897745a90b6e151f967f7678c5cdceaea8fc07564",
+          "sha256": "da45b48366a506b1f43587bcb58c7385f9fa847296d846ef0d457d5978baba85"
         }
       ]
     },
@@ -690,15 +690,15 @@
           "frame": 0,
           "file": "sprites-sit/vincent-anctil/idle_0.png",
           "source": "sprites-walk/vincent-anctil/up_0.png",
-          "sourceSha256": "0ad40aaee38c3312fc3672d13d1b13893258eb749462a5e1c279c43ff033af9e",
-          "sha256": "6ec3fc69735b5afd7636b3afa207a6659c69e9b015fc3e1076a967a985ab820d"
+          "sourceSha256": "d0f70846adae843b9466d0414b2150902ade0131d1744f348af5b3af43a43134",
+          "sha256": "df4600ef9f4073dc622b2d715d8acadcfdbc45472ad4868e0f4ffccceed737cb"
         },
         {
           "frame": 1,
           "file": "sprites-sit/vincent-anctil/idle_1.png",
           "source": "sprites-walk/vincent-anctil/up_0.png",
-          "sourceSha256": "0ad40aaee38c3312fc3672d13d1b13893258eb749462a5e1c279c43ff033af9e",
-          "sha256": "e1974b5e2d6d988a851facaf44802b2111027b6ff80ef1c7ebcbcf636a3be05b"
+          "sourceSha256": "d0f70846adae843b9466d0414b2150902ade0131d1744f348af5b3af43a43134",
+          "sha256": "cc8bb58a5d65ee795c6caa11de5884d19763c353a6725c29b5346177822b76bb"
         }
       ]
     },
@@ -728,20 +728,20 @@
           "frame": 0,
           "file": "sprites-sit/william-chan/idle_0.png",
           "source": "sprites-walk/william-chan/up_0.png",
-          "sourceSha256": "f9fd28cb6de08779b162f0da1e5c4fb3dbe4d4c4a8b61298da55165efb0d8409",
-          "sha256": "7392c19914e444b1072159f48c5afc5faa57b936370dfbc8acdb6e5759749567"
+          "sourceSha256": "691b0fd5e3e24e305d1803f896406638e15ffa4d078100ec86b195f91ad86089",
+          "sha256": "dc281d5d82a9255485c528198499ca25008b517c52281d60b07303505c37c2d6"
         },
         {
           "frame": 1,
           "file": "sprites-sit/william-chan/idle_1.png",
           "source": "sprites-walk/william-chan/up_0.png",
-          "sourceSha256": "f9fd28cb6de08779b162f0da1e5c4fb3dbe4d4c4a8b61298da55165efb0d8409",
-          "sha256": "0549b9ab70ef97da8db1199d88625dd2bdf5d60c31e1b21389e9711738b38b81"
+          "sourceSha256": "691b0fd5e3e24e305d1803f896406638e15ffa4d078100ec86b195f91ad86089",
+          "sha256": "b8052242745585637cfcc4a522e488457320d6d699d5973fdaf251506d8fd1ce"
         }
       ]
     }
   ],
-  "batch_sha256": "3687abdf256a5eca4a01bfd624b25f44474ba9350e12a4bd8eb4a87eb7faace3",
+  "batch_sha256": "ce1eea6b1f6fad2eda24b1d049b7c82529de6491e03c1920595cd0de36b17088",
   "roster_count": 37,
   "frame_count": 74
 }

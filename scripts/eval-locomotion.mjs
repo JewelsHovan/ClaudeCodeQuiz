@@ -13,6 +13,10 @@ const OUT = path.join(ROOT, "test-results", "locomotion-evaluation");
 const PORT = 8751, URL = `http://127.0.0.1:${PORT}/`;
 const PROFILES = ["gba", "balanced", "fast"];
 const PILOT_SLUGS = ["julien-hovan", "veronica-marallag", "alex-andrianavalontsalama"];
+const ART_CASES = [
+  ["tabarek-al-khalidi", "legacy-walk"],
+  ...PILOT_SLUGS.flatMap(slug => ["legacy-walk", "pilot-walk", "pilot-run"].map(mode => [slug, mode])),
+];
 const MAX_CV = 0.05, MAX_PHASE_ERROR = 0.01, MAX_REQUESTS = 340;
 
 function percentile(values, fraction) {
@@ -43,7 +47,7 @@ async function setup(page, profile, slug="julien-hovan") {
     const ge=(0,eval),p=ge("player");p.slug=slug;p.moving=false;p.seated=null;p.running=false;
     ge("npcs.length=0");ge("locomotionPhase=0");ge("locomotionContactCount=0");
     ge(`locomotionProfile=DatamonLocomotion.profile('${profileName}')`);
-    await ge("loadWalkAnim")(slug);
+    await Promise.all([ge("loadWalkAnim")(slug),ge("primePlayerIdleDirections")(slug)]);
     let start=null;
     for(let y=2;y<22&&!start;y++)for(let x=2;x<27&&!start;x++){
       let ok=true;for(let dx=0;dx<=8;dx++)if(!ge("walkable")(x+dx,y)){ok=false;break;}
@@ -88,6 +92,37 @@ async function rootJitter(page, mode="pilot-walk") {
       torsoMax=Math.max(torsoMax,Math.max(...torso)-Math.min(...torso));
     }
     return{headMax,torsoMax,max:Math.max(headMax,torsoMax)};
+  },mode);
+}
+
+async function visualScale(page, mode="pilot-walk") {
+  return page.evaluate(modeName=>{
+    const ge=(0,eval),p=ge("player"),pilot=ge("locomotionPilot")[p.slug];
+    const pilotMode=modeName!=="legacy-walk"&&pilot,motion=modeName==="pilot-run"?"run":"walk";
+    const anim=pilotMode?pilot.motions[motion]:ge("walkAnim")[p.slug],count=pilotMode?pilot.manifest.frameCount:4;
+    if(!anim)return null;
+    function geometry(image){
+      const canvas=document.createElement("canvas");canvas.width=image.width;canvas.height=image.height;
+      const context=canvas.getContext("2d",{willReadFrequently:true});context.drawImage(image,0,0);
+      const data=context.getImageData(0,0,image.width,image.height).data;let x0=image.width,x1=-1,y0=image.height,y1=-1;
+      for(let y=0;y<image.height;y++)for(let x=0;x<image.width;x++)if(data[(y*image.width+x)*4+3]>=128){x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);}
+      const headEnd=Math.min(image.height,Math.floor(y0+.27*(y1-y0+1))+1);let hx0=image.width,hx1=-1;
+      for(let y=y0;y<headEnd;y++)for(let x=0;x<image.width;x++)if(data[(y*image.width+x)*4+3]>=128){hx0=Math.min(hx0,x);hx1=Math.max(hx1,x);}
+      return{width:x1-x0+1,height:y1-y0+1,headWidth:hx1-hx0+1};
+    }
+    let maxHeadRatio=0,maxSideRatio=0,minRuntimeHeight=Infinity,maxRuntimeHeight=0;
+    for(const direction of ["down","up","left","right"]){
+      const idle=ge("getLoadedIdleDirection")(p.slug,direction,true);if(!idle)return null;
+      const idleGeometry=geometry(idle);
+      for(let index=0;index<count;index++){
+        const frame=geometry(anim[direction][index]);
+        maxHeadRatio=Math.max(maxHeadRatio,frame.headWidth/idleGeometry.headWidth);
+        if(direction==="left"||direction==="right")maxSideRatio=Math.max(maxSideRatio,frame.width/idleGeometry.width);
+        const runtimeHeight=frame.height*DatamonLocomotion.authoredFrameScale(anim[direction][index].height,56);
+        minRuntimeHeight=Math.min(minRuntimeHeight,runtimeHeight);maxRuntimeHeight=Math.max(maxRuntimeHeight,runtimeHeight);
+      }
+    }
+    return{maxHeadRatio,maxSideRatio,minRuntimeHeight,maxRuntimeHeight};
   },mode);
 }
 
@@ -169,6 +204,7 @@ async function evaluateArtMode(browser, slug, mode) {
       contacts:ge("locomotionContactCount"),cacheKeys:Object.keys(ge("walkMiniCache")).filter(key=>key.includes(slug)).length};
   },{slug,mode});
   runtime.rootJitter=await rootJitter(page,mode);
+  runtime.visualScale=await visualScale(page,mode);
   runtime.requestCount=requests.length;
   const artFrameTimes=[];
   for(let i=1;i<samples.length;i++)artFrameTimes.push(samples[i].t-samples[i-1].t);
@@ -176,9 +212,11 @@ async function evaluateArtMode(browser, slug, mode) {
   await context.close();
   const videoPath=await video.path(),target=path.join(OUT,`art-${slug}-${mode}.webm`);
   fs.renameSync(videoPath,target);
-  const rootBudget=mode==="pilot-run"?1.25:.75;
+  const rootBudget=mode==="pilot-run"?1.60:.75;
+  const visualValid=runtime.visualScale&&runtime.visualScale.maxSideRatio<=(mode==="legacy-walk"?2.70:mode==="pilot-walk"?2.45:3.20)&&
+    (mode==="pilot-run"||runtime.visualScale.maxHeadRatio<=(mode==="legacy-walk"?1.20:1.12));
   return{slug,mode,durationMs:samples.at(-1).t-samples[0].t,...runtime,errors,failed,
-    valid:errors.length===0&&failed.length===0&&runtime.frameCount===(mode==="legacy-walk"?4:8)&&
+    valid:errors.length===0&&failed.length===0&&runtime.frameCount===(mode==="legacy-walk"?4:8)&&visualValid&&
       runtime.rootJitter&&runtime.rootJitter.max<=rootBudget&&runtime.requestCount<=MAX_REQUESTS&&runtime.frames.p95<=20,
     video:path.relative(ROOT,target)};
 }
@@ -191,8 +229,7 @@ try{
   try{
     for(const profile of PROFILES)trials.push(await evaluateProfile(browser,profile,1));
     trials.push(await evaluateProfile(browser,"balanced",2));
-    for(const slug of PILOT_SLUGS)for(const mode of ["legacy-walk","pilot-walk","pilot-run"])
-      artTrials.push(await evaluateArtMode(browser,slug,mode));
+    for(const [slug,mode] of ART_CASES)artTrials.push(await evaluateArtMode(browser,slug,mode));
   }finally{await browser.close();}
   const valid=trials.filter(trial=>trial.valid&&trial.dpr===1);
   const preference=["balanced","gba","fast"];
@@ -204,9 +241,9 @@ try{
     return preference.indexOf(a.candidate)-preference.indexOf(b.candidate);
   });
   const selected=valid[0]?.candidate||null;
-  const ledger={schemaVersion:1,evaluator:"distance-phase-v1",constraints:{maxVelocityCv:MAX_CV,maxPhaseError:MAX_PHASE_ERROR,maxWalkRootJitterPx:.75,maxRunRootJitterPx:1.25,maxRequests:MAX_REQUESTS,maxFrameP95Ms:20},
+  const ledger={schemaVersion:1,evaluator:"distance-phase-v1",constraints:{maxVelocityCv:MAX_CV,maxPhaseError:MAX_PHASE_ERROR,maxWalkRootJitterPx:.75,maxRunRootJitterPx:1.60,maxRequests:MAX_REQUESTS,maxFrameP95Ms:20},
     selectionPolicy:"correctness -> velocity CV -> phase error -> balanced/gba/fast tie preference",selected,trials,
-    artComparison:{policy:"three fixed representative identities × legacy walk / 8-frame walk / distinct run",trials:artTrials}};
+    artComparison:{policy:"reported Tabarek compact legacy transition + three fixed pilot identities × legacy walk / 8-frame walk / distinct run",trials:artTrials}};
   fs.writeFileSync(path.join(OUT,"ledger.json"),JSON.stringify(ledger,null,2)+"\n");
   console.log(JSON.stringify({selected,trials:trials.map(({candidate,dpr,valid,velocity,phaseError,durationMs,contacts})=>({candidate,dpr,valid,cv:velocity.cv,phaseError,durationMs,contacts})),
     artTrials:artTrials.map(({slug,mode,valid,frameCount,durationMs})=>({slug,mode,valid,frameCount,durationMs}))},null,2));

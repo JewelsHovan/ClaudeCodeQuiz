@@ -65,44 +65,48 @@ DATAMON = HERE.parent
 REPO = DATAMON.parent
 HEADSHOTS = DATAMON / ".headshots-offline"
 SPRITES = DATAMON / "sprites"
+IDLES = DATAMON / "sprites-idle"
 OUT_ROOT = DATAMON / "sprites-walk"
 CACHE = DATAMON / ".walk-gen-cache"
 
 NFRAMES = 4
 OUT_H = 240          # matches the veronica frames committed in sprites-walk/
 
-# One prompt per generated sheet. Explicit left/right gait phases prevent the image model
-# from repeating the same leading leg in frames 0/2 and 1/3. The whole-sheet connected-
-# component slicer below tolerates wide strides, but generous gutters remain desirable.
+# Direction-specific accepted idles are the authoritative body-scale references. Earlier
+# prompts used only the front trainer and produced correct height but 18–62% wider heads and
+# lunge-like side silhouettes, making characters appear to grow as movement began.
 BASE = (
-    "Create a production-ready 2D pixel-art video-game walk-cycle sprite sheet using the "
-    "attached character sprite as the exact style, outfit, palette, realistic adult body-"
-    "proportion, hair, and identity reference, and the attached headshot only for identity. "
-    "EXACTLY FOUR full-body frames of the SAME character in ONE strictly horizontal row, "
-    "read left-to-right. Each frame occupies one equal-width invisible cell with generous "
-    "solid-magenta gutters; no body part may overlap a neighbouring character. No visible "
-    "grid or dividers. Same scale and head height in every frame. Feet on one identical "
-    "horizontal baseline. Crisp detailed pixel art; NOT chibi, NOT super-deformed, no "
-    "oversized head. The frames are four DISTINCT consecutive gait phases and MUST alternate "
-    "which leg leads: FRAME 1 left-foot contact, left foot planted ahead and right foot "
-    "behind; FRAME 2 passing over the planted left foot while the right knee and foot advance; "
-    "FRAME 3 right-foot contact, right foot planted ahead and left foot behind; FRAME 4 "
-    "passing over the planted right foot while the left knee and foot advance. Do not duplicate "
-    "or mirror the same leading-leg pose. Keep both legs anatomically connected to the hips "
-    "with natural knees and no fused, twisted, detached, shortened, or extra limbs. Opposite "
-    "arm swing. Entire canvas background perfectly flat solid chroma magenta #ff00ff, including "
-    "between legs and around every figure. Opaque; no transparency, shadow, ground line, "
-    "scenery, labels, text, arrows, or border."
+    "Create a production-ready 2D pixel-art video-game walk-cycle sprite sheet. Use the "
+    "attached accepted neutral directional idle as the EXACT authoritative reference for "
+    "character height, head size, hair volume, torso width, adult anatomy, outfit, palette, "
+    "camera angle, pixel density, and foot scale. Use the trainer sprite and headshot only for "
+    "identity details. EXACTLY FOUR DISTINCT full-body frames of the SAME character in ONE "
+    "strictly horizontal row, read left-to-right. Each frame occupies one equal-width invisible "
+    "cell with generous solid-magenta gutters and no overlap, grid, or dividers. Keep the same "
+    "head/body scale and one common foot baseline in every frame. Crisp detailed realistic pixel "
+    "art; NOT chibi and NOT super-deformed. Motion is a restrained compact workplace WALK, not "
+    "a lunge, march, runway stride, split stance, or run. Frames: compact left-foot contact; "
+    "passing pose with the right foot advancing beneath the body; compact right-foot contact; "
+    "passing pose with the left foot advancing beneath the body. Contacts clearly alternate, "
+    "but each shoe stays within roughly one shoe-length ahead of or behind the hips. Knees flex "
+    "naturally beneath the torso and subtle opposite arm swing stays close to the body. Keep all "
+    "limbs anatomically connected with no fused, twisted, detached, shortened, duplicated, or "
+    "extra anatomy. Entire canvas background perfectly flat opaque chroma magenta #ff00ff, "
+    "including between limbs. No transparency, shadow, ground line, scenery, labels, text, "
+    "arrows, or border."
 )
 VIEWS = {
     "down": BASE + " Camera/view: directly from the FRONT, walking toward the viewer. Make left/right alternation readable through foot placement, knee bend, trouser shading, and opposite arm swing while the torso stays front-facing.",
     "up":   BASE + " Camera/view: directly from BEHIND, walking away. Show only the back of the head and outfit, no face. Make left/right alternation readable through heel placement, knee bend, trouser shading, and opposite arm swing while the torso stays back-facing.",
-    "side": BASE + " Camera/view: strict full PROFILE, all four frames facing and walking RIGHT. Near and far legs visibly exchange front/back positions; use stable subtle trouser shading to distinguish them. Do not turn the torso toward camera.",
+    "side": BASE + " Camera/view: strict full PROFILE, all four frames facing and walking RIGHT. Near and far legs visibly exchange front/back positions with stable subtle shading. Keep the maximum full silhouette near twice the supplied neutral profile or less. Do not turn the torso toward camera.",
 }
 
 OPENAI_MODEL = "gpt-image-2-2026-04-21"
+PRODUCTION_CALL_CAP = 100
 _OPENAI_CALL_LOCK = threading.Lock()
 _OPENAI_LAST_CALL = 0.0
+_GENERATION_CALL_COUNT = 0
+_GENERATION_CALL_CAP = PRODUCTION_CALL_CAP
 
 
 def roster() -> list[str]:
@@ -147,6 +151,11 @@ def _wait_for_openai_slot() -> None:
         _OPENAI_LAST_CALL = time.monotonic()
 
 
+def idle_reference(slug: str, view: str) -> Path:
+    direction = "right" if view == "side" else view
+    return IDLES / slug / f"idle_{direction}.png"
+
+
 def ai_generate(slug: str, view: str, ic_dir: Path, provider: str) -> Path | None:
     """Generate one raw walk sheet; replace its cache entry only after a valid response."""
     if provider == "openai":
@@ -158,10 +167,19 @@ def ai_generate(slug: str, view: str, ic_dir: Path, provider: str) -> Path | Non
         cmd = ["uv", "run", "--script", str(gen), "--model", "gemini-3.1-flash-image-preview",
                "--intent", "fast", "--resolution", "2K", "--aspect-ratio", "16:9"]
     cmd += ["--prompt", VIEWS[view], "--variant", f"walk-{slug}-{view}", "--json",
-            "--ref", str(SPRITES / f"{slug}.png"), "--ref", str(HEADSHOTS / f"{slug}.png")]
+            "--ref", str(idle_reference(slug, view)), "--ref", str(SPRITES / f"{slug}.png")]
+    headshot = HEADSHOTS / f"{slug}.png"
+    if headshot.exists():
+        cmd += ["--ref", str(headshot)]
 
     sys.stderr.write(f"[gen:{provider}] {slug}/{view}\n")
+    global _GENERATION_CALL_COUNT
     for attempt in range(1, 4):
+        with _OPENAI_CALL_LOCK:
+            if _GENERATION_CALL_COUNT >= _GENERATION_CALL_CAP:
+                sys.stderr.write(f"[gen:{provider}] hard call cap {_GENERATION_CALL_CAP} reached\n")
+                return None
+            _GENERATION_CALL_COUNT += 1
         if provider == "openai":
             _wait_for_openai_slot()
         try:
@@ -439,7 +457,15 @@ def main() -> int:
     ap.add_argument("--anchors-only", action="store_true", help="write manifests from existing accepted frames; never call an API")
     ap.add_argument("--workers", type=int, help="parallel calls (default: 1 OpenAI, 3 Gemini)")
     ap.add_argument("--mirror-side", default="", help="slugs whose side sheet walks LEFT (bake flipped)")
+    ap.add_argument("--call-cap", type=int, default=PRODUCTION_CALL_CAP,
+                    help="hard provider-call cap for this invocation, including retries")
     args = ap.parse_args()
+
+    global _GENERATION_CALL_CAP
+    if args.call_cap < 1:
+        sys.stderr.write("--call-cap must be positive\n")
+        return 2
+    _GENERATION_CALL_CAP = min(args.call_cap, PRODUCTION_CALL_CAP)
 
     slugs = roster()
     if args.only:

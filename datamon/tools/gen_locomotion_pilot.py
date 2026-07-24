@@ -27,7 +27,7 @@ from PIL import Image, ImageDraw
 HERE = Path(__file__).resolve().parent
 DATAMON = HERE.parent
 SPRITES = DATAMON / "sprites"
-WALK = DATAMON / "sprites-walk"
+IDLES = DATAMON / "sprites-idle"
 HEADSHOTS = DATAMON / ".headshots-offline"
 CACHE = DATAMON / ".walk-gen-cache"
 OUT = DATAMON / "sprites-locomotion-pilot"
@@ -37,8 +37,11 @@ MOTIONS = ("walk", "run")
 NFRAMES = 8
 OUT_H = 240
 OPENAI_MODEL = "gpt-image-2-2026-04-21"
+PRODUCTION_CALL_CAP = 100
 _call_lock = threading.Lock()
 _last_call = 0.0
+_generation_call_count = 0
+_generation_call_cap = PRODUCTION_CALL_CAP
 
 _spec = importlib.util.spec_from_file_location("walk_base", HERE / "gen_walk_assets.py")
 base = importlib.util.module_from_spec(_spec)
@@ -46,10 +49,11 @@ assert _spec.loader
 _spec.loader.exec_module(base)
 
 COMMON = (
-    "Create a production-ready 2D pixel-art video-game locomotion sprite sheet using the "
-    "attached standing character and existing four-frame walk strip as exact references for "
-    "identity, face, hair, adult anatomy, outfit, palette, lighting, pixel density, and rendering "
-    "style. EXACTLY EIGHT full-body frames of the SAME character in ONE strictly horizontal row, "
+    "Create a production-ready 2D pixel-art video-game locomotion sprite sheet. Use the attached "
+    "accepted neutral directional idle as the EXACT authoritative reference for character height, "
+    "head size, hair volume, torso width, adult anatomy, outfit, palette, camera, pixel density, "
+    "and foot scale. Use the trainer sprite and headshot only for identity details. EXACTLY EIGHT "
+    "full-body frames of the SAME character in ONE strictly horizontal row, "
     "read left-to-right. Eight equal-width invisible cells, generous perfectly solid chroma-magenta "
     "#ff00ff gutters, no overlap. Keep identity, outfit details, body proportions, head size, and "
     "camera angle identical in all frames. Crisp detailed realistic pixel art at the reference scale; "
@@ -68,26 +72,23 @@ IDLE_PROMPT = COMMON.replace(
     "visible foot baseline. The back view shows no face; the profile does not turn toward camera."
 )
 WALK_PROMPT = COMMON + (
-    "Motion: a relaxed but purposeful adult WALK, one complete seamless cycle in eight genuinely "
-    "distinct poses—not four poses duplicated or mirrored. Frames: 1 left heel contact with left leg "
-    "ahead; 2 left loading response with subtle knee compression and body low; 3 passing pose over the "
-    "planted left foot as right foot advances; 4 left toe-off/high point with right leg reaching; "
-    "5 right heel contact; 6 right loading response; 7 passing over planted right foot; 8 right "
-    "toe-off/high point with left leg reaching. Natural heel-to-toe roll, restrained adult arm swing, "
-    "stable torso and head with only a subtle physically plausible vertical arc. CRITICAL SHEET "
-    "AUDIT: frames 1 and 5 are the only two widest heel-contact stances and clearly use opposite "
-    "leading legs; frames 2 and 6 are the two lowered recoil poses; frames 3 and 7 are narrow "
-    "passing poses; frames 4 and 8 are raised toe-off/high poses. Do not add an extra contact pose "
-    "or start a second cycle before frame 8."
+    "Motion: a restrained compact adult workplace WALK, one complete seamless cycle in eight genuinely "
+    "distinct poses—not four poses duplicated or mirrored, and never a lunge, march, runway stride, "
+    "split stance, or run. Frames: 1 compact left contact; 2 left loading response; 3 narrow passing "
+    "pose as the right foot advances beneath the body; 4 left toe-off; 5 compact right contact; 6 "
+    "right loading; 7 narrow passing as the left foot advances beneath the body; 8 right toe-off. "
+    "Each shoe stays within roughly one shoe-length ahead of or behind the hips. Natural heel-to-toe "
+    "roll, subtle arm swing close to the torso, stable upright head and torso, and one common baseline. "
+    "Frames 1 and 5 clearly use opposite leading legs; frames 3 and 7 are the two narrowest poses."
 )
 RUN_PROMPT = COMMON + (
-    "Motion: a true athletic but controlled RUN cycle, NOT a sped-up walk, one complete seamless cycle "
-    "in eight genuinely distinct poses. Compact ground contacts, clear compression, strong rear-leg "
-    "push, forward torso lean, elbows bent near 90 degrees, and two unmistakable flight phases where "
-    "both feet are airborne. Frames: 1 left-foot contact under the body; 2 left-leg compression; "
-    "3 left push-off with right knee drive; 4 airborne flight; 5 right-foot contact; 6 right-leg "
-    "compression; 7 right push-off with left knee drive; 8 airborne flight. Preserve realistic adult "
-    "anatomy and the exact outfit; energetic, not exaggerated or superhero-like."
+    "Motion: a true controlled athletic RUN cycle, NOT a sped-up walk, in eight genuinely distinct "
+    "poses. Keep ground contacts directly beneath the body, compression compact, elbows near 90 degrees "
+    "and close to the torso, and forward lean controlled. Include two unmistakable but compact flight "
+    "phases where both feet are airborne; never use a superhero leap or split pose. Frames: 1 compact "
+    "left contact; 2 compression; 3 push-off with knee drive; 4 tucked airborne flight; 5 compact right "
+    "contact; 6 compression; 7 push-off; 8 tucked airborne flight. Preserve exact head/body scale, "
+    "realistic adult anatomy, outfit, and a coherent canvas ground coordinate."
 )
 VIEW_PROMPTS = {
     "down": " Camera/view: directly from the FRONT, moving toward the viewer; torso remains front-facing.",
@@ -103,18 +104,9 @@ def image_compass() -> Path:
     return found
 
 
-def reference_strip(slug: str, view: str) -> Path:
+def idle_reference(slug: str, view: str) -> Path:
     direction = "right" if view == "side" else view
-    frames = [Image.open(WALK / slug / f"{direction}_{i}.png").convert("RGBA") for i in range(4)]
-    h = 360
-    resized = [im.resize((round(im.width * h / im.height), h), Image.Resampling.LANCZOS) for im in frames]
-    cell = max(im.width for im in resized) + 48
-    strip = Image.new("RGBA", (cell * 4, h + 48), (255, 0, 255, 255))
-    for i, im in enumerate(resized):
-        strip.alpha_composite(im, (i * cell + (cell - im.width) // 2, 24))
-    path = CACHE / f"pilot-ref-{slug}-{view}.png"
-    strip.convert("RGB").save(path)
-    return path
+    return IDLES / slug / f"idle_{direction}.png"
 
 
 def wait_slot() -> None:
@@ -132,7 +124,11 @@ def generate(slug: str, motion: str, view: str, refresh: bool, provider: str) ->
         return dest
     ic = image_compass()
     prompt = IDLE_PROMPT if motion == "idle" else (WALK_PROMPT if motion == "walk" else RUN_PROMPT) + VIEW_PROMPTS[view]
-    refs = [SPRITES / f"{slug}.png", reference_strip(slug, "down" if motion == "idle" else view)]
+    if motion == "idle":
+        refs = [SPRITES / f"{slug}.png", idle_reference(slug, "down"),
+                idle_reference(slug, "up"), idle_reference(slug, "side")]
+    else:
+        refs = [idle_reference(slug, view), SPRITES / f"{slug}.png"]
     head = HEADSHOTS / f"{slug}.png"
     if head.exists():
         refs.append(head)
@@ -146,7 +142,12 @@ def generate(slug: str, motion: str, view: str, refresh: bool, provider: str) ->
     cmd += ["--prompt", prompt, "--variant", f"pilot-{slug}-{motion}-{view}", "--json"]
     for ref in refs:
         cmd += ["--ref", str(ref)]
+    global _generation_call_count
     for attempt in range(1, 4):
+        with _call_lock:
+            if _generation_call_count >= _generation_call_cap:
+                raise RuntimeError(f"hard provider-call cap {_generation_call_cap} reached")
+            _generation_call_count += 1
         if provider == "openai":
             wait_slot()
         sys.stderr.write(f"[pilot:{provider}] {slug}/{motion}/{view} attempt {attempt}\n")
@@ -266,7 +267,13 @@ def main() -> None:
     parser.add_argument("--refresh", action="store_true")
     parser.add_argument("--pipeline-only", action="store_true")
     parser.add_argument("--workers", type=int, default=3)
+    parser.add_argument("--call-cap", type=int, default=PRODUCTION_CALL_CAP,
+                        help="hard provider-call cap for this invocation, including retries")
     args = parser.parse_args()
+    global _generation_call_cap
+    if args.call_cap < 1:
+        raise SystemExit("--call-cap must be positive")
+    _generation_call_cap = min(args.call_cap, PRODUCTION_CALL_CAP)
     slugs = tuple(value.strip() for value in args.only.split(",") if value.strip())
     invalid = set(slugs) - set(PILOT)
     if invalid:

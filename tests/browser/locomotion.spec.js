@@ -5,7 +5,7 @@ import path from "node:path";
 
 const coreJs = fs.readFileSync(path.resolve(import.meta.dirname, "../../datamon/core.js"), "utf8");
 
-async function setup(page) {
+async function setup(page, slug = "julien-hovan") {
   const errors = [], failures = [];
   page.on("pageerror", error => errors.push(error.message));
   page.on("console", message => { if (["error", "assert"].includes(message.type())) errors.push(message.text()); });
@@ -18,14 +18,14 @@ async function setup(page) {
   await page.waitForFunction(() => (0,eval)("state") === "dialogue");
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => (0,eval)("state") === "overworld");
-  await page.evaluate(async () => {
+  await page.evaluate(async slug => {
     const ge=(0,eval),p=ge("player");
-    p.slug="julien-hovan";p.moving=false;p.seated=null;p.running=false;
+    p.slug=slug;p.moving=false;p.seated=null;p.running=false;
     ge("npcs.length=0");ge("bufferedDir=null");ge("locomotionPhase=0");ge("locomotionContactCount=0");
     ge("locomotionProfile=DatamonLocomotion.profile('balanced')");
     await Promise.all([
-      ge("loadWalkAnim")("julien-hovan"),
-      ge("primePlayerIdleDirections")("julien-hovan"),
+      ge("loadWalkAnim")(slug),
+      ge("primePlayerIdleDirections")(slug),
     ]);
     // Find a clear eastbound lane long enough to measure a continuous five-tile hold.
     let start=null;
@@ -36,7 +36,7 @@ async function setup(page) {
     if(!start)throw new Error("No clear locomotion test lane");
     p.x=p.fx=start[0];p.y=p.fy=start[1];p.dir="right";ge("camFx=null");ge("camFy=null");
     window.__LOCOMOTION_START__=start;
-  });
+  }, slug);
   return { errors, failures };
 }
 
@@ -93,6 +93,47 @@ test.describe("distance-matched overworld locomotion", () => {
     expect(result.idleDraw[0]).toBeLessThan(56);
     expect(result.idleDraw[1]).toBe(60); // 224px visible span maps to the 56px standing model
     expect(observed.errors).toEqual([]); expect(observed.failures).toEqual([]);
+  });
+
+  test("Tabarek keeps one body/foot anchor through idle, compact walk, and a real rightward stop at DPR1/DPR2", async ({ browser }) => {
+    const slug="tabarek-al-khalidi";
+    for (const dpr of [1,2]) {
+      const context=await browser.newContext({viewport:{width:1280,height:960},deviceScaleFactor:dpr});
+      const page=await context.newPage(),observed=await setup(page,slug);
+      const anchors=await page.evaluate(() => {
+        const ge=(0,eval),p=ge("player"),context=ge("ctx"),original=context.drawImage,calls=[];
+        function capture(moving,phase) {
+          calls.length=0;p.moving=moving;ge(`locomotionPhase=${phase}`);
+          context.drawImage=function(...args){calls.push(args);};
+          try { ge("drawCharacter")(320,240,p.slug,"right",true,moving,false,false); }
+          finally { context.drawImage=original; }
+          return calls.at(-1);
+        }
+        const idle=capture(false,0),moving=capture(true,.25),scale=DatamonLocomotion.authoredFrameScale(240,56);
+        const idleMeta=ge("idleManifestState.manifest").entriesBySlug[p.slug].directions.right;
+        const movingMeta=ge("walkAnimMeta")[p.slug].frames.right_1;
+        p.moving=false;
+        return {
+          idleBody:idle[1]+idleMeta.bodyX*scale,idleFoot:idle[2]+idleMeta.footY*scale,
+          movingBody:moving[1]+movingMeta.bodyX*scale,movingFoot:moving[2]+movingMeta.footY*scale,
+          idleDraw:[idle[3],idle[4]],movingDraw:[moving[3],moving[4]],
+        };
+      });
+      for (const value of [anchors.idleBody,anchors.movingBody]) expect(Math.abs(value-320)).toBeLessThanOrEqual(.55);
+      for (const value of [anchors.idleFoot,anchors.movingFoot]) expect(Math.abs(value-256)).toBeLessThanOrEqual(.55);
+      expect(anchors.idleDraw[1]).toBe(60);expect(anchors.movingDraw[1]).toBe(60);
+
+      const start=await page.evaluate(()=>(0,eval)("player.fx"));
+      await page.keyboard.down("ArrowRight");
+      await page.waitForFunction(start=>(0,eval)("player.fx")-start>=1,start);
+      await page.keyboard.up("ArrowRight");
+      await page.waitForFunction(()=>!(0,eval)("player.moving"));
+      const stopped=await page.evaluate(slug=>{const ge=(0,eval),p=ge("player"),record=ge("idleImageState").get(`${slug}:right`);
+        return{slug:p.slug,dir:p.dir,moving:p.moving,idleStatus:record&&record.status};},slug);
+      expect(stopped).toEqual({slug,dir:"right",moving:false,idleStatus:"loaded"});
+      expect(observed.errors).toEqual([]);expect(observed.failures).toEqual([]);
+      await context.close();
+    }
   });
 
   test("reduced motion keeps essential travel but suppresses optional contact particles", async ({ browser }) => {

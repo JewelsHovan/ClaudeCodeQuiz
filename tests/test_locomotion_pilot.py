@@ -92,7 +92,7 @@ class LocomotionPilotTests(unittest.TestCase):
                 self.assertLessEqual(max(head_offsets) - min(head_offsets), .75, f"{slug}/{direction}/head")
                 self.assertLessEqual(max(torso_offsets) - min(torso_offsets), .75, f"{slug}/{direction}/torso")
 
-    def test_side_walk_declares_opposite_contacts_at_two_full_stride_extremes(self):
+    def test_side_walk_declares_compact_opposite_contacts_and_narrow_passing_poses(self):
         for slug in PILOT:
             folder = PILOT_ROOT / slug
             lower_spans = []
@@ -102,20 +102,47 @@ class LocomotionPilotTests(unittest.TestCase):
                 lower_start = int(ys.min() + .76 * (ys.max() - ys.min() + 1))
                 xs = np.where(alpha[lower_start:] >= 128)[1]
                 lower_spans.append(int(xs.max() - xs.min() + 1))
-            # The shared phase contract emits contacts at 0/.5, so frames 0/4 must both be
-            # full-stride contact silhouettes—not passing poses mislabeled by an image model.
-            self.assertGreaterEqual(lower_spans[0], max(lower_spans) * .8, slug)
-            self.assertGreaterEqual(lower_spans[4], max(lower_spans) * .8, slug)
+            # Contacts remain legible at the shared 0/.5 footfall markers without restoring
+            # the old lunge-like requirement that both contacts be the cycle's widest poses.
+            self.assertGreaterEqual(lower_spans[0], max(lower_spans) * .60, slug)
+            self.assertGreaterEqual(lower_spans[4], max(lower_spans) * .60, slug)
+            self.assertLess(sum(lower_spans[index] for index in (2, 6)),
+                            sum(lower_spans[index] for index in (0, 4)), slug)
+
+    def test_walk_head_scale_and_side_footprint_match_neutral_idles(self):
+        idle_root = ROOT / "datamon" / "sprites-idle"
+
+        def geometry(path):
+            alpha = np.asarray(Image.open(path).convert("RGBA"))[:, :, 3]
+            ys, xs = np.where(alpha >= 128)
+            y0, y1 = int(ys.min()), int(ys.max())
+            head_end = min(alpha.shape[0], int(y0 + .27 * (y1 - y0 + 1)) + 1)
+            _head_ys, head_xs = np.where(alpha[y0:head_end] >= 128)
+            return int(xs.max() - xs.min() + 1), int(head_xs.max() - head_xs.min() + 1)
+
+        for slug in PILOT:
+            folder = PILOT_ROOT / slug
+            for direction in DIRECTIONS:
+                idle_width, idle_head = geometry(idle_root / slug / f"idle_{direction}.png")
+                for index in range(8):
+                    width, head = geometry(folder / f"walk_{direction}_{index}.png")
+                    self.assertLessEqual(head / idle_head, 1.12, f"{slug}/{direction}_{index}/head")
+                    if direction in ("left", "right"):
+                        self.assertLessEqual(width / idle_width, 2.45, f"{slug}/{direction}_{index}/stride")
+            idle_width, _ = geometry(idle_root / slug / "idle_right.png")
+            max_run_width = max(geometry(folder / f"run_right_{index}.png")[0] for index in range(8))
+            self.assertLessEqual(max_run_width / idle_width, 3.20, f"{slug}/run/right")
 
     def test_side_run_has_authored_flight_and_is_not_a_faster_walk(self):
         for slug in PILOT:
             folder = PILOT_ROOT / slug
             manifest = json.loads((folder / "manifest.json").read_text())
             run = manifest["motions"]["run"]
-            ground = run["groundY"]["right"]
-            # Canonical flight frames retain transparent space below both airborne feet.
-            self.assertGreaterEqual(ground - run["frames"]["right_3"]["footY"], 4)
-            self.assertGreaterEqual(ground - run["frames"]["right_7"]["footY"], 4)
+            # Both authored flight phases remain visibly airborne in every camera direction.
+            for direction in DIRECTIONS:
+                ground = run["groundY"][direction]
+                self.assertGreaterEqual(ground - run["frames"][f"{direction}_3"]["footY"], 4)
+                self.assertGreaterEqual(ground - run["frames"][f"{direction}_7"]["footY"], 4)
             differences = []
             for index in range(8):
                 walk = np.asarray(Image.open(folder / f"walk_right_{index}.png"), dtype=np.int16)

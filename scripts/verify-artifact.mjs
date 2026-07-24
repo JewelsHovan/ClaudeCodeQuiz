@@ -138,6 +138,27 @@ for (const slug of canonicalRosterSlugs) {
     throw new Error(`Invalid packaged walk-anchor manifest: ${manifestPath}`);
   }
 }
+const compactManifestPath = "sprites-walk/manifest.json";
+const compactManifest = JSON.parse(fs.readFileSync(path.join(DIST, compactManifestPath), "utf8"));
+if (compactManifest.schemaVersion !== 1 || compactManifest.reviewState !== "accepted" ||
+    compactManifest.policy !== "compact-idle-referenced-v2" || compactManifest.generation?.hardCallCap !== 100 ||
+    compactManifest.generation.recordedCalls > compactManifest.generation.hardCallCap ||
+    compactManifest.fileCount !== Object.keys(compactManifest.files || {}).length) {
+  throw new Error("Packaged compact-locomotion provenance manifest is invalid");
+}
+const compactBatchHash = createHash("sha256");
+for (const [relative, expectedHash] of Object.entries(compactManifest.files).sort(([left], [right]) => left.localeCompare(right))) {
+  const absolute = path.join(DIST, relative);
+  if (!/^[0-9a-f]{64}$/.test(expectedHash) || !fs.existsSync(absolute)) {
+    throw new Error(`Missing compact-locomotion payload: ${relative}`);
+  }
+  const observedHash = createHash("sha256").update(fs.readFileSync(absolute)).digest("hex");
+  if (observedHash !== expectedHash) throw new Error(`Compact-locomotion hash mismatch: ${relative}`);
+  compactBatchHash.update(relative); compactBatchHash.update("\0"); compactBatchHash.update(expectedHash); compactBatchHash.update("\n");
+}
+if (compactBatchHash.digest("hex") !== compactManifest.batchSha256) {
+  throw new Error("Compact-locomotion batch hash mismatch");
+}
 
 // The authored eight-frame walk/true-run experiment is deliberately bounded. Shipping any
 // fourth slug would silently turn a reviewed pilot into an unapproved full-roster rollout.

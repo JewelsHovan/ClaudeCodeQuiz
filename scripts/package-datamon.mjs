@@ -19,7 +19,7 @@ const PAYLOAD_ALLOWLIST = [
   "index.html", "game.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "state.js",
   "progress.js", "dialogue-runtime.js", "dialogue.js",
   "world-art.js", "world-layout.js", "music.js", "locomotion.js",
-  "portraits/*.png", "headshots/*.png", "sprites/*.png", "sprites-walk/**/*.png", "sprites-walk/**/manifest.json",
+  "portraits/*.png", "headshots/*.png", "sprites/*.png", "sprites-walk/**/*.png", "sprites-walk/**/manifest.json", "sprites-walk/manifest.json",
   "sprites-locomotion-pilot/**/*.png", "sprites-locomotion-pilot/**/manifest.json",
   "sprites-idle/**/*.png", "sprites-idle/manifest.json",
   "sprites-sit/**/*.png", "sprites-sit/manifest.json",

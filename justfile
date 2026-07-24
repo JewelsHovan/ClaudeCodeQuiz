@@ -49,7 +49,7 @@ check:
     node --check datamon/music.js
     node --check datamon/locomotion.js
     for file in scripts/*.mjs tests/unit/*.js tests/browser/*.js; do node --check "$file"; done
-    python3 -m py_compile datamon/tools/art_pipeline.py datamon/tools/gen_world_art.py datamon/tools/gen_architecture_assets.py datamon/tools/gen_battle_assets.py datamon/tools/gen_battlemon_ai_sources.py datamon/tools/gen_battle_arena_ai.py datamon/tools/gen_idle_assets.py datamon/tools/gen_locomotion_pilot.py datamon/tools/gen_sitting_assets.py datamon/tools/gen_study_assets.py datamon/tools/gen_walk_assets.py datamon/tools/gen_wayfinding_assets.py tests/test_art_pipeline.py tests/test_battle_assets.py tests/test_battlemon_ai_sources.py tests/test_battle_arena_assets.py tests/test_idle_assets.py tests/test_locomotion_pilot.py tests/test_sitting_assets.py tests/test_walk_assets.py tests/test_wayfinding_assets.py
+    python3 -m py_compile datamon/tools/art_pipeline.py datamon/tools/gen_world_art.py datamon/tools/gen_architecture_assets.py datamon/tools/gen_battle_assets.py datamon/tools/gen_battlemon_ai_sources.py datamon/tools/gen_battle_arena_ai.py datamon/tools/gen_idle_assets.py datamon/tools/gen_locomotion_art_manifest.py datamon/tools/gen_locomotion_pilot.py datamon/tools/gen_sitting_assets.py datamon/tools/gen_study_assets.py datamon/tools/gen_walk_assets.py datamon/tools/gen_wayfinding_assets.py tests/test_art_pipeline.py tests/test_battle_assets.py tests/test_battlemon_ai_sources.py tests/test_battle_arena_assets.py tests/test_idle_assets.py tests/test_locomotion_pilot.py tests/test_sitting_assets.py tests/test_walk_assets.py tests/test_wayfinding_assets.py
     python3 datamon/retag_questions.py --check
     node scripts/validate-content.mjs
     python3 -m unittest tests/test_art_pipeline.py tests/test_battle_assets.py tests/test_battlemon_ai_sources.py tests/test_battle_arena_assets.py tests/test_idle_assets.py tests/test_locomotion_pilot.py tests/test_sitting_assets.py tests/test_walk_assets.py tests/test_wayfinding_assets.py
@@ -60,6 +60,7 @@ check:
     python3 datamon/tools/gen_sitting_assets.py --validate-twice
     python3 datamon/tools/gen_study_assets.py --validate-twice
     python3 datamon/tools/gen_wayfinding_assets.py --validate-twice
+    python3 datamon/tools/gen_locomotion_art_manifest.py --check
     python3 datamon/tools/art_pipeline.py validate-active
     if [[ -f datamon/.environment-work/staging/batch-agent-wing/manifest.json ]]; then python3 datamon/tools/art_pipeline.py validate datamon/.environment-work/staging/batch-agent-wing datamon/.environment-work/staging/batch-agent-wing/manifest.json; fi
     node --test tests/unit/*.test.js

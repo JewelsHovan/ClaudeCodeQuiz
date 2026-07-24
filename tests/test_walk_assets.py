@@ -22,6 +22,19 @@ class WalkAssetContractTests(unittest.TestCase):
         cls.sprite_root = ROOT / "datamon" / "sprites-walk"
         cls.roster = sorted(path.stem for path in (ROOT / "datamon" / "sprites").glob("*.png"))
 
+    def test_compact_batch_provenance_is_canonical_and_content_addressed(self):
+        provenance_path = ROOT / "datamon" / "tools" / "gen_locomotion_art_manifest.py"
+        provenance_spec = importlib.util.spec_from_file_location("gen_locomotion_art_manifest", provenance_path)
+        provenance = importlib.util.module_from_spec(provenance_spec)
+        provenance_spec.loader.exec_module(provenance)
+        manifest_path = self.sprite_root / "manifest.json"
+        self.assertEqual(manifest_path.read_bytes(), provenance.canonical_bytes())
+        manifest = json.loads(manifest_path.read_text())
+        self.assertEqual(manifest["reviewState"], "accepted")
+        self.assertEqual(manifest["policy"], "compact-idle-referenced-v2")
+        self.assertEqual(manifest["generation"], {"hardCallCap": 100, "interrupted": 4, "recordedCalls": 95, "succeeded": 91})
+        self.assertEqual(manifest["fileCount"], 612)
+
     def test_complete_roster_has_exact_frames_and_canonical_manifests(self):
         self.assertEqual(len(self.roster), 37)
         self.assertEqual(sorted(path.name for path in self.sprite_root.iterdir() if path.is_dir()), self.roster)
@@ -73,6 +86,44 @@ class WalkAssetContractTests(unittest.TestCase):
                 torso_range = (max(relative_torsos) - min(relative_torsos)) * scale
                 worst = max(worst, head_range, torso_range)
         self.assertLessEqual(worst, 0.75)
+
+    def test_moving_head_scale_and_side_stride_stay_bounded_against_neutral_idles(self):
+        idle_root = ROOT / "datamon" / "sprites-idle"
+        worst_head_ratio = 0.0
+        worst_side_ratio = 0.0
+        tabarek = {}
+
+        def alpha_geometry(path):
+            alpha = np.asarray(Image.open(path).convert("RGBA"))[:, :, 3]
+            ys, xs = np.where(alpha >= walk.ANCHOR_ALPHA_THRESHOLD)
+            y0, y1 = int(ys.min()), int(ys.max())
+            head_end = min(alpha.shape[0], int(y0 + walk.ANCHOR_HEAD_END * (y1 - y0 + 1)) + 1)
+            _head_ys, head_xs = np.where(alpha[y0:head_end] >= walk.ANCHOR_ALPHA_THRESHOLD)
+            return {
+                "height": y1 - y0 + 1,
+                "width": int(xs.max() - xs.min() + 1),
+                "headWidth": int(head_xs.max() - head_xs.min() + 1),
+            }
+
+        for slug in self.roster:
+            for direction in ("down", "up", "left", "right"):
+                idle = alpha_geometry(idle_root / slug / f"idle_{direction}.png")
+                for index in range(4):
+                    moving = alpha_geometry(self.sprite_root / slug / f"{direction}_{index}.png")
+                    head_ratio = moving["headWidth"] / idle["headWidth"]
+                    worst_head_ratio = max(worst_head_ratio, head_ratio)
+                    self.assertLessEqual(head_ratio, 1.20, f"moving head/body scale expanded: {slug}/{direction}_{index}")
+                    if direction in ("left", "right"):
+                        side_ratio = moving["width"] / idle["width"]
+                        worst_side_ratio = max(worst_side_ratio, side_ratio)
+                        self.assertLessEqual(side_ratio, 2.70, f"overextended side stride: {slug}/{direction}_{index}")
+                        if slug == "tabarek-al-khalidi" and direction == "right":
+                            tabarek[index] = (head_ratio, side_ratio)
+
+        self.assertLessEqual(max(value[0] for value in tabarek.values()), 1.10)
+        self.assertLessEqual(max(value[1] for value in tabarek.values()), 2.30)
+        self.assertLessEqual(worst_head_ratio, 1.20)
+        self.assertLessEqual(worst_side_ratio, 2.70)
 
     def test_tabarek_rear_cycle_stays_straight_and_alternates_sides(self):
         folder = self.sprite_root / "tabarek-al-khalidi"

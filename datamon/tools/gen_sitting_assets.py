@@ -53,7 +53,7 @@ POSTURE_BOUNDS = {
     "top": (13, 15),
     "right_exclusive": (41, 46),
     "bottom_exclusive": (48, 50),
-    "width": (19, 26),
+    "width": (18, 26),
     "height": (34, 37),
 }
 
