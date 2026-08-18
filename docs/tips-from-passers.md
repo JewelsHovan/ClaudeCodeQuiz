@@ -12,13 +12,14 @@
 
 | Fact | Value |
 |------|-------|
-| Questions | **60**, single-select multiple choice (1 correct + 3 distractors) |
-| Time | **120 minutes** (~**2 min/question**) |
-| Passing score | **720 / 1000** — scaled score, *not* a percentage |
-| Structure | Questions wrapped in **4 scenarios drawn at random from a pool of 6** |
-| Delivery | Online-proctored, **closed-book**, via Skilljar |
-| Launched | March 12, 2026 |
-| Cost / validity / prerequisites | **Unconfirmed** — see Caveats (§7) |
+| Questions | **~60** — multiple choice **+ scenario-based multiple-response** ("choose N"; each item says how many) |
+| Time | **120 minutes** exam (~135 min seat time) |
+| Passing score | **720 / 1000** — scaled score, *not* a percentage · unanswered = incorrect (no guessing penalty) |
+| Structure | Questions wrapped in **4 scenarios drawn at random from a pool of exactly 6** |
+| Delivery | **Pearson VUE**-proctored (OnVUE online or in-person test center), closed-book · register via Skilljar |
+| Cost | **$125** (raised from $99 on 2026-06-30) |
+| Validity | **12 months** + free non-proctored renewal · retakes wait 14/30/90 days, max 4 per 12 mo |
+| Prerequisite | none formal; requires a **Claude Partner Network** org + company email |
 
 **Domain weights (study-time priority follows the weights):**
 
@@ -45,8 +46,10 @@ it's attributed to **Kishor Kukreja (893/1000)**; the rest is cross-source conse
   Architecture (27%)**; it's the single biggest lever on your score.
 - **Prepare for all 6 scenario themes — you can't predict your 4.** You get a random 4-of-6:
   *Customer Support Resolution Agent, Code Generation with Claude Code, Multi-Agent Research
-  System, Developer Productivity, Claude Code for CI, Structured Data Extraction.* A theme you
-  skipped could be one of your four. Drill every theme to baseline.
+  System, Developer Productivity with Claude, Claude Code for Continuous Integration, Structured
+  Data Extraction.* A theme you skipped could be one of your four. Drill every theme to baseline.
+- **Watch for multiple-response items.** Some questions ask you to *select N* answers (the item
+  tells you how many) — a partially-correct set scores as wrong, so read the count and get all of them.
 - **Expect "best answer among plausible options," not trick recall.** Several options will be
   *reasonable*; one is *best practice* for the stated constraints. The skill is ranking good vs.
   better, not spotting an obviously wrong answer.
@@ -173,8 +176,8 @@ at least once mid-study and once in the final week.
 
 - Light review only — flashcards + cheat-sheet skim. No cramming new material.
 - **Re-verify currency** (model lineup, Claude Code features — see Caveats).
-- Confirm **Skilljar logistics**: working webcam/mic, quiet room, ID ready, stable connection,
-  proctoring requirements met. Closed-book means clear your desk.
+- Confirm **Pearson VUE / OnVUE logistics**: working webcam/mic, quiet room, ID ready, stable
+  connection, system check passed. Closed-book means clear your desk.
 - Sleep. ~2 min/question rewards a calm, rested read of each scenario.
 
 ---
@@ -206,15 +209,16 @@ From `docs/exam-research-2026.md`:
 
 ## 7. Caveats (read before you book)
 
-- **No public Anthropic blueprint exists.** The weights and format are established by strong
-  cross-source consensus + one hosted copy of the gated official PDF — authoritative-by-consensus,
-  not a citable Anthropic URL.
-- **Cost is UNCONFIRMED.** "$99" and "free for first 5,000 partners" were both *refuted*. Do not
-  assume a price — check Skilljar at registration.
-- **Validity period UNCONFIRMED.** "2 years" was *refuted*. Don't assume how long the cert lasts.
-- **Prerequisites UNCONFIRMED.** "6 months production experience" was *refuted*; whether any
-  prerequisite exists at all is unknown.
-- **Content currency is time-sensitive.** As of mid-2026: **Claude Opus 4.8** is flagship; **Opus
-  4.1 retires August 5, 2026** (migrate to 4.8). Claude Code's changelog moves weekly. **Re-verify
-  the model lineup and current Claude Code features before each sitting** via the primary docs in
-  §6.
+- **Now sourced from the official Exam Guide v1.0 (July 2026)** + Partner Academy FAQ + Pearson VUE.
+  Weights (27/18/20/20/15) and 720/1000 are confirmed verbatim; the literal "60 questions / 120 min"
+  is strongly corroborated but not printed in the guide (treat as "~60").
+- **Cost $125** (raised from $99 on 2026-06-30). **Validity 12 months** with a free non-proctored
+  renewal. **No formal prerequisite**, but you must belong to a **Claude Partner Network** org and
+  register with a company email (personal emails are rejected). Retakes: 14/30/90-day waits, max 4
+  per rolling 12 months, full fee each time.
+- **Delivery is Pearson VUE** (OnVUE online proctoring or an in-person test center) — you register
+  through Anthropic Partner Academy (Skilljar) but schedule/sit via Pearson VUE.
+- **Content currency (does NOT change what the exam tests — it's stable to the June-2026 guide).**
+  Real-world as of Aug 2026: flagship is the **Claude 5 family** (Fable 5, Opus 5, Sonnet 5; Haiku
+  4.5); Opus 4.8 is legacy, Opus 4.1 retired Aug 5. The exam tests model choice as a *principle*, not
+  by version — don't memorize version numbers. Re-verify Claude Code features before sitting (§6).

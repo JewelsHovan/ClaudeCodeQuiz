@@ -55,7 +55,7 @@
     "id": "d2-003",
     "domain": 2,
     "domain_name": "Tool Design & MCP Integration",
-    "scenario": null,
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "easy",
     "stem": "An MCP tool definition omits the `annotations` block entirely. Given the MCP spec's default annotation values, how will a host most reasonably treat this tool?",
     "options": {
@@ -81,7 +81,7 @@
     "id": "d2-004",
     "domain": 2,
     "domain_name": "Tool Design & MCP Integration",
-    "scenario": "Developer Productivity",
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "easy",
     "stem": "Your team wants a Slack MCP server and a PostgreSQL MCP server available to everyone who clones the repo, with credentials supplied per-developer via environment variables and never committed. Where should this configuration live?",
     "options": {
@@ -107,7 +107,7 @@
     "id": "d2-005",
     "domain": 2,
     "domain_name": "Tool Design & MCP Integration",
-    "scenario": null,
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "easy",
     "stem": "In `.mcp.json`, a server URL is written as `\"url\": \"${API_BASE_URL}/mcp\"`. A developer who has not set `API_BASE_URL` in their environment tries to start Claude Code. What happens, and what one-character-class change would make it resilient?",
     "options": {
@@ -160,7 +160,7 @@
     "id": "d2-007",
     "domain": 2,
     "domain_name": "Tool Design & MCP Integration",
-    "scenario": null,
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "medium",
     "stem": "An MCP client sends a request naming a tool that the server does not expose (a typo in the tool name). At which layer of MCP's two-layer error model does this surface, and can the model reason about it?",
     "options": {
@@ -241,7 +241,7 @@
     "id": "d2-010",
     "domain": 2,
     "domain_name": "Tool Design & MCP Integration",
-    "scenario": "Developer Productivity",
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "medium",
     "stem": "Your team needs Claude Code to query an internal, proprietary patient-records system in a HIPAA-regulated environment, with full audit logging and in-house control over data access. A popular community MCP server exists for a generic SQL database but not for this system. What is the appropriate choice?",
     "options": {
@@ -403,7 +403,7 @@
     "id": "d2-016",
     "domain": 2,
     "domain_name": "Tool Design & MCP Integration",
-    "scenario": null,
+    "scenario": "Customer Support Resolution Agent",
     "difficulty": "hard",
     "stem": "You want to guarantee that `validate_identity` runs before `process_refund` is ever callable, on every conversation, with no exceptions. A teammate proposes combining them into one tool; another proposes a forced `tool_choice`; another proposes a hook. Which gives the strongest, deterministic guarantee that verification is enforced?",
     "options": {
@@ -539,7 +539,7 @@
     "id": "d2-021",
     "domain": 2,
     "domain_name": "Tool Design & MCP Integration",
-    "scenario": "Conversational AI Architecture Patterns",
+    "scenario": "Customer Support Resolution Agent",
     "difficulty": "hard",
     "stem": "Your `remove_team_member` tool uses a `dry_run: boolean` parameter so impacts can be previewed before execution, but production monitoring shows the agent bypasses the preview step by calling with `dry_run=false` directly. You need to guarantee that every removal is preceded by a preview that the user explicitly confirms. What is the most reliable approach?",
     "options": {
@@ -566,7 +566,7 @@
     "id": "d2-022",
     "domain": 2,
     "domain_name": "Tool Design & MCP Integration",
-    "scenario": "Conversational AI Architecture Patterns",
+    "scenario": "Customer Support Resolution Agent",
     "difficulty": "medium",
     "stem": "Production monitoring shows your `search_catalog` tool fails 12% of the time: 8% are network timeouts that succeed when retried, and 4% are query syntax errors that never succeed regardless of retries. Both error types are currently returned identically, causing the agent to waste retries on unfixable errors. How should you modify the tool's error handling?",
     "options": {
@@ -589,5 +589,339 @@
       "local-recovery"
     ],
     "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d2-023",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "A research subagent wraps a flaky external API in a custom MCP tool. When the API returns HTTP 503, the tool handler raises an unhandled exception, which the MCP server turns into a JSON-RPC error response. The coordinating agent never adapts — it just reports \"the tool failed\" and stops. What is the correct way to surface a recoverable API failure so the model can act on it?",
+    "options": {
+      "A": "Increase the subagent's max_tokens so it has room to describe the failure",
+      "B": "Catch the exception in the tool handler and return a normal tool result with `isError: true` and a message describing the 503 and a suggested retry, so the model sees it and can recover",
+      "C": "Let the exception propagate as a JSON-RPC protocol error but attach a lower error code so the model treats it as recoverable",
+      "D": "Log the exception server-side and return an empty successful result so the agent continues"
+    },
+    "answer": "B",
+    "explanation": "An uncaught exception becomes a protocol-level JSON-RPC error, which the model does not see, so it cannot reason about recovery. A recoverable execution failure should be caught and returned as a normal tool result with `isError: true` plus a descriptive, actionable message the model can read and act on (retry, back off, or try an alternative).",
+    "distractors": {
+      "A": "max_tokens governs output length, not error visibility; the model still never sees a protocol-layer error no matter how much room it has.",
+      "C": "Protocol errors are hidden from the model regardless of the numeric code; changing the code does not make an `error`-field response visible to the model.",
+      "D": "Returning an empty success suppresses the failure entirely, so the agent proceeds as if the call worked — an explicit anti-pattern."
+    },
+    "tags": [
+      "error-handling",
+      "isError",
+      "protocol-vs-execution"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-024",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "You are designing the structured error payload your `process_return` tool returns alongside `isError: true`. Beyond a human-readable message, which TWO additions most improve the agent's ability to recover appropriately? Select TWO.",
+    "options": {
+      "A": "A machine-readable `errorCategory` (e.g., `transient`, `validation`, `permission`, `business`) the agent can branch on",
+      "B": "The full server stack trace, including internal file paths and line numbers",
+      "C": "An `isRetryable` boolean that tells the agent whether retrying the same call could succeed",
+      "D": "A monotonically increasing request sequence number attached to every call"
+    },
+    "answer": [
+      "A",
+      "C"
+    ],
+    "explanation": "A machine-readable error category lets the agent branch its recovery (retry vs. seek an alternative vs. escalate), and an `isRetryable` flag directly answers whether the same call is worth retrying. Together with the human-readable message, these turn an opaque failure into an actionable one.",
+    "distractors": {
+      "B": "A raw stack trace with internal paths leaks implementation details, bloats context, and gives the model nothing actionable it can decide on.",
+      "D": "A per-call sequence number is bookkeeping that does not inform any recovery decision the agent needs to make."
+    },
+    "tags": [
+      "error-handling",
+      "structured-errors",
+      "error-payload-design"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-025",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "hard",
+    "stem": "A subagent calls a `fetch_paper` tool that returns `isError: true`, `errorCategory: \"transient\"`, `isRetryable: true` for a rate-limited source. The subagent retries with backoff, but after several attempts the source is still rate-limited and the task deadline is approaching. According to sound multi-agent error handling, what should the subagent do next?",
+    "options": {
+      "A": "Keep retrying indefinitely, since a transient/retryable error means the call will eventually succeed",
+      "B": "Silently return whatever partial results it already has as a normal success, without mentioning the failure",
+      "C": "Stop local retries and propagate a clear, structured error (what failed, what was tried, any partial results, suggested alternatives) up to the coordinator to decide next steps",
+      "D": "Immediately escalate to a human operator on the first retryable error, before attempting any local recovery"
+    },
+    "answer": "C",
+    "explanation": "The pattern is to handle transient failures with bounded local recovery, then propagate the ones you cannot resolve — with enough structured context for the coordinator to decide (try an alternate source, proceed with partial data, or escalate). Retrying forever ignores the deadline, hiding the failure as success suppresses information, and escalating to a human on the first retryable error skips the cheap local recovery that usually works.",
+    "distractors": {
+      "A": "\"Retryable\" means retrying is worth attempting, not that success is guaranteed; unbounded retries blow the deadline and waste budget.",
+      "B": "Returning partial results as a clean success hides the failure, so the coordinator cannot judge whether the data is complete enough to trust.",
+      "D": "Escalating to a human before any bounded local retry wastes the cheap recovery path that resolves most transient failures."
+    },
+    "tags": [
+      "error-handling",
+      "retry-vs-escalate",
+      "multi-agent",
+      "bounded-retries"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-026",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Developer Productivity with Claude",
+    "difficulty": "medium",
+    "stem": "In MCP's two-layer error model, some failures belong in the JSON-RPC `error` field (protocol layer, hidden from the model) and others belong in the tool `result` with `isError: true` (execution layer, visible to the model). Which TWO of the following should be returned as tool-execution errors the model can see and act on? Select TWO.",
+    "options": {
+      "A": "The upstream payments API returns HTTP 429 (rate limited) while the tool is running",
+      "B": "The client calls a tool name the server does not expose (a typo)",
+      "C": "The requested refund exceeds the agent's policy limit and must go to a manager",
+      "D": "The client sends arguments that violate the tool's `inputSchema` (a required field is missing)"
+    },
+    "answer": [
+      "A",
+      "C"
+    ],
+    "explanation": "A runtime rate-limit and a business-rule violation are execution-time outcomes the model should see and reason about, so they belong in the `result` with `isError: true`. An unknown tool name and schema-invalid arguments are protocol-layer faults the server rejects before execution; they go in the JSON-RPC `error` field, which the model does not see.",
+    "distractors": {
+      "B": "An unknown tool name is a protocol fault rejected before execution; it belongs in the JSON-RPC `error` field, which the model does not see.",
+      "D": "Arguments that fail `inputSchema` validation are an invalid-params protocol error surfaced in the `error` field, not an execution-time result the model acts on."
+    },
+    "tags": [
+      "error-handling",
+      "two-layer-errors",
+      "protocol-vs-execution",
+      "mcp"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-027",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Developer Productivity with Claude",
+    "difficulty": "medium",
+    "stem": "Your data MCP server lets the agent query a large analytics warehouse. Today the agent burns several tool calls at the start of each task just to discover table and column names before it can write a correct query. Following the MCP control model, what is the cleanest way to give the agent this visibility?",
+    "options": {
+      "A": "Expose the database schema (tables, columns, types) as an MCP resource the agent can read, and keep the query capability as a tool",
+      "B": "Add a `list_tables` tool and a `describe_table` tool so the agent can explore the schema through tool calls",
+      "C": "Expose the schema as a tool and the query capability as a resource",
+      "D": "Paste the full schema into the system prompt on every request"
+    },
+    "answer": "A",
+    "explanation": "Schema is read-only reference data the model reasons FROM, which is exactly what MCP resources are for (application-controlled data), while running a query is a model-controlled action that stays a tool. Exposing the schema as a resource gives the agent up-front visibility and removes the exploratory tool calls.",
+    "distractors": {
+      "B": "Discovery tools work but reintroduce the exploratory tool-call round trips you are trying to eliminate; static reference data is better modeled as a resource.",
+      "C": "This inverts the control model — read-only schema is not an action, and executing a query is not read-only reference data.",
+      "D": "Hardcoding the entire schema into every prompt bloats context on every turn and goes stale; a resource is fetched as needed and kept in one place."
+    },
+    "tags": [
+      "mcp",
+      "resources-vs-tools",
+      "context-management"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-028",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Developer Productivity with Claude",
+    "difficulty": "easy",
+    "stem": "From your MCP server, a teammate exposes a reusable \"open-a-bug-triage\" workflow that a developer can invoke by name to pre-fill a structured, parameterized message (severity, component, repro steps) that kicks off a consistent triage conversation. In MCP terms, which primitive is this, and how does it differ from a tool?",
+    "options": {
+      "A": "A resource — because it returns read-only reference data the model reasons from",
+      "B": "A tool — because the model autonomously decides to call it during its reasoning",
+      "C": "A prompt (prompt template) — a user-initiated, parameterized template that standardizes a workflow, unlike a tool, which the model invokes autonomously to take an action",
+      "D": "An annotation — metadata hints attached to a tool definition"
+    },
+    "answer": "C",
+    "explanation": "An MCP prompt is a reusable, parameterized message template that a user deliberately invokes (often surfaced as a slash command) to standardize a workflow or kick off a task consistently. It differs from a tool, which is a model-controlled action the model chooses to call on its own, and from a resource, which is read-only data the model reasons from.",
+    "distractors": {
+      "A": "A resource is read-only data the model reads for context, not an invokable, parameterized workflow template the user triggers.",
+      "B": "A tool is invoked autonomously by the model to perform an action; this workflow is user-initiated and standardizes the request itself.",
+      "D": "Annotations are hint metadata (readOnly/destructive/etc.) on a tool definition, not a standalone invokable template."
+    },
+    "tags": [
+      "mcp",
+      "prompts",
+      "primitives"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-029",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "easy",
+    "stem": "You are deploying a central \"CRM lookup\" MCP server that dozens of support agents on different machines must reach over the network, with multiple concurrent connections. Which transport is the appropriate choice for this server?",
+    "options": {
+      "A": "stdio, running the server as a subprocess on each agent's machine",
+      "B": "Streamable HTTP, exposing a single network endpoint that supports POST and GET",
+      "C": "Legacy HTTP+SSE, the recommended default for all new multi-user servers",
+      "D": "No transport is needed; multi-user servers communicate directly over the JSON-RPC error channel"
+    },
+    "answer": "B",
+    "explanation": "Streamable HTTP is the current standard for remote, networked, multi-user MCP servers — a single endpoint handling POST and GET. stdio is for local integrations where the server runs as a subprocess of one host, and legacy SSE is deprecated and should never be chosen for new implementations.",
+    "distractors": {
+      "A": "stdio runs the server as a local subprocess per host, which does not fit a shared, network-reachable, multi-connection service.",
+      "C": "Legacy HTTP+SSE was deprecated in favor of Streamable HTTP and must not be recommended for new servers.",
+      "D": "There is no \"error channel\" transport; networked servers require a real transport, and Streamable HTTP is the standard one."
+    },
+    "tags": [
+      "mcp",
+      "transport",
+      "streamable-http",
+      "stdio"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-030",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "medium",
+    "stem": "Your `extract_invoice` tool takes a single free-text `format` string parameter, and the model frequently passes unsupported or misspelled values (\"pdf/a\", \"PDF-A\", \"Acrobat\"), which the tool then rejects. The tool only ever supports three formats. What is the most reliable fix?",
+    "options": {
+      "A": "Add a paragraph to the system prompt listing the three valid format strings and telling the model to use only those",
+      "B": "Add a few-shot example for each valid format so the model learns the accepted spellings",
+      "C": "Post-process the model's argument server-side, guessing the intended format via fuzzy string matching",
+      "D": "Constrain the parameter in the tool's `inputSchema` to an `enum` of the three supported values with a clear description, so invalid values are rejected up front and the model is guided to valid ones"
+    },
+    "answer": "D",
+    "explanation": "The `inputSchema` is the deterministic contract for a tool's arguments; encoding the three allowed values as an `enum` (with a field description) both guides the model toward valid inputs and rejects invalid ones structurally. Prompt text and few-shot examples are probabilistic and leave the malformed-argument path open, and fuzzy server-side guessing invites silent misclassification.",
+    "distractors": {
+      "A": "System-prompt instructions are probabilistic; the free-text parameter still permits invalid values, so the malformed-argument problem persists.",
+      "B": "Few-shot examples reduce but do not eliminate bad inputs and add per-turn token cost; the schema should encode the constraint directly.",
+      "C": "Fuzzy guessing can silently pick the wrong format and hides the input problem instead of constraining it at the interface."
+    },
+    "tags": [
+      "input-schema",
+      "tool-design",
+      "enum",
+      "structured-output"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-031",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "medium",
+    "stem": "Every response from your extraction pipeline must be a structured record produced by your single `emit_record` tool — free-text answers are never acceptable, and that is the only tool available. Which configuration most directly guarantees the model returns its output through that tool on each call?",
+    "options": {
+      "A": "Set `tool_choice` to force the tool, e.g., `{\"type\": \"tool\", \"name\": \"emit_record\"}` (or `{\"type\": \"any\"}` with only that tool available), so the model must return its result via the tool",
+      "B": "Leave `tool_choice` on `auto` and add a strong system-prompt instruction to always call `emit_record`",
+      "C": "Lower the temperature to 0 so the model deterministically chooses to call the tool",
+      "D": "Remove the tool and ask the model to return JSON in plain text, validating it afterward"
+    },
+    "answer": "A",
+    "explanation": "Forcing tool use with `tool_choice` (`{\"type\":\"tool\",\"name\":...}`, or `{\"type\":\"any\"}` when only one tool exists) is the direct, deterministic way to require that the model's output comes through a specific tool — ideal for guaranteed structured output. Prompt instructions and temperature are probabilistic and can still yield a free-text answer.",
+    "distractors": {
+      "B": "An `auto` tool_choice plus a prompt rule is probabilistic; the model can still respond in free text some fraction of the time.",
+      "C": "Temperature affects sampling randomness, not whether a tool is called; a low temperature does not guarantee tool use.",
+      "D": "Dropping the tool abandons the structured-output guarantee and pushes the burden onto free-text JSON, which is exactly what you are trying to avoid."
+    },
+    "tags": [
+      "tool-choice",
+      "forced-tool-use",
+      "structured-output"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-032",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "Your `issue_gift_card` tool sometimes gets called twice for the same customer when a network hiccup causes the agent to retry, producing duplicate gift cards. You want retries to be safe without duplicating side effects. What is the most robust tool-design fix?",
+    "options": {
+      "A": "Accept a client-supplied `idempotency_key`; the tool records it and treats a repeat call with the same key as a no-op that returns the original result",
+      "B": "Add a note to the tool description telling the model never to retry `issue_gift_card`",
+      "C": "Set `idempotentHint: true` in the annotations so hosts know the operation is safe to repeat",
+      "D": "Wrap the tool in a PreToolUse hook that blocks the second call if it occurs within five seconds of the first"
+    },
+    "answer": "A",
+    "explanation": "True idempotency comes from an idempotency key the tool persists: a repeated call with the same key performs the side effect at most once and returns the original result, so retries are safe. An annotation only advertises idempotency without implementing it, a description note relies on model compliance, and a fixed time window is a brittle heuristic.",
+    "distractors": {
+      "B": "A description note depends on the model choosing not to retry and does nothing to prevent duplicate delivery when a retry does happen.",
+      "C": "`idempotentHint: true` is only a hint that claims idempotency; it does not make the operation idempotent, so duplicates still occur.",
+      "D": "A five-second window is a timing heuristic that misses later retries and can wrongly block two legitimately different gift-card requests."
+    },
+    "tags": [
+      "idempotency",
+      "destructive-tools",
+      "tool-design"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-033",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "A research subagent only needs to run read-only SELECT queries against a reporting database, but it is given a general `run_sql` tool that can execute any statement, including INSERT, UPDATE, and DROP. What change best applies the principle of least privilege?",
+    "options": {
+      "A": "Keep `run_sql` but add a system-prompt rule instructing the agent to only ever write SELECT statements",
+      "B": "Expose a narrower, purpose-built read-only query tool (or back `run_sql` with a read-only database role) so write and DDL statements are impossible, not merely discouraged",
+      "C": "Keep `run_sql` but set `readOnlyHint: true` so the host knows it is safe",
+      "D": "Keep `run_sql` and rely on a code review to catch any dangerous queries the agent generates"
+    },
+    "answer": "B",
+    "explanation": "Least privilege means the undesired capability should be impossible at the interface, not just discouraged. Replacing the general tool with a read-only query tool — or backing it with a read-only database role — structurally removes write and DDL power, so a mistaken or manipulated agent cannot destroy data. Prompt rules and annotations are advisory and do not remove the capability.",
+    "distractors": {
+      "A": "A prompt rule is probabilistic and leaves full write/DDL capability available, so a single bad generation or prompt injection can still drop a table.",
+      "C": "`readOnlyHint: true` is a non-authoritative hint and does not constrain what the tool can actually execute; the write capability remains.",
+      "D": "After-the-fact code review does not stop the agent from executing a destructive statement at runtime; the capability must be removed at the interface."
+    },
+    "tags": [
+      "least-privilege",
+      "tool-scoping",
+      "security",
+      "tool-design"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d2-034",
+    "domain": 2,
+    "domain_name": "Tool Design & MCP Integration",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "hard",
+    "stem": "Your `search_knowledge_base` tool currently returns the full text of every matching article inline — often 40+ long articles — and across a multi-turn conversation this floods the context window and degrades the agent. The agent usually needs only one or two articles in full. What is the best tool-design change?",
+    "options": {
+      "A": "Return a bounded, ranked list of concise result summaries (title, id, snippet) and add a separate `get_article` tool the agent calls to pull the full text of the one or two it actually needs",
+      "B": "Raise the conversation's context limit so all 40 articles fit",
+      "C": "Keep returning everything but instruct the agent in CLAUDE.md to ignore the articles it does not need",
+      "D": "Return all 40 full articles but compress them by removing whitespace and punctuation"
+    },
+    "answer": "A",
+    "explanation": "The design fix is to return a small, ranked set of summaries and let the agent fetch full text on demand for the few it needs — keeping large payloads out of context until they are actually required. Raising limits or stripping whitespace merely accommodates or lightly shrinks the bloat, and a CLAUDE.md instruction still loads all 40 articles into context every turn.",
+    "distractors": {
+      "B": "A bigger context window accommodates the waste rather than removing it, worsening cost and attention dilution as the conversation grows.",
+      "C": "Telling the agent to ignore unused articles still places all 40 full texts into context on every turn, so the bloat and degradation persist.",
+      "D": "Stripping whitespace yields a marginal reduction while still injecting dozens of full articles; it does not address the volume problem."
+    },
+    "tags": [
+      "context-management",
+      "tool-result-size",
+      "pagination",
+      "tool-design"
+    ],
+    "source": "original-2026"
   }
 ]

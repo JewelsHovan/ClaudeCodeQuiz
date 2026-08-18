@@ -162,10 +162,36 @@ def sample(questions: list[dict], count: int, domain: int | None,
     return ordered
 
 
-def build_client_questions(picked: list[dict]) -> list[dict]:
+def _shuffle_options(q: dict, rng: random.Random) -> tuple[dict, "str | list[str]", dict]:
+    """Randomize option order and remap the answer key + distractor rationales.
+
+    Neutralizes any answer-position bias in the authored bank (the correct letter
+    lands anywhere with equal probability). Handles both single-select (`answer`
+    is a letter) and multiple-response (`answer` is a list of letters)."""
+    letters = ["A", "B", "C", "D"]
+    items = [(L, q["options"][L]) for L in letters if L in q["options"]]
+    rng.shuffle(items)
+    new_options: dict[str, str] = {}
+    remap: dict[str, str] = {}  # old letter -> new letter
+    for i, (old_letter, text) in enumerate(items):
+        new_letter = letters[i]
+        new_options[new_letter] = text
+        remap[old_letter] = new_letter
+    ans = q["answer"]
+    if isinstance(ans, list):
+        new_answer: "str | list[str]" = sorted(remap[a] for a in ans)
+    else:
+        new_answer = remap[ans]
+    new_distractors = {remap[k]: v for k, v in q.get("distractors", {}).items() if k in remap}
+    return new_options, new_answer, new_distractors
+
+
+def build_client_questions(picked: list[dict], rng: random.Random) -> list[dict]:
     """Strip to what the browser needs (answer included — it's a local file)."""
     out = []
     for i, q in enumerate(picked):
+        options, answer, distractors = _shuffle_options(q, rng)
+        multi = isinstance(answer, list)
         out.append({
             "n": i + 1,
             "id": q["id"],
@@ -174,17 +200,18 @@ def build_client_questions(picked: list[dict]) -> list[dict]:
             "scenario": q.get("scenario") or "General",
             "difficulty": q.get("difficulty", "medium"),
             "stem": q["stem"],
-            "options": q["options"],
-            "answer": q["answer"],
+            "options": options,
+            "answer": answer,
+            "selectCount": len(answer) if multi else 1,
             "explanation": q.get("explanation", ""),
-            "distractors": q.get("distractors", {}),
+            "distractors": distractors,
             "tags": q.get("tags", []),
         })
     return out
 
 
-def render_html(picked: list[dict], minutes: int, title_suffix: str) -> str:
-    qjson = json.dumps(build_client_questions(picked), ensure_ascii=False)
+def render_html(picked: list[dict], minutes: int, title_suffix: str, rng: random.Random) -> str:
+    qjson = json.dumps(build_client_questions(picked, rng), ensure_ascii=False)
     meta = {
         "count": len(picked),
         "minutes": minutes,
@@ -223,6 +250,9 @@ _TEMPLATE = r"""<!DOCTYPE html>
   .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;border:1px solid var(--line);background:var(--panel2);color:var(--muted)}
   .badge.dom{color:var(--accent2);border-color:#3a2f2a}
   .badge.easy{color:#7bd88f}.badge.medium{color:var(--warn)}.badge.hard{color:var(--bad)}
+  .badge.multi{color:var(--accent);border-color:var(--accent)}
+  .opt.multi .L{border-radius:4px;border:1px solid var(--line);padding:0 5px}
+  .opt.multi.sel .L{background:var(--accent);color:#000;border-color:var(--accent)}
   button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);
     background:var(--panel2);color:var(--ink);padding:9px 16px}
   button:hover{border-color:var(--accent)}
@@ -279,7 +309,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
       <tr><td>Questions</td><td id="sCount"></td></tr>
       <tr><td>Time limit</td><td id="sTime"></td></tr>
       <tr><td>Pass mark</td><td id="sPass"></td></tr>
-      <tr><td>Format</td><td>Single-select multiple choice (1 correct + 3 distractors), grouped by scenario</td></tr>
+      <tr><td>Format</td><td>Multiple choice + scenario-based multiple-response (a "Select N" badge marks multi-answer items), grouped by scenario</td></tr>
     </table>
     <p class="note">Scaled scoring shown is a <strong>linear approximation</strong> of raw %
       (real exam scaling differs). Blueprint is community-confirmed, not Anthropic-published —
@@ -323,7 +353,23 @@ const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).pad
 
 let cur = 0, reveal = false, submitted = false;
 let remaining = META.minutes*60, timerId = null, startedAt = null;
-const state = QUESTIONS.map(()=>({pick:null, flag:false}));
+const isMulti = q => Array.isArray(q.answer);
+const state = QUESTIONS.map(q=>({pick: isMulti(q)?[]:null, flag:false}));
+const answered = (q,s) => isMulti(q) ? (Array.isArray(s.pick)&&s.pick.length>0) : s.pick!=null;
+function isCorrect(q,s){
+  if(isMulti(q)){
+    if(!Array.isArray(s.pick)) return false;
+    return [...q.answer].sort().join('|') === [...s.pick].sort().join('|');
+  }
+  return s.pick===q.answer;
+}
+const selected = (q,s,L) => isMulti(q) ? (Array.isArray(s.pick)&&s.pick.includes(L)) : s.pick===L;
+const fmtAns = q => isMulti(q) ? q.answer.join(', ') : q.answer;
+const fmtPick = (q,s) => isMulti(q) ? (Array.isArray(s.pick)?[...s.pick].sort().join(', '):'') : (s.pick||'');
+function togglePick(q,s,L){
+  if(isMulti(q)){ const i=s.pick.indexOf(L); if(i>=0) s.pick.splice(i,1); else s.pick.push(L); }
+  else { s.pick=L; }
+}
 
 // --- start screen ---
 $('#startSuffix').textContent = META.titleSuffix || '';
@@ -359,13 +405,14 @@ function buildPalette(){
 }
 function refreshPalette(){
   [...$('#palette').children].forEach((b,i)=>{
-    b.classList.toggle('answered', state[i].pick!=null);
+    b.classList.toggle('answered', answered(QUESTIONS[i],state[i]));
     b.classList.toggle('flagged', state[i].flag);
     b.classList.toggle('cur', i===cur);
   });
-  $('#answeredN').textContent = state.filter(s=>s.pick!=null).length;
+  const nAns = state.filter((s,i)=>answered(QUESTIONS[i],s)).length;
+  $('#answeredN').textContent = nAns;
   $('#flaggedN').textContent = state.filter(s=>s.flag).length;
-  $('#barprog').textContent = `Q${cur+1} of ${META.count} · answered ${state.filter(s=>s.pick!=null).length}`;
+  $('#barprog').textContent = `Q${cur+1} of ${META.count} · answered ${nAns}`;
 }
 
 function render(){
@@ -376,33 +423,38 @@ function render(){
     sb.classList.remove('hide');
     sb.innerHTML = `<strong>Scenario:</strong> ${q.scenario}`;
   } else sb.classList.add('hide');
+  const multi = isMulti(q);
   $('#qmeta').innerHTML = `<span class="badge dom">D${q.domain} · ${q.domainName}</span> `+
-    `<span class="badge ${q.difficulty}">${q.difficulty}</span>`;
+    `<span class="badge ${q.difficulty}">${q.difficulty}</span>`+
+    (multi ? ` <span class="badge multi">Select ${q.selectCount}</span>` : '');
   $('#qid').textContent = q.id;
   $('#stem').textContent = q.stem;
   const o=$('#opts'); o.innerHTML='';
-  for(const L of ['A','B','C','D']){
-    const btn=document.createElement('button'); btn.className='opt'+(s.pick===L?' sel':'');
+  const letters = Object.keys(q.options);
+  for(const L of letters){
+    const btn=document.createElement('button');
+    btn.className='opt'+(selected(q,s,L)?' sel':'')+(multi?' multi':'');
     btn.innerHTML = `<span class="L">${L}</span>${q.options[L]}`;
-    btn.onclick=()=>{ if(submitted) return; s.pick=L; render();
+    btn.onclick=()=>{ if(submitted) return; togglePick(q,s,L); render();
       if(reveal) showInlineReveal(); };
-    if(reveal && s.pick){
-      if(L===q.answer) btn.classList.add('correct');
-      else if(L===s.pick) btn.classList.add('wrong');
+    if(reveal && answered(q,s)){
+      const correctL = multi ? q.answer.includes(L) : L===q.answer;
+      if(correctL) btn.classList.add('correct');
+      else if(selected(q,s,L)) btn.classList.add('wrong');
     }
     o.appendChild(btn);
   }
   $('#btnFlag').textContent = s.flag ? '⚑ Unflag' : '⚑ Flag for review';
   $('#btnPrev').disabled = cur===0;
   $('#btnNext').textContent = cur===META.count-1 ? 'Last →' : 'Next →';
-  if(reveal && s.pick) showInlineReveal(); else $('#inlineReveal').classList.add('hide');
+  if(reveal && answered(q,s)) showInlineReveal(); else $('#inlineReveal').classList.add('hide');
   refreshPalette();
 }
 function showInlineReveal(){
   const q=QUESTIONS[cur], s=state[cur], box=$('#inlineReveal');
-  const ok = s.pick===q.answer;
+  const ok = isCorrect(q,s);
   box.classList.remove('hide');
-  box.innerHTML = `<div><strong class="${ok?'pass':'fail'}">${ok?'Correct':'Incorrect'}</strong> — correct answer: <strong>${q.answer}</strong></div>`+
+  box.innerHTML = `<div><strong class="${ok?'pass':'fail'}">${ok?'Correct':'Incorrect'}</strong> — correct answer: <strong>${fmtAns(q)}</strong></div>`+
     `<div class="note">${q.explanation}</div>`;
 }
 
@@ -411,7 +463,7 @@ $('#btnNext').onclick=()=>{ if(cur<META.count-1){cur++;render();} else window.sc
 $('#btnFlag').onclick=()=>{ state[cur].flag=!state[cur].flag; render(); };
 document.addEventListener('keydown',e=>{
   if(submitted||$('#exam').classList.contains('hide')) return;
-  if(['a','b','c','d','A','B','C','D'].includes(e.key)){ state[cur].pick=e.key.toUpperCase(); render(); if(reveal) showInlineReveal(); }
+  if(['a','b','c','d','A','B','C','D'].includes(e.key)){ togglePick(QUESTIONS[cur],state[cur],e.key.toUpperCase()); render(); if(reveal) showInlineReveal(); }
   else if(e.key==='ArrowRight') $('#btnNext').click();
   else if(e.key==='ArrowLeft') $('#btnPrev').click();
   else if(e.key==='f') $('#btnFlag').click();
@@ -420,7 +472,7 @@ $('#btnSubmit').onclick=()=>doSubmit(false);
 
 function doSubmit(auto){
   if(submitted) return;
-  const unanswered = state.filter(s=>s.pick==null).length;
+  const unanswered = state.filter((s,i)=>!answered(QUESTIONS[i],s)).length;
   if(!auto && unanswered>0 && !confirm(`${unanswered} question(s) unanswered. Submit anyway?`)) return;
   submitted=true; clearInterval(timerId);
   const elapsed = Math.round((new Date()-startedAt)/1000);
@@ -429,8 +481,8 @@ function doSubmit(auto){
   for(const d of Object.keys(META.weights)) perDom[d]={correct:0,total:0};
   QUESTIONS.forEach((q,i)=>{
     perDom[q.domain].total++;
-    if(state[i].pick===q.answer){correct++; perDom[q.domain].correct++;}
-    else wrong.push({id:q.id, domain:q.domain, your:state[i].pick, answer:q.answer, tags:q.tags});
+    if(isCorrect(q,state[i])){correct++; perDom[q.domain].correct++;}
+    else wrong.push({id:q.id, domain:q.domain, your:fmtPick(q,state[i]), answer:fmtAns(q), tags:q.tags});
   });
   const raw = correct/META.count;
   const scaled = Math.round(raw*META.scaleMax);
@@ -499,12 +551,14 @@ function renderResults(r){
   function paintReview(onlyWrong){
     list.innerHTML='';
     QUESTIONS.forEach((q,i)=>{
-      const s=state[i], ok=s.pick===q.answer;
+      const s=state[i], ok=isCorrect(q,s), multi=isMulti(q);
       if(onlyWrong && ok) return;
       let opts='';
-      for(const L of ['A','B','C','D']){
-        let cls='opt'; if(L===q.answer) cls+=' correct'; else if(L===s.pick) cls+=' wrong';
-        const tag = L===q.answer?' ✓':(L===s.pick?' ✗ your answer':'');
+      for(const L of Object.keys(q.options)){
+        const isAns = multi ? q.answer.includes(L) : L===q.answer;
+        const isPick = selected(q,s,L);
+        let cls='opt'; if(isAns) cls+=' correct'; else if(isPick) cls+=' wrong';
+        const tag = isAns?' ✓':(isPick?' ✗ your answer':'');
         opts += `<div class="${cls}"><span class="L">${L}</span>${q.options[L]}<span class="muted small">${tag}</span></div>`;
       }
       let dz='';
@@ -512,10 +566,11 @@ function renderResults(r){
       const div=document.createElement('div'); div.className='rev';
       div.innerHTML = `<div class="row spread small"><span><strong>Q${i+1}</strong> `+
         `<span class="badge dom">D${q.domain}</span> <span class="badge ${q.difficulty}">${q.difficulty}</span> `+
+        (multi?`<span class="badge multi">Select ${q.selectCount}</span> `:'')+
         `<span class="badge">${q.scenario}</span></span>`+
-        `<span class="${ok?'pass':'fail'}">${ok?'Correct':(s.pick?'Incorrect':'Skipped')}</span></div>`+
+        `<span class="${ok?'pass':'fail'}">${ok?'Correct':(answered(q,s)?'Incorrect':'Skipped')}</span></div>`+
         `<p style="margin:8px 0">${q.stem}</p>${opts}`+
-        `<div class="note" style="margin-top:8px"><strong>Why ${q.answer}:</strong> ${q.explanation}</div>${dz}`;
+        `<div class="note" style="margin-top:8px"><strong>Why ${fmtAns(q)}:</strong> ${q.explanation}</div>${dz}`;
       list.appendChild(div);
     });
   }
@@ -561,7 +616,7 @@ def main() -> None:
     suffix = (f"Single-domain focus: D{args.domain} · {DOMAIN_NAMES[args.domain]}"
               if args.domain else
               "Full domain-weighted mock · mirrors the 27/18/20/20/15 blueprint")
-    html = render_html(picked, minutes, suffix)
+    html = render_html(picked, minutes, suffix, rng)
 
     out = args.output
     if not out:

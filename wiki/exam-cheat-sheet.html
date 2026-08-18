@@ -117,7 +117,7 @@ article strong{color:var(--ink)}
 <a href="#cicd-integration">CI/CD Integration</a>
 </div>
 <a class="nav-link" href="tips-from-passers.html" data-kw="1. Snapshot — the confirmed blueprint 2. What people who passed say 3. Time management 4. Common gotchas / traps 5. A study plan (keyed to this repo) 6. Canonical resources (primary first) 7. Caveats (read before you book)">Tips from Passers</a>
-<a class="nav-link" href="exam-research-2026.html" data-kw="TL;DR — what changed since this env was built (March 2026) Confirmed exam blueprint Domains &amp;amp; weights (CONFIRMED — match this env exactly) Content currency (study to 2026 reality) Practice questions &amp;amp; sample material Out-of-scope topics (per the paullarionov guide — don&#x27;t burn study time here) Tips from people who passed Canonical study resources (primary first) Caveats &amp;amp; open questions Sources (selected)">Exam Research (2026)</a>
+<a class="nav-link" href="exam-research-2026.html" data-kw="⭐ UPDATE 2026-08-18 — official Exam Guide v1.0 found (supersedes conflicting claims below) TL;DR — what changed since this env was built (March 2026) Confirmed exam blueprint Domains &amp;amp; weights (CONFIRMED — match this env exactly) Content currency (study to 2026 reality) Practice questions &amp;amp; sample material Out-of-scope topics (per the paullarionov guide — don&#x27;t burn study time here) Tips from people who passed Canonical study resources (primary first) Caveats &amp;amp; open questions Sources (selected)">Exam Research (2026)</a>
 <div class="nav-section">Domain Guides</div>
 <a class="nav-link" href="domain1-agentic-architecture-orchestration.html" data-kw="Task 1.1: The Agentic Loop Lifecycle Task 1.2: Multi-Agent Coordinator-Subagent Patterns Task 1.3: Subagent Invocation and Context Passing Task 1.4: Multi-Step Workflows with Enforcement Task 1.5: Agent SDK Hooks Task 1.6: Task Decomposition Strategies Task 1.7: Session State, Resumption, and Forking Key Exam Scenarios for Domain 1">Domain 1 · Agentic Architecture &amp; Orchestration (27%)</a>
 <a class="nav-link" href="domain2-tool-design-mcp-integration.html" data-kw="MCP Architecture Overview Task 2.1: Design Effective Tool Interfaces Task 2.2: Structured Error Responses Task 2.3: Tool Distribution Across Agents Task 2.4: MCP Server Configuration in Claude Code Task 2.5: Built-in Tools">Domain 2 · Tool Design &amp; MCP Integration (18%)</a>
@@ -141,23 +141,35 @@ article strong{color:var(--ink)}
 <tbody>
 <tr>
 <td>Questions</td>
-<td><strong>60</strong> (single-select MC: 1 correct + 3 distractors)</td>
+<td><strong>~60</strong> — multiple-choice <strong>+ scenario-based multiple-response</strong> ("choose N"; item says how many)</td>
 </tr>
 <tr>
 <td>Time limit</td>
-<td><strong>120 min</strong> (~2 min/question)</td>
+<td><strong>120 min</strong> exam (~135 min total seat time)</td>
 </tr>
 <tr>
 <td>Passing score</td>
-<td><strong>720 / 1000</strong> (scaled, not a percentage)</td>
+<td><strong>720 / 1000</strong> (scaled, not a percentage) · unanswered = incorrect, no guessing penalty</td>
 </tr>
 <tr>
 <td>Scenarios per exam</td>
-<td><strong>4 drawn at random</strong> from a pool of <strong>6 confirmed</strong> (possibly 8 — see below)</td>
+<td><strong>4 drawn at random</strong> from a pool of <strong>exactly 6</strong> (see below)</td>
 </tr>
 <tr>
 <td>Delivery</td>
-<td>Online-proctored, closed-book (Skilljar)</td>
+<td><strong>Pearson VUE</strong>-proctored (OnVUE online or in-person), closed-book · register via Skilljar</td>
+</tr>
+<tr>
+<td>Cost</td>
+<td><strong>$125</strong> (raised from $99 on 2026-06-30)</td>
+</tr>
+<tr>
+<td>Validity</td>
+<td><strong>12 months</strong> (free non-proctored renewal) · retake waits 14/30/90 days, max 4 / 12 mo</td>
+</tr>
+<tr>
+<td>Prerequisite</td>
+<td>none formal, but need a <strong>Claude Partner Network</strong> org + company email</td>
 </tr>
 <tr>
 <td>Max tools per agent for reliable selection</td>
@@ -182,11 +194,12 @@ article strong{color:var(--ink)}
 </tbody>
 </table>
 <blockquote>
-<p>Blueprint is community-confirmed, not Anthropic-published. Cost/validity/prerequisites unconfirmed.
-See <code>exam-research-2026.md</code>. The 6 confirmed scenario themes: Customer Support Resolution Agent · Code
-Generation with Claude Code · Multi-Agent Research System · Developer Productivity · Claude Code for CI ·
-Structured Data Extraction. A single community source (2026-06-10) reports the pool grew to <strong>8</strong>, adding
-Conversational AI Architecture Patterns + a candidate-reported "Agentic AI Tools" theme.</p>
+<p>Confirmed from the <strong>official Exam Guide v1.0 (July 2026)</strong> + Anthropic Partner Academy FAQ + Pearson VUE
+(see <code>exam-research-2026.md</code>). The <strong>6 official scenario themes</strong>: Customer Support Resolution Agent · Code
+Generation with Claude Code · Multi-Agent Research System · Developer Productivity with Claude · Claude Code
+for Continuous Integration · Structured Data Extraction. (Earlier "themes 7/8 — Conversational AI / Agentic
+AI Tools" have <strong>no official backing</strong> and were dropped.) This is one of <strong>4 certs</strong>: Associate-Foundations,
+Architect-Foundations (this one), Developer-Foundations, Architect-<strong>Professional</strong>.</p>
 </blockquote>
 <hr />
 <h2 id="domain-weight-at-a-glance">Domain Weight at a Glance</h2>
@@ -228,25 +241,45 @@ Conversational AI Architecture Patterns + a candidate-reported "Agentic AI Tools
 </table>
 <hr />
 <h2 id="2026-currency-dont-get-caught-on-stale-facts">2026 Currency (don't get caught on stale facts)</h2>
+<blockquote>
+<p><strong>The exam does NOT test model version numbers or bleeding-edge tooling</strong> — it's stable to the
+June-2026 guide and treats model choice as a principle (route simple/cheap work to a
+smaller/faster model; hard reasoning to a frontier model). The rows below are real-world state
+(Aug 2026) so you're not <em>confused</em>, not extra memorization.</p>
+</blockquote>
 <table>
 <thead>
 <tr>
 <th>Topic</th>
-<th>Current state</th>
+<th>Real-world state (Aug 2026)</th>
+<th>Exam-relevant?</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Flagship model</td>
-<td><strong>Claude Opus 4.8</strong> (Opus 4.7 also active; Opus 4.1 retires <strong>Aug 5, 2026</strong>)</td>
+<td><strong>Claude 5 family</strong>: Fable 5 (flagship) · Opus 5 (coding/enterprise default) · Sonnet 5 · Haiku 4.5. Opus 4.8 now legacy; Opus 4.1 <strong>retired Aug 5, 2026</strong></td>
+<td>Principle only — don't memorize versions</td>
+</tr>
+<tr>
+<td>MCP spec</td>
+<td>2026-07-28 rev went <strong>stateless</strong> and <strong>deprecates Sampling/Roots/Logging</strong></td>
+<td>Know tools/resources/prompts + two-layer errors (the exam-era model), not the rewrite</td>
+</tr>
+<tr>
+<td>Thinking control</td>
+<td><code>effort</code> (low→max) replaced <code>budget_tokens</code>; <code>temperature/top_p/top_k</code> 400 on Opus 4.7+/Sonnet 5</td>
+<td>Minor; principle: let it reason before answering</td>
 </tr>
 <tr>
 <td>Claude Code plugins</td>
 <td><code>claude plugin init &lt;name&gt;</code> scaffolds a plugin; skills in <code>.claude/skills</code> <strong>auto-load</strong> (no marketplace/install)</td>
+<td>Yes</td>
 </tr>
 <tr>
 <td>Stop / SubagentStop hooks</td>
-<td>can return <code>hookSpecificOutput.additionalContext</code> (≤10k chars) to feed context <strong>without</strong> a hook error (v2.1.163)</td>
+<td>can return <code>hookSpecificOutput.additionalContext</code> (≤10k chars) to feed context <strong>without</strong> a hook error</td>
+<td>Yes</td>
 </tr>
 </tbody>
 </table>

@@ -5,6 +5,50 @@
 > **Read the caveats** — Anthropic publishes no public blueprint; figures below are
 > community-consensus + one hosted copy of the gated official guide, not a citable Anthropic URL.
 
+---
+
+## ⭐ UPDATE 2026-08-18 — official Exam Guide v1.0 found (supersedes conflicting claims below)
+
+A follow-up research pass located and read **Anthropic's official Exam Guide v1.0 (effective July 2026,
+code CCAR-F)** on Anthropic's Skilljar/Everpath CDN, cross-checked against the Partner Academy
+**FAQ** (`anthropic-partners.skilljar.com/page/faq-certifications`) and **Pearson VUE**
+(`pearsonvue.com/us/en/anthropic.html`). The guide's version history (v0.1 Feb → v0.2 Jun → v1.0 Jul,
+formatting only) means **content is stable since June 2026**. This is a stronger source than the
+June-08 pass below. **Where they conflict, this section wins:**
+
+| Fact | June-08 doc said | ✅ Corrected (official guide v1.0) |
+|------|------------------|-----------------------------------|
+| **Item format** | single-select only; "multi-select refuted" | **multiple-choice AND scenario-based multiple-response** — "each item states how many responses to select" (FAQ, verbatim) |
+| **Scenario pool** | 6 confirmed, "maybe 8" | **exactly 6**; themes 7 (Conversational AI) & 8 (Agentic AI Tools) have **no official backing** |
+| Theme names | "Developer Productivity", "Claude Code for CI" | **"Developer Productivity with Claude"**, **"Claude Code for Continuous Integration"** |
+| **Cost** | unconfirmed / "$99 refuted" | **$125** (raised from $99 on 2026-06-30) |
+| **Validity** | unconfirmed / "2 yr refuted" | **12 months** + free non-proctored renewal |
+| **Delivery** | Skilljar-proctored | **Pearson VUE** (OnVUE online or in-person); register via Skilljar |
+| **Prerequisite** | unconfirmed | none formal; must be in a **Claude Partner Network** org + company email |
+| Retake | not stated | 14 / 30 / 90-day waits; **max 4 per rolling 12 mo**, full fee each |
+| Seat time | 120 min | 120 min exam / **~135 min seat time** |
+| **Program** | single "Foundations" exam | **4 certs**: Associate-F ($99) · **Architect-F ($125, this one)** · Developer-F ($125) · Architect-**Professional** ($175) |
+
+**Official scenario→primary-domain map** (from the guide — used to rebalance the bank):
+Customer Support Resolution Agent → D1/D2/D5 · Code Generation with Claude Code → D3/D5 ·
+Multi-Agent Research System → D1/D2/D5 · Developer Productivity with Claude → D2/D3/D1 ·
+Claude Code for Continuous Integration → D3/D4 · Structured Data Extraction → D4/D5.
+
+**Still not printed verbatim in the guide:** the literal "60 questions / 120 minutes" (strongly
+corroborated by many secondary sources — keep as "~60"). Domains/weights (27/18/20/20/15) and
+720/1000 pass **are** confirmed verbatim.
+
+**Content currency (Aug 2026, for docs only — the exam does NOT test versions):** flagship is now the
+**Claude 5 family** (Fable 5 flagship, Opus 5 coding default, Sonnet 5, Haiku 4.5); Opus 4.8 is legacy;
+Opus 4.1 retired Aug 5. MCP spec 2026-07-28 went **stateless** and **deprecated Sampling/Roots/Logging**
+(study the pre-rewrite model the exam uses). `effort` replaced `budget_tokens`; `temperature/top_p/top_k`
+now 400 on Opus 4.7+/Sonnet 5. See `.claude-plans/2026-08-18-question-bank-audit.md` for the full audit.
+
+> The sections below are the **June-08 research pass**, kept for provenance. Trust the table above
+> where they disagree.
+
+---
+
 ## TL;DR — what changed since this env was built (March 2026)
 
 | Area | Status | Action taken |
