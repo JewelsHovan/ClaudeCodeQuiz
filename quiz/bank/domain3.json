@@ -3,7 +3,7 @@
     "id": "d3-001",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": "Developer Productivity",
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "easy",
     "stem": "A team wants coding conventions to be shared with everyone who clones the repository and applied automatically in every session. Where should these conventions live?",
     "options": {
@@ -30,7 +30,7 @@
     "id": "d3-002",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": "Developer Productivity",
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "easy",
     "stem": "A developer wants to keep a few personal Claude Code preferences (preferred commit message style, verbosity) that should NOT affect teammates. Where should these go?",
     "options": {
@@ -57,7 +57,7 @@
     "id": "d3-003",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": "Claude Code for CI",
+    "scenario": "Claude Code for Continuous Integration",
     "difficulty": "easy",
     "stem": "Your CI job runs `claude \"Review this diff for security issues\"` and the build hangs until it times out. What is the correct fix?",
     "options": {
@@ -85,7 +85,7 @@
     "id": "d3-004",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": null,
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "easy",
     "stem": "Which statement best captures the difference between CLAUDE.md and a skill?",
     "options": {
@@ -111,7 +111,7 @@
     "id": "d3-005",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": "Developer Productivity",
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "easy",
     "stem": "Claude Code is behaving inconsistently across sessions and you suspect a stale or wrong memory file is being loaded. Which command helps you verify which memory (CLAUDE.md) files are active?",
     "options": {
@@ -166,7 +166,7 @@
     "id": "d3-007",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": null,
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "medium",
     "stem": "You want a custom slash command that accepts a free-form argument the user types after the command name (e.g., /triage <issue-url>) and injects it into the prompt. What is the correct mechanism?",
     "options": {
@@ -247,7 +247,7 @@
     "id": "d3-010",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": null,
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "medium",
     "stem": "Two .claude/rules/ files match the file you are editing: rules/general.md with paths [\"src/**/*\"] and rules/payments.md with paths [\"src/payments/**/*.ts\"]. The file is src/payments/charge.ts. Which rule guidance should take precedence when they conflict?",
     "options": {
@@ -301,7 +301,7 @@
     "id": "d3-012",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": "Claude Code for CI",
+    "scenario": "Claude Code for Continuous Integration",
     "difficulty": "medium",
     "stem": "Your CI generates unit tests, but many duplicate tests that already exist or cover trivial getters/setters. What two-part change most improves generated test quality?",
     "options": {
@@ -410,7 +410,7 @@
     "id": "d3-016",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": "Developer Productivity",
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "hard",
     "stem": "You are packaging your team's set of skills as a Claude Code plugin so a colleague can use them. Using the May 2026 workflow, you run `claude plugin init mytools` and place SKILL.md files in the plugin's .claude/skills directories. What is the result for the colleague?",
     "options": {
@@ -466,7 +466,7 @@
     "id": "d3-018",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": "Claude Code for CI",
+    "scenario": "Claude Code for Continuous Integration",
     "difficulty": "hard",
     "stem": "Your automated PR review runs on every push. After a developer addresses the first round and pushes again, the second run re-flags the already-fixed issues and adds new ones, spamming the PR with duplicate comments. What is the best fix?",
     "options": {
@@ -493,7 +493,7 @@
     "id": "d3-019",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": "Developer Productivity",
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "hard",
     "stem": "A shared project skill named /deploy works well for the team, but you personally want a slightly different variant that does an extra dry-run step, without changing the team's behavior or affecting teammates. What is the cleanest approach?",
     "options": {
@@ -520,7 +520,7 @@
     "id": "d3-020",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": "Developer Productivity",
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "hard",
     "stem": "Your team wants every member to share a GitHub MCP server when they open the repo in Claude Code, but each member's personal access token must NOT be committed. What is the correct configuration?",
     "options": {
@@ -602,7 +602,7 @@
     "id": "d3-023",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": "Claude Code for CI",
+    "scenario": "Claude Code for Continuous Integration",
     "difficulty": "medium",
     "stem": "Your CI pipeline runs the Claude Code CLI in `--print` mode with CLAUDE.md providing project context for code review, and developers find the reviews substantive. However, integrating findings is painful: Claude outputs narrative paragraphs that must be manually copied into PR comments. The team wants to automatically post each finding as a separate inline PR comment at the relevant place in code, which requires structured data with file path, line number, severity level, and suggested fix. Which approach is most effective?",
     "options": {
@@ -843,5 +843,121 @@
       "path-specific-rules"
     ],
     "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d3-032",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "You are applying a large but mechanical change — renaming a function across about 30 files — and Claude Code prompts you to approve every individual file edit, which is slowing you down. You still want to manually review any shell commands Claude wants to run. Which permission mode best fits?",
+    "options": {
+      "A": "bypassPermissions — skip all permission prompts for the session, including shell commands",
+      "B": "plan mode — so Claude proposes the edits but does not apply them",
+      "C": "default — keep approving each edit individually",
+      "D": "acceptEdits — auto-approve file edits for the session while still prompting for other actions such as shell commands"
+    },
+    "answer": "D",
+    "explanation": "acceptEdits mode automatically accepts file edit tool calls for the session, removing the per-edit prompts for a trusted, well-scoped editing task, while still prompting for higher-risk actions like Bash commands. That exactly matches the requirement: fast edits, but keep a gate on shell commands.",
+    "distractors": {
+      "A": "bypassPermissions removes ALL permission prompts, including shell commands, which is riskier than needed and violates the requirement to still review shell commands; it is appropriate only in fully sandboxed/isolated environments.",
+      "B": "plan mode is read-only — Claude would not apply the edits at all, so the rename never happens.",
+      "C": "default still prompts on every edit, so it does not relieve the friction the developer is trying to eliminate."
+    },
+    "tags": [
+      "permissions",
+      "permission-modes",
+      "accept-edits",
+      "settings"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-033",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Claude Code for Continuous Integration",
+    "difficulty": "medium",
+    "stem": "Your CI pipeline runs Claude Code non-interactively to run the test suite and the linter, and you want a least-privilege setup that deterministically limits which shell commands it can execute without a human approving each one. Select the TWO mechanisms that restrict which commands Claude Code may run without prompting.",
+    "options": {
+      "A": "A permissions.allow allowlist in .claude/settings.json enumerating the exact tool patterns permitted (e.g., Bash(npm run test:*), Bash(npm run lint))",
+      "B": "A permissions.deny list in .claude/settings.json that unconditionally blocks specific dangerous commands (e.g., Bash(rm:*), Bash(curl:*))",
+      "C": "A note in CLAUDE.md instructing Claude to only run the test and lint commands and nothing else",
+      "D": "Running the job in bypassPermissions mode so the pipeline never blocks on a prompt"
+    },
+    "answer": [
+      "A",
+      "B"
+    ],
+    "explanation": "settings.json permission rules are the deterministic controls. An allow allowlist grants only the enumerated tool patterns to run without prompting, and a deny list unconditionally blocks specific dangerous commands. Used together they implement least-privilege tool access for an automated, non-interactive run.",
+    "distractors": {
+      "C": "A CLAUDE.md instruction is probabilistic guidance the model may not follow; it does not deterministically restrict which commands can execute.",
+      "D": "bypassPermissions removes all permission checks — the opposite of least privilege — allowing any command to run without prompting."
+    },
+    "tags": [
+      "permissions",
+      "settings",
+      "allow-deny",
+      "least-privilege",
+      "ci-cd"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-034",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Developer Productivity with Claude",
+    "difficulty": "hard",
+    "stem": "Your organization publishes an enterprise-managed policy that denies Bash(curl:*) for all Claude Code users. A project's committed .claude/settings.json lists Bash(curl:*) in its allow rules, and one developer also adds it to their personal .claude/settings.local.json. When that developer runs Claude Code in the project and Claude tries to run curl, what happens?",
+    "options": {
+      "A": "curl runs, because the developer's settings.local.json allow rule is the most specific and wins",
+      "B": "curl runs, because the project's committed .claude/settings.json allow rule grants it to everyone on the team",
+      "C": "curl is denied, because enterprise-managed policy settings sit at the top of the precedence chain and cannot be overridden by project or local allow rules",
+      "D": "Claude prompts the developer, because the conflicting allow and deny rules cancel out"
+    },
+    "answer": "C",
+    "explanation": "Settings precedence runs enterprise-managed policy above all project and user settings, including both the shared .claude/settings.json and the personal .claude/settings.local.json. An enterprise deny rule is authoritative and cannot be overridden by a project or personal allow rule, so curl is denied.",
+    "distractors": {
+      "A": "settings.local.json overrides the shared .claude/settings.json, but neither overrides enterprise-managed policy; specificity does not trump the hierarchy.",
+      "B": "A committed project allow rule grants a tool only in the absence of a higher-precedence deny; the enterprise-managed deny sits above it and wins.",
+      "D": "Rules do not cancel out; the highest-precedence rule (the enterprise deny) governs deterministically rather than falling back to a prompt."
+    },
+    "tags": [
+      "permissions",
+      "settings",
+      "settings-hierarchy",
+      "enterprise-policy",
+      "shared-vs-local"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-035",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "A unit test fails with a stack trace pointing to a single off-by-one error in one utility function. The cause is clear and the fix is confined to that one function. Which Claude Code approach is most appropriate?",
+    "options": {
+      "A": "Enter plan mode first so Claude can explore the whole codebase and present a plan before touching anything",
+      "B": "Execute the fix directly — the change is well-scoped, mechanical, and confined to one function with a clear cause",
+      "C": "Restructure the surrounding module in plan mode to prevent similar bugs in the future",
+      "D": "Delegate the fix to a separate reviewer subagent before making any change"
+    },
+    "answer": "B",
+    "explanation": "Direct execution is the right choice for simple, well-scoped changes with a clear cause — here a single-file, single-function off-by-one that the stack trace already pinpoints. Plan mode exists for large, multi-file, or architecturally ambiguous work; adding it (or extra subagents) here is needless overhead. The simplest approach that works is preferred.",
+    "distractors": {
+      "A": "Plan mode and whole-codebase exploration are overkill for a one-line, well-understood fix whose scope and cause are already clear.",
+      "C": "Restructuring the module is scope creep beyond the reported bug and risks introducing new defects; fix the actual error instead.",
+      "D": "A reviewer subagent adds process overhead with no benefit for a trivial, obvious correction; independent review pays off on ambiguous or high-risk changes, not this one."
+    },
+    "tags": [
+      "planning-mode",
+      "direct-execution",
+      "well-scoped-change",
+      "workflows"
+    ],
+    "source": "original-2026"
   }
 ]

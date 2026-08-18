@@ -2581,22 +2581,38 @@
           "Numbers to Memorize",
           "| Fact | Value |",
           "|------|-------|",
-          "| Questions | 60 (single-select MC: 1",
-          "correct + 3 distractors) |",
-          "| Time limit | 120 min (~2",
-          "min/question) |",
+          "| Questions | ~60 — multiple-choice +",
+          "scenario-based multiple-response",
+          "(\"choose N\"; item says how many) |",
+          "| Time limit | 120 min exam (~135 min",
+          "total seat time) |",
           "| Passing score | 720 / 1000 (scaled,",
-          "not a percentage) |",
-          "| Scenarios per exam | 4 drawn at",
-          "random from a pool of 6 confirmed"
+          "not a percentage) · unanswered =",
+          "incorrect, no guessing penalty |"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "(possibly 8 — see below) |",
-          "| Delivery | Online-proctored,",
-          "closed-book (Skilljar) |",
+          "| Scenarios per exam | 4 drawn at",
+          "random from a pool of exactly 6 (see",
+          "below) |",
+          "| Delivery | Pearson VUE-proctored",
+          "(OnVUE online or in-person),",
+          "closed-book · register via Skilljar |",
+          "| Cost | $125 (raised from $99 on",
+          "2026-06-30) |",
+          "| Validity | 12 months (free",
+          "non-proctored renewal) · retake waits",
+          "14/30/90 days, max 4 / 12 mo |",
+          "| Prerequisite | none formal, but need"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "a Claude Partner Network org + company",
+          "email |",
           "| Max tools per agent for reliable",
           "selection | 4-5 |",
           "| Batch API cost savings | 50% |",
@@ -2605,46 +2621,49 @@
           "| Batch API max requests per batch |",
           "10,000 |",
           "| Batch API result retention | 29 days",
-          "|"
+          "|",
+          "> Confirmed from the official Exam"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "> Blueprint is community-confirmed,",
-          "not Anthropic-published.",
-          "Cost/validity/prerequisites",
-          "unconfirmed.",
-          "> See exam-research-2026.md. The 6",
-          "confirmed scenario themes: Customer",
+          "Guide v1.0 (July 2026) + Anthropic",
+          "Partner Academy FAQ + Pearson VUE",
+          "> (see exam-research-2026.md). The 6",
+          "official scenario themes: Customer",
           "Support Resolution Agent · Code",
           "> Generation with Claude Code ·",
           "Multi-Agent Research System ·",
-          "Developer Productivity · Claude Code",
-          "for CI ·",
-          "> Structured Data Extraction. A single"
+          "Developer Productivity with Claude ·",
+          "Claude Code",
+          "> for Continuous Integration ·",
+          "Structured Data Extraction. (Earlier",
+          "\"themes 7/8 — Conversational AI /"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "community source (2026-06-10) reports",
-          "the pool grew to 8, adding",
-          "> Conversational AI Architecture",
-          "Patterns + a candidate-reported",
-          "\"Agentic AI Tools\" theme.",
+          "Agentic",
+          "> AI Tools\" have no official backing",
+          "and were dropped.) This is one of 4",
+          "certs: Associate-Foundations,",
+          "> Architect-Foundations (this one),",
+          "Developer-Foundations,",
+          "Architect-Professional.",
           "---",
           "Domain Weight at a Glance",
           "| Domain | % | Focus |",
           "|--------|---|------------|",
-          "| 1. Agentic Architecture &",
-          "Orchestration | 27% | Biggest domain —",
-          "weight study time here |"
+          "| 1. Agentic Architecture &"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Orchestration | 27% | Biggest domain —",
+          "weight study time here |",
           "| 2. Tool Design & MCP Integration |",
           "18% | Tool descriptions, MCP errors,",
           "scoping |",
@@ -2654,48 +2673,84 @@
           "| 4. Prompt Eng & Structured Output |",
           "20% | tool_use vs few-shot, schemas,",
           "tool_choice |",
-          "| 5. Context & Reliability | 15% |",
-          "Escalation, degradation, stratified",
-          "validation |"
+          "| 5. Context & Reliability | 15% |"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Escalation, degradation, stratified",
+          "validation |",
           "---",
           "2026 Currency (don't get caught on",
           "stale facts)",
-          "| Topic | Current state |",
-          "|-------|---------------|",
-          "| Flagship model | Claude Opus 4.8",
-          "(Opus 4.7 also active; Opus 4.1",
-          "retires Aug 5, 2026) |",
-          "| Claude Code plugins | claude plugin",
-          "init <name> scaffolds a plugin; skills",
-          "in .claude/skills auto-load (no",
-          "marketplace/install) |"
+          "> The exam does NOT test model version",
+          "numbers or bleeding-edge tooling —",
+          "it's stable to the",
+          "> June-2026 guide and treats model",
+          "choice as a principle (route",
+          "simple/cheap work to a",
+          "> smaller/faster model; hard reasoning"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "to a frontier model). The rows below",
+          "are real-world state",
+          "> (Aug 2026) so you're not *confused*,",
+          "not extra memorization.",
+          "| Topic | Real-world state (Aug 2026)",
+          "| Exam-relevant? |",
+          "|-------|---------------|---|",
+          "| Flagship model | Claude 5 family:",
+          "Fable 5 (flagship) · Opus 5",
+          "(coding/enterprise default) · Sonnet 5",
+          "· Haiku 4.5. Opus 4.8 now legacy; Opus",
+          "4.1 retired Aug 5, 2026 | Principle"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "only — don't memorize versions |",
+          "| MCP spec | 2026-07-28 rev went",
+          "stateless and deprecates",
+          "Sampling/Roots/Logging | Know",
+          "tools/resources/prompts + two-layer",
+          "errors (the exam-era model), not the",
+          "rewrite |",
+          "| Thinking control | effort (low→max)",
+          "replaced budget_tokens;",
+          "temperature/top_p/top_k 400 on Opus",
+          "4.7+/Sonnet 5 | Minor; principle: let",
+          "it reason before answering |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| Claude Code plugins | claude plugin",
+          "init <name> scaffolds a plugin; skills",
+          "in .claude/skills auto-load (no",
+          "marketplace/install) | Yes |",
           "| Stop / SubagentStop hooks | can",
           "return",
           "hookSpecificOutput.additionalContext",
           "(≤10k chars) to feed context without a",
-          "hook error (v2.1.163) |",
+          "hook error | Yes |",
           "> Model/tooling facts are",
           "time-sensitive — re-verify on",
-          "platform.claude.com/docs and",
-          "> code.claude.com/docs/en/changelog",
-          "before sitting.",
-          "---",
-          "Decision Trees"
+          "platform.claude.com/docs and"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "> code.claude.com/docs/en/changelog",
+          "before sitting.",
+          "---",
+          "Decision Trees",
           "\"How to enforce business rules?\""
         ],
         "type": "text"
@@ -2997,463 +3052,605 @@
         "lines": [
           "copy of the gated official guide, not",
           "a citable Anthropic URL.",
+          "---",
+          "⭐ UPDATE 2026-08-18 — official Exam",
+          "Guide v1.0 found (supersedes",
+          "conflicting claims below)",
+          "A follow-up research pass located and",
+          "read Anthropic's official Exam Guide",
+          "v1.0 (effective July 2026,",
+          "code CCAR-F) on Anthropic's",
+          "Skilljar/Everpath CDN, cross-checked",
+          "against the Partner Academy"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "FAQ",
+          "(anthropic-partners.skilljar.com/page/",
+          "faq-certifications)",
+          "and Pearson VUE",
+          "(pearsonvue.com/us/en/anthropic.html).",
+          "The guide's version history (v0.1 Feb",
+          "→ v0.2 Jun → v1.0 Jul,",
+          "formatting only) means content is",
+          "stable since June 2026. This is a",
+          "stronger source than the",
+          "June-08 pass below. Where they",
+          "conflict, this section wins:"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| Fact | June-08 doc said | ✅",
+          "Corrected (official guide v1.0) |",
+          "|------|------------------|-----------",
+          "------------------------|",
+          "| Item format | single-select only;",
+          "\"multi-select refuted\" |",
+          "multiple-choice AND scenario-based",
+          "multiple-response — \"each item states",
+          "how many responses to select\" (FAQ,",
+          "verbatim) |",
+          "| Scenario pool | 6 confirmed, \"maybe",
+          "8\" | exactly 6; themes 7"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "(Conversational AI) & 8 (Agentic AI",
+          "Tools) have no official backing |",
+          "| Theme names | \"Developer",
+          "Productivity\", \"Claude Code for CI\" |",
+          "\"Developer Productivity with Claude\",",
+          "\"Claude Code for Continuous",
+          "Integration\" |",
+          "| Cost | unconfirmed / \"$99 refuted\" |",
+          "$125 (raised from $99 on 2026-06-30) |",
+          "| Validity | unconfirmed / \"2 yr",
+          "refuted\" | 12 months + free",
+          "non-proctored renewal |"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| Delivery | Skilljar-proctored |",
+          "Pearson VUE (OnVUE online or",
+          "in-person); register via Skilljar |",
+          "| Prerequisite | unconfirmed | none",
+          "formal; must be in a Claude Partner",
+          "Network org + company email |",
+          "| Retake | not stated | 14 / 30 /",
+          "90-day waits; max 4 per rolling 12 mo,",
+          "full fee each |",
+          "| Seat time | 120 min | 120 min exam /",
+          "~135 min seat time |",
+          "| Program | single \"Foundations\" exam"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "| 4 certs: Associate-F ($99) ·",
+          "Architect-F ($125, this one) ·",
+          "Developer-F ($125) ·",
+          "Architect-Professional ($175) |",
+          "Official scenario→primary-domain map",
+          "(from the guide — used to rebalance",
+          "the bank):",
+          "Customer Support Resolution Agent →",
+          "D1/D2/D5 · Code Generation with Claude",
+          "Code → D3/D5 ·",
+          "Multi-Agent Research System → D1/D2/D5",
+          "· Developer Productivity with Claude →"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "D2/D3/D1 ·",
+          "Claude Code for Continuous Integration",
+          "→ D3/D4 · Structured Data Extraction →",
+          "D4/D5.",
+          "Still not printed verbatim in the",
+          "guide: the literal \"60 questions / 120",
+          "minutes\" (strongly",
+          "corroborated by many secondary sources",
+          "— keep as \"~60\"). Domains/weights",
+          "(27/18/20/20/15) and",
+          "720/1000 pass are confirmed verbatim.",
+          "Content currency (Aug 2026, for docs"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "only — the exam does NOT test",
+          "versions): flagship is now the",
+          "Claude 5 family (Fable 5 flagship,",
+          "Opus 5 coding default, Sonnet 5, Haiku",
+          "4.5); Opus 4.8 is legacy;",
+          "Opus 4.1 retired Aug 5. MCP spec",
+          "2026-07-28 went stateless and",
+          "deprecated Sampling/Roots/Logging",
+          "(study the pre-rewrite model the exam",
+          "uses). effort replaced budget_tokens;",
+          "temperature/top_p/top_k",
+          "now 400 on Opus 4.7+/Sonnet 5. See"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          ".claude-plans/2026-08-18-question-bank",
+          "-audit.md",
+          "for the full audit.",
+          "> The sections below are the June-08",
+          "research pass, kept for provenance.",
+          "Trust the table above",
+          "> where they disagree.",
+          "---",
           "TL;DR — what changed since this env",
           "was built (March 2026)",
           "| Area | Status | Action taken |",
-          "|------|--------|--------------|",
+          "|------|--------|--------------|"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "| Domains & weights (27/20/20/18/15) |",
           "✅ Confirmed unchanged | None needed |",
           "| 60 Q / 120 min / 720-1000 pass | ✅",
           "Confirmed | None needed |",
           "| \"60 scenario questions\" framing | ⚠️",
-          "Imprecise | Reframed: MC questions"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "Imprecise | Reframed: MC questions",
           "wrapped in 4-of-6 random scenarios |",
           "| 6 official scenario themes | 🆕 Newly",
           "documented | Quiz/mock-exam now cover",
           "all 6 |",
           "| Model currency (was Opus 4.x",
-          "early-2026) | 🔄 Opus 4.8 now flagship",
+          "early-2026) | 🔄 Opus 4.8 now flagship"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "| Cheat sheet + docs updated |",
           "| Claude Code features | 🔄 New: plugin",
           "init, Stop hook additionalContext |",
           "Domain 3 + Agent SDK docs noted |",
           "| Cost / validity / prerequisites | ❌",
-          "Unconfirmed (claims refuted) |"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "Unconfirmed (claims refuted) |",
           "Deliberately NOT stated as fact |",
           "| Scenario pool size (6 → 8?) | ⚠️",
           "Single-source update (2026-06-10) |",
           "paullarionov repo reports 4-of-8;",
           "themes 7–8 added below |",
-          "Confirmed exam blueprint",
+          "Confirmed exam blueprint"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "Launched: March 12, 2026",
           "Format: 60 multiple-choice questions —",
           "each has one correct response + three",
           "distractors. Single-select",
           "(multi-select claim was refuted).",
-          "Structure: Questions are wrapped in"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "Structure: Questions are wrapped in",
           "scenarios. A candidate is presented 4",
           "scenarios drawn at random from a pool",
           "of 6.",
           "Time limit: 120 minutes (~2",
           "min/question)",
-          "Passing score: 720 / 1000 — a scaled",
+          "Passing score: 720 / 1000 — a scaled"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "score, not a percentage (a verified",
           "passer scored 893/1000, a non-round",
           "number only possible on a scaled",
           "system)",
           "Delivery: Online-proctored,",
-          "closed-book, via Anthropic's Skilljar"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "closed-book, via Anthropic's Skilljar",
           "platform",
           "Confidence: High (≈10 independent",
           "sources + one verified passer + a",
           "hosted copy of the gated official PDF)",
           "The scenario theme pool (you get 4 at",
-          "random)",
+          "random)"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "Customer Support Resolution Agent",
           "Code Generation with Claude Code",
           "Multi-Agent Research System",
           "Developer Productivity",
           "Claude Code for CI",
-          "Structured Data Extraction"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "Structured Data Extraction",
           "Conversational AI Architecture",
           "Patterns ⚠️ — multi-turn context",
           "management, instruction",
           "persistence across turns, memory",
           "strategies, safe tool execution,",
-          "ambiguous/conflicting input",
+          "ambiguous/conflicting input"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "Agentic AI Tools ⚠️ —",
           "candidate-reported on real sittings;",
           "no content documented anywhere yet",
           "> ⚠️ Themes 7–8 come from a single",
           "community source",
-          "(paullarionov/claude-certified-archite"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "(paullarionov/claude-certified-archite",
           "ct,",
           "> checked 2026-06-10), which states",
           "the draw is 4 of 8 — vs the 4-of-6 our",
           "earlier",
           "> multi-source pass confirmed. Theme 7",
-          "is substantiated there with 16",
+          "is substantiated there with 16"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "practice questions;",
           "> theme 8 is candidate-reported with",
           "no content. Possible pool expansion",
           "after launch.",
           "> Study implication: prepare for all",
-          "themes; theme 7 overlaps heavily with"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "themes; theme 7 overlaps heavily with",
           "Domains 1 & 5.",
           "Domains & weights (CONFIRMED — match",
           "this env exactly)",
           "| # | Domain | Weight |",
           "|---|--------|--------|",
-          "| 1 | Agentic Architecture &",
+          "| 1 | Agentic Architecture &"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "Orchestration | 27% |",
           "| 2 | Claude Code Configuration &",
           "Workflows | 20% |",
           "| 3 | Prompt Engineering & Structured",
           "Output | 20% |",
-          "| 4 | Tool Design & MCP Integration |"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "| 4 | Tool Design & MCP Integration |",
           "18% |",
           "| 5 | Context Management & Reliability",
           "| 15% |",
           "> Note: this env historically ordered",
           "them 1/2/3/4/5 = AgenticArch / MCP /",
-          "ClaudeCode / Prompt / Context.",
+          "ClaudeCode / Prompt / Context."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "> The weights are identical regardless",
           "of ordering. Study-time priority",
           "should track the",
           "> weights: Agentic Architecture (27%)",
           "is the single heaviest domain — a",
-          "verified passer"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "verified passer",
           "> confirmed real-exam emphasis tracks",
           "the published weights.",
           "Content currency (study to 2026",
           "reality)",
           "Models",
-          "Claude Opus 4.8 — current flagship",
+          "Claude Opus 4.8 — current flagship"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "(launched May 28, 2026; on Claude API,",
           "Bedrock, Vertex, Foundry)",
           "Claude Opus 4.7 — active (April 16,",
           "2026)",
           "Claude Opus 4.1 — deprecated June 5,",
-          "2026, retires August 5, 2026; migrate"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "2026, retires August 5, 2026; migrate",
           "to Opus 4.8",
           "Source:",
           "platform.claude.com/docs/en/about-clau",
           "de/model-deprecations",
           "(primary)",
-          "Claude Code (primary-sourced, but",
+          "Claude Code (primary-sourced, but"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "time-sensitive — changelog moves",
           "weekly)",
           "Skill/plugin auto-loading: claude",
           "plugin init <name> scaffolds a plugin;",
           "skills in",
-          ".claude/skills dirs auto-load as"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          ".claude/skills dirs auto-load as",
           "<name>@skills-dir with no marketplace",
           "or install step (May 2026).",
           "Source:",
           "code.claude.com/docs/en/plugins",
           "Stop / SubagentStop hooks can now",
-          "return",
+          "return"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "hookSpecificOutput.additionalContext",
           "to feed",
           "Claude context and keep the turn going",
           "without being labeled a hook error",
           "(v2.1.163, June 2026;",
-          "additionalContext capped at 10,000"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "additionalContext capped at 10,000",
           "chars). Source:",
           "code.claude.com/docs/en/changelog",
           "Practice questions & sample material",
           "> ⚠️ NDA: Real exam questions are",
           "confidential. Everything below is",
-          "community practice",
+          "community practice"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "> material — useful for drilling",
           "concepts, but never assume any item is",
           "an actual exam question.",
           "> The questions in this repo's quiz/",
           "are original, exam-accurate practice",
-          "written to match"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "written to match",
           "> the blueprint, not reproductions of",
           "real items.",
           "No official Anthropic public sample",
           "questions were found outside the gated",
           "Skilljar portal.",
-          "paullarionov/claude-certified-architec",
+          "paullarionov/claude-certified-architec"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "t",
           "(GitHub, added 2026-06-10) —",
           "3,400-line study guide",
           "\"based on the official exam guide\",",
           "translated into 10 languages, with 88",
-          "practice questions"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "practice questions",
           "(12 worked examples + 76-question",
           "practice test w/ interactive HTML",
           "version), 4 practical",
           "exercises, an out-of-scope topic list,",
           "and the official Skilljar",
-          "access-request link.",
+          "access-request link."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "Its 88 questions have been imported",
           "into this repo's quiz/bank/",
           "(\"source\":",
           "\"paullarionov/claude-certified-archite",
           "ct\"),",
-          "deduplicated against our originals."
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "deduplicated against our originals.",
           "daronyondem/claude-architect-exam-guid",
           "e",
           "(GitHub) — strongest community study",
           "guide;",
           "explicitly NDA-clean (\"No exam",
-          "questions are included, paraphrased,",
+          "questions are included, paraphrased,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "or hinted at\"); teaches",
           "11 interconnected knowledge areas that",
           "map onto the 5 domains.",
           "claudecertifications.com/claude-certif",
           "ied-architect/practice-questions",
-          "— community practice"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "— community practice",
           "bank with domain filters.",
           "pub.towardsai.net — a \"60-question",
           "practice exam with explanations\"",
           "(community blog).",
           "Other community repos:",
-          "OlivierAlter/...,",
+          "OlivierAlter/...,"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "jamesbuckett/ccaf-...,",
           "dnacenta/claude-certified-architect.",
           "daronyondem's 11 knowledge areas",
           "(useful cross-check against the 5",
           "domains)",
-          "API fundamentals/output control · tool"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "API fundamentals/output control · tool",
           "interface design · error handling in",
           "agent tools ·",
           "structured data extraction ·",
           "conversation context management ·",
           "system prompt engineering · MCP ·",
-          "agentic patterns/multi-agent ·",
+          "agentic patterns/multi-agent ·"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "customer service workflows · Claude",
           "Code & Agent SDK ·",
           "evaluation/batch processing.",
           "Out-of-scope topics (per the",
           "paullarionov guide — don't burn study",
-          "time here)"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "time here)",
           "Fine-tuning/custom training · API",
           "auth, billing, account management ·",
           "language/framework",
           "implementation details ·",
           "deploying/hosting MCP servers (infra,",
-          "networking, containers) · Claude's",
+          "networking, containers) · Claude's"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "internal architecture/training/weights",
           "· Constitutional AI, RLHF,",
           "safety-training methodology ·",
           "embeddings & vector DBs · computer use",
           "· vision/image analysis ·",
-          "streaming/SSE · rate limits,"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "streaming/SSE · rate limits,",
           "quotas, cost math · OAuth/key rotation",
           "· cloud-provider-specific config ·",
           "benchmarks/model",
           "comparisons · prompt-caching internals",
           "(know it exists, nothing more) ·",
-          "tokenization specifics.",
+          "tokenization specifics."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "Tips from people who passed",
           "Kishor Kukreja (Medium) — passed",
           "893/1000; first-hand account confirms",
           "the full",
           "blueprint (5 domains, 27/20/20/18/15,",
-          "720/1000) and that real emphasis"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "720/1000) and that real emphasis",
           "tracks the published",
           "weights → weight study time toward the",
           "27% Agentic Architecture domain.",
           "See docs/tips-from-passers.md for the",
           "distilled, actionable tips + study",
-          "plan.",
+          "plan."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "Canonical study resources (primary",
           "first)",
           "Anthropic docs (primary):",
           "platform.claude.com/docs (Claude",
           "Developer Platform, prompt",
-          "engineering, models),"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "engineering, models),",
           "code.claude.com/docs (Claude Code —",
           "config, plugins, hooks, changelog),",
           "Agent SDK docs, Model Context Protocol",
           "spec.",
           "Anthropic learning:",
-          "anthropic.com/learn (courses +",
+          "anthropic.com/learn (courses +"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "certificates of completion).",
           "Note: anthropic.com/academy returns",
           "404; the live page is /learn.",
           "Official exam guide: gated at",
           "anthropic.skilljar.com/claude-certifie",
-          "d-architect-foundations-access-request"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "d-architect-foundations-access-request",
           ".",
           "Free Anthropic Academy courses most",
           "relevant to the blueprint (full",
           "13-course list in the",
           "paullarionov README): *Building with",
-          "the Claude API*, *Claude Code in",
+          "the Claude API*, *Claude Code in"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "Action*, *Intro to MCP*,",
           "*MCP: Advanced Topics*, *Introduction",
           "to Agent Skills* — all at",
           "anthropic.skilljar.com.",
           "Caveats & open questions",
-          "No public Anthropic primary source for"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "No public Anthropic primary source for",
           "the blueprint — established by strong",
           "cross-source",
           "consensus + one hosted copy of the",
           "Confidential exam-guide PDF. Treat",
           "percentages as",
-          "authoritative-by-consensus.",
+          "authoritative-by-consensus."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "Cost UNRESOLVED — \"$99\" and \"free for",
           "first 5,000 partners\" both refuted",
           "(0-3). Do not",
           "state a price. (The paullarionov",
           "README re-asserts both figures plus",
-          "\"restricted to Anthropic"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "\"restricted to Anthropic",
           "Partner Network members\" as of 2026-06",
           "— still a single community source,",
           "still not Anthropic.)",
           "Validity period UNRESOLVED — \"2 years\"",
           "refuted.",
-          "Prerequisites UNRESOLVED — \"6 months",
+          "Prerequisites UNRESOLVED — \"6 months"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "production experience\" refuted;",
           "whether any",
           "prerequisite exists is unknown.",
           "Model/tooling currency claims are",
           "primary-sourced but time-sensitive",
-          "(Opus 4.1 retires"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "(Opus 4.1 retires",
           "Aug 5 2026; Claude Code changelog",
           "moves weekly). Re-verify before each",
           "exam sitting.",
           "Sources (selected)",
           "https://www.claudecertifiedarchitects.",
-          "com/cca-exam-guide/",
+          "com/cca-exam-guide/"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "https://dev.to/aws-builders/the-claude",
           "-certified-architect-exam-5-domains-6-",
           "scenarios-and-everything-you-need-to-k",
           "now-4le3",
           "https://medium.com/@kishorkukreja/i-pa",
-          "ssed-anthropics-claude-certified-archi"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "ssed-anthropics-claude-certified-archi",
           "tect-foundations-exam-with-a-score-of-",
           "893-1000-2206c27efd6c",
           "https://github.com/daronyondem/claude-",
           "architect-exam-guide",
           "https://github.com/paullarionov/claude",
-          "-certified-architect",
-          "https://platform.claude.com/docs/en/ab",
-          "out-claude/model-deprecations",
-          "https://code.claude.com/docs/en/plugin",
-          "s",
-          "https://code.claude.com/docs/en/change",
-          "log"
+          "-certified-architect"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "https://platform.claude.com/docs/en/ab",
+          "out-claude/model-deprecations",
+          "https://code.claude.com/docs/en/plugin",
+          "s",
+          "https://code.claude.com/docs/en/change",
+          "log",
           "https://www.anthropic.com/learn",
           "https://claudecertifications.com/claud",
           "e-certified-architect/practice-questio",
@@ -3951,33 +4148,47 @@
           "Snapshot — the confirmed blueprint",
           "| Fact | Value |",
           "|------|-------|",
-          "| Questions | 60, single-select",
-          "multiple choice (1 correct + 3"
+          "| Questions | ~60 — multiple choice +",
+          "scenario-based multiple-response"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "distractors) |",
-          "| Time | 120 minutes (~2 min/question)",
+          "(\"choose N\"; each item says how many)",
           "|",
+          "| Time | 120 minutes exam (~135 min",
+          "seat time) |",
           "| Passing score | 720 / 1000 — scaled",
-          "score, *not* a percentage |",
+          "score, *not* a percentage · unanswered",
+          "= incorrect (no guessing penalty) |",
           "| Structure | Questions wrapped in 4",
           "scenarios drawn at random from a pool",
-          "of 6 |",
-          "| Delivery | Online-proctored,",
-          "closed-book, via Skilljar |",
-          "| Launched | March 12, 2026 |",
-          "| Cost / validity / prerequisites |"
+          "of exactly 6 |",
+          "| Delivery | Pearson VUE-proctored",
+          "(OnVUE online or in-person test"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "Unconfirmed — see Caveats (§7) |",
+          "center), closed-book · register via",
+          "Skilljar |",
+          "| Cost | $125 (raised from $99 on",
+          "2026-06-30) |",
+          "| Validity | 12 months + free",
+          "non-proctored renewal · retakes wait",
+          "14/30/90 days, max 4 per 12 mo |",
+          "| Prerequisite | none formal; requires",
+          "a Claude Partner Network org + company",
+          "email |",
           "Domain weights (study-time priority",
-          "follows the weights):",
+          "follows the weights):"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "| # | Domain | Weight | Priority |",
           "|---|--------|--------|----------|",
           "| 1 | Agentic Architecture &",
@@ -3986,15 +4197,15 @@
           "| 2 | Claude Code Configuration &",
           "Workflows | 20% | |",
           "| 3 | Prompt Engineering & Structured",
-          "Output | 20% | |"
+          "Output | 20% | |",
+          "| 4 | Tool Design & MCP Integration |",
+          "18% | |",
+          "| 5 | Context Management & Reliability"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "| 4 | Tool Design & MCP Integration |",
-          "18% | |",
-          "| 5 | Context Management & Reliability",
           "| 15% | Smallest, still ~9 questions |",
           "> ~720/1000 scaled ≈ you cannot afford",
           "to punt a whole domain. Even the 15%",
@@ -4003,15 +4214,15 @@
           "you skip it.",
           "---",
           "What people who passed say",
-          "Distilled, actionable takeaways. Where"
+          "Distilled, actionable takeaways. Where",
+          "a point comes from the one verified",
+          "first-hand account,",
+          "it's attributed to Kishor Kukreja"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "a point comes from the one verified",
-          "first-hand account,",
-          "it's attributed to Kishor Kukreja",
           "(893/1000); the rest is cross-source",
           "consensus.",
           "Trust the published weights — they",
@@ -4020,29 +4231,36 @@
           "confirms exam emphasis tracks the",
           "27/20/20/18/15 blueprint. So",
           "front-load Agentic",
-          "Architecture (27%); it's the single"
+          "Architecture (27%); it's the single",
+          "biggest lever on your score.",
+          "Prepare for all 6 scenario themes —",
+          "you can't predict your 4. You get a"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "biggest lever on your score.",
-          "Prepare for all 6 scenario themes —",
-          "you can't predict your 4. You get a",
           "random 4-of-6:",
           "*Customer Support Resolution Agent,",
           "Code Generation with Claude Code,",
           "Multi-Agent Research",
-          "System, Developer Productivity, Claude",
-          "Code for CI, Structured Data",
-          "Extraction.* A theme you",
-          "skipped could be one of your four.",
-          "Drill every theme to baseline."
+          "System, Developer Productivity with",
+          "Claude, Claude Code for Continuous",
+          "Integration, Structured",
+          "Data Extraction.* A theme you skipped",
+          "could be one of your four. Drill every",
+          "theme to baseline.",
+          "Watch for multiple-response items.",
+          "Some questions ask you to *select N*"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "answers (the item",
+          "tells you how many) — a",
+          "partially-correct set scores as wrong,",
+          "so read the count and get all of them.",
           "Expect \"best answer among plausible",
           "options,\" not trick recall. Several",
           "options will be",
@@ -4050,16 +4268,16 @@
           "for the stated constraints. The skill",
           "is ranking good vs.",
           "better, not spotting an obviously",
-          "wrong answer.",
-          "Read the scenario constraints, not",
-          "just the question. The deciding detail",
-          "is usually in the",
-          "scenario framing: \"must never violate"
+          "wrong answer."
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Read the scenario constraints, not",
+          "just the question. The deciding detail",
+          "is usually in the",
+          "scenario framing: \"must never violate",
           "policy,\" \"results aren't blocking,\"",
           "\"data is sometimes",
           "absent.\" The right answer changes with",
@@ -4067,16 +4285,16 @@
           "Know the commonly-confused",
           "distinctions cold. These are where the",
           "suboptimal distractors",
-          "live:",
-          "| You'll be tested on telling apart… |",
-          "The discriminator |",
-          "|---|---|",
-          "| Slash commands vs. Skills | Commands"
+          "live:"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "| You'll be tested on telling apart… |",
+          "The discriminator |",
+          "|---|---|",
+          "| Slash commands vs. Skills | Commands",
           "= user-invoked prompt shortcuts;",
           "Skills = model-invoked capabilities",
           "(frontmatter: context: fork,",
@@ -4084,16 +4302,16 @@
           "| tool_use vs. few-shot examples |",
           "tool_use = structured,",
           "machine-parseable, deterministic",
-          "schema; few-shot = probabilistic",
-          "shaping of free text |",
-          "| Explicit vs. implicit escalation |",
-          "Explicit = defined rules/prerequisite",
-          "gates; implicit = sentiment/confidence"
+          "schema; few-shot = probabilistic"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "shaping of free text |",
+          "| Explicit vs. implicit escalation |",
+          "Explicit = defined rules/prerequisite",
+          "gates; implicit = sentiment/confidence",
           "guesses (an anti-pattern) |",
           "| MCP Resources vs. Tools | Resource =",
           "model READS data (static/semi-static);",
@@ -4101,16 +4319,16 @@
           "effects) |",
           "It's closed-book. No docs, no this",
           "cheat sheet during the exam.",
-          "Internalize the numbers and",
-          "decision trees in",
-          "docs/exam-cheat-sheet.md until they're",
-          "reflexes.",
-          "Honesty check: beyond Kukreja, public"
+          "Internalize the numbers and"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "decision trees in",
+          "docs/exam-cheat-sheet.md until they're",
+          "reflexes.",
+          "Honesty check: beyond Kukreja, public",
           "write-ups are thin. Treat secondhand",
           "\"tips\" blogs as",
           "directional, not gospel — the",
@@ -4118,16 +4336,16 @@
           "the solid ground.",
           "---",
           "Time management",
-          "You have 120 minutes for 60 questions",
-          "= ~2 minutes each. That's comfortable",
-          "*if* you don't",
-          "stall.",
-          "Budget per scenario, not just per"
+          "You have 120 minutes for 60 questions"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "= ~2 minutes each. That's comfortable",
+          "*if* you don't",
+          "stall.",
+          "Budget per scenario, not just per",
           "question. 4 scenarios × ~15 questions",
           "≈ ~30 min per",
           "scenario. Glance at the clock at each",
@@ -4135,16 +4353,16 @@
           "35+ min on one,",
           "speed up.",
           "Flag and return. If a question isn't",
-          "obvious in ~90 seconds, pick your best",
-          "guess, flag it,",
-          "and move on. Unanswered questions",
-          "score zero — never leave a flag",
-          "unanswered at the end. Bank"
+          "obvious in ~90 seconds, pick your best"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "guess, flag it,",
+          "and move on. Unanswered questions",
+          "score zero — never leave a flag",
+          "unanswered at the end. Bank",
           "the easy points first, then spend",
           "leftover time on flags.",
           "Don't overthink the scenario framing.",
@@ -4152,16 +4370,16 @@
           "frustrated…\") is dressing.",
           "Extract the *constraint* (determinism",
           "required? non-blocking? least",
-          "privilege?) and answer to",
-          "that. Don't invent requirements the",
-          "scenario didn't state.",
-          "First instinct on best-practice",
-          "questions. When you've studied the"
+          "privilege?) and answer to"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "that. Don't invent requirements the",
+          "scenario didn't state.",
+          "First instinct on best-practice",
+          "questions. When you've studied the",
           "pattern, your first read",
           "is usually right. Re-reading invites",
           "talking yourself into a plausible",
@@ -4169,16 +4387,16 @@
           "Reserve the last ~10 minutes to clear",
           "flags and confirm nothing is blank.",
           "---",
-          "Common gotchas / traps",
-          "The exam is built on",
-          "reasonable-but-suboptimal distractors.",
-          "Internalize these patterns and",
-          "most traps collapse:"
+          "Common gotchas / traps"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "The exam is built on",
+          "reasonable-but-suboptimal distractors.",
+          "Internalize these patterns and",
+          "most traps collapse:",
           "Deterministic over probabilistic when",
           "determinism is required. If the",
           "scenario says a rule",
@@ -4186,16 +4404,16 @@
           "identity, security, compliance), the",
           "answer is a",
           "deterministic mechanism — hooks,",
-          "prerequisite gates, structured output",
-          "/ tool_use schema —",
-          "not \"add an instruction to the system",
-          "prompt\" or \"give a few-shot example.\"",
-          "Prompt"
+          "prerequisite gates, structured output"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "/ tool_use schema —",
+          "not \"add an instruction to the system",
+          "prompt\" or \"give a few-shot example.\"",
+          "Prompt",
           "instructions are probabilistic;",
           "they're the trap option here.",
           "Inverse trap: if there's *no* hard",
@@ -4203,16 +4421,16 @@
           "is over-engineering —",
           "a prompt instruction is the better",
           "(lower-effort) answer.",
-          "Least privilege. Prefer the option",
-          "that grants the narrowest tool access",
-          "/ scope /",
-          "permission that still does the job.",
-          "\"Give the agent admin / all tools\" is"
+          "Least privilege. Prefer the option"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "that grants the narrowest tool access",
+          "/ scope /",
+          "permission that still does the job.",
+          "\"Give the agent admin / all tools\" is",
           "almost always the",
           "distractor. (Also: 4–5 tools max for",
           "reliable selection; 18+ degrades it.)",
@@ -4220,16 +4438,16 @@
           "structured data extraction, make",
           "fields that may be",
           "absent nullable / optional. Requiring",
-          "a non-nullable field when data is",
-          "sometimes missing",
-          "*drives hallucination* — the model",
-          "invents a value. That's a classic",
-          "wrong answer dressed up as"
+          "a non-nullable field when data is"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "sometimes missing",
+          "*drives hallucination* — the model",
+          "invents a value. That's a classic",
+          "wrong answer dressed up as",
           "\"strict schema = good.\"",
           "Graceful degradation over hard-fail.",
           "In multi-agent / pipeline scenarios,",
@@ -4237,16 +4455,16 @@
           "the failure and continue (partial",
           "results, retry-with-feedback,",
           "fallback) over terminate the",
-          "whole workflow on one subagent's",
-          "failure. Silently swallowing errors",
-          "(empty result = success)",
-          "is *also* wrong — degrade gracefully",
-          "*and* surface the error."
+          "whole workflow on one subagent's"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "failure. Silently swallowing errors",
+          "(empty result = success)",
+          "is *also* wrong — degrade gracefully",
+          "*and* surface the error.",
           "Explicit escalation over inferred",
           "signals. Escalate on defined rules /",
           "prerequisite",
@@ -4254,16 +4472,16 @@
           "or sentiment analysis (poorly",
           "calibrated, don't",
           "correlate with complexity).",
-          "Provenance & position. Prefer",
-          "structured claim→source mappings over",
-          "\"the model will cite",
-          "sources\"; put key info at the",
-          "beginning of context, not buried in"
+          "Provenance & position. Prefer"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "structured claim→source mappings over",
+          "\"the model will cite",
+          "sources\"; put key info at the",
+          "beginning of context, not buried in",
           "the middle.",
           "> Pattern to memorize: when two",
           "options both \"work,\" pick the one that",
@@ -4271,16 +4489,16 @@
           "> least-privilege, fails gracefully,",
           "and matches the scenario's stated",
           "constraint.",
-          "---",
-          "A study plan (keyed to this repo)",
-          "Weighted by domain importance. Repo",
-          "resources: docs/domainN-*.md, the",
-          "deep-dives"
+          "---"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "A study plan (keyed to this repo)",
+          "Weighted by domain importance. Repo",
+          "resources: docs/domainN-*.md, the",
+          "deep-dives",
           "(mcp-deep-dive.md,",
           "agent-sdk-deep-dive.md),",
           "docs/exam-cheat-sheet.md, the quiz",
@@ -4288,16 +4506,16 @@
           "(quiz/practice-questions.md,",
           "quiz/scenario-questions.md,",
           "quiz/flashcards.md,",
-          "quiz/bank/*.json), and the slash",
-          "commands /study, /quiz, /weak-spots,",
-          "/flashcards,",
-          "/cheat-sheet, /save-progress.",
-          "Ordering by weight (spend study time"
+          "quiz/bank/*.json), and the slash"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "commands /study, /quiz, /weak-spots,",
+          "/flashcards,",
+          "/cheat-sheet, /save-progress.",
+          "Ordering by weight (spend study time",
           "roughly in proportion)",
           "| Order | Focus | Repo resource | Why",
           "|",
@@ -4305,16 +4523,16 @@
           "|",
           "| 1 | Agentic Architecture (27%) |",
           "docs/domain1-*.md +",
-          "agent-sdk-deep-dive.md | Biggest",
-          "domain; orchestration, loops,",
-          "escalation, multi-agent |",
-          "| 2 | Claude Code Config (20%) |",
-          "docs/domain3-*.md | Commands vs"
+          "agent-sdk-deep-dive.md | Biggest"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "domain; orchestration, loops,",
+          "escalation, multi-agent |",
+          "| 2 | Claude Code Config (20%) |",
+          "docs/domain3-*.md | Commands vs",
           "skills, hooks, CLAUDE.md hierarchy, CI",
           "(-p) |",
           "| 3 | Prompt Eng & Structured Output",
@@ -4322,16 +4540,16 @@
           "nullable schemas, position-aware",
           "prompting |",
           "| 4 | Tool Design & MCP (18%) |",
-          "docs/domain2-*.md + mcp-deep-dive.md |",
-          "Resources vs tools, scopes, least",
-          "privilege, community vs custom |",
-          "| 5 | Context & Reliability (15%) |",
-          "docs/domain5-*.md | Compaction,"
+          "docs/domain2-*.md + mcp-deep-dive.md |"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Resources vs tools, scopes, least",
+          "privilege, community vs custom |",
+          "| 5 | Context & Reliability (15%) |",
+          "docs/domain5-*.md | Compaction,",
           "scratchpads, error categories,",
           "graceful degradation |",
           "> Note: this repo's *file numbering*",
@@ -4339,16 +4557,16 @@
           "differs from the",
           "> blueprint *weight* order above — the",
           "weights are what matter; file names",
-          "are just labels.",
-          "Weekly rhythm (suggested ~2–3 weeks",
-          "out)",
-          "Read the domain doc, then drill its",
-          "quiz bank (/quiz filtered to that"
+          "are just labels."
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Weekly rhythm (suggested ~2–3 weeks",
+          "out)",
+          "Read the domain doc, then drill its",
+          "quiz bank (/quiz filtered to that",
           "domain, or the",
           "quiz/bank/domainN.json items).",
           "Run /weak-spots after each domain to",
@@ -4356,16 +4574,16 @@
           "back.",
           "/flashcards daily for the numbers and",
           "distinctions (closed-book = these must",
-          "be reflex).",
-          "/study for guided, profile-aware",
-          "sessions; /save-progress at the end of",
-          "every",
-          "session so the profile tracks your"
+          "be reflex)."
         ],
         "type": "text"
       },
       {
         "lines": [
+          "/study for guided, profile-aware",
+          "sessions; /save-progress at the end of",
+          "every",
+          "session so the profile tracks your",
           "trend.",
           "Calibrate with a timed full-length run",
           "Take a timed, 60-question, 4-scenario",
@@ -4373,16 +4591,16 @@
           "120-minute clock, no docs",
           "open. Use /quiz in a full-length,",
           "scenario-mixed mode (a /mock-exam mode",
-          "if your env exposes",
-          "one; otherwise chain",
-          "quiz/scenario-questions.md +",
-          "quiz/practice-questions.md to ~60",
-          "items and"
+          "if your env exposes"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "one; otherwise chain",
+          "quiz/scenario-questions.md +",
+          "quiz/practice-questions.md to ~60",
+          "items and",
           "set a timer). Score it against",
           "720/1000-equivalent, then send the",
           "misses to /weak-spots. Do this",
@@ -4390,16 +4608,16 @@
           "the final week.",
           "Final week",
           "One full timed mock; review *every*",
-          "miss until you can explain why the",
-          "right answer beats the",
-          "distractor.",
-          "/weak-spots → spend the week's",
-          "remaining time only on red domains."
+          "miss until you can explain why the"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "right answer beats the",
+          "distractor.",
+          "/weak-spots → spend the week's",
+          "remaining time only on red domains.",
           "Re-read docs/exam-cheat-sheet.md",
           "decision trees daily; they encode the",
           "trap logic in §4.",
@@ -4407,33 +4625,33 @@
           "themes and the 4 commonly-confused",
           "distinctions",
           "cold.",
-          "Day before",
+          "Day before"
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
           "Light review only — flashcards +",
           "cheat-sheet skim. No cramming new",
           "material.",
-          "Re-verify currency (model lineup,"
+          "Re-verify currency (model lineup,",
+          "Claude Code features — see Caveats).",
+          "Confirm Pearson VUE / OnVUE logistics:",
+          "working webcam/mic, quiet room, ID",
+          "ready, stable",
+          "connection, system check passed.",
+          "Closed-book means clear your desk.",
+          "Sleep. ~2 min/question rewards a calm,",
+          "rested read of each scenario."
         ],
         "type": "text"
       },
       {
         "lines": [
-          "Claude Code features — see Caveats).",
-          "Confirm Skilljar logistics: working",
-          "webcam/mic, quiet room, ID ready,",
-          "stable connection,",
-          "proctoring requirements met.",
-          "Closed-book means clear your desk.",
-          "Sleep. ~2 min/question rewards a calm,",
-          "rested read of each scenario.",
           "---",
           "Canonical resources (primary first)",
           "From docs/exam-research-2026.md:",
-          "Anthropic docs (primary):"
-        ],
-        "type": "text"
-      },
-      {
-        "lines": [
+          "Anthropic docs (primary):",
           "platform.claude.com/docs — Claude",
           "Developer Platform, prompt",
           "engineering, models,",
@@ -4441,16 +4659,16 @@
           "code.claude.com/docs — Claude Code",
           "config, plugins, hooks, changelog",
           "(moves weekly).",
-          "Agent SDK docs and the Model Context",
-          "Protocol spec.",
-          "Anthropic learning:",
-          "anthropic.com/learn (courses +",
-          "certificates). *Note:*"
+          "Agent SDK docs and the Model Context"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "Protocol spec.",
+          "Anthropic learning:",
+          "anthropic.com/learn (courses +",
+          "certificates). *Note:*",
           "anthropic.com/academy 404s — the live",
           "page is /learn.",
           "Official exam guide (gated):",
@@ -4458,16 +4676,16 @@
           "d-architect-foundations-access-request",
           ".",
           "Community study guide:",
-          "github.com/daronyondem/claude-architec",
-          "t-exam-guide",
-          "— strongest",
-          "community guide, explicitly NDA-clean",
-          "(\"no exam questions included,"
+          "github.com/daronyondem/claude-architec"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "t-exam-guide",
+          "— strongest",
+          "community guide, explicitly NDA-clean",
+          "(\"no exam questions included,",
           "paraphrased, or",
           "hinted\"); teaches 11 knowledge areas",
           "mapping onto the 5 domains.",
@@ -4475,59 +4693,72 @@
           "Kukreja's Medium post (893/1000) —",
           "confirms the blueprint",
           "and weight emphasis.",
-          "> ⚠️ Real exam questions are under",
-          "NDA. This repo's quiz/ items are",
-          "original, exam-accurate",
-          "> practice matched to the blueprint —",
-          "never reproductions. Never assume any"
+          "> ⚠️ Real exam questions are under"
         ],
         "type": "text"
       },
       {
         "lines": [
+          "NDA. This repo's quiz/ items are",
+          "original, exam-accurate",
+          "> practice matched to the blueprint —",
+          "never reproductions. Never assume any",
           "practice item is an",
           "> actual exam question.",
           "---",
           "Caveats (read before you book)",
-          "No public Anthropic blueprint exists.",
-          "The weights and format are established",
-          "by strong",
-          "cross-source consensus + one hosted",
-          "copy of the gated official PDF —",
-          "authoritative-by-consensus,",
-          "not a citable Anthropic URL.",
-          "Cost is UNCONFIRMED. \"$99\" and \"free"
+          "Now sourced from the official Exam",
+          "Guide v1.0 (July 2026) + Partner",
+          "Academy FAQ + Pearson VUE.",
+          "Weights (27/18/20/20/15) and 720/1000"
         ],
         "type": "text"
       },
       {
         "lines": [
-          "for first 5,000 partners\" were both",
-          "*refuted*. Do not",
-          "assume a price — check Skilljar at",
-          "registration.",
-          "Validity period UNCONFIRMED. \"2 years\"",
-          "was *refuted*. Don't assume how long",
-          "the cert lasts.",
-          "Prerequisites UNCONFIRMED. \"6 months",
-          "production experience\" was *refuted*;",
-          "whether any",
-          "prerequisite exists at all is unknown.",
-          "Content currency is time-sensitive. As"
+          "are confirmed verbatim; the literal",
+          "\"60 questions / 120 min\"",
+          "is strongly corroborated but not",
+          "printed in the guide (treat as \"~60\").",
+          "Cost $125 (raised from $99 on",
+          "2026-06-30). Validity 12 months with a",
+          "free non-proctored",
+          "renewal. No formal prerequisite, but",
+          "you must belong to a Claude Partner",
+          "Network org and",
+          "register with a company email",
+          "(personal emails are rejected)."
         ],
         "type": "text"
       },
       {
         "lines": [
-          "of mid-2026: Claude Opus 4.8 is",
-          "flagship; Opus",
-          "4.1 retires August 5, 2026 (migrate to",
-          "4.8). Claude Code's changelog moves",
-          "weekly. Re-verify",
-          "the model lineup and current Claude",
-          "Code features before each sitting via",
-          "the primary docs in",
-          "§6."
+          "Retakes: 14/30/90-day waits, max 4",
+          "per rolling 12 months, full fee each",
+          "time.",
+          "Delivery is Pearson VUE (OnVUE online",
+          "proctoring or an in-person test",
+          "center) — you register",
+          "through Anthropic Partner Academy",
+          "(Skilljar) but schedule/sit via",
+          "Pearson VUE.",
+          "Content currency (does NOT change what",
+          "the exam tests — it's stable to the",
+          "June-2026 guide)."
+        ],
+        "type": "text"
+      },
+      {
+        "lines": [
+          "Real-world as of Aug 2026: flagship is",
+          "the Claude 5 family (Fable 5, Opus 5,",
+          "Sonnet 5; Haiku",
+          "4.5); Opus 4.8 is legacy, Opus 4.1",
+          "retired Aug 5. The exam tests model",
+          "choice as a *principle*, not",
+          "by version — don't memorize version",
+          "numbers. Re-verify Claude Code",
+          "features before sitting (§6)."
         ],
         "type": "text"
       }

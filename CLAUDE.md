@@ -47,12 +47,18 @@ This project is Julien's personalized study environment for the Claude Certified
 - Studying MCP and Agent SDK patterns more deeply; Domain 1 (27%) is untested — needs a timed mock
 - See `profile/learner.md` for full detail and current confidence levels
 
-## Exam Blueprint (confirmed mid-2026 — community-sourced, see exam-research-2026.md)
-- 60 single-select multiple-choice questions · 120 minutes · **720/1000 scaled** to pass · online-proctored
-- Questions wrapped in scenarios; **4 scenario themes drawn at random per exam** from a pool of
-  **6 confirmed** (possibly **8** — themes 7 "Conversational AI Architecture Patterns" and
-  8 "Agentic AI Tools" are single-source community reports, see exam-research-2026.md)
-- Cost / validity / prerequisites are **unconfirmed** — do not state them as fact
+## Exam Blueprint (confirmed via official Exam Guide v1.0, July 2026 — see exam-research-2026.md)
+- ~60 questions: **multiple-choice AND scenario-based multiple-response** ("choose N") · 120 min
+  (~135 min seat time) · **720 / 1000 scaled** to pass · **Pearson VUE**-proctored (OnVUE online or test center)
+- Questions wrapped in scenarios; **4 drawn at random per exam from a pool of exactly 6**: Customer Support
+  Resolution Agent · Code Generation with Claude Code · Multi-Agent Research System · Developer Productivity
+  with Claude · Claude Code for Continuous Integration · Structured Data Extraction
+  (earlier "themes 7/8" have **no official backing** — dropped)
+- **Cost $125** (raised from $99 on 2026-06-30) · **validity 12 months** (free non-proctored renewal) ·
+  **no formal prerequisite**, but requires a **Claude Partner Network** org + company email
+- One of a **4-cert program**: Associate-Foundations · **Architect-Foundations (this one)** ·
+  Developer-Foundations · Architect-**Professional**
+- Item count (~60) / 120 min are strongly corroborated but not printed verbatim in the guide; weights below are exact
 
 ## Exam Domains & Weights
 1. Agentic Architecture & Orchestration — 27%

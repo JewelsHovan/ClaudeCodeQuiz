@@ -569,7 +569,7 @@
     "id": "d5-022",
     "domain": 5,
     "domain_name": "Context Management & Reliability",
-    "scenario": "Conversational AI Architecture Patterns",
+    "scenario": "Customer Support Resolution Agent",
     "difficulty": "easy",
     "stem": "Over several turns discussing investment strategy, a user stated \"I have a very low risk tolerance\" and later \"I want to maximize my returns.\" They now ask: \"What should I invest in?\" Which approach best ensures the recommendation aligns with the user's actual priority?",
     "options": {
@@ -595,7 +595,7 @@
     "id": "d5-023",
     "domain": 5,
     "domain_name": "Context Management & Reliability",
-    "scenario": "Conversational AI Architecture Patterns",
+    "scenario": "Customer Support Resolution Agent",
     "difficulty": "easy",
     "stem": "In your playlist assistant, users refine their preferences over multiple conversation turns. Two messages after a user said \"I love jazz,\" Claude asks \"What genres do you enjoy?\" What is the most likely cause?",
     "options": {
@@ -622,7 +622,7 @@
     "id": "d5-024",
     "domain": 5,
     "domain_name": "Context Management & Reliability",
-    "scenario": "Conversational AI Architecture Patterns",
+    "scenario": "Customer Support Resolution Agent",
     "difficulty": "medium",
     "stem": "After a 40-minute cooking-assistant session, the conversation reaches 78,000 tokens. The history includes the user's allergies, recipe scaling calculations, clarified cooking terms, and general discussion. You must reduce token usage while preserving important information. Which approach best balances preservation with token reduction?",
     "options": {
@@ -649,7 +649,7 @@
     "id": "d5-025",
     "domain": 5,
     "domain_name": "Context Management & Reliability",
-    "scenario": "Conversational AI Architecture Patterns",
+    "scenario": "Customer Support Resolution Agent",
     "difficulty": "easy",
     "stem": "Users of your conversational assistant report that latency increases and costs rise as conversations exceed 50 turns. What is the primary cause?",
     "options": {
@@ -677,7 +677,7 @@
     "id": "d5-026",
     "domain": 5,
     "domain_name": "Context Management & Reliability",
-    "scenario": "Conversational AI Architecture Patterns",
+    "scenario": "Customer Support Resolution Agent",
     "difficulty": "medium",
     "stem": "Your book-club assistant has accumulated 85,000 tokens of conversation history over three months of weekly sessions. When a user asks \"What did we conclude about the theme of isolation?\", the assistant gives generic answers instead of referencing the previous discussions. What is the most effective approach?",
     "options": {
@@ -704,7 +704,7 @@
     "id": "d5-027",
     "domain": 5,
     "domain_name": "Context Management & Reliability",
-    "scenario": "Conversational AI Architecture Patterns",
+    "scenario": "Customer Support Resolution Agent",
     "difficulty": "medium",
     "stem": "During QA testing, Claude follows your system-prompt guidelines for the first 10-15 turns of a conversation, but later responses begin to deviate. The conversation is still well within token limits. What is the best solution?",
     "options": {
@@ -731,7 +731,7 @@
     "id": "d5-028",
     "domain": 5,
     "domain_name": "Context Management & Reliability",
-    "scenario": "Conversational AI Architecture Patterns",
+    "scenario": "Customer Support Resolution Agent",
     "difficulty": "medium",
     "stem": "Users of your event-planning assistant frequently send requests like \"Book a venue for the party.\" The assistant responds with four or more clarifying questions, and 35% of users abandon the conversation. What approach best improves the clarification-versus-friction trade-off?",
     "options": {
@@ -757,7 +757,7 @@
     "id": "d5-029",
     "domain": 5,
     "domain_name": "Context Management & Reliability",
-    "scenario": "Conversational AI Architecture Patterns",
+    "scenario": "Customer Support Resolution Agent",
     "difficulty": "hard",
     "stem": "Your assistant uses a contractor-persona system prompt. Early turns follow the persona rules, but by turn 7 the assistant is giving generic advice. The whole conversation is only about 2,500 tokens. What is the most likely cause?",
     "options": {
@@ -779,5 +779,63 @@
       "system-prompt"
     ],
     "source": "paullarionov/claude-certified-architect"
+  },
+  {
+    "id": "d5-030",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "An analytics team wants a nightly job that summarizes and categorizes the day's ~8,000 closed support transcripts to populate a quality dashboard that reviewers open the next morning. They are deciding whether to route this workload through the asynchronous Message Batches API instead of the synchronous Messages API. Select the TWO signs that indicate this workload is a good fit for the Message Batches API.",
+    "options": {
+      "A": "The results are not needed until the next morning, so no user is blocked waiting on them",
+      "B": "The job processes thousands of independent records in bulk rather than one interactive request at a time",
+      "C": "Each transcript must be categorized with the lowest possible per-request latency",
+      "D": "The categorization output must stream token-by-token into a live UI as it is produced"
+    },
+    "answer": [
+      "A",
+      "B"
+    ],
+    "explanation": "The Message Batches API is asynchronous (up to a 24-hour processing window) and roughly 50% cheaper, which fits bulk, non-time-sensitive workloads. The deciding question is whether the workflow is blocking: here nobody is waiting on the results until morning (A), and it is a large volume of independent requests processed in bulk for throughput and cost (B). Both are hallmark batch signals.",
+    "distractors": {
+      "C": "A need for the lowest possible per-request latency is an interactive requirement that points to the synchronous Messages API, not the batch path, which trades latency for cost and throughput.",
+      "D": "Streaming output into a live UI requires a blocking, synchronous request; batch jobs return results asynchronously and cannot feed a token-by-token live view."
+    },
+    "tags": [
+      "message-batches-api",
+      "async-processing",
+      "cost-optimization",
+      "workload-fit"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-031",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Customer Support Resolution Agent",
+    "difficulty": "medium",
+    "stem": "Your agent calls an issue_refund tool. Intermittently the call times out or returns HTTP 503 with no body, so the agent retries it. Some customers then receive two refunds, because the original request had actually succeeded but its response was lost in transit. What is the most reliable fix?",
+    "options": {
+      "A": "Add a fixed 5-second delay before every refund call to avoid overloading the service",
+      "B": "Send each refund with a unique idempotency key so the payment service deduplicates retries of the same logical operation",
+      "C": "Stop retrying refund calls entirely and escalate every 503 to a human",
+      "D": "Have the model track which customers it has already refunded this conversation and skip them"
+    },
+    "answer": "B",
+    "explanation": "Timeouts and 503s are transient and safe to retry, but issue_refund is a side-effecting operation, so a retry can execute a second time when only the response was lost. An idempotency key lets the payment service recognize the retry as the same logical operation and return the original result instead of issuing a duplicate. This is the deterministic fix that makes retry-with-backoff safe for non-idempotent actions.",
+    "distractors": {
+      "A": "A fixed delay addresses the wrong root cause; it does not prevent a retry from executing a refund that already succeeded, so duplicates still occur.",
+      "C": "Abandoning retries and escalating every transient 503 over-reacts to a routinely retryable error and needlessly dumps automatable work onto humans; the duplicate problem is solved by idempotency, not by giving up.",
+      "D": "Relying on the model to remember prior refunds is a probabilistic substitute for a deterministic guarantee; that memory is unreliable and does not survive across sessions, retries after a crash, or parallel agents."
+    },
+    "tags": [
+      "retry-backoff",
+      "idempotency",
+      "transient-errors",
+      "reliability"
+    ],
+    "source": "original-2026"
   }
 ]
