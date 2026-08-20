@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="../datamon/">
+<title>DATAMON Audio Audition</title>
+<style>
+:root{color-scheme:dark;--ink:#06101d;--panel:#0c1a2b;--line:#29415c;--paper:#e5edf5;--muted:#8fa5b8;--cyan:#45d7e8;--amber:#f2b35d;--coral:#f36f5b}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#142b42 0,transparent 36%),var(--ink);color:var(--paper);font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}main{max-width:1100px;margin:auto;padding:38px 22px 70px}header{border-left:5px solid var(--cyan);padding-left:18px;margin-bottom:25px}h1{font-size:clamp(28px,5vw,54px);line-height:.95;letter-spacing:-.06em;margin:0 0 12px}.kicker{color:var(--cyan);letter-spacing:.16em;text-transform:uppercase}.lede{color:var(--muted);max-width:720px}.bar,.grid{display:grid;gap:10px}.bar{grid-template-columns:repeat(auto-fit,minmax(145px,1fr));margin:20px 0}.grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.card{background:rgba(12,26,43,.94);border:1px solid var(--line);padding:14px;box-shadow:inset 3px 0 0 var(--accent,var(--cyan))}.card h2{font-size:12px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin:0 0 10px}.card p{color:var(--muted);font-size:12px;min-height:36px}button{width:100%;border:1px solid #395876;background:#11243a;color:var(--paper);font:inherit;padding:10px;cursor:pointer;text-align:left}button:hover,button:focus-visible{outline:none;border-color:var(--cyan);background:#17334b}button.active{border-color:var(--amber);box-shadow:inset 3px 0 0 var(--amber)}.cues{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}pre{white-space:pre-wrap;background:#050b13;border:1px solid var(--line);padding:14px;color:#b9cfdf;max-height:270px;overflow:auto}.amber{--accent:var(--amber)}.coral{--accent:var(--coral)}
+</style>
+</head>
+<body><main>
+<header><div class="kicker">Local review surface · not packaged</div><h1>DATAMON<br>audio audition</h1><div class="lede">Approve tonal direction, cue priority, room-tone seams, and reading comfort. Start audio, compare scenes for 20–30 seconds, then stress the cue mix. Use laptop speakers and headphones.</div></header>
+<div class="bar"><button id="start">▶ Start audio</button><button id="mute">Mute / unmute</button><button id="stress">Run cue stress</button><button id="stop">Stop all</button></div>
+<section class="grid">
+  <article class="card"><h2>Exploration</h2><p>Office region colors plus local room tone.</p><div class="cues"><button data-scene="office-prompt">Prompt</button><button data-scene="office-context">Context</button><button data-scene="library">Library</button><button data-scene="library-reader">Reader</button><button data-scene="battle-room">Battle Room</button><button data-scene="select">Select</button></div></article>
+  <article class="card amber"><h2>Study activities</h2><p>Four related variants—not four unrelated songs.</p><div class="cues"><button data-scene="minigame-matching">Matching</button><button data-scene="minigame-cloze">Cloze</button><button data-scene="minigame-assembly">Assembly</button><button data-scene="minigame-timed">Timed</button></div></article>
+  <article class="card coral"><h2>Battle</h2><p>Domain accents and bounded Agent escalation.</p><div class="cues"><button data-scene="classic-battle-mcp">MCP</button><button data-scene="classic-battle-config">Config</button><button data-scene="classic-battle-prompt">Prompt</button><button data-scene="classic-battle-context">Context</button><button data-scene="agent-battle">Agent</button><button data-scene="agent-boss-3">Boss III</button></div></article>
+  <article class="card"><h2>Foley & outcomes</h2><p>Confirm that footsteps stay below answers and impacts.</p><div class="cues"><button data-cue="footstep" data-surface="carpet">Carpet step</button><button data-cue="footstep" data-surface="wood">Wood step</button><button data-cue="footstep" data-surface="tile">Tile step</button><button data-cue="world.page">Page</button><button data-cue="world.coffee">Coffee</button><button data-cue="world.door">Door</button><button data-cue="result.correct">Correct</button><button data-cue="result.wrong">Wrong</button><button data-cue="agent.blocked">Guardrail</button><button data-cue="agent.phase">Boss phase</button></div></article>
+</section>
+<h2>Diagnostics</h2><pre id="diag">Start audio to inspect the graph.</pre>
+</main>
+<script src="music.js"></script><script src="audio.js"></script>
+<script>
+let muted=false;const diag=document.querySelector('#diag');
+function snapshot(scene){return{state:'overworld',currentMap:scene.startsWith('library')?'library':scene==='battle-room'?'battleRoom':'office'};}
+function refresh(){diag.textContent=JSON.stringify(DatamonAudio.getDiagnostics(),null,2);requestAnimationFrame(refresh)}
+document.querySelector('#start').onclick=()=>{DatamonAudio.init({snapshot:{state:'overworld',currentMap:'office',region:'PROMPT'}});DatamonAudio.unlock()};
+document.querySelector('#mute').onclick=()=>{muted=!muted;DatamonAudio.setMuted(muted)};
+document.querySelector('#stop').onclick=()=>DatamonAudio.reset();
+document.querySelectorAll('[data-scene]').forEach(button=>button.onclick=()=>{document.querySelectorAll('[data-scene]').forEach(b=>b.classList.remove('active'));button.classList.add('active');DatamonAudio.setMusicScene(button.dataset.scene);const s=snapshot(button.dataset.scene);DatamonAudio.setSnapshot({...s,overlay:button.dataset.scene==='library-reader'?'reader':null});DatamonAudio.setMusicScene(button.dataset.scene)});
+document.querySelectorAll('[data-cue]').forEach(button=>button.onclick=()=>DatamonAudio.cue(button.dataset.cue,{surface:button.dataset.surface||'wood',gait:'walk'}));
+document.querySelector('#stress').onclick=()=>['ui.navigate','result.correct','agent.blocked','agent.phase'].forEach((cue,i)=>setTimeout(()=>DatamonAudio.cue(cue),i*160));refresh();
+</script></body></html>

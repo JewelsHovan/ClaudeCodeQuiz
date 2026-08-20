@@ -96,25 +96,25 @@ test.describe("DATAMON original adaptive soundtrack", () => {
     await page.waitForFunction(() => (0,eval)("state") === "dialogue");
     await page.keyboard.press("Escape");
     await page.waitForFunction(() => (0,eval)("state") === "overworld");
-    await waitForMusicScene(page, "office");
+    await waitForMusicScene(page, "office-prompt");
     const startsBefore = await page.evaluate(() => window.DatamonMusic.getDiagnostics().schedulerStarts);
     await page.evaluate(() => {
       window.DatamonMusic.setScene("library");
       window.DatamonMusic.setScene("agent-battle");
-      window.DatamonMusic.setScene("office");
-      window.DatamonMusic.setScene("office");
+      window.DatamonMusic.setScene("office-prompt");
+      window.DatamonMusic.setScene("office-prompt");
       window.__fakeAudio.currentTime += 2;
     });
     await page.waitForTimeout(80);
     diag = await page.evaluate(() => window.DatamonMusic.getDiagnostics());
-    expect(diag.scene).toBe("office");
+    expect(diag.scene).toBe("office-prompt");
     expect(diag.schedulerStarts).toBe(startsBefore);
-    expect(diag.buses).toBe(1);
+    expect(diag.buses).toBe(5);
     expect(diag.retiringBuses).toBe(0);
     expect(diag.activeVoices).toBeGreaterThan(0);
     expect(diag.activeVoices).toBeLessThanOrEqual(diag.limits.voices);
     expect(diag.noiseBuffers).toBeLessThanOrEqual(1);
-    expect(diag.transitions.slice(-3)).toEqual(["library", "agent-battle", "office"]);
+    expect(diag.transitions.slice(-3)).toEqual(["library", "agent-battle", "office-prompt"]);
     expect(await page.evaluate(() => window.__musicLog.ramps.some(r => r.kind === "linear" && r.value === 0.0001))).toBe(true);
     expect(observed.errors).toEqual([]);
     expect(observed.failures).toEqual([]);
@@ -123,16 +123,16 @@ test.describe("DATAMON original adaptive soundtrack", () => {
   test("real game states route exploration, battle, boss, defeat, and bounded victory music", async ({ page }) => {
     const observed = await boot(page);
     await enterOffice(page);
-    await waitForMusicScene(page, "office");
+    await waitForMusicScene(page, "office-prompt");
 
     await page.evaluate(() => { (0,eval)('currentMap = "library"'); });
     await waitForMusicScene(page, "library");
     await page.evaluate(() => { (0,eval)('currentMap = "office"'); });
 
     await page.evaluate(() => {
-      const ge=(0,eval); const target=ge("npcs").find(npc=>npc.type!=="AGENT"); ge("startBattle")(target);
+      const ge=(0,eval); const target=ge("npcs").find(npc=>npc.type==="MCP"); ge("startBattle")(target);
     });
-    await waitForMusicScene(page, "classic-battle");
+    await waitForMusicScene(page, "classic-battle-mcp");
     await page.evaluate(() => { const ge=(0,eval); ge('battle = null'); ge('state = "overworld"'); });
 
     await page.evaluate(() => {
@@ -149,8 +149,12 @@ test.describe("DATAMON original adaptive soundtrack", () => {
     await waitForMusicScene(page, "defeat");
     await page.evaluate(() => { (0,eval)("battle.agentOps").phase="victory"; });
     await waitForMusicScene(page, "victory");
-    await page.evaluate(() => { window.__fakeAudio.currentTime += 20; });
-    await page.waitForTimeout(80);
+    // Advance in bounded scheduler-sized increments; long stalls intentionally rebase
+    // instead of bursting every stale one-shot step into the present.
+    for (let step = 0; step < 28; step++) {
+      await page.evaluate(() => { window.__fakeAudio.currentTime += 0.14; });
+      await page.waitForTimeout(28);
+    }
     let terminal = await page.evaluate(() => window.DatamonMusic.getDiagnostics());
     expect(terminal.oneShotComplete).toBe(true);
     expect(terminal.schedulerActive).toBe(false);
@@ -171,7 +175,7 @@ test.describe("DATAMON original adaptive soundtrack", () => {
   test("global mute works in search and visibility/pagehide clean up voices", async ({ page }) => {
     const observed = await boot(page);
     await enterOffice(page);
-    await waitForMusicScene(page, "office");
+    await waitForMusicScene(page, "office-prompt");
     await page.keyboard.press("f");
     await page.waitForFunction(() => (0,eval)("state") === "search");
     const queryBefore = await page.evaluate(() => (0,eval)("searchQuery"));
@@ -203,7 +207,7 @@ test.describe("DATAMON original adaptive soundtrack", () => {
   test("scheduler activity cannot mutate game, reducer, save, or question state", async ({ page }) => {
     const observed = await boot(page);
     await enterOffice(page);
-    await waitForMusicScene(page, "office");
+    await waitForMusicScene(page, "office-prompt");
     const before = await page.evaluate(() => {
       const ge=(0,eval);
       window.__musicReducerProbe = window.DatamonBattleOps.createEncounter({
@@ -284,7 +288,7 @@ test.describe("DATAMON original adaptive soundtrack", () => {
   test("unlocked office music stays inside the active-scene frame budget", async ({ page }) => {
     const observed = await boot(page);
     await enterOffice(page);
-    await waitForMusicScene(page, "office");
+    await waitForMusicScene(page, "office-prompt");
     const samples = await page.evaluate(count => new Promise(resolve => {
       const values=[]; let previous=performance.now();
       function sample(now){ values.push(now-previous); previous=now; if(values.length>=count) resolve(values); else requestAnimationFrame(sample); }
@@ -295,7 +299,10 @@ test.describe("DATAMON original adaptive soundtrack", () => {
     const diag=await page.evaluate(() => window.DatamonMusic.getDiagnostics());
     expect(p95).toBeLessThanOrEqual(budgets.musicActiveFrameP95Ms);
     expect(diag.schedulerActive).toBe(true);
-    expect(diag.activeVoices).toBeLessThanOrEqual(budgets.musicMaxVoices);
+    expect(diag.musicVoices).toBeLessThanOrEqual(budgets.musicMaxVoices);
+    expect(diag.activeVoices).toBeLessThanOrEqual(budgets.audioMaxVoices);
+    expect(diag.contextCreations).toBeLessThanOrEqual(budgets.audioMaxContexts);
+    expect(diag.decodedBytes).toBeLessThanOrEqual(budgets.audioMaxDecodedBytes);
     expect(observed.errors).toEqual([]);
     expect(observed.failures).toEqual([]);
   });

@@ -1,0 +1,576 @@
+{
+  "aggregateBytes": 450081,
+  "assetCount": 29,
+  "assets": [
+    {
+      "bytes": 48657,
+      "channels": 1,
+      "durationMs": 8000,
+      "file": "battle-roomtone.mp3",
+      "format": "mp3",
+      "gain": 0.16,
+      "id": "ambience.battle-room",
+      "loop": {
+        "endMs": 7999,
+        "startMs": 1
+      },
+      "preload": "scene",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "ambience",
+      "sampleRate": 22050,
+      "sha256": "a77079b6e67c96ac29b50deb99dc8c445833e82d2e02a3d7af395507d51155bd"
+    },
+    {
+      "bytes": 48657,
+      "channels": 1,
+      "durationMs": 8000,
+      "file": "library-roomtone.mp3",
+      "format": "mp3",
+      "gain": 0.16,
+      "id": "ambience.library",
+      "loop": {
+        "endMs": 7999,
+        "startMs": 1
+      },
+      "preload": "scene",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "ambience",
+      "sampleRate": 22050,
+      "sha256": "d2cdd783c4ac2a929a7aa0b1e3616ee1752a04284fda3b7262e44efcf9e3bf77"
+    },
+    {
+      "bytes": 48657,
+      "channels": 1,
+      "durationMs": 8000,
+      "file": "office-roomtone.mp3",
+      "format": "mp3",
+      "gain": 0.16,
+      "id": "ambience.office",
+      "loop": {
+        "endMs": 7999,
+        "startMs": 1
+      },
+      "preload": "scene",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "ambience",
+      "sampleRate": 22050,
+      "sha256": "375d16fc2418e5c4b5b0d5075aaa5d10b536d2ca8643e4fd220fc3c4e335f5b1"
+    },
+    {
+      "bytes": 10628,
+      "channels": 1,
+      "durationMs": 240,
+      "file": "battle-block.wav",
+      "format": "wav",
+      "gain": 0.38,
+      "id": "battle.block",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "battle",
+      "sampleRate": 22050,
+      "sha256": "9fac2bb2f583eb7f4e074b0a9e9e9cca6bc5063399c38c64a67fa79da5e576f5"
+    },
+    {
+      "bytes": 16802,
+      "channels": 1,
+      "durationMs": 380,
+      "file": "battle-faint.wav",
+      "format": "wav",
+      "gain": 0.38,
+      "id": "battle.faint",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "battle",
+      "sampleRate": 22050,
+      "sha256": "70e7568466af4ea07cb6042989bca64e55b14f4cae8f38bd9926160cb0bb7afa"
+    },
+    {
+      "bytes": 12392,
+      "channels": 1,
+      "durationMs": 280,
+      "file": "battle-flee.wav",
+      "format": "wav",
+      "gain": 0.38,
+      "id": "battle.flee",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "battle",
+      "sampleRate": 22050,
+      "sha256": "6af77fc5c089e32d7251bd84b07067f7238c2bfd65af3c45f6dbbb5cc79caba8"
+    },
+    {
+      "bytes": 13274,
+      "channels": 1,
+      "durationMs": 300,
+      "file": "battle-heal.wav",
+      "format": "wav",
+      "gain": 0.38,
+      "id": "battle.heal",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "battle",
+      "sampleRate": 22050,
+      "sha256": "149adf3c77b5701f3a7586d641770422326785bcf940f97596e47d6ce659ffe3"
+    },
+    {
+      "bytes": 9746,
+      "channels": 1,
+      "durationMs": 220,
+      "file": "battle-hit.wav",
+      "format": "wav",
+      "gain": 0.38,
+      "id": "battle.hit",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "battle",
+      "sampleRate": 22050,
+      "sha256": "684fb50451d8863153d82897c53127da2f8492e530d08b5db719c24650077a9f"
+    },
+    {
+      "bytes": 13274,
+      "channels": 1,
+      "durationMs": 300,
+      "file": "battle-sendout.wav",
+      "format": "wav",
+      "gain": 0.38,
+      "id": "battle.sendout",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "battle",
+      "sampleRate": 22050,
+      "sha256": "a3e9acbe8f087f6b9d7b800ca6306abd11d2c1264ec12cf1d7df9381ac25453f"
+    },
+    {
+      "bytes": 18566,
+      "channels": 1,
+      "durationMs": 420,
+      "file": "battle-transition.wav",
+      "format": "wav",
+      "gain": 0.38,
+      "id": "battle.transition",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "battle",
+      "sampleRate": 22050,
+      "sha256": "edd975dfd77700efeddb57db3be56c8fa200d93cb4d2fb9592db496f33fb2d29"
+    },
+    {
+      "bytes": 6218,
+      "channels": 1,
+      "durationMs": 140,
+      "file": "footstep-carpet-1.wav",
+      "format": "wav",
+      "gain": 0.24,
+      "id": "footstep.carpet.1",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "footstep",
+      "sampleRate": 22050,
+      "sha256": "fe2629f9845a88ec068c9b252ee8ac94301300c2a9d3fee63cec171443871ed1"
+    },
+    {
+      "bytes": 6218,
+      "channels": 1,
+      "durationMs": 140,
+      "file": "footstep-carpet-2.wav",
+      "format": "wav",
+      "gain": 0.24,
+      "id": "footstep.carpet.2",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "footstep",
+      "sampleRate": 22050,
+      "sha256": "6b1974e6981edc72445e1ccf53db05c61c80a0c28be116f47dae470c00637ec0"
+    },
+    {
+      "bytes": 5776,
+      "channels": 1,
+      "durationMs": 130,
+      "file": "footstep-tile-1.wav",
+      "format": "wav",
+      "gain": 0.24,
+      "id": "footstep.tile.1",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "footstep",
+      "sampleRate": 22050,
+      "sha256": "cccdd0d37840a300e16a7c4eaffe0bbeaa09bc37241613cb3919552d5f9a2301"
+    },
+    {
+      "bytes": 5776,
+      "channels": 1,
+      "durationMs": 130,
+      "file": "footstep-tile-2.wav",
+      "format": "wav",
+      "gain": 0.24,
+      "id": "footstep.tile.2",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "footstep",
+      "sampleRate": 22050,
+      "sha256": "941d9bcd44f4e1c645a30a11c5a84374a2e626d453d37af6633811de33372e3a"
+    },
+    {
+      "bytes": 5336,
+      "channels": 1,
+      "durationMs": 120,
+      "file": "footstep-wood-1.wav",
+      "format": "wav",
+      "gain": 0.24,
+      "id": "footstep.wood.1",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "footstep",
+      "sampleRate": 22050,
+      "sha256": "d952e03c062315801fc38cf5a66ea71ad45f4b294abe15cb2be3995fe7b20ce6"
+    },
+    {
+      "bytes": 5336,
+      "channels": 1,
+      "durationMs": 120,
+      "file": "footstep-wood-2.wav",
+      "format": "wav",
+      "gain": 0.24,
+      "id": "footstep.wood.2",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "footstep",
+      "sampleRate": 22050,
+      "sha256": "e9e4268d0531059bd2fd4bff18a0a161f237e8aa4ecb613847314a5180264048"
+    },
+    {
+      "bytes": 15038,
+      "channels": 1,
+      "durationMs": 340,
+      "file": "result-correct.wav",
+      "format": "wav",
+      "gain": 0.42,
+      "id": "result.correct",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "result",
+      "sampleRate": 22050,
+      "sha256": "e3c807906bf6cbc0868ed2995da254df0fce158f361b38c0e9a3a2b18afd9cb2"
+    },
+    {
+      "bytes": 25622,
+      "channels": 1,
+      "durationMs": 580,
+      "file": "result-defeat.wav",
+      "format": "wav",
+      "gain": 0.42,
+      "id": "result.defeat",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "result",
+      "sampleRate": 22050,
+      "sha256": "ddc2050d9f6e891bd9d74b8a24f6a2c8b6f72a9ed0a0e51891eeb11b850ff92b"
+    },
+    {
+      "bytes": 27386,
+      "channels": 1,
+      "durationMs": 620,
+      "file": "result-victory.wav",
+      "format": "wav",
+      "gain": 0.42,
+      "id": "result.victory",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "result",
+      "sampleRate": 22050,
+      "sha256": "b2cf36f2f0f0a8a4708e3a6dae94ece54e19b56d08ef3236f90352ed0ae69be1"
+    },
+    {
+      "bytes": 15038,
+      "channels": 1,
+      "durationMs": 340,
+      "file": "result-wrong.wav",
+      "format": "wav",
+      "gain": 0.42,
+      "id": "result.wrong",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "result",
+      "sampleRate": 22050,
+      "sha256": "9cc068f01f6113a90966a51689571e0d84edcc3d549f964543e7bfb5c858a7ee"
+    },
+    {
+      "bytes": 7100,
+      "channels": 1,
+      "durationMs": 160,
+      "file": "ui-confirm.wav",
+      "format": "wav",
+      "gain": 0.34,
+      "id": "ui.confirm",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "ui",
+      "sampleRate": 22050,
+      "sha256": "f5ee3134c62e1fcf7cd3349aeb79274bb79ff475041d0854ac40cc7bd4046b96"
+    },
+    {
+      "bytes": 3132,
+      "channels": 1,
+      "durationMs": 70,
+      "file": "ui-navigate.wav",
+      "format": "wav",
+      "gain": 0.34,
+      "id": "ui.navigate",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "ui",
+      "sampleRate": 22050,
+      "sha256": "de43f2850a8a96a48b4fbecbf9f5e23945f807b32a516f6096bf59f6ee3c3fbd"
+    },
+    {
+      "bytes": 7100,
+      "channels": 1,
+      "durationMs": 160,
+      "file": "ui-reject.wav",
+      "format": "wav",
+      "gain": 0.34,
+      "id": "ui.reject",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "ui",
+      "sampleRate": 22050,
+      "sha256": "ebe49d065f88752f2de6005bf870cf917d673c9a6a9637b418c46bd3bdae06e7"
+    },
+    {
+      "bytes": 8864,
+      "channels": 1,
+      "durationMs": 200,
+      "file": "chair-sit.wav",
+      "format": "wav",
+      "gain": 0.3,
+      "id": "world.chair-sit",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "foley",
+      "sampleRate": 22050,
+      "sha256": "b01378a8ca6b9f239f168a960df0fb7e31221bbd90e7fecf184235d2ee436d37"
+    },
+    {
+      "bytes": 7982,
+      "channels": 1,
+      "durationMs": 180,
+      "file": "chair-stand.wav",
+      "format": "wav",
+      "gain": 0.3,
+      "id": "world.chair-stand",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "foley",
+      "sampleRate": 22050,
+      "sha256": "ed613b50b3a1fed984fdaff387d7ff77bb7da9e44dd0940d16fbb5f25259bddb"
+    },
+    {
+      "bytes": 18566,
+      "channels": 1,
+      "durationMs": 420,
+      "file": "coffee-pour.wav",
+      "format": "wav",
+      "gain": 0.3,
+      "id": "world.coffee",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "foley",
+      "sampleRate": 22050,
+      "sha256": "5aae515ae5930541452a06683ee28310c7278b8dd71b61c79e071d193bfc6941"
+    },
+    {
+      "bytes": 13274,
+      "channels": 1,
+      "durationMs": 300,
+      "file": "console-data.wav",
+      "format": "wav",
+      "gain": 0.3,
+      "id": "world.console",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "foley",
+      "sampleRate": 22050,
+      "sha256": "4b9fb73bd7cb3a8b574a153ef88b461152e26552467571734c097dd8f88e53f4"
+    },
+    {
+      "bytes": 15038,
+      "channels": 1,
+      "durationMs": 340,
+      "file": "door-warp.wav",
+      "format": "wav",
+      "gain": 0.3,
+      "id": "world.door",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "foley",
+      "sampleRate": 22050,
+      "sha256": "a50c8e9aebd3b628d7baf3071f359697586908ae4501eb91b210fa98b089c09c"
+    },
+    {
+      "bytes": 10628,
+      "channels": 1,
+      "durationMs": 240,
+      "file": "page-turn.wav",
+      "format": "wav",
+      "gain": 0.3,
+      "id": "world.page",
+      "loop": null,
+      "preload": "on-demand",
+      "provenance": {
+        "kind": "deterministic-local-synthesis",
+        "reviewState": "accepted",
+        "tool": "gen_audio_assets.py"
+      },
+      "role": "foley",
+      "sampleRate": 22050,
+      "sha256": "6c84aeca1d0834fe2fb5a331e69b02f7b5e682f454a7a43f30c41450b7d71819"
+    }
+  ],
+  "batchId": "datamon-original-hybrid-audio-v1",
+  "generator": "datamon/tools/gen_audio_assets.py",
+  "limits": {
+    "decodedBytes": 4194304,
+    "publicBytes": 1048576
+  },
+  "originality": "deterministic local synthesis; no third-party or copyrighted samples",
+  "policy": "original-local-hybrid-v1",
+  "reviewState": "accepted",
+  "schemaVersion": 1
+}
