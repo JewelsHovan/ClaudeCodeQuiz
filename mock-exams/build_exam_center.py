@@ -184,6 +184,10 @@ _TEMPLATE = r"""<!DOCTYPE html>
         <b>▶ Full readiness exam</b>
         <div class="sub">60 questions · 120 min · blueprint-weighted (27/18/20/20/15) — mirrors the real exam</div>
       </button>
+      <button class="mode" data-mode="adaptive">
+        <b>▶ Adaptive readiness</b>
+        <div class="sub" id="adaptiveSub">60 questions · 120 min · over-samples your weak domains + re-surfaces missed concepts</div>
+      </button>
       <button class="mode" data-mode="quick">
         <b>▶ Quick drill</b>
         <div class="sub">20 questions · 40 min · weighted — a fast pulse-check</div>
@@ -307,6 +311,56 @@ function buildExam(cfg){
   const meta={count:qs.length,minutes:cfg.minutes,passScaled:CFG.passScaled,scaleMax:CFG.scaleMax,
     weights:CFG.weights,domainNames:CFG.domainNames,label:cfg.label};
   return {questions:qs,meta};
+}
+
+/* ---------- weakness-adaptive sampling (from localStorage history) ---------- */
+function computeWeakness(){
+  const h=readHist().slice(0,3);            // last 3 attempts
+  if(!h.length) return null;
+  const agg={}, missed=new Map();
+  h.forEach((a,hi)=>{
+    const recency=1/(hi+1);
+    for(const d in (a.perDom||{})){const[c,t]=a.perDom[d];agg[d]=agg[d]||[0,0];agg[d][0]+=c;agg[d][1]+=t;}
+    for(const id of (a.missed||[])) missed.set(id,(missed.get(id)||0)+recency);
+  });
+  const acc={}; for(const d in agg) acc[d]=agg[d][1]?agg[d][0]/agg[d][1]:null;
+  // amplify blueprint weight by how far each domain sits below the 80% target
+  const weight={}; for(const d of Object.keys(CFG.weights)){
+    const a=acc[d]; const deficit=a==null?0:Math.max(0,0.8-a);
+    weight[d]=CFG.weights[d]*(1+deficit*3);}
+  const byId=Object.fromEntries(BANK.map(q=>[q.id,q]));
+  const tagW={}; missed.forEach((wt,id)=>{const q=byId[id];if(q)for(const t of (q.tags||[]))tagW[t]=(tagW[t]||0)+wt;});
+  return {acc,weight,missedIds:missed,tagW,attempts:h.length};
+}
+function buildAdaptiveExam(cfg){
+  const w=computeWeakness();
+  if(!w) return buildExam({count:cfg.count,minutes:cfg.minutes,domain:null,seed:null,label:cfg.label});
+  const rand=Math.random;
+  const byDom={}; BANK.forEach(q=>{(byDom[q.domain]=byDom[q.domain]||[]).push(q);});
+  const domains=Object.keys(byDom).map(Number).sort();
+  const tot=domains.reduce((s,d)=>s+w.weight[d],0);
+  const raw={},alloc={};let used=0;
+  domains.forEach(d=>{raw[d]=cfg.count*w.weight[d]/tot;alloc[d]=Math.floor(raw[d]);used+=alloc[d];});
+  domains.slice().sort((a,b)=>(raw[b]-alloc[b])-(raw[a]-alloc[a])).slice(0,cfg.count-used).forEach(d=>alloc[d]++);
+  let picked=[];
+  domains.forEach(d=>{
+    const pool=byDom[d].map(q=>{
+      let pr=0; if(w.missedIds.has(q.id))pr+=3;
+      for(const t of (q.tags||[])) if(w.tagW[t]) pr+=Math.min(2,w.tagW[t]);
+      return {q,pr:pr+rand()*0.5};});     // priority + jitter so repeats vary
+    pool.sort((x,y)=>y.pr-x.pr);
+    picked=picked.concat(pool.slice(0,Math.min(alloc[d],pool.length)).map(x=>x.q));
+  });
+  const groups={}; picked.forEach(q=>{(groups[q.scenario]=groups[q.scenario]||[]).push(q);});
+  const names=shuffle(Object.keys(groups),rand); let ordered=[];
+  names.forEach(n=>{ordered=ordered.concat(shuffle(groups[n],rand));});
+  const qs=ordered.map((q,i)=>{const s=shuffleOptions(q,rand);return {n:i+1,id:s.id,domain:s.domain,
+    domainName:s.domain_name||CFG.domainNames[s.domain],scenario:s.scenario||'General',
+    difficulty:s.difficulty||'medium',stem:s.stem,options:s.options,answer:s.answer,
+    selectCount:s.selectCount,explanation:s.explanation||'',distractors:s.distractors||{},tags:s.tags||[]};});
+  const meta={count:qs.length,minutes:cfg.minutes,passScaled:CFG.passScaled,scaleMax:CFG.scaleMax,
+    weights:CFG.weights,domainNames:CFG.domainNames,label:cfg.label};
+  return {questions:qs,meta,weakness:w};
 }
 
 /* ---------- exam engine (identical grading to generate_exam.py) ---------- */
@@ -480,8 +534,9 @@ function renderResults(r){
 /* ---------- localStorage attempt history ---------- */
 function readHist(){try{return JSON.parse(localStorage.getItem(HKEY))||[];}catch(e){return [];}}
 function saveAttempt(r){const h=readHist();
+  const perDom={};for(const[d,v] of Object.entries(r.perDomain))perDom[d]=[v.correct,v.total];
   h.unshift({label:r.label,scaled:r.scaledEstimate,passed:r.passed,pct:r.rawPct,
-    count:r.count,at:r.takenAt});
+    count:r.count,at:r.takenAt,perDom,missed:r.wrong.map(w=>w.id)});
   localStorage.setItem(HKEY,JSON.stringify(h.slice(0,25)));}
 function renderHome(){
   $('#hBank').textContent=CFG.bankSize;
@@ -500,12 +555,25 @@ function renderHome(){
         `<td class="${cls}">${a.scaled}/${CFG.scaleMax}</td><td>${a.pct}%</td></tr>`;}).join('');
     $('#histBox').innerHTML=`<table class="hist"><tr><th>When</th><th>Sitting</th><th>Scaled</th><th>Raw</th></tr>${rows}</table>`;
   }else{$('#histBox').innerHTML='No attempts yet — take a full readiness exam to calibrate.';}
+  // adaptive-mode weak-spot summary
+  const w=computeWeakness(); const sub=$('#adaptiveSub');
+  if(w){
+    const weak=Object.keys(CFG.weights).filter(d=>w.acc[d]!=null&&w.acc[d]<0.8)
+      .sort((a,b)=>w.acc[a]-w.acc[b]).map(d=>`D${d} ${Math.round(w.acc[d]*100)}%`);
+    const nM=w.missedIds.size;
+    sub.textContent=weak.length
+      ? `60 Q · targets ${weak.slice(0,3).join(', ')}${nM?` + ${nM} missed concept${nM>1?'s':''}`:''}`
+      : `60 Q · at/above 80% everywhere${nM?` — keeps ${nM} missed concept${nM>1?'s':''} sharp`:''}`;
+  } else {
+    sub.textContent='60 Q · take one exam first — then this targets your weak domains + missed concepts';
+  }
 }
 $('#btnClearHist').onclick=()=>{if(confirm('Clear local attempt history?')){localStorage.removeItem(HKEY);renderHome();}};
 
 /* ---------- home wiring ---------- */
 let mode='full';
 const MODES={full:{count:60,minutes:120,label:'Full readiness exam'},
+             adaptive:{count:60,minutes:120,label:'Adaptive readiness'},
              quick:{count:20,minutes:40,label:'Quick drill'},
              domain:{count:15,minutes:30,label:'Single-domain drill'}};
 [...document.querySelectorAll('.mode')].forEach(b=>b.onclick=()=>{
@@ -527,7 +595,7 @@ $('#btnStart').onclick=()=>{
     label:m.label+(mode==='domain'?` · D${$('#domainSel').value}`:''),
     domain:mode==='domain'?Number($('#domainSel').value):null,
     seed:seedRaw===''?null:(parseInt(seedRaw,10)||0)};
-  startExam(buildExam(cfg));
+  startExam(mode==='adaptive'?buildAdaptiveExam(cfg):buildExam(cfg));
 };
 function goHome(){$('#results').classList.add('hide');$('#exam').classList.add('hide');
   $('#bar').style.display='none';$('#home').classList.remove('hide');renderHome();window.scrollTo(0,0);}

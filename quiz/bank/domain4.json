@@ -939,5 +939,33 @@
       "json-schema"
     ],
     "source": "original-2026"
+  },
+  {
+    "id": "d4-036",
+    "domain": 4,
+    "domain_name": "Prompt Engineering & Structured Output",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "hard",
+    "stem": "Your extraction pipeline retries with the specific validation error appended whenever the model's JSON fails schema validation, which fixes most failures. But for one field, supplier_tax_id, retries never succeed on a subset of invoices, wasting calls. Investigation shows those invoices simply do not contain a tax ID anywhere. What is the correct fix?",
+    "options": {
+      "A": "Increase the retry limit so the model eventually finds it",
+      "B": "Raise the temperature on retries so the model explores more of the document",
+      "C": "Add few-shot examples of tax IDs so the model learns the format",
+      "D": "Recognize that retry-with-feedback only fixes format/structural errors, not missing information — make supplier_tax_id nullable and stop retrying when the value is genuinely absent from the source"
+    },
+    "answer": "D",
+    "explanation": "Retry-with-error-feedback corrects format and structural mistakes, but it cannot conjure information that is not in the source document. When a required field is genuinely absent, the fix is to make it nullable (so the model does not fabricate) and stop retrying — retrying an absent value only wastes calls.",
+    "distractors": {
+      "A": "More retries cannot extract a value that is not present; it just multiplies wasted calls.",
+      "B": "Higher temperature encourages the model to fabricate a plausible-looking tax ID rather than admit it is absent.",
+      "C": "Format examples help when the value exists but is mis-formatted; they do not help when the value is missing entirely."
+    },
+    "tags": [
+      "validation-retry",
+      "retry-limits",
+      "missing-information",
+      "nullable-fields"
+    ],
+    "source": "original-2026"
   }
 ]

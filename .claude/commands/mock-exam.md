@@ -17,6 +17,8 @@ the 0–1000 scaled estimate (720 to pass), a per-domain breakdown, and a full a
    - `domain N` or `dN` → `--domain N` (single-domain focus, uses all available in that domain)
    - `time M` → `--time M` (minutes)
    - `seed S` → `--seed S` (reproducible question set)
+   - `adaptive PATH` or `weak PATH` → `--adaptive PATH` (bias toward weak domains + missed
+     concepts, reading a prior results JSON — an Exam Center download or an earlier mock result)
 
 2. **First, read `profile/learner.md`** (the Concept Mastery / Spaced Repetition table, Mistake Log,
    and weak domains). Mention to the user which domains/concepts are overdue so they know what this
@@ -37,7 +39,8 @@ the 0–1000 scaled estimate (720 to pass), a per-domain breakdown, and a full a
 
 5. **Tell the user how to take it**:
    - Click **Start exam** — the timer starts and the exam auto-submits at 0:00.
-   - Keyboard: `A/B/C/D` to answer, `←/→` to navigate, `f` to flag. Use the question palette to jump.
+   - Keyboard: `A/B/C/D` to answer (on **"Select N" multiple-response** items each key *toggles*),
+     `←/→` to navigate, `f` to flag. Use the question palette to jump.
    - There's a **practice mode** checkbox on the start screen (reveals the answer after each question) —
      tell them to leave it OFF for a true timed simulation.
    - On submit they get a scaled-score estimate, pass/fail vs 720, pass-likelihood, per-domain bars,
@@ -49,7 +52,10 @@ the 0–1000 scaled estimate (720 to pass), a per-domain breakdown, and a full a
    breakdown, and drop every missed concept into Box 1 of the spaced-repetition table.
 
 ## Notes to convey honestly
-- The blueprint and scaled scoring are **community-confirmed approximations**, not Anthropic-published
-  (see `docs/exam-research-2026.md`). The scaled number is a linear estimate of raw %; the real exam's
-  scaling is undisclosed. Treat it as a calibration signal — **aim comfortably above 720 (≈80%+)** before booking.
+- The blueprint is **confirmed via the official Exam Guide v1.0** (see `docs/exam-research-2026.md`);
+  the **scaled score is a linear estimate** of raw % (the real exam's scaling is undisclosed). Treat it
+  as a calibration signal — **aim comfortably above 720 (≈80%+)** before booking.
 - Questions are **original practice items** written to match the blueprint, never real (NDA) exam content.
+- For a no-terminal option, `mock-exams/exam-center.html` (rebuild: `uv run python mock-exams/build_exam_center.py`)
+  is a standalone browser "Exam Center" — full/quick/domain **and adaptive** sittings, re-rollable, with a
+  local attempt history. Validate the bank anytime with `uv run python scripts/validate_bank.py`.

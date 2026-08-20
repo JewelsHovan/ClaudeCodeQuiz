@@ -959,5 +959,89 @@
       "workflows"
     ],
     "source": "original-2026"
+  },
+  {
+    "id": "d3-036",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "You ask Claude to \"reformat these API responses into our standard shape,\" but across runs it interprets \"standard shape\" inconsistently — sometimes nesting, sometimes flattening, sometimes renaming fields differently. The prose description clearly is not pinning it down. What most reliably fixes this?",
+    "options": {
+      "A": "Provide 2-3 concrete input->output examples showing exactly how a raw response maps to the standard shape",
+      "B": "Add words like \"carefully\" and \"exactly\" to the instruction and re-run",
+      "C": "Lower the temperature so the transformation is deterministic",
+      "D": "Ask Claude to first explain what it thinks \"standard shape\" means before transforming"
+    },
+    "answer": "A",
+    "explanation": "When a natural-language description is interpreted inconsistently, concrete input/output examples are the most effective way to communicate the exact transformation — a few worked examples pin down nesting, naming, and structure far better than more adjectives or a temperature change.",
+    "distractors": {
+      "B": "Emphatic adjectives do not remove the ambiguity in \"standard shape\"; the model still guesses at the mapping.",
+      "C": "Temperature reduces randomness but not the underlying ambiguity — a deterministic wrong interpretation is still wrong.",
+      "D": "Having it explain its interpretation surfaces the ambiguity but does not resolve it; you still have not shown the target shape."
+    },
+    "tags": [
+      "iterative-refinement",
+      "concrete-examples",
+      "input-output-examples",
+      "prompt-structure"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-037",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Claude Code for Continuous Integration",
+    "difficulty": "medium",
+    "stem": "You are using Claude Code to implement a tricky date-rollover utility and want it to converge on correct behavior including edge cases (leap years, month boundaries, DST) rather than iterating vaguely. What is the most effective way to drive the iteration?",
+    "options": {
+      "A": "Describe all the edge cases in prose in one large prompt and ask for a complete, correct implementation",
+      "B": "Ask Claude to implement it, then manually eyeball the output for bugs",
+      "C": "Increase the thinking budget so it reasons longer about edge cases up front",
+      "D": "Write the test suite first (covering the edge cases), have Claude implement against it, and iterate by feeding it the specific failing tests"
+    },
+    "answer": "D",
+    "explanation": "Test-driven iteration — write tests (including edge cases) first, implement against them, then iterate by sharing the specific failures — gives concrete, objective feedback that guides the model toward correctness far more reliably than prose descriptions or manual inspection.",
+    "distractors": {
+      "A": "A single prose description of edge cases is easy to under-specify, and you get no objective signal about what is still wrong.",
+      "B": "Eyeballing output is error-prone and gives no systematic coverage of the edge cases.",
+      "C": "More thinking time helps reasoning but provides no concrete pass/fail signal to iterate against; it does not replace tests."
+    },
+    "tags": [
+      "test-driven-iteration",
+      "iterative-refinement",
+      "edge-cases",
+      "ci-cd"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d3-038",
+    "domain": 3,
+    "domain_name": "Claude Code Configuration & Workflows",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "hard",
+    "stem": "You ask Claude to add caching to an unfamiliar service. There are decisions it cannot safely assume (invalidation strategy, cache-key scope, failure behavior), and you want to avoid it charging ahead on wrong assumptions. What is the best approach, including how to batch interacting vs independent fixes?",
+    "options": {
+      "A": "Tell it to make reasonable assumptions and proceed, then fix whatever is wrong afterward",
+      "B": "Use the interview pattern — have Claude ask clarifying questions to surface those decisions before implementing; then fix interacting problems together in one message, while handling independent problems sequentially",
+      "C": "Provide every possible detail up front in one giant prompt so no questions are needed",
+      "D": "Have it implement three separate caching designs in parallel and pick one"
+    },
+    "answer": "B",
+    "explanation": "The interview pattern has Claude surface considerations (invalidation, key scope, failure modes) before implementing, avoiding wrong assumptions in an unfamiliar domain. Batching also matters: interacting problems should be fixed together in one message so the model sees the whole picture, while independent problems can be addressed sequentially.",
+    "distractors": {
+      "A": "Letting it assume and fixing later invites rework on decisions that were knowable up front, especially in an unfamiliar domain.",
+      "C": "A giant up-front prompt is hard to make complete and still cannot anticipate what the model actually needs clarified.",
+      "D": "Building three full designs in parallel is wasteful over-engineering before the key decisions are even settled."
+    },
+    "tags": [
+      "interview-pattern",
+      "iterative-refinement",
+      "clarifying-questions",
+      "workflows"
+    ],
+    "source": "original-2026"
   }
 ]
