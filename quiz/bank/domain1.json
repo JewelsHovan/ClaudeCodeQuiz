@@ -1268,5 +1268,61 @@
       "reliability"
     ],
     "source": "original-2026"
+  },
+  {
+    "id": "d1-047",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Developer Productivity with Claude",
+    "difficulty": "medium",
+    "stem": "A developer is mid-refactor across a large service; yesterday's Claude Code session mapped the module and made partial edits. They want to continue that specific investigation today, but a teammate's overnight merge changed several of those files. What is the most reliable way to resume?",
+    "options": {
+      "A": "Start a brand-new session and re-explore the whole module from scratch",
+      "B": "Resume the session and rely on yesterday's cached tool results, since they were correct when captured",
+      "C": "Resume the named session with --resume <session-name>, and because files changed since, explicitly tell Claude which files the overnight merge touched so it re-reads them instead of trusting stale context",
+      "D": "Fork the session so the old and new states run in parallel"
+    },
+    "answer": "C",
+    "explanation": "--resume <session-name> continues the specific prior conversation, but tool results captured before the merge are now stale. The reliable move is to resume AND inform the agent which files changed so it re-reads them, rather than trusting yesterday's cached reads or discarding all the useful context.",
+    "distractors": {
+      "A": "Re-exploring from scratch throws away the still-valid mapping and partial edits you already built, wasting effort.",
+      "B": "Trusting stale cached reads after a merge changed those files makes the agent reason from outdated file contents.",
+      "D": "Forking creates a divergent branch for exploring alternatives; it does not address stale context and needlessly duplicates the session."
+    },
+    "tags": [
+      "session-resumption",
+      "resume",
+      "stale-context",
+      "workflows"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d1-048",
+    "domain": 1,
+    "domain_name": "Agentic Architecture & Orchestration",
+    "scenario": "Code Generation with Claude Code",
+    "difficulty": "medium",
+    "stem": "One Claude Code session has already loaded and analyzed a large codebase's architecture. You now want to compare two refactoring strategies (a gradual adapter approach vs a big-bang rewrite) without re-loading that analysis twice or letting the two explorations contaminate each other. What is the right mechanism?",
+    "options": {
+      "A": "fork_session from the shared analysis baseline to create two independent branches — one per strategy — each inheriting the analysis but exploring divergently",
+      "B": "Run both strategies in the same session sequentially so they share all context",
+      "C": "Start two brand-new sessions and re-analyze the codebase in each",
+      "D": "Use --resume to alternate between the two strategies within one conversation"
+    },
+    "answer": "A",
+    "explanation": "fork_session creates independent branches from a shared baseline, so both strategies inherit the completed architecture analysis yet explore separately without cross-contaminating each other's context — exactly the divergent-approach comparison use case.",
+    "distractors": {
+      "B": "One shared session lets the two strategies' reasoning bleed together, muddying the comparison and bloating context.",
+      "C": "Re-analyzing the codebase twice wastes the expensive analysis you already have and risks inconsistent baselines.",
+      "D": "--resume continues a single linear conversation; it does not give you two clean, independent branches to compare."
+    },
+    "tags": [
+      "fork-session",
+      "divergent-approaches",
+      "session-management",
+      "forking"
+    ],
+    "source": "original-2026"
   }
 ]

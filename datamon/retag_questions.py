@@ -97,9 +97,12 @@ def correct_choice(q: dict) -> str:
 def bank_correct_option(entry: dict) -> str:
     opts = entry.get("options", {})
     ans = entry.get("answer", "")
-    if isinstance(opts, dict):
-        return opts.get(ans, "")
-    return ""
+    if not isinstance(opts, dict):
+        return ""
+    # `answer` is a single letter (single-select) or a list of letters
+    # (multiple-response); join the correct option texts for either shape.
+    letters = ans if isinstance(ans, list) else [ans]
+    return " ".join(opts.get(L, "") for L in letters)
 
 
 def datamon_text(q: dict) -> str:

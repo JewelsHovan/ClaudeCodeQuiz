@@ -837,5 +837,117 @@
       "reliability"
     ],
     "source": "original-2026"
+  },
+  {
+    "id": "d5-032",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "hard",
+    "stem": "Your extraction system reports 97% overall accuracy, so the team wants to drop human review. Before doing so, what is the most important check, and why?",
+    "options": {
+      "A": "Nothing further — 97% overall clears the bar, so automate fully",
+      "B": "Measure accuracy stratified by document type and field, because a high aggregate can mask poor performance on specific document types or fields that the overall number hides",
+      "C": "Re-run the whole dataset a second time and average the two accuracy numbers",
+      "D": "Switch to a larger model to push overall accuracy above 99%"
+    },
+    "answer": "B",
+    "explanation": "A single aggregate accuracy figure can hide segments that perform badly — a rare document type or a specific field may be far below 97% while common cases inflate the average. Validating accuracy stratified by document type and field segment before automating is the essential check.",
+    "distractors": {
+      "A": "Automating on the aggregate alone risks shipping systematic errors on segments the overall number conceals.",
+      "C": "Averaging two runs measures consistency, not whether specific segments are accurate.",
+      "D": "A bigger model may raise the average without fixing the weak segments, and it still does not tell you where the weaknesses are."
+    },
+    "tags": [
+      "confidence-calibration",
+      "stratified-sampling",
+      "aggregate-metrics",
+      "human-review"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-033",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Structured Data Extraction",
+    "difficulty": "medium",
+    "stem": "You have limited human-review capacity and want to spend it where it matters. Your extraction model can emit a confidence score per field. How should you use it to route review?",
+    "options": {
+      "A": "Have the model output field-level confidence scores calibrated against a labeled validation set, then route low-confidence and ambiguous/contradictory extractions to humans, prioritizing scarce reviewer capacity",
+      "B": "Review a fixed random 10% of all extractions regardless of confidence",
+      "C": "Trust the model's raw confidence scores as-is without calibration, and only review anything below 0.5",
+      "D": "Review only the extractions the model is most confident about, since those are highest-value"
+    },
+    "answer": "A",
+    "explanation": "Raw model confidence is often mis-calibrated, so calibrate field-level confidence against a labeled validation set first, then route the low-confidence and ambiguous/contradictory cases to your limited reviewers. That concentrates human attention where errors are most likely.",
+    "distractors": {
+      "B": "A blanket random 10% ignores the confidence signal, wasting review on easy cases and missing risky ones.",
+      "C": "Uncalibrated raw scores can be systematically over- or under-confident, so a fixed 0.5 cutoff routes the wrong cases.",
+      "D": "Reviewing the most-confident extractions spends scarce capacity where errors are least likely — backwards."
+    },
+    "tags": [
+      "field-level-confidence",
+      "calibration",
+      "review-routing",
+      "human-review"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-034",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "medium",
+    "stem": "During a long autonomous exploration of a large codebase, your agent starts giving inconsistent answers and referencing \"typical patterns\" instead of the specific classes it identified earlier — its context has degraded as verbose discovery output piled up. Which combination best addresses this?",
+    "options": {
+      "A": "Increase the context window size and continue",
+      "B": "Have the agent persist key findings to scratchpad files it can re-read, and use /compact to reduce context when it fills with verbose discovery output",
+      "C": "Restart the exploration from scratch whenever answers drift",
+      "D": "Tell the agent in the system prompt to \"remember everything accurately\""
+    },
+    "answer": "B",
+    "explanation": "Context degradation in long sessions is addressed by offloading key findings to scratchpad files the agent re-reads (so knowledge survives context pressure) and using /compact to shrink accumulated verbose discovery output. Together they counteract the drift toward vague \"typical patterns.\"",
+    "distractors": {
+      "A": "A bigger window delays but does not prevent degradation as verbose output keeps accumulating.",
+      "C": "Restarting throws away all the exploration progress every time drift appears.",
+      "D": "A prompt instruction to \"remember\" cannot overcome the mechanical degradation of an overloaded context."
+    },
+    "tags": [
+      "context-degradation",
+      "scratchpad-files",
+      "compact",
+      "codebase-exploration"
+    ],
+    "source": "original-2026"
+  },
+  {
+    "id": "d5-035",
+    "domain": 5,
+    "domain_name": "Context Management & Reliability",
+    "scenario": "Multi-Agent Research System",
+    "difficulty": "hard",
+    "stem": "In your research system, two credible source subagents return different figures for the same metric, and a third pair of figures differ only because they are from different years. The synthesis agent currently picks one value and drops the rest, and sometimes flags year-over-year changes as \"contradictions.\" What should the synthesis design do instead?",
+    "options": {
+      "A": "Always average conflicting figures into one number",
+      "B": "Always keep the figure from whichever subagent responded first",
+      "C": "Drop any metric where sources disagree, to avoid reporting anything contested",
+      "D": "Require subagents to output structured claim-source mappings (value, source, publication/collection date); annotate genuine conflicts with their sources rather than silently picking one, and use the dates so temporal differences are not misread as contradictions"
+    },
+    "answer": "D",
+    "explanation": "Preserving provenance is the fix: structured claim-source mappings (with publication/collection dates) let synthesis annotate real conflicts with their sources instead of arbitrarily choosing one, and let it distinguish a genuine disagreement from a legitimate year-over-year change so temporal differences are not misread as contradictions.",
+    "distractors": {
+      "A": "Averaging invents a value neither source supports and erases the provenance a reader needs.",
+      "B": "Response order has nothing to do with which figure is correct or more authoritative.",
+      "C": "Dropping contested metrics discards real signal; the goal is to annotate and attribute conflicts, not hide them."
+    },
+    "tags": [
+      "provenance",
+      "claim-source-mapping",
+      "temporal-data",
+      "synthesis"
+    ],
+    "source": "original-2026"
   }
 ]

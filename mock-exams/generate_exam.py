@@ -21,9 +21,12 @@ Usage (via uv):
   uv run python mock-exams/generate_exam.py --seed 7        # reproducible set
   uv run python mock-exams/generate_exam.py -o /tmp/x.html  # custom output path
 
-The blueprint (60 Q / 120 min / 720-of-1000 / weights 27/18/20/20/15) is
-community-confirmed, not Anthropic-published. Scaled scoring here is a LINEAR
-APPROXIMATION of raw %; the real exam's scaling differs. See docs/exam-research-2026.md.
+The blueprint (~60 Q / 120 min / 720-of-1000 / weights 27/18/20/20/15) is confirmed
+via the official Exam Guide v1.0. Scaled scoring here is a LINEAR APPROXIMATION of
+raw %; the real exam's scaling differs. See docs/exam-research-2026.md.
+
+--adaptive RESULTS.json biases sampling toward weak domains + missed concepts from a
+prior result (Exam Center download or a mock result JSON).
 """
 from __future__ import annotations
 import argparse
@@ -67,9 +70,35 @@ def load_bank() -> list[dict]:
     return questions
 
 
-def allocate(count: int, domains: list[int]) -> dict[int, int]:
+def load_adaptive(path: str) -> dict:
+    """Read a prior results JSON (Exam Center download or a mock result) and derive
+    weakness-adaptive sampling inputs: amplified per-domain weights, the set of
+    previously-missed question ids, and the tags of missed concepts."""
+    try:
+        r = json.load(open(path, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        sys.exit(f"--adaptive: cannot read results JSON {path}: {e}")
+    acc = {}
+    for d, v in (r.get("perDomain") or {}).items():
+        tot = v.get("total", 0)
+        acc[int(d)] = (v.get("correct", 0) / tot) if tot else None
+    weights = {}
+    for d in DOMAIN_WEIGHTS:
+        a = acc.get(d)
+        deficit = 0.0 if a is None else max(0.0, 0.8 - a)   # below the 80% target
+        weights[d] = DOMAIN_WEIGHTS[d] * (1 + deficit * 3)
+    missed_ids, weak_tags = set(), set()
+    for w in (r.get("wrong") or []):
+        if w.get("id"):
+            missed_ids.add(w["id"])
+        weak_tags.update(w.get("tags") or [])
+    return {"weights": weights, "missed_ids": missed_ids, "weak_tags": weak_tags, "acc": acc}
+
+
+def allocate(count: int, domains: list[int], weights: dict | None = None) -> dict[int, int]:
     """Largest-remainder apportionment of `count` across `domains` by weight."""
-    weights = {d: DOMAIN_WEIGHTS[d] for d in domains}
+    src = weights or DOMAIN_WEIGHTS
+    weights = {d: src[d] for d in domains}
     tot = sum(weights.values())
     raw = {d: count * w / tot for d, w in weights.items()}
     alloc = {d: int(v) for d, v in raw.items()}
@@ -116,8 +145,21 @@ def _take(pool: list[dict], n: int, chosen: list[dict]) -> list[dict]:
     return out
 
 
+def _order(pool: list[dict], rng: random.Random, adaptive: dict | None) -> list[dict]:
+    """Shuffle a domain pool; when adaptive, float previously-missed questions and
+    weak-tag concepts to the front (stable sort preserves the shuffle as a tiebreak)."""
+    rng.shuffle(pool)
+    if adaptive:
+        def pri(q):
+            s = 3 if q["id"] in adaptive["missed_ids"] else 0
+            s += sum(1 for t in q.get("tags", []) if t in adaptive["weak_tags"])
+            return s
+        pool.sort(key=pri, reverse=True)
+    return pool
+
+
 def sample(questions: list[dict], count: int, domain: int | None,
-           rng: random.Random) -> list[dict]:
+           rng: random.Random, adaptive: dict | None = None) -> list[dict]:
     by_dom: dict[int, list[dict]] = {}
     for q in questions:
         by_dom.setdefault(q["domain"], []).append(q)
@@ -126,16 +168,14 @@ def sample(questions: list[dict], count: int, domain: int | None,
         pool = by_dom.get(domain, [])
         if not pool:
             sys.exit(f"No questions for domain {domain}.")
-        rng.shuffle(pool)
-        return _take(pool, count, [])
+        return _take(_order(pool, rng, adaptive), count, [])
 
     domains = sorted(by_dom)
-    alloc = allocate(count, domains)
+    alloc = allocate(count, domains, adaptive["weights"] if adaptive else None)
     picked: list[dict] = []
     shortfall = 0
     for d in domains:
-        pool = by_dom[d][:]
-        rng.shuffle(pool)
+        pool = _order(by_dom[d][:], rng, adaptive)
         take = alloc[d]
         chosen = _take(pool, take, picked)        # skip semantic twins across the whole exam
         picked.extend(chosen)
@@ -312,7 +352,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
       <tr><td>Format</td><td>Multiple choice + scenario-based multiple-response (a "Select N" badge marks multi-answer items), grouped by scenario</td></tr>
     </table>
     <p class="note">Scaled scoring shown is a <strong>linear approximation</strong> of raw %
-      (real exam scaling differs). Blueprint is community-confirmed, not Anthropic-published —
+      (real exam scaling differs). Blueprint is confirmed via the official Exam Guide v1.0 —
       see <code>docs/exam-research-2026.md</code>.</p>
     <div class="row"><button class="primary" id="btnStart">Start exam</button>
       <label class="row small muted"><input type="checkbox" id="optReveal"/> reveal answer after each question (practice mode, untimed feel)</label></div>
@@ -600,22 +640,31 @@ def main() -> None:
     ap.add_argument("--domain", type=int, choices=[1, 2, 3, 4, 5], default=None,
                     help="restrict to a single domain")
     ap.add_argument("--seed", type=int, default=None, help="seed for a reproducible set")
+    ap.add_argument("--adaptive", metavar="RESULTS.json", default=None,
+                    help="bias sampling toward weak domains + missed concepts from a prior results JSON")
     ap.add_argument("-o", "--output", default=None, help="output HTML path")
     args = ap.parse_args()
 
     rng = random.Random(args.seed)
     bank = load_bank()
+    adaptive = load_adaptive(args.adaptive) if args.adaptive else None
     available = len([q for q in bank if args.domain is None or q["domain"] == args.domain])
     count = min(args.count, available)
     if count < args.count:
         print(f"⚠  Only {available} questions available; generating {count}.", file=sys.stderr)
 
-    picked = sample(bank, count, args.domain, rng)
+    picked = sample(bank, count, args.domain, rng, adaptive)
     minutes = args.time if args.time else max(1, round(len(picked) * DEFAULT_MINUTES / DEFAULT_COUNT))
 
-    suffix = (f"Single-domain focus: D{args.domain} · {DOMAIN_NAMES[args.domain]}"
-              if args.domain else
-              "Full domain-weighted mock · mirrors the 27/18/20/20/15 blueprint")
+    if adaptive and not args.domain:
+        weak = sorted((d for d in DOMAIN_WEIGHTS if adaptive["acc"].get(d) is not None
+                       and adaptive["acc"][d] < 0.8), key=lambda d: adaptive["acc"][d])
+        wtxt = ", ".join(f"D{d} {round(adaptive['acc'][d]*100)}%" for d in weak[:3]) or "none <80%"
+        suffix = f"Adaptive mock · targets weak domains ({wtxt}) + missed concepts"
+    else:
+        suffix = (f"Single-domain focus: D{args.domain} · {DOMAIN_NAMES[args.domain]}"
+                  if args.domain else
+                  "Full domain-weighted mock · mirrors the 27/18/20/20/15 blueprint")
     html = render_html(picked, minutes, suffix, rng)
 
     out = args.output
