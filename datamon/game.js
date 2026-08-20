@@ -345,29 +345,22 @@ function regionOf(x, y) {
   return x < 12 ? "CONTEXT" : (x < 24 ? "PROMPT" : "MIX");
 }
 
-// ---------- Audio (tiny synth, no assets) ----------
-let audioCtx = null, muted = false;
-function beep(freq, dur = 0.08, type = "square", vol = 0.04, when = 0) {
-  if (muted) return;
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    const t = audioCtx.currentTime + when;
-    const o = audioCtx.createOscillator(), gn = audioCtx.createGain();
-    o.type = type; o.frequency.value = freq;
-    gn.gain.setValueAtTime(vol, t);
-    gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(gn); gn.connect(audioCtx.destination);
-    o.start(t); o.stop(t + dur);
-  } catch (e) { /* audio unavailable */ }
+// ---------- Audio (one shared scene-safe director) ----------
+let muted = false;
+function audioCue(name, detail) {
+  if (muted || typeof DatamonAudio === "undefined") return false;
+  return DatamonAudio.cue(name, detail || {});
 }
+// Compatibility names keep gameplay call sites presentation-only while high-value
+// interactions below use semantic cue IDs directly. No context or node is owned here.
 const sfx = {
-  move: () => beep(180, 0.04, "square", 0.12),
-  select: () => beep(880, 0.06),
-  confirm: () => { beep(660, 0.07); beep(990, 0.09, "square", 0.04, 0.07); },
-  correct: () => { beep(523, 0.09); beep(659, 0.09, "square", 0.04, 0.09); beep(784, 0.14, "square", 0.04, 0.18); },
-  wrong: () => { beep(220, 0.18, "sawtooth"); beep(160, 0.22, "sawtooth", 0.04, 0.12); },
-  battle: () => { [392, 392, 392, 311].forEach((f, i) => beep(f, 0.12, "square", 0.05, i * 0.13)); },
-  victory: () => { [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.15, "square", 0.05, i * 0.14)); },
+  move: detail => audioCue("footstep", detail),
+  select: () => audioCue("ui.navigate"),
+  confirm: () => audioCue("ui.confirm"),
+  correct: () => audioCue("result.correct"),
+  wrong: () => audioCue("result.wrong"),
+  battle: () => audioCue("battle.transition"),
+  victory: () => audioCue("result.victory"),
 };
 
 // ---------- Image loading & pixelation ----------
@@ -1494,6 +1487,7 @@ function currentMon() { return battle.mons[battle.idx]; }
 
 function sendOutCurrentMon(b) {
   b.phase = "sendout";
+  audioCue("battle.sendout");
   b.msg = `${firstName(b.npc.slug)} sends out ${currentMon().name.toUpperCase()} (Lv.${currentMon().level})!`;
   b.msgAt = frame;
   b.sendoutAt = frame;
@@ -1934,7 +1928,7 @@ function attemptRun() {
   if (b.phase !== "question") return;
   if (Math.random() < FLEE_CHANCE) {
     // SUCCESS — flee to the overworld.
-    sfx.confirm();
+    audioCue("battle.flee");
     wrapCache.clear();
     restoreEncounterSeat();
     battle = null;
@@ -2693,9 +2687,9 @@ const keys = {};
 const agentActivationKeys = new Set();
 const dialogueActivationKeys = new Set();
 window.addEventListener("keydown", e => {
-  // Unlock audio on first user interaction (browser autoplay policy).
+  // Unlock the one shared audio graph on first user interaction.
   if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
-  if (typeof DatamonMusic !== "undefined") DatamonMusic.unlock();
+  if (typeof DatamonAudio !== "undefined") DatamonAudio.unlock();
   // M is a global audio control, including while the colleague search field is open.
   if (state === "search" && (e.key === "m" || e.key === "M")) {
     e.preventDefault();
@@ -2757,7 +2751,7 @@ function handleKey(k) {
   if (k === "m" || k === "M") {
     muted = !muted;
     if (typeof AgentArena !== "undefined") AgentArena.setMuted(muted);
-    if (typeof DatamonMusic !== "undefined") DatamonMusic.setMuted(muted);
+    if (typeof DatamonAudio !== "undefined") DatamonAudio.setMuted(muted);
     showToast(muted ? "Muted" : "Sound on");
     return;
   }
@@ -2876,8 +2870,8 @@ function handleKey(k) {
     }
     // Full-canvas reader — intercepts BEFORE interact()
     if (readerState) {
-      if (k === "ArrowLeft" || k === "a" || k === "A") { readerState.page = Math.max(0, readerState.page - 1); sfx.select(); }
-      else if (k === "ArrowRight" || k === "d" || k === "D") { readerState.page = Math.min(readerState.maxPage, readerState.page + 1); sfx.select(); }
+      if (k === "ArrowLeft" || k === "a" || k === "A") { readerState.page = Math.max(0, readerState.page - 1); audioCue("world.page"); }
+      else if (k === "ArrowRight" || k === "d" || k === "D") { readerState.page = Math.min(readerState.maxPage, readerState.page + 1); audioCue("world.page"); }
       else if (k === "Escape") { closeReader(); sfx.select(); }
       return;
     }
@@ -3002,7 +2996,7 @@ let suppressCanvasClickPointerId = null;
 canvas.addEventListener("pointerdown", e => {
   try { canvas.focus({ preventScroll: true }); } catch (_) { canvas.focus(); }
   if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
-  if (typeof DatamonMusic !== "undefined") DatamonMusic.unlock();
+  if (typeof DatamonAudio !== "undefined") DatamonAudio.unlock();
   if (state === "dialogue" && dialogueSession) {
     if (activeDialoguePointers.has(e.pointerId)) return;
     activeDialoguePointers.add(e.pointerId);
@@ -3321,7 +3315,7 @@ function openCertificationConsole() {
   certConsoleOpen = true;
   certConsoleSel = 0;
   toast = null;
-  sfx.select();
+  audioCue("world.console");
   _dialogueAnnounce("Certification Console opened. Study evidence, not a pass prediction. Use arrow keys to navigate, P to replay the briefing, Escape to close.");
   setTimeout(_announceConsoleSelection, 0);
 }
@@ -3638,7 +3632,7 @@ function dispatchDialogue(event) {
   var result = DatamonDialogueRuntime.reduce(dialogueSession, event);
   if (!result.consumed && result.state === dialogueSession) return false;
   dialogueSession = result.state;
-  if (event.type !== "TICK") sfx.select();
+  if (event.type !== "TICK") audioCue(event.type === "CHOOSE" ? "dialogue.choice" : "dialogue.advance");
   if (dialogueSession && (dialogueSession.beatId !== previousBeat || dialogueSession.choice !== previousChoice)) {
     var changedBeat = dialogueSession.beatId !== previousBeat;
     announceDialogueBeat(true, !changedBeat, changedBeat && selectionLabel
@@ -3710,13 +3704,13 @@ function interact() {
   // Standing up from a chair: interacting while seated stands you up.
   if (player.seated) {
     leaveSeat();
-    sfx.select();
+    audioCue("world.chair-stand");
     return;
   }
 
   // Sitting in a chair: facing an unoccupied player seat → sit
   if (isFreePlayerSeat(tx, ty)) {
-    if (sitAt(tx, ty)) { sfx.confirm(); return; }
+    if (sitAt(tx, ty)) { audioCue("world.chair-sit"); return; }
   }
 
   // Certification Console interaction. The first quest arrival gets one portrait-led
@@ -3809,6 +3803,7 @@ function commitLibraryWarp() {
   if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("library");
   announceLocation("The Library", "Learn unseen material and rehearse");
   showToast("Entered the Library.");
+  audioCue("world.door");
   camFx = camFy = null; bufferedDir = null; turnStartMs = null;
 }
 
@@ -3864,6 +3859,7 @@ function commitBattleRoomWarp() {
   if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("battleRoom");
   announceLocation("Battle Room", "Test due concepts in safe rematches");
   showToast("Entered the Battle Room.");
+  audioCue("world.door");
   camFx = camFy = null; bufferedDir = null; turnStartMs = null;
 }
 
@@ -3903,6 +3899,7 @@ function returnToOffice(entryX, entryY, toastMsg) {
   var msg = typeof toastMsg === "string" ? toastMsg : "Back to the office.";
   announceLocation(locationHudLabel(), locationHudPurpose());
   showToast(msg);
+  audioCue("world.door");
   camFx = camFy = null; bufferedDir = null; turnStartMs = null;
 }
 
@@ -3911,7 +3908,7 @@ function drinkCoffee() {
   coffeeUses--;
   restorePlayerHp(true);
   save();   // persist immediately so a reload can't refill the machine
-  sfx.confirm();
+  audioCue("world.coffee");
   showToast(`Fresh coffee — HP restored! ${coffeeUses} ${coffeeUses === 1 ? "use" : "uses"} left.`);
 }
 
@@ -3942,7 +3939,14 @@ function heldMovementDirection() {
 
 function emitFootfallContact(foot) {
   locomotionContactCount = Math.min(1000000, locomotionContactCount + 1);
-  if (state === "overworld") sfx.move();
+  if (state === "overworld") {
+    const tile = map && map[player.y] ? map[player.y][player.x] : null;
+    sfx.move({
+      foot,
+      gait: player.running ? "run" : "walk",
+      surface: typeof DatamonAudio !== "undefined" ? DatamonAudio.surfaceForTile(tile, currentMap) : "wood",
+    });
+  }
   if (locomotionReducedMotion()) return;
   const count = player.running ? 3 : 1;
   const side = foot === "right" ? 1 : -1;
@@ -4050,7 +4054,7 @@ function tryStep(dir, continuing) {
   if (player.seated) {
     leaveSeat();
     for (const key in keys) if (KEY_DIR[key] === dir) keys[key] = false;
-    sfx.select();
+    audioCue("world.chair-stand");
     return;
   }
   const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[dir];
@@ -7529,22 +7533,37 @@ function drawSearch() {
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 }
 
-// Resolve a small read-only soundtrack snapshot. Music never receives mutable game objects.
-function resolveMusicScene() {
-  if (typeof DatamonMusic === "undefined") return null;
+// Resolve a defensive scalar-only presentation snapshot. Audio never receives
+// mutable player, battle, reducer, save, question, or telemetry objects.
+function currentAudioOverlay() {
+  if (state === "dialogue") return "dialogue";
+  if (mentorReview) return "mentor";
+  if (certConsoleOpen) return "console";
+  if (readerState || bookPrompt) return "reader";
+  if (state === "search") return "search";
+  return null;
+}
+function resolveAudioSnapshot() {
   const musicBattle = battle ? {
     phase: battle.agentOps ? battle.agentOps.phase : battle.phase,
+    domain: battle.mons && battle.mons[battle.idx] ? battle.mons[battle.idx].domain : (battle.npc && battle.npc.type),
     agentOps: battle.agentOps ? {
       boss: !!battle.agentOps.boss,
       bossPhase: battle.agentOps.bossPhase || 0,
     } : null,
   } : null;
-  return DatamonMusic.resolveScene({
+  const tile = map && map[player.y] ? map[player.y][player.x] : null;
+  return {
     state,
     currentMap,
+    region: currentMap === "office" ? regionOf(player.x, player.y) : null,
+    surface: typeof DatamonAudio !== "undefined" ? DatamonAudio.surfaceForTile(tile, currentMap) : "wood",
+    overlay: currentAudioOverlay(),
+    minigameType: currentMinigame && currentMinigame.type,
     battle: musicBattle,
     transitionType: battleTransition && battleTransition.npc ? battleTransition.npc.type : null,
-  });
+    gait: player.running ? "run" : "walk",
+  };
 }
 
 function loop(t) {
@@ -7578,8 +7597,8 @@ function loop(t) {
       if (battle.timerMs <= 0) { battle.timerMs = 0; timeoutQuestion(); }
     }
   }
-  // Scene sync is idempotent; unchanged scenes never restart their scheduler or loop.
-  if (typeof DatamonMusic !== "undefined") DatamonMusic.setScene(resolveMusicScene());
+  // Snapshot sync is idempotent; unchanged music/ambience never restart.
+  if (typeof DatamonAudio !== "undefined") DatamonAudio.setSnapshot(resolveAudioSnapshot());
 
   // Minigame update: init on first frame, then tick feedback timers (#029)
   if (state === "minigame" && currentMinigame) {
@@ -7614,7 +7633,7 @@ ctx.fillStyle = "#e2e8f0"; ctx.font = "bold 20px monospace"; ctx.textAlign = "ce
 ctx.fillText("Loading the team...", CANVAS_W / 2, CANVAS_H / 2);
 // Initialize presentation systems without creating an AudioContext before user activation.
 if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.init();
-if (typeof DatamonMusic !== "undefined") DatamonMusic.init({ muted: muted, scene: "title" });
+if (typeof DatamonAudio !== "undefined") DatamonAudio.init({ muted: muted, snapshot: { state: "title", currentMap: "office" } });
 // Load and validate the additive manifest, then request only accepted office/shared HD members.
 // A missing/empty manifest resolves to legacy rendering with zero HD image requests.
 var hdManifestPromise = (typeof DatamonWorldArt !== "undefined")

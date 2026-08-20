@@ -12,6 +12,10 @@
   "musicActiveFrameP95Ms": 34,
   "musicActiveFrameSamples": 90,
   "musicMaxVoices": 24,
+  "audioMaxContexts": 1,
+  "audioMaxVoices": 32,
+  "audioMaxDecodedBytes": 4194304,
+  "audioMaxPayloadBytes": 1048576,
   "classicArenaFirstAuthoredPaintMs": 2500,
   "classicBattlePresentationDecodedMiB": 8
 }

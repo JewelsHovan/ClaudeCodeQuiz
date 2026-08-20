@@ -65,11 +65,8 @@
   var motionListenerInstalled = false;
 
   var muted = false;
-  var audioContext = null;
   var audioUnlocked = false;
   var audioAvailable = null;
-  var voices = [];
-  var delayedTones = new Set();
   var toneStarts = 0;
 
   var announcedKeys = [];
@@ -344,113 +341,27 @@
     }
   }
 
-  function audioConstructor() {
-    return window.AudioContext || window.webkitAudioContext;
-  }
-
-  function ensureAudio() {
-    if (audioContext && audioContext.state !== "closed") return true;
-    var Ctor = audioConstructor();
-    if (typeof Ctor !== "function") {
-      audioAvailable = false;
-      return false;
-    }
-    try {
-      audioContext = new Ctor();
-      audioAvailable = true;
-      return true;
-    } catch (_) {
-      audioContext = null;
-      audioAvailable = false;
-      return false;
-    }
-  }
-
+  // Agent presentation delegates semantic cues to the shared audio director.
+  // It owns no AudioContext, oscillator, timeout, or destination connection.
   api.unlockAudio = function () {
-    if (muted || !ensureAudio()) return false;
-    audioUnlocked = true;
-    try {
-      if (audioContext.state === "suspended" && typeof audioContext.resume === "function") {
-        var resumed = audioContext.resume();
-        if (resumed && typeof resumed.catch === "function") resumed.catch(function () {});
-      }
-    } catch (_) {}
-    return true;
-  };
-
-  function removeVoice(voice) {
-    var index = voices.indexOf(voice);
-    if (index >= 0) voices.splice(index, 1);
-  }
-
-  function stopVoice(voice) {
-    if (!voice) return;
-    try { voice.oscillator.onended = null; voice.oscillator.stop(); } catch (_) {}
-    try { voice.oscillator.disconnect(); } catch (_) {}
-    try { voice.gain.disconnect(); } catch (_) {}
-    removeVoice(voice);
-  }
-
-  function playTone(frequency, duration, type, volume) {
-    if (muted || !audioUnlocked || !ensureAudio() || !audioContext || audioContext.state === "suspended") return;
-    while (voices.length >= MAX_VOICES) stopVoice(voices[0]);
-    try {
-      var oscillator = audioContext.createOscillator();
-      var gain = audioContext.createGain();
-      var now = audioContext.currentTime;
-      oscillator.type = type || "square";
-      oscillator.frequency.value = frequency;
-      gain.gain.setValueAtTime(volume || 0.045, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
-      var voice = { oscillator: oscillator, gain: gain };
-      voices.push(voice);
-      oscillator.onended = function () { removeVoice(voice); };
-      oscillator.start(now);
-      oscillator.stop(now + duration);
-      toneStarts++;
-    } catch (_) {}
-  }
-
-  function delayedTone(delay, frequency, duration, type, volume) {
-    if (muted || !audioUnlocked || delayedTones.size >= MAX_DELAYED_TONES) return;
-    var timer = window.setTimeout(function () {
-      delayedTones.delete(timer);
-      playTone(frequency, duration, type, volume);
-    }, Math.max(0, delay));
-    delayedTones.add(timer);
-  }
-
-  var CUE_TONES = {
-    navigate: [[0, 760, 0.045, "square", 0.025]],
-    confirm: [[0, 620, 0.07, "triangle", 0.035]],
-    rejected: [[0, 180, 0.14, "sawtooth", 0.035]],
-    query: [[0, 520, 0.06, "square", 0.035], [55, 760, 0.08, "square", 0.035]],
-    inspect: [[0, 440, 0.07, "triangle", 0.035], [65, 880, 0.09, "triangle", 0.035]],
-    patch: [[0, 330, 0.08, "triangle", 0.035], [70, 520, 0.12, "triangle", 0.035]],
-    escalate: [[0, 260, 0.06, "sawtooth", 0.035], [55, 440, 0.07, "sawtooth", 0.04], [110, 700, 0.12, "square", 0.045]],
-    correct: [[0, 780, 0.08, "square", 0.04], [75, 1040, 0.12, "triangle", 0.045]],
-    wrong: [[0, 210, 0.18, "sawtooth", 0.04]],
-    blocked: [[0, 520, 0.07, "triangle", 0.04], [60, 520, 0.09, "triangle", 0.04]],
-    phase: [[0, 390, 0.07, "triangle", 0.035], [70, 520, 0.08, "triangle", 0.04], [140, 660, 0.12, "triangle", 0.045]],
-    victory: [[0, 520, 0.10, "triangle", 0.04], [90, 660, 0.10, "triangle", 0.04], [180, 780, 0.18, "triangle", 0.045]],
-    defeat: [[0, 280, 0.20, "sawtooth", 0.035], [150, 210, 0.24, "sawtooth", 0.035]],
+    if (muted || typeof window.DatamonAudio === "undefined") {
+      audioAvailable = typeof window.DatamonAudio !== "undefined";
+      return false;
+    }
+    var result = window.DatamonAudio.unlock();
+    audioUnlocked = result !== false;
+    var diagnostics = window.DatamonAudio.getDiagnostics();
+    audioAvailable = diagnostics.available !== false;
+    return audioUnlocked && audioAvailable;
   };
 
   api.playCue = function (name) {
-    var sequence = CUE_TONES[name];
-    if (!sequence || muted || !audioUnlocked) return;
-    for (var i = 0; i < sequence.length; i++) {
-      var tone = sequence[i];
-      delayedTone(tone[0], tone[1], tone[2], tone[3], tone[4]);
-    }
+    if (muted || !audioUnlocked || typeof window.DatamonAudio === "undefined") return;
+    if (window.DatamonAudio.cue("agent." + name, { group: "agent" })) toneStarts++;
   };
 
   api.stopAllAudio = function () {
-    delayedTones.forEach(function (timer) { window.clearTimeout(timer); });
-    delayedTones.clear();
-    while (voices.length) stopVoice(voices[0]);
+    if (typeof window.DatamonAudio !== "undefined") window.DatamonAudio.cancelGroup("agent");
   };
 
   api.setMuted = function (value) {
@@ -1186,13 +1097,15 @@
   };
 
   api.getDiagnostics = function () {
+    var sharedAudio = typeof window.DatamonAudio !== "undefined" ? window.DatamonAudio.getDiagnostics() : null;
     return {
       reducedMotion: reducedMotion,
       muted: muted,
       audioUnlocked: audioUnlocked,
       audioAvailable: audioAvailable,
-      activeVoices: voices.length,
-      delayedTones: delayedTones.size,
+      activeVoices: 0,
+      delayedTones: 0,
+      sharedActiveVoices: sharedAudio ? sharedAudio.activeVoices : 0,
       toneStarts: toneStarts,
       particleCount: particles.length,
       particleCap: MAX_PARTICLES,

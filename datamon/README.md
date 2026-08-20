@@ -111,10 +111,11 @@ localStorage (per browser + port, so stick with one way of serving it).
 - The **coffee machines** (bottom corners) fully restore HP.
 - Defeat all 36 rivals to become a **Claude Certified Architect**.
 - Progress autosaves to localStorage.
-- An original adaptive Web Audio score changes arrangement between title, office,
-  Library, minigames, classic battles, Incident Command, boss phases, victory, and
-  defeat. It begins only after a key/pointer activation; **M** mutes music and SFX
-  everywhere, including colleague search.
+- A unified original audio director changes the procedural DATAMON score between title/select,
+  office regions, Library/reader, Battle Room, each minigame, domain battles, Incident Command,
+  boss phases, victory, and defeat. A reviewed 450 KB local batch adds room tone, surface-aware
+  footsteps, UI, foley, and battle texture through the same bounded mix. It begins only after a
+  key/pointer activation; **M** immediately mutes music, ambience, and SFX everywhere.
 
 ## Files
 
@@ -130,7 +131,9 @@ localStorage (per browser + port, so stick with one way of serving it).
 - `agent-arena.js` — Incident Command presentation, accessibility, bounded effects/audio
 - `world-art.js` — DPR-aware map caches, accepted HD asset/ambient layer, lazy portraits
 - `world-layout.js` — pure semantic office anchor allocation and accepted 36-rival training slots
-- `music.js` — original deterministic score, scene routing, crossfades, and bounded Web Audio scheduler
+- `music.js` — immutable original score/motif catalog and pure scene routing
+- `audio.js` — one-context music transport, ambience/SFX mixer, lifecycle, lazy decode, and diagnostics
+- `audio/` — exact reviewed original hybrid runtime batch and content-addressed manifest
 - `questions.js` — 120-question bank (AGENT / MCP / CONFIG / PROMPT / CONTEXT,
   24 per exam domain, each with an explanation), mon names, battle quotes
 - `sprites/` — generated GBA-style pixel trainer sprites (transparent 256px PNGs)

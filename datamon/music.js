@@ -161,11 +161,69 @@
     }),
   });
 
+  function deriveScore(base, options) {
+    options = options || {};
+    var rotate = Math.max(0, options.rotate || 0);
+    var layers = base.layers.map(function (layer, index) {
+      var pattern = layer.pattern.slice();
+      if (rotate && pattern.length) pattern = pattern.slice(rotate % pattern.length).concat(pattern.slice(0, rotate % pattern.length));
+      return {
+        instrument: options.instruments && options.instruments[index] || layer.instrument,
+        division: layer.division,
+        duration: Math.max(0.025, layer.duration * (options.durationScale || 1)),
+        gain: layer.gain * (options.gainScale || 1),
+        pattern: pattern,
+      };
+    });
+    return freezeScore({
+      label: options.label || base.label,
+      tempo: options.tempo || Math.round(base.tempo * (options.tempoScale || 1)),
+      root: base.root + (options.rootShift || 0),
+      steps: base.steps,
+      loop: options.loop === undefined ? base.loop : !!options.loop,
+      volume: base.volume * (options.volumeScale || 1),
+      roles: options.roles || base.roles,
+      layers: layers,
+    });
+  }
+
+  // Variants reuse the original score grammar and motif while changing register,
+  // pulse, orchestration, and density. They are data-only; audio.js owns playback.
+  SCORES = Object.freeze(Object.assign({}, SCORES, {
+    select: deriveScore(SCORES.title, { label: "Candidate uplink", tempo: 92, rootShift: 5, rotate: 2, gainScale: 1.05 }),
+    "battle-room": deriveScore(SCORES["classic-battle"], { label: "Training grid", tempo: 118, rootShift: -2, rotate: 4, instruments: ["bass", "bell", "hat"], volumeScale: .86 }),
+    "library-reader": deriveScore(SCORES.library, { label: "Deep reading", tempo: 66, rootShift: -5, durationScale: 1.2, gainScale: .78, volumeScale: .78 }),
+    "minigame-matching": deriveScore(SCORES.minigame, { label: "Pair protocol", tempo: 108, rootShift: 0, rotate: 2 }),
+    "minigame-cloze": deriveScore(SCORES.minigame, { label: "Missing token", tempo: 104, rootShift: -3, rotate: 4, instruments: ["bell", "bass", "hat"] }),
+    "minigame-assembly": deriveScore(SCORES.minigame, { label: "System assembly", tempo: 116, rootShift: 2, rotate: 6, instruments: ["drive", "bass", "hat"] }),
+    "minigame-timed": deriveScore(SCORES.minigame, { label: "Recall clock", tempo: 124, rootShift: 5, rotate: 8, gainScale: 1.06 }),
+    "classic-battle-mcp": deriveScore(SCORES["classic-battle"], { label: "MCP routing duel", tempo: 124, rootShift: -2, rotate: 2, instruments: ["drive", "bell", "hat"] }),
+    "classic-battle-config": deriveScore(SCORES["classic-battle"], { label: "Configuration duel", tempo: 128, rootShift: 2, rotate: 4, instruments: ["pulse", "pluck", "hat"] }),
+    "classic-battle-prompt": deriveScore(SCORES["classic-battle"], { label: "Prompt duel", tempo: 130, rootShift: 5, rotate: 6, instruments: ["bass", "bell", "hat"] }),
+    "classic-battle-context": deriveScore(SCORES["classic-battle"], { label: "Context duel", tempo: 122, rootShift: -5, rotate: 8, instruments: ["drive", "pad", "hat"] }),
+    "classic-battle-mix": deriveScore(SCORES["classic-battle"], { label: "Mixed systems duel", tempo: 134, rootShift: 7, rotate: 10, instruments: ["drive", "pluck", "hat"] }),
+    "office-agent": deriveScore(SCORES.office, { label: "Agent wing", rootShift: -2, rotate: 2, volumeScale: .96 }),
+    "office-mcp": deriveScore(SCORES.office, { label: "MCP bullpen", rootShift: 0, rotate: 4 }),
+    "office-config": deriveScore(SCORES.office, { label: "Config kitchen", rootShift: 2, rotate: 6 }),
+    "office-context": deriveScore(SCORES.office, { label: "Context room", rootShift: -5, rotate: 8, tempo: 92 }),
+    "office-prompt": deriveScore(SCORES.office, { label: "Prompt studio", rootShift: 5, rotate: 10, tempo: 100 }),
+    "office-mix": deriveScore(SCORES.office, { label: "Mixed practice", rootShift: 7, rotate: 12, tempo: 102 }),
+  }));
+
+  function canonicalDomain(value) {
+    value = String(value || "").toLowerCase();
+    return ["agent", "mcp", "config", "prompt", "context", "mix"].indexOf(value) >= 0 ? value : "";
+  }
+
   function resolveScene(snapshot) {
     snapshot = snapshot || {};
     var state = snapshot.state || "title";
     if (state === "victory") return "victory";
-    if (state === "minigame") return "minigame";
+    if (state === "select") return "select";
+    if (state === "minigame") {
+      var minigame = String(snapshot.minigameType || "").toLowerCase();
+      return SCORES["minigame-" + minigame] ? "minigame-" + minigame : "minigame";
+    }
     if (state === "battle" && snapshot.battle) {
       var battle = snapshot.battle;
       var phase = battle.phase || "";
@@ -177,382 +235,75 @@
         }
         return "agent-battle";
       }
-      return "classic-battle";
+      var battleDomain = canonicalDomain(battle.domain);
+      return battleDomain && battleDomain !== "agent" && SCORES["classic-battle-" + battleDomain]
+        ? "classic-battle-" + battleDomain : "classic-battle";
     }
     if (state === "transition" && snapshot.transitionType === "AGENT") return "agent-battle";
-    if (state === "transition") return "classic-battle";
+    if (state === "transition") {
+      var transitionDomain = canonicalDomain(snapshot.transitionType);
+      return transitionDomain && SCORES["classic-battle-" + transitionDomain]
+        ? "classic-battle-" + transitionDomain : "classic-battle";
+    }
     if (state === "overworld" || state === "search" || state === "dialogue") {
-      return snapshot.currentMap === "library" ? "library" : "office";
+      if (snapshot.currentMap === "library") return snapshot.overlay === "reader" ? "library-reader" : "library";
+      if (snapshot.currentMap === "battleRoom") return "battle-room";
+      var region = canonicalDomain(snapshot.region);
+      return region && SCORES["office-" + region] ? "office-" + region : "office";
     }
     return "title";
   }
 
   function midiToHz(note) { return 440 * Math.pow(2, (note - 69) / 12); }
 
-  // Web Audio shims and privacy-hardened browsers sometimes expose only part of
-  // AudioParam. Fall back to direct assignment so audio can always fail silent.
-  function paramSet(param, value, time) {
-    if (!param) return;
-    if (typeof param.setValueAtTime === "function") param.setValueAtTime(value, time);
-    else param.value = value;
+  var rememberedScene = "title";
+  var rememberedMuted = false;
+  function director() {
+    return typeof window !== "undefined" && window.DatamonAudio ? window.DatamonAudio : null;
   }
-  function paramLinear(param, value, time) {
-    if (!param) return;
-    if (typeof param.linearRampToValueAtTime === "function") param.linearRampToValueAtTime(value, time);
-    else param.value = value;
-  }
-  function paramExponential(param, value, time) {
-    if (!param) return;
-    if (typeof param.exponentialRampToValueAtTime === "function") param.exponentialRampToValueAtTime(value, time);
-    else param.value = value;
-  }
-  function paramCancel(param, time) {
-    if (param && typeof param.cancelScheduledValues === "function") param.cancelScheduledValues(time);
-  }
-
-  var audioContext = null;
-  var masterGain = null;
-  var unlocked = false;
-  var muted = false;
-  var currentScene = null;
-  var currentScore = null;
-  var currentBus = null;
-  var retiringBuses = [];
-  var activeVoices = [];
-  var schedulerId = null;
-  var schedulerStarts = 0;
-  var generation = 0;
-  var stepIndex = 0;
-  var nextStepTime = 0;
-  var completedOneShot = false;
-  var noiseBuffer = null;
-  var transitions = [];
-  var available = true;
-  var contextCreations = 0;
-
-  function failSilent() {
-    available = false;
-    generation++;
-    stopScheduler();
-    stopVoices();
-    if (currentBus) disposeBus(currentBus);
-    for (var i = 0; i < retiringBuses.length; i++) disposeBus(retiringBuses[i]);
-    retiringBuses = [];
-    currentBus = null;
-    currentScore = null;
-    noiseBuffer = null;
-    var failedContext = audioContext;
-    audioContext = null;
-    masterGain = null;
-    unlocked = false;
-    if (failedContext && typeof failedContext.close === "function") {
-      try {
-        var result = failedContext.close();
-        if (result && result.catch) result.catch(function () {});
-      } catch (_) {}
-    }
-    return false;
-  }
-
-  function createContext() {
-    if (!available) return false;
-    if (audioContext && audioContext.state !== "closed") return true;
-    try {
-      var Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return failSilent();
-      audioContext = new Ctx();
-      contextCreations++;
-      if (typeof audioContext.createGain !== "function") return failSilent();
-      masterGain = audioContext.createGain();
-      if (!masterGain || !masterGain.gain || typeof masterGain.connect !== "function") return failSilent();
-      masterGain.gain.value = muted ? 0 : 0.72;
-      masterGain.connect(audioContext.destination);
-      return true;
-    } catch (_) {
-      return failSilent();
-    }
-  }
-
-  function makeNoiseBuffer() {
-    if (noiseBuffer || !audioContext || !audioContext.createBuffer) return noiseBuffer;
-    var length = Math.max(1, Math.floor((audioContext.sampleRate || 44100) * 0.25));
-    noiseBuffer = audioContext.createBuffer(1, length, audioContext.sampleRate || 44100);
-    var data = noiseBuffer.getChannelData(0);
-    var seed = 0xDA7A2026;
-    for (var i = 0; i < length; i++) {
-      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-      data[i] = ((seed / 4294967296) * 2 - 1) * (1 - i / length);
-    }
-    return noiseBuffer;
-  }
-
-  function pruneVoices() {
-    activeVoices = activeVoices.filter(function (voice) { return !voice.ended; });
-    while (activeVoices.length > MAX_VOICES) {
-      var oldest = activeVoices.shift();
-      try { oldest.source.stop(); } catch (_) {}
-      oldest.ended = true;
-    }
-  }
-
-  function scheduleVoice(instrument, note, when, duration, gainAmount, bus, token) {
-    if (!audioContext || !bus || token !== generation || muted) return;
-    if (instrument === "hat" && typeof audioContext.createBufferSource !== "function") return;
-    if (instrument !== "hat" && typeof audioContext.createOscillator !== "function") {
-      throw new Error("Web Audio oscillator unavailable");
-    }
-    pruneVoices();
-    if (activeVoices.length >= MAX_VOICES) return;
-    var source;
-    var gain = audioContext.createGain();
-    var filter = audioContext.createBiquadFilter ? audioContext.createBiquadFilter() : null;
-    var attack = 0.006;
-    var release = Math.max(0.03, duration * 0.45);
-    paramSet(gain.gain, 0.0001, when);
-    paramExponential(gain.gain, Math.max(0.0002, gainAmount), when + attack);
-    paramExponential(gain.gain, 0.0001, when + duration + release);
-
-    if (instrument === "hat") {
-      source = audioContext.createBufferSource();
-      source.buffer = makeNoiseBuffer();
-      if (filter) { filter.type = "highpass"; filter.frequency.value = 4500; }
-    } else {
-      source = audioContext.createOscillator();
-      source.type = instrument === "pad" || instrument === "bass" ? "triangle"
-        : instrument === "bell" ? "sine" : instrument === "drive" ? "square" : "square";
-      source.frequency.value = midiToHz(note);
-      if (filter) {
-        filter.type = "lowpass";
-        filter.frequency.value = instrument === "drive" ? 1200 : instrument === "pad" ? 900 : 2600;
-      }
-    }
-    if (filter) { source.connect(filter); filter.connect(gain); }
-    else source.connect(gain);
-    gain.connect(bus);
-    var voice = { source: source, gain: gain, ended: false, generation: token };
-    activeVoices.push(voice);
-    source.onended = function () { voice.ended = true; };
-    try { source.start(when); source.stop(when + duration + release + 0.02); } catch (_) { voice.ended = true; }
-  }
-
-  function disposeBus(record) {
-    if (!record) return;
-    try { if (record.gain && record.gain.disconnect) record.gain.disconnect(); } catch (_) {}
-    record.disposed = true;
-  }
-
-  function cleanupBuses(now) {
-    for (var i = retiringBuses.length - 1; i >= 0; i--) {
-      if (now >= retiringBuses[i].disposeAt) {
-        disposeBus(retiringBuses[i]);
-        retiringBuses.splice(i, 1);
-      }
-    }
-    while (retiringBuses.length + (currentBus ? 1 : 0) > MAX_BUSES) {
-      disposeBus(retiringBuses.shift());
-    }
-  }
-
-  function scheduleStep(score, step, when, token) {
-    var scheduled = 0;
-    var sixteenth = 60 / score.tempo / 4;
-    for (var i = 0; i < score.layers.length && scheduled < MAX_EVENTS_PER_TICK; i++) {
-      var layer = score.layers[i];
-      if (step % layer.division !== 0) continue;
-      var patternStep = Math.floor(step / layer.division) % layer.pattern.length;
-      var offset = layer.pattern[patternStep];
-      if (offset === null || offset === undefined) continue;
-      scheduleVoice(layer.instrument, score.root + offset, when,
-        Math.max(0.025, layer.duration), layer.gain, currentBus && currentBus.gain, token);
-      scheduled++;
-    }
-    return sixteenth;
-  }
-
-  function schedulerTick() {
-    if (!audioContext || !unlocked || muted || !currentScore || !currentBus) return;
-    var now = audioContext.currentTime;
-    cleanupBuses(now);
-    var horizon = now + LOOKAHEAD_S;
-    var guard = 0;
-    while (nextStepTime < horizon && guard < MAX_EVENTS_PER_TICK) {
-      var duration = scheduleStep(currentScore, stepIndex, nextStepTime, generation);
-      stepIndex++;
-      if (stepIndex >= currentScore.steps) {
-        if (currentScore.loop) stepIndex = 0;
-        else { completedOneShot = true; currentScore = null; break; }
-      }
-      nextStepTime += duration;
-      guard++;
-    }
-    pruneVoices();
-    if (completedOneShot) stopScheduler();
-  }
-
-  function ensureScheduler() {
-    if (schedulerId !== null || !audioContext || !currentScore || !currentBus || !unlocked || muted) return;
-    schedulerId = setInterval(function () {
-      try { schedulerTick(); } catch (_) { failSilent(); }
-    }, TICK_MS);
-    schedulerStarts++;
-  }
-
-  function stopScheduler() {
-    if (schedulerId !== null) clearInterval(schedulerId);
-    schedulerId = null;
-  }
-
-  function stopVoices() {
-    for (var i = 0; i < activeVoices.length; i++) {
-      try { activeVoices[i].source.stop(); } catch (_) {}
-      activeVoices[i].ended = true;
-    }
-    activeVoices = [];
-  }
-
-  function setScene(scene) {
-    if (!SCORES[scene]) scene = "title";
-    if (scene === currentScene) return false;
-    currentScene = scene;
-    currentScore = SCORES[scene];
-    generation++;
-    stepIndex = 0;
-    completedOneShot = false;
-    transitions.push(scene);
-    if (transitions.length > MAX_DIAGNOSTIC_TRANSITIONS) transitions.shift();
-
-    if (!audioContext || !masterGain) return true;
-    try {
-      var now = audioContext.currentTime;
-      if (currentBus) {
-        var old = currentBus;
-        paramCancel(old.gain.gain, now);
-        paramSet(old.gain.gain, Math.max(0.0001, old.gain.gain.value || 0.0001), now);
-        paramLinear(old.gain.gain, 0.0001, now + CROSSFADE_S);
-        old.disposeAt = now + CROSSFADE_S + 0.05;
-        retiringBuses.push(old);
-      }
-      if (typeof audioContext.createGain !== "function") return failSilent();
-      var node = audioContext.createGain();
-      if (!node || !node.gain || typeof node.connect !== "function") return failSilent();
-      paramSet(node.gain, 0.0001, now);
-      paramLinear(node.gain, currentScore.volume, now + CROSSFADE_S);
-      node.connect(masterGain);
-      currentBus = { gain: node, scene: scene, disposeAt: Infinity, disposed: false };
-      nextStepTime = now + 0.025;
-      cleanupBuses(now);
-      ensureScheduler();
-      return true;
-    } catch (_) {
-      return failSilent();
-    }
-  }
-
-  function unlock() {
-    try {
-      if (!createContext()) return false;
-      unlocked = true;
-      var resumed = audioContext.state === "suspended" && audioContext.resume ? audioContext.resume() : null;
-      if (resumed && resumed.catch) resumed.catch(function () { failSilent(); });
-      if (!currentScene) setScene("title");
-      else if (!currentBus) {
-        var remembered = currentScene;
-        currentScene = null;
-        setScene(remembered);
-      }
-      ensureScheduler();
-      return available;
-    } catch (_) {
-      return failSilent();
-    }
-  }
-
-  function setMuted(value) {
-    muted = !!value;
-    if (masterGain && audioContext) {
-      var now = audioContext.currentTime;
-      try {
-        paramCancel(masterGain.gain, now);
-        paramSet(masterGain.gain, masterGain.gain.value || 0.0001, now);
-        paramLinear(masterGain.gain, muted ? 0.0001 : 0.72, now + 0.08);
-      } catch (_) { masterGain.gain.value = muted ? 0 : 0.72; }
-    }
-    if (muted) { stopScheduler(); stopVoices(); }
-    else if (unlocked) {
-      nextStepTime = audioContext ? audioContext.currentTime + 0.03 : 0;
-      ensureScheduler();
-    }
-  }
-
-  function suspend() {
-    stopScheduler();
-    stopVoices();
-    if (audioContext && audioContext.suspend) {
-      try { var result = audioContext.suspend(); if (result && result.catch) result.catch(function () {}); } catch (_) {}
-    }
-  }
-
-  function resume() {
-    if (!unlocked || muted || !audioContext) return;
-    try {
-      var result = audioContext.resume && audioContext.resume();
-      if (result && result.catch) result.catch(function () { failSilent(); });
-    } catch (_) { failSilent(); return; }
-    nextStepTime = audioContext.currentTime + 0.03;
-    ensureScheduler();
-  }
-
-  function reset() {
-    generation++;
-    stopScheduler();
-    stopVoices();
-    if (currentBus) disposeBus(currentBus);
-    for (var i = 0; i < retiringBuses.length; i++) disposeBus(retiringBuses[i]);
-    retiringBuses = [];
-    currentBus = null;
-    currentScene = null;
-    currentScore = null;
-    stepIndex = 0;
-    completedOneShot = false;
-  }
-
-  function getDiagnostics() {
-    pruneVoices();
-    return {
-      available: available,
-      contextCreations: contextCreations,
-      unlocked: unlocked,
-      muted: muted,
-      scene: currentScene,
-      tempo: currentScene && SCORES[currentScene] ? SCORES[currentScene].tempo : null,
-      schedulerActive: schedulerId !== null,
-      schedulerStarts: schedulerStarts,
-      activeVoices: activeVoices.length,
-      buses: retiringBuses.length + (currentBus ? 1 : 0),
-      retiringBuses: retiringBuses.length,
-      generation: generation,
-      step: stepIndex,
-      oneShotComplete: completedOneShot,
-      transitions: transitions.slice(),
-      noiseBuffers: noiseBuffer ? 1 : 0,
-      limits: {
-        voices: MAX_VOICES, eventsPerTick: MAX_EVENTS_PER_TICK,
-        buses: MAX_BUSES, transitions: MAX_DIAGNOSTIC_TRANSITIONS,
-      },
-    };
-  }
-
   function init(options) {
     options = options || {};
-    muted = !!options.muted;
-    if (options.scene) setScene(options.scene);
+    rememberedMuted = !!options.muted;
+    if (options.scene && SCORES[options.scene]) rememberedScene = options.scene;
+    var audio = director();
+    if (audio) audio.init({ muted: rememberedMuted, scene: rememberedScene });
+  }
+  function unlock() { var audio = director(); return audio ? audio.unlock() : false; }
+  function setScene(scene) {
+    if (!SCORES[scene]) scene = "title";
+    var changed = scene !== rememberedScene;
+    rememberedScene = scene;
+    var audio = director();
+    return audio ? audio.setMusicScene(scene) : changed;
+  }
+  function setMuted(value) {
+    rememberedMuted = !!value;
+    var audio = director();
+    if (audio) audio.setMuted(rememberedMuted);
+  }
+  function suspend() { var audio = director(); if (audio) audio.suspend(); }
+  function resume() { var audio = director(); if (audio) audio.resume(); }
+  function reset() { rememberedScene = null; var audio = director(); if (audio) audio.reset(); }
+  function getDiagnostics() {
+    var audio = director();
+    if (audio) return audio.getDiagnostics();
+    return {
+      available: false, contextCreations: 0, unlocked: false, muted: rememberedMuted,
+      scene: rememberedScene, tempo: rememberedScene && SCORES[rememberedScene] ? SCORES[rememberedScene].tempo : null,
+      schedulerActive: false, schedulerStarts: 0, activeVoices: 0, buses: 0,
+      retiringBuses: 0, generation: 0, step: 0, oneShotComplete: false,
+      transitions: [], noiseBuffers: 0,
+      limits: { voices: 32, eventsPerTick: 32, buses: 5, transitions: 32 },
+    };
   }
 
   var API = {
     MOTIF: MOTIF,
     SCORES: SCORES,
     resolveScene: resolveScene,
+    canonicalDomain: canonicalDomain,
     midiToHz: midiToHz,
+    deriveScore: deriveScore,
     init: init,
     unlock: unlock,
     setScene: setScene,
@@ -563,13 +314,5 @@
     getDiagnostics: getDiagnostics,
   };
 
-  if (typeof document !== "undefined") {
-    document.addEventListener("visibilitychange", function () {
-      if (document.hidden) suspend(); else resume();
-    });
-  }
-  if (typeof window !== "undefined") {
-    window.addEventListener("pagehide", suspend);
-    window.DatamonMusic = API;
-  }
+  if (typeof window !== "undefined") window.DatamonMusic = API;
 })();

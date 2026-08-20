@@ -9,7 +9,7 @@ import vm from "node:vm";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
-const RUNTIME_SCRIPTS = ["state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "locomotion.js", "game.js"];
+const RUNTIME_SCRIPTS = ["state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "audio.js", "locomotion.js", "game.js"];
 
 function walk(dir, sub = "", result = []) {
   const current = path.join(dir, sub);
@@ -43,7 +43,7 @@ const expectedManifest = payload.map(file => `${file.path}\t${file.size}`).join(
 const actualManifest = fs.readFileSync(path.join(DIST, "file-manifest.txt"), "utf8");
 const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
 const payloadPaths = new Set(payload.map(file => file.path));
-const requiredRuntime = ["index.html", "state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "locomotion.js", "game.js", "sprites-idle/manifest.json", "sprites-sit/manifest.json", "props-study/manifest.json", "props-wayfinding/manifest.json", "battlemons/manifest.json", "battle-arenas/manifest.json"];
+const requiredRuntime = ["index.html", "state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "audio.js", "locomotion.js", "game.js", "audio/manifest.json", "sprites-idle/manifest.json", "sprites-sit/manifest.json", "props-study/manifest.json", "props-wayfinding/manifest.json", "battlemons/manifest.json", "battle-arenas/manifest.json"];
 for (const runtimeFile of requiredRuntime) {
   if (!payloadPaths.has(runtimeFile)) throw new Error(`Missing packaged runtime file: dist/${runtimeFile}`);
 }
@@ -58,6 +58,61 @@ for (const script of RUNTIME_SCRIPTS) {
     throw new Error(`dist/index.html contains unsafe unversioned runtime reference: ${script}`);
   }
 }
+
+// The hybrid audio batch is exact, original, content-addressed, and deliberately tiny.
+// Raw sources, audition pages, unknown formats, and coordinated manifest/file drift fail.
+const audioManifest = JSON.parse(fs.readFileSync(path.join(DIST, "audio/manifest.json"), "utf8"));
+if (audioManifest.schemaVersion !== 1 || audioManifest.batchId !== "datamon-original-hybrid-audio-v1" ||
+    audioManifest.reviewState !== "accepted" || audioManifest.policy !== "original-local-hybrid-v1" ||
+    audioManifest.originality !== "deterministic local synthesis; no third-party or copyrighted samples" ||
+    audioManifest.generator !== "datamon/tools/gen_audio_assets.py" || !Array.isArray(audioManifest.assets) ||
+    audioManifest.assetCount !== audioManifest.assets.length || audioManifest.limits?.publicBytes !== 1024 * 1024 ||
+    audioManifest.limits?.decodedBytes !== 4 * 1024 * 1024) {
+  throw new Error("Packaged audio manifest identity/policy is invalid");
+}
+const audioIds = new Set(), audioFiles = new Set();
+let audioAggregate = 0;
+for (const entry of audioManifest.assets) {
+  if (!/^[a-z0-9][a-z0-9.-]*$/.test(entry.id || "") || audioIds.has(entry.id) ||
+      !/^[a-z0-9][a-z0-9.-]*\.(mp3|wav)$/.test(entry.file || "") || audioFiles.has(entry.file) ||
+      !["mp3", "wav"].includes(entry.format) || !["ambience", "footstep", "ui", "foley", "battle", "result"].includes(entry.role) ||
+      entry.file.split(".").pop() !== entry.format || entry.channels !== 1 || entry.sampleRate !== 22050 ||
+      !Number.isInteger(entry.durationMs) || entry.durationMs <= 0 || !Number.isFinite(entry.gain) || entry.gain <= 0 || entry.gain > 1 ||
+      !Number.isInteger(entry.bytes) || entry.bytes <= 0 || !/^[0-9a-f]{64}$/.test(entry.sha256 || "") ||
+      entry.provenance?.kind !== "deterministic-local-synthesis" || entry.provenance?.reviewState !== "accepted") {
+    throw new Error(`Invalid packaged audio declaration: ${entry.id || "unknown"}`);
+  }
+  if (entry.loop && (!Number.isInteger(entry.loop.startMs) || !Number.isInteger(entry.loop.endMs) ||
+      entry.loop.startMs < 0 || entry.loop.startMs >= entry.loop.endMs || entry.loop.endMs > entry.durationMs)) {
+    throw new Error(`Invalid packaged audio loop points: ${entry.id}`);
+  }
+  const relative = `audio/${entry.file}`, absolute = path.join(DIST, relative);
+  if (!payloadPaths.has(relative) || !fs.existsSync(absolute) || fs.statSync(absolute).size !== entry.bytes) {
+    throw new Error(`Missing or byte-mismatched packaged audio: ${relative}`);
+  }
+  const data = fs.readFileSync(absolute);
+  if (createHash("sha256").update(data).digest("hex") !== entry.sha256) throw new Error(`Packaged audio hash mismatch: ${relative}`);
+  if (entry.format === "wav" && (data.subarray(0, 4).toString() !== "RIFF" || data.subarray(8, 12).toString() !== "WAVE")) {
+    throw new Error(`Packaged WAV header invalid: ${relative}`);
+  }
+  audioIds.add(entry.id); audioFiles.add(entry.file); audioAggregate += entry.bytes;
+}
+const packagedAudioFiles = payload.filter(file => file.path.startsWith("audio/")).map(file => file.path).sort();
+const declaredAudioFiles = ["audio/manifest.json", ...[...audioFiles].map(file => `audio/${file}`)].sort();
+if (JSON.stringify(packagedAudioFiles) !== JSON.stringify(declaredAudioFiles) ||
+    audioAggregate !== audioManifest.aggregateBytes || audioAggregate > 1024 * 1024 ||
+    payload.some(file => /audio-source|audio-audition|\.flac$|\.ogg$|\.m4a$/.test(file.path))) {
+  throw new Error("Packaged audio set or aggregate budget is invalid");
+}
+const packagedAudioSource = fs.readFileSync(path.join(DIST, "audio.js"), "utf8");
+for (const legacy of ["game.js", "music.js", "agent-arena.js"]) {
+  const source = fs.readFileSync(path.join(DIST, legacy), "utf8");
+  if (/new\s+(?:\([^\n]*AudioContext|AudioContext|webkitAudioContext|Ctor\s*\()/.test(source)) {
+    throw new Error(`Legacy runtime owns an AudioContext: ${legacy}`);
+  }
+}
+if (!/context\s*=\s*new\s+Ctor\(\)/.test(packagedAudioSource)) throw new Error("Unified audio director does not own the runtime context");
+
 // Old public headshot URLs intentionally receive one exact transparent 1×1 PNG so
 // Cloudflare evicts stale photos. Any other bytes, dimensions, slug set, or nested path fail.
 const HEADSHOT_TOMBSTONE_SHA256 = "f2bb5bbaca678ecad746b1fa5ecfa2c8a81dd18817be19f0187c036d25326317";
