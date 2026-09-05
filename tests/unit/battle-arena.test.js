@@ -8,9 +8,12 @@ const productManifest = JSON.parse(fs.readFileSync("datamon/battle-arenas/manife
 const clone = value => JSON.parse(JSON.stringify(value));
 
 function loadModule(options = {}) {
-  const requests = [], draws = []; let timeoutCalls = 0;
+  const requests = [], draws = [], polygons = []; let timeoutCalls = 0;
   function context() {
-    return { fillRect() {}, strokeRect() {}, beginPath() {}, moveTo() {}, lineTo() {}, closePath() {}, stroke() {}, fill() {}, ellipse() {},
+    let points = [];
+    return { fillRect() {}, strokeRect() {}, beginPath() { points = []; },
+      moveTo(x, y) { points.push([x, y]); }, lineTo(x, y) { points.push([x, y]); },
+      closePath() { polygons.push(points); }, stroke() {}, fill() {}, ellipse() {},
       drawImage(...args) { draws.push(args); }, set fillStyle(_) {}, set strokeStyle(_) {}, set lineWidth(_) {} };
   }
   const sandbox = {
@@ -45,7 +48,7 @@ function loadModule(options = {}) {
     queueMicrotask,
   };
   vm.runInNewContext(source, sandbox, { filename: "datamon/battle-arena.js" });
-  return { api: sandbox.window.DatamonBattleArena, requests, draws };
+  return { api: sandbox.window.DatamonBattleArena, requests, draws, polygons };
 }
 
 const { api } = loadModule();
@@ -77,6 +80,24 @@ describe("strict authored arena manifest", () => {
 });
 
 describe("one-resident lazy arena runtime", () => {
+  it("grounds fallback combatants inside the same platform surfaces as accepted art", () => {
+    const loaded = loadModule();
+    loaded.api.drawArena({ drawImage() {} }, "CONFIG", 0, 0, 800, 432);
+    const sandbox = { window: {} };
+    vm.runInNewContext(fs.readFileSync("datamon/battle-presentation.js", "utf8"), sandbox);
+    const g = sandbox.window.DatamonBattlePresentation.GEOMETRY;
+    const anchors = [g.PLAYER_ANCHOR, g.OPPONENT_ANCHOR,
+      [g.BATTLEMON_CENTER_X, g.BATTLEMON_CENTER_Y + g.BATTLEMON_DRAW_SIZE * 0.44]];
+    assert.equal(loaded.polygons.length, 3);
+    // Convex decks: each contact lies on the interior side of every edge.
+    anchors.forEach(([x, y], i) => {
+      const polygon = loaded.polygons[i];
+      for (let j = 0; j < polygon.length; j++) {
+        const a = polygon[j], b = polygon[(j + 1) % polygon.length];
+        assert.ok((b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]) > 0, `deck ${i}`);
+      }
+    });
+  });
   it("loads only the manifest at boot, coalesces one domain image, and draws it", async () => {
     const loaded = loadModule();
     await loaded.api.loadManifest();

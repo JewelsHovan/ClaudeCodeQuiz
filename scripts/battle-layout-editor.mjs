@@ -27,10 +27,21 @@ export function parseGeometrySource(source) {
     if (!match) throw new Error(`Unable to read ${name} from battle-presentation.js`);
     return Number(match[1]);
   }
+  function rect(name) {
+    const match = source.match(new RegExp(`${name}:\\s*Object\\.freeze\\(\\[(-?\\d+),\\s*(-?\\d+),\\s*(-?\\d+),\\s*(-?\\d+)\\]\\)`));
+    if (!match) throw new Error(`Unable to read ${name} from battle-presentation.js`);
+    return Object.freeze(match.slice(1).map(Number));
+  }
   return Object.freeze({
     PLAYER_ANCHOR: Object.freeze(pair("PLAYER_ANCHOR")),
     OPPONENT_ANCHOR: Object.freeze(pair("OPPONENT_ANCHOR")),
     BATTLEMON_CENTER: Object.freeze([scalar("BATTLEMON_CENTER_X"), scalar("BATTLEMON_CENTER_Y")]),
+    PLAYER_VISIBLE_HEIGHT: scalar("PLAYER_VISIBLE_HEIGHT"),
+    OPPONENT_VISIBLE_HEIGHT: scalar("OPPONENT_VISIBLE_HEIGHT"),
+    BATTLEMON_DRAW_SIZE: scalar("BATTLEMON_DRAW_SIZE"),
+    OPPONENT_PLATE: rect("OPPONENT_PLATE"),
+    PLAYER_PLATE: rect("PLAYER_PLATE"),
+    BATTLEMON_PLATE: rect("BATTLEMON_PLATE"),
   });
 }
 

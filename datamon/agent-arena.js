@@ -719,12 +719,18 @@
     var playerX = 126 - offset;
     var opponentX = 674 + offset;
 
-    ctx.fillStyle = "rgba(47,111,237,0.22)";
-    ctx.beginPath(); ctx.ellipse(playerX, 342, 78, 15, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(opponentX, 318, 78, 15, 0, 0, Math.PI * 2); ctx.fill();
+    // Share classic trainer proportions, not its platform coordinates. The incident board
+    // remains the focal point; the far colleague must not dwarf the near operator.
+    var geometry = typeof DatamonBattlePresentation !== "undefined" ? DatamonBattlePresentation.GEOMETRY : null;
+    ctx.fillStyle = "rgba(47,111,237,0.16)";
+    ctx.beginPath(); ctx.ellipse(playerX, 350, 56, 10, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(opponentX, 322, 50, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(3,7,19,0.5)";
+    ctx.fillRect(playerX - 20, 350, 40, 4);
+    ctx.fillRect(opponentX - 18, 322, 36, 4);
 
-    drawTrainer(battle.npc.slug, opponentX, 326, 180, reducedMotion ? 0 : 2);
-    drawTrainer(playerSlug, playerX, 354, 144, 0);
+    drawTrainer(battle.npc.slug, opponentX, 326, geometry ? geometry.OPPONENT_VISIBLE_HEIGHT : 132, 0);
+    drawTrainer(playerSlug, playerX, 354, geometry ? geometry.PLAYER_VISIBLE_HEIGHT : 146, 0);
 
     ctx.fillStyle = COLORS.bone;
     ctx.font = "bold 9px monospace";

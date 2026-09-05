@@ -10,7 +10,7 @@ function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
 function loadModule(options = {}) {
   const requests = [];
-  const drawCalls = [];
+  const drawCalls = [], ellipses = [];
   const alphaWidth = options.alphaWidth || 4, alphaHeight = options.alphaHeight || 4;
   const alphaPixels = new Uint8ClampedArray(alphaWidth * alphaHeight * 4);
   for (const [x, y] of options.alphaPoints || [[1, 1], [2, 1], [1, 2], [2, 2], [1, 3], [2, 3]]) {
@@ -20,7 +20,7 @@ function loadModule(options = {}) {
     return {
       imageSmoothingEnabled: false,
       clearRect() {}, save() {}, restore() {}, translate() {}, fill() {}, stroke() {},
-      beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, rect() {}, ellipse() {},
+      beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, rect() {}, ellipse(...args) { ellipses.push(args); },
       fillRect() {}, strokeRect() {},
       drawImage(...args) { drawCalls.push(args); },
       getImageData() { return { data: alphaPixels }; },
@@ -73,7 +73,7 @@ function loadModule(options = {}) {
     queueMicrotask,
   };
   vm.runInNewContext(source, sandbox, { filename: "datamon/battle-presentation.js" });
-  return { api: sandbox.window.DatamonBattlePresentation, requests, drawCalls };
+  return { api: sandbox.window.DatamonBattlePresentation, requests, drawCalls, ellipses };
 }
 
 const { api } = loadModule();
@@ -102,8 +102,8 @@ describe("DatamonBattlePresentation taxonomy and immutable geometry", () => {
     assert.deepEqual(Array.from(geometry.PLAYER_ANCHOR), [151, 340]);
     assert.deepEqual(Array.from(geometry.OPPONENT_ANCHOR), [683, 158]);
     assert.deepEqual([geometry.BATTLEMON_CENTER_X, geometry.BATTLEMON_CENTER_Y], [495, 170]);
-    assert.equal(geometry.PLAYER_VISIBLE_HEIGHT, 172);
-    assert.equal(geometry.OPPONENT_VISIBLE_HEIGHT, 156);
+    assert.equal(geometry.PLAYER_VISIBLE_HEIGHT, 146);
+    assert.equal(geometry.OPPONENT_VISIBLE_HEIGHT, 132);
     assert.ok(geometry.PLAYER_VISIBLE_HEIGHT / geometry.OPPONENT_VISIBLE_HEIGHT <= 1.11);
     assert.equal(geometry.STAGE_BOTTOM, 432);
     assert.ok(Object.isFrozen(geometry));
@@ -123,8 +123,8 @@ describe("DatamonBattlePresentation taxonomy and immutable geometry", () => {
       const opponentPose = api.resolveTrainerPose("opponent", phase, feedback, false);
       const playerHeight = api.GEOMETRY.PLAYER_VISIBLE_HEIGHT * api.POSE_PARAMS[playerPose].scaleY;
       const opponentHeight = api.GEOMETRY.OPPONENT_VISIBLE_HEIGHT * api.POSE_PARAMS[opponentPose].scaleY;
-      assert.equal(playerHeight, 172, phaseName);
-      assert.equal(opponentHeight, 156, phaseName);
+      assert.equal(playerHeight, 146, phaseName);
+      assert.equal(opponentHeight, 132, phaseName);
       assert.ok(playerHeight > opponentHeight, phaseName);
     }
   });
@@ -205,6 +205,19 @@ describe("pure semantic state resolution", () => {
 });
 
 describe("bounded alpha scanning and lazy loading", () => {
+  it("keeps CONFIG's fallback shell inside each 128px cell, including attack and faint offsets", () => {
+    const loaded = loadModule();
+    loaded.api.drawBattlemonFrame({ drawImage() {} }, "CONFIG", "config-deny-rule", "idle-a", 0, 0, 128, 128);
+    assert.equal(loaded.ellipses.length, 6);
+    loaded.ellipses.forEach(([x, y, rx, ry], frame) => {
+      const dx = frame === 3 ? -8 : frame === 4 ? 7 : 0;
+      const dy = frame === 1 ? -2 : frame === 2 ? 6 : frame === 5 ? 18 : 0;
+      assert.ok(x + dx - rx - 2.5 >= 0);
+      assert.ok(x + dx + rx + 2.5 <= 128);
+      assert.ok(y + dy - ry - 2.5 >= 0);
+      assert.ok(y + dy + ry + 2.5 <= 128);
+    });
+  });
   it("computes and caches exact decoded alpha bounds once", () => {
     const loaded = loadModule();
     const image = { complete: true, naturalWidth: 4, naturalHeight: 4 };

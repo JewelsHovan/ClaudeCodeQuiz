@@ -35,16 +35,18 @@
   var GEOMETRY = Object.freeze({
     PLAYER_ANCHOR: Object.freeze([151, 340]),
     OPPONENT_ANCHOR: Object.freeze([683, 158]),
-    PLAYER_VISIBLE_HEIGHT: 172,
-    OPPONENT_VISIBLE_HEIGHT: 156,
+    // Preserve authored foot contacts; leave room above the far trainer even in a win pose.
+    PLAYER_VISIBLE_HEIGHT: 146,
+    OPPONENT_VISIBLE_HEIGHT: 132,
     BATTLEMON_CENTER_X: 495,
     BATTLEMON_CENTER_Y: 170,
     BATTLEMON_DRAW_SIZE: 128,
+    BATTLEMON_PLATE: Object.freeze([383, 270, 607, 308]),
     STAGE_BOTTOM: 432,
     OPPONENT_PLATE: Object.freeze([18, 16, 310, 86]),
     PLAYER_PLATE: Object.freeze([500, 340, 782, 412]),
   });
-  // Vertical scale stays exactly 1 in every pose so the reviewed 172px/156px visible-height
+  // Vertical scale stays exactly 1 in every pose so the reviewed 146px/132px visible-height
   // contract remains true at semantic endpoints and the far trainer can never dominate.
   var POSE_PARAMS = Object.freeze({
     idle: Object.freeze({ dx: 0, dy: 0, rotation: 0, scaleX: 1, scaleY: 1, alpha: 255 }),
@@ -339,7 +341,8 @@
       } else if (normalized === "MCP") {
         context.rect(31, 35, 62, 62);
       } else if (normalized === "CONFIG") {
-        context.ellipse(22, 43, 94, 49, 0, 0, Math.PI * 2);
+        // Canvas ellipse takes center/radii, not an x/y/width/height bounding box.
+        context.ellipse(64, 66, 46, 31, 0, 0, Math.PI * 2);
       } else if (normalized === "PROMPT") {
         context.moveTo(64, 24); context.lineTo(78, 54); context.lineTo(113, 37);
         context.lineTo(94, 74); context.lineTo(109, 96); context.lineTo(66, 83);
