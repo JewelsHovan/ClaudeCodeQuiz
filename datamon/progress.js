@@ -277,5 +277,29 @@
     return { questionStats: out, seenCounter: sc, changed: true, event: returnedEvent };
   };
 
+  // Read-only question directory. Missed means ever missed, NOT the latest answer:
+  // v2 telemetry stores aggregate counts, so it cannot truthfully infer that distinction.
+  API.questionCatalog = function (bank, stats, seenCounter, colleagues) {
+    var rows = [], sc = safeNonNegativeInt(seenCounter);
+    var people = Array.isArray(colleagues) ? colleagues : [];
+    DOMAIN_KEYS.forEach(function (domain) {
+      var questions = bank && Array.isArray(bank[domain]) ? bank[domain] : [];
+      questions.forEach(function (q, index) {
+        if (!q || typeof q.id !== "string" || !Array.isArray(q.c) || q.c.length !== 4) return;
+        var st = (stats && stats[q.id]) || {};
+        var correct = safeNonNegativeInt(st.correct), wrong = safeNonNegativeInt(st.wrong);
+        var seen = safeNonNegativeInt(st.seen), lastSeen = safeNonNegativeInt(st.lastSeen);
+        rows.push({
+          domain: domain, index: index, question: q, correct: correct, wrong: wrong,
+          seen: seen, lastSeen: lastSeen, missed: wrong > 0, unattempted: correct + wrong === 0,
+          due: seen > 0 && (wrong >= correct || sc - lastSeen >= DEFAULT_SEEN_GAP),
+          colleagues: people.filter(function (n) { return n.type === domain; }),
+          generalists: people.filter(function (n) { return n.type === "MIX"; }),
+        });
+      });
+    });
+    return rows;
+  };
+
   window.DatamonProgress = API;
 })();

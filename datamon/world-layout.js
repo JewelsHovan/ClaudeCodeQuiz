@@ -210,5 +210,33 @@
   };
   API.DOMAINS = Object.freeze(DOMAINS.slice());
 
+  // Bounded breadth-first route to any walkable cell beside an interaction target.
+  // Collision remains host-owned; never walk into an NPC, chair, console or doorway.
+  API.routeToInteraction = function (start, target, width, height, isWalkable) {
+    function valid(p) {
+      return p && Number.isInteger(p.x) && Number.isInteger(p.y) &&
+        p.x >= 0 && p.y >= 0 && p.x < width && p.y < height;
+    }
+    if (!valid(start) || !valid(target) || typeof isWalkable !== "function") return null;
+    var queue = [{ x: start.x, y: start.y, parent: -1 }], head = 0;
+    var visited = new Set([start.x + "," + start.y]);
+    while (head < queue.length) {
+      var at = head++, point = queue[at];
+      if (manhattan(point, target) === 1) {
+        var route = [];
+        while (at >= 0) { point = queue[at]; route.push({ x: point.x, y: point.y }); at = point.parent; }
+        return route.reverse();
+      }
+      [[0,-1],[1,0],[0,1],[-1,0]].forEach(function (d) {
+        var next = { x: point.x + d[0], y: point.y + d[1], parent: head - 1 };
+        var key = next.x + "," + next.y;
+        if (!valid(next) || visited.has(key) || (next.x === target.x && next.y === target.y) ||
+            !isWalkable(next.x, next.y)) return;
+        visited.add(key); queue.push(next);
+      });
+    }
+    return null;
+  };
+
   window.DatamonWorldLayout = API;
 })();

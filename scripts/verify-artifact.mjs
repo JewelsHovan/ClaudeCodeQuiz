@@ -9,7 +9,7 @@ import vm from "node:vm";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
-const RUNTIME_SCRIPTS = ["state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "audio.js", "locomotion.js", "game.js"];
+const RUNTIME_SCRIPTS = ["state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "question-hub.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "audio.js", "locomotion.js", "game.js"];
 
 function walk(dir, sub = "", result = []) {
   const current = path.join(dir, sub);
@@ -43,7 +43,7 @@ const expectedManifest = payload.map(file => `${file.path}\t${file.size}`).join(
 const actualManifest = fs.readFileSync(path.join(DIST, "file-manifest.txt"), "utf8");
 const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
 const payloadPaths = new Set(payload.map(file => file.path));
-const requiredRuntime = ["index.html", "state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "audio.js", "locomotion.js", "game.js", "audio/manifest.json", "sprites-idle/manifest.json", "sprites-sit/manifest.json", "props-study/manifest.json", "props-wayfinding/manifest.json", "battlemons/manifest.json", "battle-arenas/manifest.json"];
+const requiredRuntime = ["index.html", "state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "question-hub.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "audio.js", "locomotion.js", "game.js", "audio/manifest.json", "sprites-idle/manifest.json", "sprites-sit/manifest.json", "props-study/manifest.json", "props-wayfinding/manifest.json", "battlemons/manifest.json", "battle-arenas/manifest.json"];
 for (const runtimeFile of requiredRuntime) {
   if (!payloadPaths.has(runtimeFile)) throw new Error(`Missing packaged runtime file: dist/${runtimeFile}`);
 }

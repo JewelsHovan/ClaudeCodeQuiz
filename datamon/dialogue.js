@@ -408,6 +408,7 @@
     line += training
       ? " Simulation logged; campaign progress remains isolated."
       : (playerWon ? " Challenge recorded in your certification ledger." : " Recover, review the evidence, and return when ready.");
+    line += " Missed an answer? Press Q in the world, then choose Missed before in the Question Hub.";
     return {
       id: (training ? "training-outcome:" : "campaign-outcome:") + npcSlug + ":" + (playerWon ? "win" : "loss"),
       startBeat: "reaction",

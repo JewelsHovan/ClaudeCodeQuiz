@@ -36,11 +36,77 @@
         -18px 0 80px rgba(249, 115, 91, 0.06),
         18px 0 80px rgba(45, 212, 191, 0.06);
     }
+    #game-shell { position: relative; line-height: 0; }
+    #game-shell canvas { display: block; }
+    #question-hub-toggle { position: absolute; top: 15.5%; right: 1%; padding: 9px 12px; background: #0f172a; color: #e2e8f0; border: 1px solid #2dd4bf; font: 12px monospace; cursor: pointer; line-height: 1.3; }
+    [hidden] { display: none !important; }
+    .question-hub { --hub-ink: #e2e8f0; --hub-muted: #aebdd0; --hub-panel: #0f172a; --hub-line: #334155; --hub-accent: #2dd4bf; margin: auto; width: min(1000px, 96vw); max-width: 96vw; height: min(820px, 94dvh); max-height: 94dvh; padding: 0; background: #0b1220; color: var(--hub-ink); border: 1px solid var(--hub-line); font: 15px/1.55 system-ui, sans-serif; overflow: hidden; }
+    .question-hub[open] { display: flex; flex-direction: column; }
+    .question-hub::backdrop { background: rgba(3,7,19,.86); }
+    .question-hub button, .question-hub input, .question-hub select { font: inherit; color: var(--hub-ink); background: var(--hub-panel); border: 1px solid var(--hub-line); padding: 9px 12px; border-radius: 4px; min-height: 44px; }
+    .question-hub button, .question-hub summary { cursor: pointer; }
+    .question-hub button:hover:not(:disabled) { border-color: var(--hub-accent); }
+    .question-hub button:disabled { opacity: .55; cursor: default; }
+    .question-hub :focus-visible, #question-hub-toggle:focus-visible { outline: 3px solid #f2b35d; outline-offset: 3px; }
+    .question-hub h1, .question-hub h2, .question-hub .hub-kicker, .hub-tabs { font-family: monospace; }
+    .question-hub h1 { font-size: 20px; color: var(--hub-accent); }
+    .question-hub h2 { font-size: 23px; margin-bottom: 8px; }
+    .question-hub h3 { font-size: 17px; margin: 14px 0 8px; }
+    .hub-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--hub-line); }
+    .hub-tabs { display: flex; gap: 8px; padding: 12px 24px; }
+    .hub-tabs [aria-pressed=true] { color: var(--hub-accent); border-color: var(--hub-accent); }
+    .hub-content { padding: 8px 24px 28px; overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
+    .hub-muted { color: var(--hub-muted); font-size: 14px; }
+    .hub-note { color: var(--hub-muted); font-size: 13px; padding: 12px 0; }
+    .hub-kicker { display: block; font-size: 12px; color: var(--hub-muted); }
+    .hub-filters { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-top: 20px; }
+    .hub-filters label { font-size: 12px; font-weight: 600; }
+    .hub-filters input, .hub-filters select { display: block; width: 100%; margin-top: 6px; min-width: 0; }
+    .hub-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+    .question-hub .hub-primary { background: #143d3c; border-color: var(--hub-accent); color: #d6fff6; }
+    .hub-question { border: 1px solid var(--hub-line); border-left: 3px solid var(--domain-color); margin: 10px 0; background: var(--hub-panel); }
+    [data-domain=AGENT] { --domain-color: #60a5fa; } [data-domain=MCP] { --domain-color: #c084fc; } [data-domain=CONFIG] { --domain-color: #4ade80; } [data-domain=PROMPT] { --domain-color: #fb923c; } [data-domain=CONTEXT] { --domain-color: #22d3ee; } [data-domain=MIX] { --domain-color: #fbbf24; }
+    .hub-question > summary { padding: 14px 16px; }
+    .hub-question .hub-kicker { color: var(--domain-color); }
+    .hub-question-text { display: block; font-weight: 600; margin: 6px 0; }
+    .hub-question-body { padding: 4px 16px 16px; }
+    .hub-colleagues { list-style: none; margin-top: 12px; }
+    .hub-colleagues li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--hub-line); font-size: 13px; }
+    .hub-colleagues button { font-size: 12px; }
+    .hub-choices { display: grid; gap: 12px; margin: 20px 0; }
+    .hub-choices button { text-align: left; white-space: normal; padding: 14px 16px; }
+    .hub-choices button:disabled { opacity: 1; }
+    .hub-choices .hub-correct { border-color: #4ade80; background: #14372d; }
+    .hub-choices .hub-wrong { border-color: #fca5a5; background: #3d242c; }
+    .hub-feedback { border-left: 3px solid var(--hub-accent); padding: 0 16px; margin-bottom: 20px; }
+    .hub-feedback button { margin-top: 16px; }
+    .hub-back { margin: 16px 0 0 8px; }
+    .hub-score { font: bold 30px monospace; margin: 20px 0; }
+    .hub-destinations { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+    .hub-destinations section { border: 1px solid var(--hub-line); padding: 0 14px 14px; }
+    .hub-destinations button { margin-top: 10px; }
+    .hub-map-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+    .hub-map-grid section { border-top: 3px solid var(--domain-color); background: var(--hub-panel); padding: 0 12px 12px; }
+    .hub-map-grid button { margin: 8px 0; font-size: 13px; }
+    .hub-map-grid .hub-colleagues li { display: block; overflow-wrap: anywhere; }
+    .hub-map-grid .hub-colleagues button { width: 100%; }
+    .hub-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    @media (max-width: 650px) {
+      .question-hub { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; }
+      .hub-header { padding: 12px; } .hub-tabs { padding: 8px 12px; } .hub-content { padding: 8px 12px 24px; }
+      .hub-filters { grid-template-columns: 1fr 1fr; } .hub-filters label:first-child { grid-column: 1 / -1; }
+      .hub-map-grid, .hub-destinations { grid-template-columns: 1fr; }
+      .hub-colleagues li { display: block; } .hub-colleagues button { margin-top: 8px; }
+      #question-hub-toggle { font-size: 10px; padding: 6px 8px; }
+    }
   </style>
 </head>
 <body>
+  <div id="game-shell">
   <canvas id="game" tabindex="0" role="img" aria-label="DATAMON, a pixel-art Claude certification study game" aria-describedby="datamon-controls"></canvas>
-  <p id="datamon-controls" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Overworld: move with arrow keys, WASD, or click and hold in a direction. Dialogue: Enter or Space reveals and advances, arrow keys choose, number keys select, and Escape skips or closes. Agent Operations: use arrow keys to focus, number keys 1 through 4 or Enter to select, R to run, and M to mute.</p>
+  <button id="question-hub-toggle" type="button" hidden aria-haspopup="dialog">Q · Question Hub</button>
+  </div>
+  <p id="datamon-controls" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Overworld: move with arrow keys, WASD, or click and hold in a direction. Q opens the Question Hub to practice missed answers, browse all questions, and find colleagues. Escape clears walking directions. Dialogue: Enter or Space reveals and advances, arrow keys choose, number keys select, and Escape skips or closes. Agent Operations: use arrow keys to focus, number keys 1 through 4 or Enter to select, R to run, and M to mute.</p>
   <div id="datamon-announcer" role="status" aria-live="polite" aria-atomic="true"
        style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"></div>
   <script src="state.js"></script>
@@ -51,6 +117,7 @@
   <script src="agent-arena.js"></script>
   <script src="questions.js"></script>
   <script src="progress.js"></script>
+  <script src="question-hub.js"></script>
   <script src="dialogue-runtime.js"></script>
   <script src="dialogue.js"></script>
   <script src="world-art.js"></script>

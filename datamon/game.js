@@ -2170,6 +2170,105 @@ function drawEvidenceHUD() {
   ctx.fillText(hudText, hudX + 12, hudY + 15);
 }
 
+// ---- Question Hub adapter and optional walking directions ----
+let navigationTarget = null;
+let navigationRoute = null;
+let navigationRouteKey = "";
+let hubMissedRevision = -1, hubMissedCount = 0;
+function questionHubOpen() { return typeof DatamonQuestionHub !== "undefined" && DatamonQuestionHub.isOpen(); }
+function questionHubAvailable() {
+  return state === "overworld" && !mentorReview && !coffeePrompt && !bookPrompt &&
+    !readerState && !scout && !libraryWarpRequested && !battleRoomWarpRequested;
+}
+function clearHubInput() {
+  for (const key in keys) keys[key] = false;
+  bufferedDir = null; turnStartMs = null; pointerMoveId = null; pointerMoveDir = null;
+}
+function clearWalkingDirections() { navigationTarget = null; navigationRoute = null; navigationRouteKey = ""; }
+function walkingRoute() {
+  if (!navigationTarget) return null;
+  if (navigationTarget.map !== currentMap) { clearWalkingDirections(); return null; }
+  var key = currentMap + ":" + player.x + "," + player.y + ":" + navigationTarget.x + "," + navigationTarget.y;
+  if (key !== navigationRouteKey) {
+    navigationRouteKey = key;
+    navigationRoute = DatamonWorldLayout.routeToInteraction(player, navigationTarget, MAP_W, MAP_H, walkable);
+  }
+  return navigationRoute;
+}
+function trackHubDestination(target) {
+  if (!target || target.map !== currentMap) return false;
+  leaveSeat();
+  var route = DatamonWorldLayout.routeToInteraction(player, target, MAP_W, MAP_H, walkable);
+  if (!route) return false;
+  certConsoleOpen = false;
+  navigationTarget = { map: target.map, x: target.x, y: target.y, label: target.label };
+  navigationRouteKey = "";
+  showToast("Follow the gold trail. Face the destination and press Enter.", 3400);
+  return true;
+}
+function hubSnapshot() {
+  var people = currentMap === "office" ? npcs : officeNpcs;
+  var destinations = [];
+  function add(x, y, label, purpose) { destinations.push({ map: currentMap, x: x, y: y, label: label, purpose: purpose }); }
+  if (currentMap === "office") {
+    add(17, 4, "Certification Console", "Study evidence by topic. Enter a topic to browse its questions.");
+    add(24, 23, "The Library", "Read guides and rehearse with four study stations. Not an exact missed-question queue.");
+    add(11, 23, "Battle Room", "Unlimited rematches. Training streaks are separate from campaign victories.");
+    add(31, 2, "Coffee counter", "Restore HP · " + coffeeUses + " uses left.");
+  } else {
+    add(18, 23, "Office return", "Return to your colleagues and the Certification Console.");
+    if (currentMap === "library") {
+      add(4, 3, "Bookshelves", "Read the study guides. Reading progress is separate from question evidence.");
+      Object.keys(STUDY_STATIONS).forEach(function (key) {
+        var xy = key.split(","); add(+xy[0], +xy[1], STUDY_STATIONS[key].label,
+          STUDY_STATIONS[key].type === "timed" ? "Timed questions; individual answers also appear in the Question Hub." : "Rehearse concepts; station scores are separate from question evidence.");
+      });
+    }
+  }
+  return { bank: QUESTION_BANK, stats: questionStats, seenCounter: seenCounter, currentMap: currentMap,
+    location: locationHudLabel(), tracking: !!navigationTarget, destinations: destinations,
+    writeProtected: _writeProtectedSave,
+    colleagues: people.map(function (n) { return { slug: n.slug, name: displayName(n.slug), type: n.type, x: n.x, y: n.y, defeated: defeated.has(n.slug) }; }) };
+}
+function recordStudyReview(review, event, silent) {
+  var bank = review && QUESTION_BANK[review.domain];
+  if (!bank || bank[review.index] !== review.question) return event;
+  var result = DatamonProgress.applyReviewTelemetry(questionStats, seenCounter, review, event);
+  if (result.changed) {
+    questionStats = result.questionStats; seenCounter = result.seenCounter; _evidenceRevision++; save();
+    if (!silent && event.type === "answer") { if (event.correct) sfx.correct(); else sfx.wrong(); }
+  }
+  return result.event;
+}
+function drawWalkingTrail() {
+  var route = walkingRoute();
+  if (!route || state !== "overworld") return;
+  ctx.save(); ctx.fillStyle = "#f2b35d";
+  route.slice(1).forEach(function (p) {
+    var x = (p.x - camFx) * TILE + TILE / 2, y = (p.y - camFy) * TILE + TILE / 2;
+    ctx.fillRect(px(x - 2), px(y - 2), 4, 4);
+  });
+  ctx.restore();
+}
+function drawWalkingDirections() {
+  if (!navigationTarget || state !== "overworld") return;
+  var route = walkingRoute();
+  if (!navigationTarget) return;
+  ctx.save(); ctx.fillStyle = "rgba(15,23,42,0.94)"; ctx.fillRect(8, 98, 300, 48);
+  ctx.textAlign = "left"; ctx.fillStyle = "#f2b35d";
+  ctx.font = "bold " + fitFont(navigationTarget.label, 278, 12) + "px monospace";
+  ctx.fillText(navigationTarget.label, 18, 116);
+  ctx.font = "10px monospace"; ctx.fillStyle = "#e2e8f0";
+  var message = "No route · Q choose another destination";
+  if (route && route.length > 1) message = (route.length - 1) + " steps · follow gold dots · Esc clear";
+  else if (route) {
+    var dx = navigationTarget.x - player.x, dy = navigationTarget.y - player.y;
+    var dir = dx < 0 ? "left" : dx > 0 ? "right" : dy < 0 ? "up" : "down";
+    message = "Arrived · face " + dir + " + Enter · Esc clear";
+  }
+  ctx.fillText(message, 18, 134); ctx.restore();
+}
+
 // ---- Mentor Review Modal (#049): defeated-colleague one-question review ----
 // Freezes overworld movement/input behind the modal. Clears on Escape, reset, search,
 // battle, warps, map swap, and victory lifecycle paths.
@@ -2609,7 +2708,11 @@ function drawCertConsole() {
   ctx.fillStyle = "#64748b";
   ctx.font = "10px monospace";
   ctx.textAlign = "center";
-  ctx.fillText("\u2191\u2193 navigate  \u00b7  ENTER detail  \u00b7  P replay briefing  \u00b7  ESC close", bgX + bgW / 2, bgY + bgH - 16);
+  ctx.fillStyle = "#143d3c"; ctx.fillRect(bgX + 40, bgY + bgH - 78, bgW - 80, 40);
+  ctx.fillStyle = "#d6fff6"; ctx.font = "bold 12px monospace";
+  ctx.fillText("Q · Question Hub — revisit missed answers", bgX + bgW / 2, bgY + bgH - 53);
+  ctx.fillStyle = "#94a3b8"; ctx.font = "10px monospace";
+  ctx.fillText("\u2191\u2193 select topic · ENTER questions · P briefing · ESC close", bgX + bgW / 2, bgY + bgH - 16);
 }
 
 // ---- Certification Console input handling (#047) ----
@@ -2643,8 +2746,9 @@ function handleCertConsoleKey(key) {
     _announceConsoleSelection();
     return true;
   }
+  if (key === "q" || key === "Q") { DatamonQuestionHub.open({ status: "missed" }); return true; }
   if (key === "Enter" || key === " " || key === "Space") {
-    _announceConsoleDetail();
+    if (summary && summary.domains[certConsoleSel]) DatamonQuestionHub.open({ domain: summary.domains[certConsoleSel].key });
     return true;
   }
   return false;
@@ -2687,6 +2791,8 @@ const keys = {};
 const agentActivationKeys = new Set();
 const dialogueActivationKeys = new Set();
 window.addEventListener("keydown", e => {
+  // Native Question Hub controls own typing, scrolling, focus and audio-free shortcuts.
+  if (questionHubOpen()) return;
   // Unlock the one shared audio graph on first user interaction.
   if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
   if (typeof DatamonAudio !== "undefined") DatamonAudio.unlock();
@@ -2715,6 +2821,9 @@ window.addEventListener("keydown", e => {
       turnStartMs = null;
       tryStep(pressedDir);
     }
+    // Physical WASD owns movement on alternate layouts (e.g. printable Q on KeyA).
+    // Do not also interpret that same press as a Question Hub shortcut.
+    return;
   }
   // A held activation cannot cross dialogue beats/choices or answer and then close a mentor modal.
   var dialogueKeySupported = ["Enter", " ", "Space", "Escape", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "1", "2", "3", "4", "5", "6"].includes(e.key);
@@ -2748,6 +2857,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 function handleKey(k) {
+  if (questionHubOpen()) return;
   if (k === "m" || k === "M") {
     muted = !muted;
     if (typeof AgentArena !== "undefined") AgentArena.setMuted(muted);
@@ -2875,6 +2985,8 @@ function handleKey(k) {
       else if (k === "Escape") { closeReader(); sfx.select(); }
       return;
     }
+    if (k === "q" || k === "Q") { DatamonQuestionHub.open(); return; }
+    if (k === "Escape" && navigationTarget) { clearWalkingDirections(); showToast("Walking directions cleared."); return; }
     if (k === "/" || k === "f" || k === "F") { if (currentMap === "office") openSearch(); return; }
     if (k === " " || k === "Enter" || k === "e" || k === "E") interact();
   } else if (state === "battle") {
@@ -2994,6 +3106,7 @@ const activeDialoguePointers = new Set();
 let suppressCanvasClickUntil = 0;
 let suppressCanvasClickPointerId = null;
 canvas.addEventListener("pointerdown", e => {
+  if (questionHubOpen()) return;
   try { canvas.focus({ preventScroll: true }); } catch (_) { canvas.focus(); }
   if (typeof AgentArena !== "undefined") AgentArena.unlockAudio();
   if (typeof DatamonAudio !== "undefined") DatamonAudio.unlock();
@@ -3090,6 +3203,7 @@ window.addEventListener("blur", () => {
 });
 
 canvas.addEventListener("click", e => {
+  if (questionHubOpen()) return;
   var clickNow = performance.now();
   var samePointer = !e.pointerId || suppressCanvasClickPointerId == null || e.pointerId === suppressCanvasClickPointerId;
   if (clickNow <= suppressCanvasClickUntil && samePointer) {
@@ -3132,6 +3246,9 @@ canvas.addEventListener("click", e => {
   }
   if (certConsoleOpen) {
     var bgX = 40, bgY = 40, bgW = CANVAS_W - 80, bgH = CANVAS_H - 80;
+    if (mx >= bgX + 40 && mx <= bgX + bgW - 40 && my >= bgY + bgH - 78 && my <= bgY + bgH - 38) {
+      DatamonQuestionHub.open({ status: "missed" }); return;
+    }
     if (mx < bgX || mx > bgX + bgW || my < bgY || my > bgY + bgH ||
         (mx > bgX + bgW - 120 && my < bgY + 52)) {
       handleCertConsoleKey("Escape");
@@ -3316,7 +3433,7 @@ function openCertificationConsole() {
   certConsoleSel = 0;
   toast = null;
   audioCue("world.console");
-  _dialogueAnnounce("Certification Console opened. Study evidence, not a pass prediction. Use arrow keys to navigate, P to replay the briefing, Escape to close.");
+  _dialogueAnnounce("Certification Console opened. Study evidence, not a pass prediction. Use arrow keys to select a topic and Enter to browse its questions. Q opens missed-question practice, P replays the briefing, Escape closes.");
   setTimeout(_announceConsoleSelection, 0);
 }
 
@@ -3981,6 +4098,7 @@ function continueHeldMovement() {
 }
 
 function updateOverworld(dt) {
+  if (questionHubOpen()) return;
   // Secondary puffs use logical 60Hz ticks but are integrated from elapsed time, so their
   // lifetime/drift is equivalent on 30/60/120Hz displays.
   const particleTicks = Math.max(0, dt * 60);
@@ -4337,7 +4455,8 @@ function initMinigame() {
     const cats = bank ? Object.keys(DOMAIN_NAMES).filter(c => Array.isArray(bank[c]) && bank[c].length) : [];
     if (!bank || cats.length === 0) { showToast("No questions available"); exitMinigame(0); return; }
     const TARGET = 10;
-    const norm = (q, cat) => ({ stem: q.q, opts: q.c.slice(0, 4), answerIdx: q.a, domainName: DOMAIN_NAMES[cat] });
+    const norm = (q, cat) => ({ stem: q.q, opts: q.c.slice(0, 4), answerIdx: q.a, domainName: DOMAIN_NAMES[cat],
+      review: { domain: cat, index: bank[cat].indexOf(q), question: q }, revealEvent: null, answerEvent: null });
     // Pick a focus domain (boss feel); top up from other domains if it has < TARGET.
     const focus = cats[Math.floor(Math.random() * cats.length)];
     let queue = shuffled(bank[focus], Math.random).slice(0, TARGET).map(q => norm(q, focus));
@@ -4350,7 +4469,14 @@ function initMinigame() {
       feedback: null, phase: "question", score: 0,
       domainName: DOMAIN_NAMES[focus], timerEnd: Date.now() + TIMED_RECALL_MS,
     });
+    revealTimedQuestion();
   }
+}
+
+function revealTimedQuestion() {
+  var mg = currentMinigame, item = mg && mg.queue && mg.queue[mg.idx];
+  if (!item || !item.review) return;
+  item.revealEvent = recordStudyReview(item.review, item.revealEvent || { type: "reveal", consumed: false }, true);
 }
 
 // Frame-based feedback expiry
@@ -4392,6 +4518,7 @@ function advanceTimed() {
   } else {
     mg.sel = 0;
     mg.phase = "question";
+    revealTimedQuestion();
   }
 }
 
@@ -4817,9 +4944,11 @@ function handleTimedKey(k) {
 
 function timedAnswer(sel) {
   const mg = currentMinigame;
-  if (!mg || mg.phase !== "question") return;
+  if (!mg || mg.phase !== "question" || !Number.isInteger(sel) || sel < 0 || sel > 3) return;
   const item = mg.queue[mg.idx];
   const correct = sel === item.answerIdx;
+  if (item.review) item.answerEvent = recordStudyReview(item.review,
+    item.answerEvent || { type: "answer", correct: correct, consumed: false }, true);
   if (correct) { mg.correct++; sfx.confirm(); } else { sfx.wrong(); }
   mg.feedback = { correct, chosenIdx: sel, correctIdx: item.answerIdx, until: frame + 45 };
   mg.phase = "feedback";
@@ -6636,6 +6765,8 @@ function drawOverworld() {
       0, 0, CANVAS_W, CANVAS_H);
   }
 
+  drawWalkingTrail();
+
   // Scene-local weather/display/practical-light loops sit above architecture and below
   // labels/characters. Missing sheets are simply absent; frame zero is immediate in reduced motion.
   if (typeof DatamonWorldArt !== "undefined") {
@@ -6783,13 +6914,14 @@ function drawOverworld() {
   // Draw fixed navigation chrome after world entities so no sprite can cover it.
   var destinationPreview = officeDestinationPreview();
   drawLocationHUD();
-  if (state !== "dialogue" && performance.now() >= dialogueAnnouncementHoldUntil) {
+  if (!questionHubOpen() && state !== "dialogue" && performance.now() >= dialogueAnnouncementHoldUntil) {
     announceLocation(destinationPreview ? destinationPreview.label : locationHudLabel(),
       destinationPreview ? destinationPreview.announce : locationHudPurpose());
   }
 
   // ---- Evidence HUD strip (#047): compact study-readiness below location instrument ----
   drawEvidenceHUD();
+  drawWalkingDirections();
 
   ctx.fillStyle = "rgba(148,163,184,0.55)"; ctx.font = "11px monospace"; ctx.textAlign = "left";
   ctx.fillText("/  find a colleague", 12, CANVAS_H - 14);
@@ -6813,6 +6945,12 @@ function drawOverworld() {
     hintColor = "#fbbf24";
   } else if (currentMap === "office" && map[ty] && map[ty][tx] === "X") {
     hint = "SPACE: open Certification Console";
+  } else if (currentMap === "library" && map[ty] && map[ty][tx] === "B") {
+    hint = "SPACE: browse study guides";
+  } else if (currentMap === "library" && STUDY_STATIONS[tx + "," + ty]) {
+    hint = "SPACE: " + STUDY_STATIONS[tx + "," + ty].label;
+  } else if (currentMap !== "office" && map[ty] && ["L", "A"].includes(map[ty][tx])) {
+    hint = "SPACE: return to office";
   }
   if (hint && !certConsoleOpen && !mentorReview) {
     ctx.fillStyle = "rgba(15,23,42,0.90)";
@@ -7536,6 +7674,7 @@ function drawSearch() {
 // Resolve a defensive scalar-only presentation snapshot. Audio never receives
 // mutable player, battle, reducer, save, question, or telemetry objects.
 function currentAudioOverlay() {
+  if (questionHubOpen()) return "console";
   if (state === "dialogue") return "dialogue";
   if (mentorReview) return "mentor";
   if (certConsoleOpen) return "console";
@@ -7624,8 +7763,20 @@ function loop(t) {
   // Mentor review is the final visual layer; no stale toast or navigation chrome can cover it.
   if (state === "overworld" && mentorReview) drawMentorReview();
 
+  if (hubMissedRevision !== _evidenceRevision) {
+    hubMissedRevision = _evidenceRevision;
+    hubMissedCount = DatamonProgress.questionCatalog(QUESTION_BANK, questionStats, seenCounter, []).filter(function (r) { return r.missed; }).length;
+  }
+  DatamonQuestionHub.sync(questionHubAvailable() && !certConsoleOpen, hubMissedCount);
   requestAnimationFrame(loop);
 }
+
+DatamonQuestionHub.init({
+  available: questionHubAvailable, snapshot: hubSnapshot, record: recordStudyReview,
+  track: trackHubDestination, clearRoute: clearWalkingDirections,
+  pause: function () { clearHubInput(); toast = null; },
+  resume: function () { clearHubInput(); canvas.focus({ preventScroll: true }); },
+});
 
 // ---------- Boot ----------
 ctx.fillStyle = "#0f172a"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
