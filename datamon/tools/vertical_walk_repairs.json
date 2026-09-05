@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 1,
+  "policy": "fixed-upper-body-opposite-legs-v1",
+  "model": "gpt-image-2-2026-04-21",
+  "generation": {
+    "hardCallCap": 24,
+    "recordedCalls": 21,
+    "succeeded": 21,
+    "interrupted": 0
+  },
+  "baselineCommit": "776ed1f318ef73d5b8d771314eaa70a3083aaa39",
+  "preservedFileCount": 960,
+  "preservedFilesSha256": "77a1c5d7e9dd58354ccbbd70a6e41a4f549be798918f5c1fefd4ac186b2f460b",
+  "views": [
+    {
+      "slug": "duc-an-nguyen",
+      "direction": "down",
+      "source": "duc-an-nguyen-down.png",
+      "sourceSha256": "d0f790079b3210646ef0d9df4bbc30e15ccf86a0dd6a1486e90252f4c2d25140",
+      "halfCycle": [
+        2,
+        1
+      ]
+    },
+    {
+      "slug": "duc-an-nguyen",
+      "direction": "up",
+      "source": "duc-an-nguyen-up.png",
+      "sourceSha256": "c40016da1fc901d6b2a42ab93a24e0dcf29be3ada4546b78e708591dd4fe7d56",
+      "halfCycle": [
+        3,
+        1
+      ],
+      "sittingSourceSha256": "07f05d41be589bbf5a7beba74a65cb1302a82f63c184d09b95550d11c8f5e871"
+    },
+    {
+      "slug": "emile-moffatt",
+      "direction": "down",
+      "source": "emile-moffatt-down.png",
+      "sourceSha256": "1904ec9ca3b995c63f2a3b9aba6403f9b95dadaaa5aaddb20a3fc4b272a2c436",
+      "halfCycle": [
+        0,
+        1
+      ]
+    },
+    {
+      "slug": "emile-moffatt",
+      "direction": "up",
+      "source": "emile-moffatt-up.png",
+      "sourceSha256": "7bdef4b5ff5b737074b1895aaff7aefe895b227439947d9b4559e38329de350a",
+      "halfCycle": [
+        0,
+        1
+      ],
+      "sittingSourceSha256": "4934bfeb656c4c9aa12aa3f10a9622a32bb4e4b3643a54a4cd18b48b6b6c9435"
+    },
+    {
+      "slug": "ethan-pirso",
+      "direction": "up",
+      "source": "ethan-pirso-up.png",
+      "sourceSha256": "dc0daa117f377c1beffa432c514e86d7318ba284caebce50c3170aaf1b336f5d",
+      "halfCycle": [
+        2,
+        3
+      ],
+      "sittingSourceSha256": "e7bfc31aeaa32ca584bfcf423995f40c57dc38525cad057566f13f1a4a0b4bd9"
+    },
+    {
+      "slug": "guillaume-delmas-frenette",
+      "direction": "up",
+      "source": "guillaume-delmas-frenette-up.png",
+      "sourceSha256": "4c62c3dfb5b5bd32ce43e25b646b6ae1bdcf1589e7f43b0decea2db5d0e3d4af",
+      "halfCycle": [
+        0,
+        1
+      ],
+      "sittingSourceSha256": "ae4f210219e1361810f1bd53d20d4600ccfe1a9a51d9dbac0eb2a5e64d2cb1d4"
+    },
+    {
+      "slug": "guillaume-pregent",
+      "direction": "down",
+      "source": "guillaume-pregent-down.png",
+      "sourceSha256": "7db10bd0c78582cb62a87045638842d17ade3af3820e142827df20af628df56c",
+      "halfCycle": [
+        0,
+        1
+      ]
+    },
+    {
+      "slug": "jerry-zhu",
+      "direction": "up",
+      "source": "jerry-zhu-up.png",
+      "sourceSha256": "1189d5d93c65094301945a94933895fad8f43427bb1f9449a0c90dd3bc03860f",
+      "halfCycle": [
+        2,
+        3
+      ],
+      "sittingSourceSha256": "3d0cd1e5fd6fc486950580047076bc8a509cfec5c973e1c75d319cca17934ad5"
+    },
+    {
+      "slug": "jonah-lee",
+      "direction": "up",
+      "source": "jonah-lee-up.png",
+      "sourceSha256": "13a78d341cf0a1a7cceb821ab61898e00b14e6444e1d74f762b206b7f34e70fa",
+      "halfCycle": [
+        0,
+        1
+      ],
+      "sittingSourceSha256": "f5cc5eca7cf8f4fe4ff798fa95b5875a625c66696772e1be517470c656bc1541"
+    },
+    {
+      "slug": "jonathan-kim",
+      "direction": "down",
+      "source": "jonathan-kim-down.png",
+      "sourceSha256": "8af136a31c315495697ed271fdbc5257ab65a16f6c49894a5eac982aefdb1970",
+      "halfCycle": [
+        0,
+        1
+      ]
+    },
+    {
+      "slug": "jonathan-kim",
+      "direction": "up",
+      "source": "jonathan-kim-up.png",
+      "sourceSha256": "ae7c40479ed872510fb9818a5fddf6042aefa7fa7b7842f349fc2d58cb678b64",
+      "halfCycle": [
+        0,
+        1
+      ],
+      "sittingSourceSha256": "9bae49815e83b5b431314ca09d7d3f25abc4e916755767fd07bc0a6e2a23b40a"
+    },
+    {
+      "slug": "logan-labossiere",
+      "direction": "down",
+      "source": "logan-labossiere-down.png",
+      "sourceSha256": "bcb8e56716a37b0395281376e8b077dbcf4db582fbd527dcafa581df744a58c6",
+      "halfCycle": [
+        0,
+        1
+      ]
+    },
+    {
+      "slug": "logan-labossiere",
+      "direction": "up",
+      "source": "logan-labossiere-up.png",
+      "sourceSha256": "32e9da5773a213ed1ff2975f9c17295d1a63ea187116959f836b14201b9c02bb",
+      "halfCycle": [
+        0,
+        1
+      ],
+      "sittingSourceSha256": "27315832eca9bdc2b64bf43e55cda6033cc95061d73185dc9351fa47ba4172f5"
+    },
+    {
+      "slug": "pentcho-tchomakov",
+      "direction": "up",
+      "source": "pentcho-tchomakov-up.png",
+      "sourceSha256": "f94bad0ede912e4bd81fec3e3ad63b1e61f0089ae842e3d78c534857b612737d",
+      "halfCycle": [
+        2,
+        1
+      ],
+      "sittingSourceSha256": "27ae0636446ac07878c91a5547e4d6f1ef416ec94689ccb01ab50d255515436e"
+    },
+    {
+      "slug": "saransh-padhy",
+      "direction": "up",
+      "source": "saransh-padhy-up.png",
+      "sourceSha256": "2e2d99797fe347f15944c976ab94e69adcc13338a56eaf2c5b4bb6ed133d530d",
+      "halfCycle": [
+        2,
+        0
+      ],
+      "sittingSourceSha256": "33e09153fd7abf9fc4dd1a7d3cb18fcbec005b4f7260945a8b24c98ac1d4a07b"
+    },
+    {
+      "slug": "scott-carr",
+      "direction": "up",
+      "source": "scott-carr-up.png",
+      "sourceSha256": "d6cb579215da1b8205cf323cdeed549d2256297a38793b683e2e00803a110591",
+      "halfCycle": [
+        0,
+        1
+      ],
+      "sittingSourceSha256": "e099b8020d14c1f8cc24d7a99c0a864759683bc4baa1daa082aff8737c941872"
+    },
+    {
+      "slug": "stephanie-fontaine",
+      "direction": "up",
+      "source": "stephanie-fontaine-up.png",
+      "sourceSha256": "7fccf809a69c6a60357e6b99019275f82fc3c9c562c9f66ed9eaed85df2cd8c5",
+      "halfCycle": [
+        0,
+        1
+      ],
+      "sittingSourceSha256": "eae2996abe499d3ff0dbdea0374ef536ea3e9111208ef151694ca283a2e726a0"
+    },
+    {
+      "slug": "tyler-nagano",
+      "direction": "down",
+      "source": "tyler-nagano-down.png",
+      "sourceSha256": "8429919644ca6ca1b7615caa426783a53ddbcb91cabaa7b5579acd12218d97a4",
+      "halfCycle": [
+        0,
+        1
+      ]
+    },
+    {
+      "slug": "tyler-nagano",
+      "direction": "up",
+      "source": "tyler-nagano-up.png",
+      "sourceSha256": "e96be9a4ef3ed8eab423e754a520d0e06691c6f9e53db1a59dbf2e93e73e01ac",
+      "halfCycle": [
+        0,
+        1
+      ],
+      "sittingSourceSha256": "5e146ffe167298580b2ce607d859c587bfe13b934b82ad6ba212ce19439691ed"
+    },
+    {
+      "slug": "victor-desautels",
+      "direction": "down",
+      "source": "victor-desautels-down.png",
+      "sourceSha256": "7e3772de34db28617e92216e40ec772192af5d1df7e1877f7a57351cb974ba2f",
+      "halfCycle": [
+        0,
+        1
+      ]
+    },
+    {
+      "slug": "victor-desautels",
+      "direction": "up",
+      "source": "victor-desautels-up.png",
+      "sourceSha256": "5bcc530b233548ca75cde0ce8a5bbaaef8f68e5fc61e38e3477f2959aab4f6b9",
+      "halfCycle": [
+        0,
+        1
+      ],
+      "sittingSourceSha256": "949651902f79e9012294b29cf5800041a83b48e12f5b93aa33a311c3c50671d0"
+    }
+  ]
+}

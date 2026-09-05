@@ -33,7 +33,9 @@ class WalkAssetContractTests(unittest.TestCase):
         self.assertEqual(manifest["reviewState"], "accepted")
         self.assertEqual(manifest["policy"], "compact-idle-referenced-v2")
         self.assertEqual(manifest["generation"], {"hardCallCap": 100, "interrupted": 4, "recordedCalls": 95, "succeeded": 91})
-        self.assertEqual(manifest["fileCount"], 612)
+        self.assertEqual(manifest["fileCount"], 696)
+        self.assertEqual(manifest["verticalRepair"]["policy"], "fixed-upper-body-opposite-legs-v1")
+        self.assertEqual(len(manifest["verticalRepair"]["views"]), 21)
 
     def test_complete_roster_has_exact_frames_and_canonical_manifests(self):
         self.assertEqual(len(self.roster), 37)

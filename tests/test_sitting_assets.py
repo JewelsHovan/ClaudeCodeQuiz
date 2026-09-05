@@ -57,12 +57,13 @@ class SittingAssetsTest(unittest.TestCase):
         return image
 
     def copy_accepted_sources(self):
-        source_root = REPO_ROOT / "datamon" / "sprites-walk"
+        source_root = REPO_ROOT / "datamon"
         for slug in sitting.ROSTER:
-            target = self.walk / slug
-            target.mkdir()
-            # Ticket #048 deliberately needs only one stable, non-walking source frame.
-            shutil.copy2(source_root / slug / "up_0.png", target / "up_0.png")
+            relative = sitting.stable_source_relative(slug)
+            target = self.root / relative
+            target.parent.mkdir(parents=True)
+            # Superseded walk frames are frozen instead of changing accepted seated art.
+            shutil.copy2(source_root / relative, target)
 
     def generate(self):
         with contextlib.redirect_stdout(io.StringIO()):
@@ -127,7 +128,7 @@ class SittingAssetsTest(unittest.TestCase):
         for entry in second["entries"]:
             self.assertEqual([frame["frame"] for frame in entry["frames"]], [0, 1])
             self.assertEqual({frame["source"] for frame in entry["frames"]}, {
-                f"sprites-walk/{entry['slug']}/up_0.png"
+                sitting.stable_source_relative(entry['slug'])
             })
             self.assertEqual(len({frame["sourceSha256"] for frame in entry["frames"]}), 1)
 

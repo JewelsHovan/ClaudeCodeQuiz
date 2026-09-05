@@ -34,6 +34,18 @@ ROSTER = [
 CANVAS_SIZE = 64
 ALPHA_THRESHOLD = 18
 STABLE_SOURCE_NAME = "up_0.png"
+# Vertical walk repair must not silently regenerate already accepted seated identities.
+# Retain only the 14 superseded rear source frames; all other sources stay in place.
+FROZEN_SITTING_SLUGS = frozenset(
+    entry["slug"] for entry in json.loads(
+        Path(__file__).with_name("vertical_walk_repairs.json").read_text()
+    )["views"] if entry["direction"] == "up"
+)
+
+
+def stable_source_relative(slug: str) -> str:
+    folder = "sprites-sit-sources" if slug in FROZEN_SITTING_SLUGS else "sprites-walk"
+    return f"{folder}/{slug}/{STABLE_SOURCE_NAME}"
 
 # Explicit compact composition in the fixed 64x64 runtime canvas. The source head
 # keeps its aspect ratio; torso and pelvis are separately foreshortened. Source
@@ -173,7 +185,7 @@ def generate_sitting_assets(roster_members=None):
         slug_dir = OUT_DIR / slug
         slug_dir.mkdir(exist_ok=True)
         entry = {"slug": slug, "frames": []}
-        source_path = SPRITES_WALK / slug / STABLE_SOURCE_NAME
+        source_path = ROOT / stable_source_relative(slug)
         if not source_path.exists():
             raise FileNotFoundError(f"Missing accepted stable source frame: {source_path}")
 
@@ -191,7 +203,7 @@ def generate_sitting_assets(roster_members=None):
             entry["frames"].append({
                 "frame": frame_num,
                 "file": f"sprites-sit/{slug}/idle_{frame_num}.png",
-                "source": f"sprites-walk/{slug}/{STABLE_SOURCE_NAME}",
+                "source": stable_source_relative(slug),
                 "sourceSha256": source_hash,
                 "sha256": _sha256(data),
             })
@@ -375,7 +387,7 @@ def validate_sitting_assets():
         if frame_numbers != [0, 1]:
             errors.append(f"Frames do not match canonical integer [0, 1] order for {slug}")
 
-        source_path = SPRITES_WALK / slug / STABLE_SOURCE_NAME
+        source_path = ROOT / stable_source_relative(slug)
         source_data = source_path.read_bytes() if source_path.exists() else None
         source_hash = _sha256(source_data) if source_data is not None else None
         source_image = None
@@ -401,7 +413,7 @@ def validate_sitting_assets():
             if frame is None:
                 continue
             expected_file = f"sprites-sit/{slug}/idle_{frame_num}.png"
-            expected_source = f"sprites-walk/{slug}/{STABLE_SOURCE_NAME}"
+            expected_source = stable_source_relative(slug)
             if frame.get("file") != expected_file:
                 errors.append(f"Canonical file mismatch for {slug} frame {frame_num}")
             if frame.get("source") != expected_source:

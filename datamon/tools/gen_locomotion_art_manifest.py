@@ -50,6 +50,11 @@ def payload() -> dict:
                 files[relative] = sha256(DATAMON / relative)
         relative = f"sprites-walk/{slug}/manifest.json"
         files[relative] = sha256(DATAMON / relative)
+    vertical_repair = json.loads((HERE / "vertical_walk_repairs.json").read_text())
+    for entry in vertical_repair["views"]:
+        for index in range(4):
+            relative = f"sprites-walk/{entry['slug']}/{entry['direction']}_{index}.png"
+            files[relative] = sha256(DATAMON / relative)
     for slug in PILOT:
         for motion in ("walk", "run"):
             for direction in ("down", "left", "right", "up"):
@@ -77,6 +82,8 @@ def payload() -> dict:
             "pilotWalkMaxSideToIdleRatio": 2.45,
             "pilotRunMaxSideToIdleRatio": 3.20,
         },
+        # Keep the historical 95-call batch intact; this is a separate reviewed correction.
+        "verticalRepair": vertical_repair,
         "legacyRegeneratedViews": views,
         "pilotRegenerated": [{"slug": slug, "motions": ["run", "walk"], "views": ["down", "side", "up"]} for slug in PILOT],
         "fileCount": len(ordered),

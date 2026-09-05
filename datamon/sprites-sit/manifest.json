@@ -138,14 +138,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/duc-an-nguyen/idle_0.png",
-          "source": "sprites-walk/duc-an-nguyen/up_0.png",
+          "source": "sprites-sit-sources/duc-an-nguyen/up_0.png",
           "sourceSha256": "07f05d41be589bbf5a7beba74a65cb1302a82f63c184d09b95550d11c8f5e871",
           "sha256": "53bec9511413b33ac337f576af68b49c397942fd05296c176ebd570124a92849"
         },
         {
           "frame": 1,
           "file": "sprites-sit/duc-an-nguyen/idle_1.png",
-          "source": "sprites-walk/duc-an-nguyen/up_0.png",
+          "source": "sprites-sit-sources/duc-an-nguyen/up_0.png",
           "sourceSha256": "07f05d41be589bbf5a7beba74a65cb1302a82f63c184d09b95550d11c8f5e871",
           "sha256": "ff8f7924d4a80e1d0c6197713c5828c49f856aa777f240802accd3670c4c15df"
         }
@@ -176,14 +176,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/emile-moffatt/idle_0.png",
-          "source": "sprites-walk/emile-moffatt/up_0.png",
+          "source": "sprites-sit-sources/emile-moffatt/up_0.png",
           "sourceSha256": "4934bfeb656c4c9aa12aa3f10a9622a32bb4e4b3643a54a4cd18b48b6b6c9435",
           "sha256": "81689aed50db6e8024fdeb0fe5dc7e7a8072d34b95998a2d283da35e1fd69ff7"
         },
         {
           "frame": 1,
           "file": "sprites-sit/emile-moffatt/idle_1.png",
-          "source": "sprites-walk/emile-moffatt/up_0.png",
+          "source": "sprites-sit-sources/emile-moffatt/up_0.png",
           "sourceSha256": "4934bfeb656c4c9aa12aa3f10a9622a32bb4e4b3643a54a4cd18b48b6b6c9435",
           "sha256": "62b044b004562f581c53f9c6ab17653187a5c0ee0e949f574c9a4ae2d9448052"
         }
@@ -195,14 +195,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/ethan-pirso/idle_0.png",
-          "source": "sprites-walk/ethan-pirso/up_0.png",
+          "source": "sprites-sit-sources/ethan-pirso/up_0.png",
           "sourceSha256": "e7bfc31aeaa32ca584bfcf423995f40c57dc38525cad057566f13f1a4a0b4bd9",
           "sha256": "1463f6cf680d36cacedfad33c46924251c45caeb2f56acfb9cd609df4d6df342"
         },
         {
           "frame": 1,
           "file": "sprites-sit/ethan-pirso/idle_1.png",
-          "source": "sprites-walk/ethan-pirso/up_0.png",
+          "source": "sprites-sit-sources/ethan-pirso/up_0.png",
           "sourceSha256": "e7bfc31aeaa32ca584bfcf423995f40c57dc38525cad057566f13f1a4a0b4bd9",
           "sha256": "b3735e8352e928f050d869c13589cf988e4264812be04dd1801c10aec833aacf"
         }
@@ -252,14 +252,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/guillaume-delmas-frenette/idle_0.png",
-          "source": "sprites-walk/guillaume-delmas-frenette/up_0.png",
+          "source": "sprites-sit-sources/guillaume-delmas-frenette/up_0.png",
           "sourceSha256": "ae4f210219e1361810f1bd53d20d4600ccfe1a9a51d9dbac0eb2a5e64d2cb1d4",
           "sha256": "9c1b80fb0a2c4a538cfe7bca16bccc325357bf8d6ebf7d81a16e50a7dfc7c2dd"
         },
         {
           "frame": 1,
           "file": "sprites-sit/guillaume-delmas-frenette/idle_1.png",
-          "source": "sprites-walk/guillaume-delmas-frenette/up_0.png",
+          "source": "sprites-sit-sources/guillaume-delmas-frenette/up_0.png",
           "sourceSha256": "ae4f210219e1361810f1bd53d20d4600ccfe1a9a51d9dbac0eb2a5e64d2cb1d4",
           "sha256": "44d36e17404f89760583fcc9dc61c6e4d1fc9631f2cbb645814549185e95a060"
         }
@@ -290,14 +290,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/jerry-zhu/idle_0.png",
-          "source": "sprites-walk/jerry-zhu/up_0.png",
+          "source": "sprites-sit-sources/jerry-zhu/up_0.png",
           "sourceSha256": "3d0cd1e5fd6fc486950580047076bc8a509cfec5c973e1c75d319cca17934ad5",
           "sha256": "aaaca34fba3ad410ca5c848c48e6dceff9a94e3b232a40310d5bb7f20627caac"
         },
         {
           "frame": 1,
           "file": "sprites-sit/jerry-zhu/idle_1.png",
-          "source": "sprites-walk/jerry-zhu/up_0.png",
+          "source": "sprites-sit-sources/jerry-zhu/up_0.png",
           "sourceSha256": "3d0cd1e5fd6fc486950580047076bc8a509cfec5c973e1c75d319cca17934ad5",
           "sha256": "17105f72ca80b18f29ce2b89fca7da4b1fe074f28f828b14d47ae3bb679414fd"
         }
@@ -328,14 +328,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/jonah-lee/idle_0.png",
-          "source": "sprites-walk/jonah-lee/up_0.png",
+          "source": "sprites-sit-sources/jonah-lee/up_0.png",
           "sourceSha256": "f5cc5eca7cf8f4fe4ff798fa95b5875a625c66696772e1be517470c656bc1541",
           "sha256": "8ec81c6e555244be56fd6d5dc024e6f426a99a214946240ca6b5f284c27c5430"
         },
         {
           "frame": 1,
           "file": "sprites-sit/jonah-lee/idle_1.png",
-          "source": "sprites-walk/jonah-lee/up_0.png",
+          "source": "sprites-sit-sources/jonah-lee/up_0.png",
           "sourceSha256": "f5cc5eca7cf8f4fe4ff798fa95b5875a625c66696772e1be517470c656bc1541",
           "sha256": "8ff2c7e4a6ecb20c990bfaeed8894dd033eb4f8845a08e91ae1af1bf79004cc3"
         }
@@ -347,14 +347,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/jonathan-kim/idle_0.png",
-          "source": "sprites-walk/jonathan-kim/up_0.png",
+          "source": "sprites-sit-sources/jonathan-kim/up_0.png",
           "sourceSha256": "9bae49815e83b5b431314ca09d7d3f25abc4e916755767fd07bc0a6e2a23b40a",
           "sha256": "9c93e909d6f0408db14c8e52e79e44ac2dd88fa68956084cc08d178aac87932c"
         },
         {
           "frame": 1,
           "file": "sprites-sit/jonathan-kim/idle_1.png",
-          "source": "sprites-walk/jonathan-kim/up_0.png",
+          "source": "sprites-sit-sources/jonathan-kim/up_0.png",
           "sourceSha256": "9bae49815e83b5b431314ca09d7d3f25abc4e916755767fd07bc0a6e2a23b40a",
           "sha256": "5ba3a829e90bcbffb1996f01efe32f30e4bdde74f5e572aea787d04b4099731c"
         }
@@ -385,14 +385,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/logan-labossiere/idle_0.png",
-          "source": "sprites-walk/logan-labossiere/up_0.png",
+          "source": "sprites-sit-sources/logan-labossiere/up_0.png",
           "sourceSha256": "27315832eca9bdc2b64bf43e55cda6033cc95061d73185dc9351fa47ba4172f5",
           "sha256": "1325fb3c6e4e3d5a9f683085006a81d4e33738d187a096da89486be0842a2e15"
         },
         {
           "frame": 1,
           "file": "sprites-sit/logan-labossiere/idle_1.png",
-          "source": "sprites-walk/logan-labossiere/up_0.png",
+          "source": "sprites-sit-sources/logan-labossiere/up_0.png",
           "sourceSha256": "27315832eca9bdc2b64bf43e55cda6033cc95061d73185dc9351fa47ba4172f5",
           "sha256": "ecabad153d2f1a766a13ef9131b46b46fa7ce657d0e487d354b47eac00b56ec0"
         }
@@ -480,14 +480,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/pentcho-tchomakov/idle_0.png",
-          "source": "sprites-walk/pentcho-tchomakov/up_0.png",
+          "source": "sprites-sit-sources/pentcho-tchomakov/up_0.png",
           "sourceSha256": "27ae0636446ac07878c91a5547e4d6f1ef416ec94689ccb01ab50d255515436e",
           "sha256": "ace9581011d5c3895b6d3bb7d0cb1aa45929e2aedc77ad06f3afcf7f90ccbc3c"
         },
         {
           "frame": 1,
           "file": "sprites-sit/pentcho-tchomakov/idle_1.png",
-          "source": "sprites-walk/pentcho-tchomakov/up_0.png",
+          "source": "sprites-sit-sources/pentcho-tchomakov/up_0.png",
           "sourceSha256": "27ae0636446ac07878c91a5547e4d6f1ef416ec94689ccb01ab50d255515436e",
           "sha256": "65820832b7b3f28d0c2e0f4f6c4e9e7a0842b9ec58582c4075ecd6dbdc2f85e4"
         }
@@ -556,14 +556,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/saransh-padhy/idle_0.png",
-          "source": "sprites-walk/saransh-padhy/up_0.png",
+          "source": "sprites-sit-sources/saransh-padhy/up_0.png",
           "sourceSha256": "33e09153fd7abf9fc4dd1a7d3cb18fcbec005b4f7260945a8b24c98ac1d4a07b",
           "sha256": "e27ea6d31f880ac60d0f0ef451feebf3f82853a691e3bb6b0733412f0da0af13"
         },
         {
           "frame": 1,
           "file": "sprites-sit/saransh-padhy/idle_1.png",
-          "source": "sprites-walk/saransh-padhy/up_0.png",
+          "source": "sprites-sit-sources/saransh-padhy/up_0.png",
           "sourceSha256": "33e09153fd7abf9fc4dd1a7d3cb18fcbec005b4f7260945a8b24c98ac1d4a07b",
           "sha256": "4d5b4e7216dc0692c57e3c274575706af5c979047af8e4f2c8d1388f5dbdb8b4"
         }
@@ -575,14 +575,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/scott-carr/idle_0.png",
-          "source": "sprites-walk/scott-carr/up_0.png",
+          "source": "sprites-sit-sources/scott-carr/up_0.png",
           "sourceSha256": "e099b8020d14c1f8cc24d7a99c0a864759683bc4baa1daa082aff8737c941872",
           "sha256": "70e902b858ddfbb164b273180914750bf36889ccb629c0642b848cfe8106ea26"
         },
         {
           "frame": 1,
           "file": "sprites-sit/scott-carr/idle_1.png",
-          "source": "sprites-walk/scott-carr/up_0.png",
+          "source": "sprites-sit-sources/scott-carr/up_0.png",
           "sourceSha256": "e099b8020d14c1f8cc24d7a99c0a864759683bc4baa1daa082aff8737c941872",
           "sha256": "f34fbdee09bf721a3c7ebc283dffaef5bb2a1b5a995a6dd8393ab010f25f0d21"
         }
@@ -594,14 +594,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/stephanie-fontaine/idle_0.png",
-          "source": "sprites-walk/stephanie-fontaine/up_0.png",
+          "source": "sprites-sit-sources/stephanie-fontaine/up_0.png",
           "sourceSha256": "eae2996abe499d3ff0dbdea0374ef536ea3e9111208ef151694ca283a2e726a0",
           "sha256": "1255ccd9a66ae3917dcc3207e0e30a4763c33ad14acf2f56423ce40c72646145"
         },
         {
           "frame": 1,
           "file": "sprites-sit/stephanie-fontaine/idle_1.png",
-          "source": "sprites-walk/stephanie-fontaine/up_0.png",
+          "source": "sprites-sit-sources/stephanie-fontaine/up_0.png",
           "sourceSha256": "eae2996abe499d3ff0dbdea0374ef536ea3e9111208ef151694ca283a2e726a0",
           "sha256": "eb7e228b395beb329e35262012a1a2c31bbef543bcc5b8e912960b5da562f3f1"
         }
@@ -632,14 +632,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/tyler-nagano/idle_0.png",
-          "source": "sprites-walk/tyler-nagano/up_0.png",
+          "source": "sprites-sit-sources/tyler-nagano/up_0.png",
           "sourceSha256": "5e146ffe167298580b2ce607d859c587bfe13b934b82ad6ba212ce19439691ed",
           "sha256": "2307be5f6ec566f48cd93441217745ab57c2fc2ba8a42fa1d5a95a55e0c583b8"
         },
         {
           "frame": 1,
           "file": "sprites-sit/tyler-nagano/idle_1.png",
-          "source": "sprites-walk/tyler-nagano/up_0.png",
+          "source": "sprites-sit-sources/tyler-nagano/up_0.png",
           "sourceSha256": "5e146ffe167298580b2ce607d859c587bfe13b934b82ad6ba212ce19439691ed",
           "sha256": "b081e876c0d976d74ecb636d011302d9c490cdfd8f45cffdeab476d373d51c0a"
         }
@@ -670,14 +670,14 @@
         {
           "frame": 0,
           "file": "sprites-sit/victor-desautels/idle_0.png",
-          "source": "sprites-walk/victor-desautels/up_0.png",
+          "source": "sprites-sit-sources/victor-desautels/up_0.png",
           "sourceSha256": "949651902f79e9012294b29cf5800041a83b48e12f5b93aa33a311c3c50671d0",
           "sha256": "df4bcbff527855e12f9cdb37deed7af0eab7ae4c31518dce473126f28a64345b"
         },
         {
           "frame": 1,
           "file": "sprites-sit/victor-desautels/idle_1.png",
-          "source": "sprites-walk/victor-desautels/up_0.png",
+          "source": "sprites-sit-sources/victor-desautels/up_0.png",
           "sourceSha256": "949651902f79e9012294b29cf5800041a83b48e12f5b93aa33a311c3c50671d0",
           "sha256": "5ce6c50979c26144e5982ed9db5fd8a4b9639fca3f3fa3dc6ed38bc5271ccb43"
         }

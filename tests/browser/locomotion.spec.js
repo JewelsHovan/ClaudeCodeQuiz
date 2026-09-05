@@ -195,3 +195,76 @@ test.describe("distance-matched overworld locomotion", () => {
     }
   });
 });
+
+test("repaired vertical art keeps every phase and anchor at walk/run speeds and DPR1/DPR2", async ({ browser }) => {
+  test.setTimeout(120000);
+  const recipe=JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname,"../../datamon/tools/vertical_walk_repairs.json"),"utf8"));
+  fs.mkdirSync("test-results/vertical-walk",{recursive:true});
+  for(const dpr of [1,2]){
+    const context=await browser.newContext({viewport:{width:1280,height:960},deviceScaleFactor:dpr});
+    const page=await context.newPage(),observed=await setup(page,"duc-an-nguyen");
+    const result=await page.evaluate(async ({views,dpr})=>{
+      const ge=(0,eval),p=ge("player"),ctx=ge("ctx"),original=ctx.drawImage;
+      for(const slug of new Set(views.map(view=>view.slug)))await ge("loadWalkAnim")(slug);
+      const sheets=[0,1,2].map(()=>{const c=document.createElement("canvas");c.width=760*dpr;c.height=660*dpr;
+        const g=c.getContext("2d");g.scale(dpr,dpr);g.fillStyle="#18202c";g.fillRect(0,0,760,660);
+        g.fillStyle="#e4e9ef";g.font="11px monospace";g.fillText("WALK  0    1    2    3        RUN  0    1    2    3",255,14);return{c,g};});
+      const checks=[];
+      try{
+        for(let row=0;row<views.length;row++){
+          const {slug,direction}=views[row],sheet=sheets[Math.floor(row/7)],y=25+(row%7)*90;
+          p.slug=slug;p.dir=direction;p.moving=true;
+          sheet.g.fillText(`${slug} / ${direction}`,4,y+44);
+          for(const running of [false,true])for(let index=0;index<4;index++){
+            p.running=running;ge(`locomotionPhase=${index/4}`);const calls=[];
+            ctx.drawImage=function(...args){calls.push(args);};
+            ge("drawCharacter")(320,240,slug,direction,true,true,false,false);
+            const draw=calls.at(-1),meta=ge("walkAnimMeta")[slug].frames[`${direction}_${index}`];
+            const key=`${slug}:${running?"run":"walk"}:${direction}:${index}:`;
+            const cached=Object.entries(ge("walkMiniCache")).some(([name,image])=>name.startsWith(key)&&image===draw[0]);
+            checks.push({cached,body:draw[1]+meta.bodyX*.25,foot:draw[2]+meta.footY*.25,height:draw[4]});
+            const x=250+(running?4:0)*62+index*62;
+            sheet.g.drawImage(draw[0],x+draw[1]-320+31,y+draw[2]-240+64,draw[3],draw[4]);
+          }
+        }
+      }finally{ctx.drawImage=original;p.moving=false;p.running=false;ge("locomotionPhase=0");}
+      return{checks,sheets:sheets.map(({c})=>c.toDataURL("image/png").split(",")[1])};
+    },{views:recipe.views,dpr});
+    expect(result.checks).toHaveLength(168);
+    for(const check of result.checks){
+      expect(check.cached).toBe(true);expect(check.height).toBe(60);
+      expect(Math.abs(check.body-320)).toBeLessThanOrEqual(.55);
+      expect(Math.abs(check.foot-256)).toBeLessThanOrEqual(.55);
+    }
+    for(let i=0;i<result.sheets.length;i++)fs.writeFileSync(`test-results/vertical-walk/dpr${dpr}-${i}.png`,Buffer.from(result.sheets[i],"base64"));
+
+    // Real keyboard traversal uses the unchanged distance clock, not a mocked frame timer.
+    for(const direction of ["down","up"])for(const running of [false,true]){
+      await page.evaluate(async ({direction})=>{
+        const ge=(0,eval),p=ge("player");p.slug="duc-an-nguyen";p.moving=false;p.running=false;
+        await ge("primePlayerIdleDirections")(p.slug);
+        let start=null;
+        for(let y=2;y<17&&!start;y++)for(let x=2;x<30&&!start;x++){
+          if([0,1,2,3,4,5,6,7].every(dy=>ge("walkable")(x,y+dy)))start=[x,direction==="down"?y:y+7];
+        }
+        if(!start)throw new Error("No clear vertical test lane");
+        p.x=p.fx=start[0];p.y=p.fy=start[1];p.dir=direction;ge("locomotionPhase=0");ge("bufferedDir=null");
+        ge("camFx=null");ge("camFy=null");window.__VERTICAL_START__=start;
+      },{direction});
+      if(running)await page.keyboard.down("Shift");
+      const key=direction==="up"?"ArrowUp":"ArrowDown";
+      await page.keyboard.down(key);
+      await page.waitForFunction(()=>Math.abs((0,eval)("player").fy-window.__VERTICAL_START__[1])>=4);
+      await page.keyboard.up(key);if(running)await page.keyboard.up("Shift");
+      await page.waitForFunction(()=>!(0,eval)("player").moving);
+      const travel=await page.evaluate(()=>{const ge=(0,eval),p=ge("player"),start=window.__VERTICAL_START__;
+        const distance=Math.abs(p.fy-start[1]),expected=DatamonLocomotion.phaseForDistance(distance,2),phase=ge("locomotionPhase");
+        return{x:p.fx,startX:start[0],distance,phaseError:Math.min(Math.abs(phase-expected),1-Math.abs(phase-expected)),dir:p.dir,state:ge("state")};});
+      expect(travel.state).toBe("overworld");expect(travel.dir).toBe(direction);expect(travel.x).toBe(travel.startX);
+      expect(travel.distance).toBeGreaterThanOrEqual(4);expect(travel.phaseError).toBeLessThan(.01);
+    }
+    expect(observed.errors).toEqual([]);expect(observed.failures).toEqual([]);
+    await page.screenshot({path:`test-results/vertical-walk/world-dpr${dpr}.png`});
+    await context.close();
+  }
+});

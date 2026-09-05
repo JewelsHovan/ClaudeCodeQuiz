@@ -201,6 +201,25 @@ if (compactManifest.schemaVersion !== 1 || compactManifest.reviewState !== "acce
     compactManifest.fileCount !== Object.keys(compactManifest.files || {}).length) {
   throw new Error("Packaged compact-locomotion provenance manifest is invalid");
 }
+const verticalRepair = compactManifest.verticalRepair;
+if (verticalRepair?.schemaVersion !== 1 || verticalRepair.policy !== "fixed-upper-body-opposite-legs-v1" ||
+    verticalRepair.generation?.hardCallCap !== 24 || verticalRepair.generation.recordedCalls !== 21 ||
+    verticalRepair.generation.succeeded !== 21 || verticalRepair.views?.length !== 21 ||
+    new Set(verticalRepair.views.map(view => `${view.slug}/${view.direction}`)).size !== 21) {
+  throw new Error("Packaged vertical-walk repair provenance is invalid");
+}
+for (const view of verticalRepair.views) {
+  if (!EXPECTED_ROSTER.includes(view.slug) || !["down", "up"].includes(view.direction) ||
+      !/^[0-9a-f]{64}$/.test(view.sourceSha256) || !Array.isArray(view.halfCycle) ||
+      view.halfCycle.length !== 2 || view.halfCycle.some(index => !Number.isInteger(index) || index < 0 || index > 3)) {
+    throw new Error("Invalid vertical-walk repair view");
+  }
+  for (let index = 0; index < 4; index++) {
+    if (!compactManifest.files[`sprites-walk/${view.slug}/${view.direction}_${index}.png`]) {
+      throw new Error(`Unhashed vertical-walk repair frame: ${view.slug}/${view.direction}_${index}`);
+    }
+  }
+}
 const compactBatchHash = createHash("sha256");
 for (const [relative, expectedHash] of Object.entries(compactManifest.files).sort(([left], [right]) => left.localeCompare(right))) {
   const absolute = path.join(DIST, relative);
@@ -311,6 +330,12 @@ if (JSON.stringify(sittingSlugs) !== JSON.stringify(canonicalRosterSlugs)) {
   throw new Error("Packaged sitting slugs must exactly match ROSTER");
 }
 const declaredSittingFrames = [];
+const frozenSittingSlugs = new Set(verticalRepair.views.filter(view => view.direction === "up").map(view => view.slug));
+const expectedFrozenSources = [...frozenSittingSlugs].map(slug => `sprites-sit-sources/${slug}/up_0.png`).sort();
+const packagedFrozenSources = payload.filter(file => file.path.startsWith("sprites-sit-sources/")).map(file => file.path).sort();
+if (JSON.stringify(packagedFrozenSources) !== JSON.stringify(expectedFrozenSources)) {
+  throw new Error("Frozen sitting sources must exactly cover the repaired rear views");
+}
 for (const entry of sittingManifest.entries) {
   if (!entry || typeof entry.slug !== "string" || !Array.isArray(entry.frames) || entry.frames.length !== 2) {
     throw new Error("Packaged sitting entry must declare exactly two frames");
@@ -318,7 +343,12 @@ for (const entry of sittingManifest.entries) {
   for (let index = 0; index < 2; index++) {
     const frame = entry.frames[index];
     const expectedFile = `sprites-sit/${entry.slug}/idle_${index}.png`;
-    const expectedSource = `sprites-walk/${entry.slug}/up_0.png`;
+    const sourceFolder = frozenSittingSlugs.has(entry.slug) ? "sprites-sit-sources" : "sprites-walk";
+    const expectedSource = `${sourceFolder}/${entry.slug}/up_0.png`;
+    if (frozenSittingSlugs.has(entry.slug) && frame?.sourceSha256 !==
+        verticalRepair.views.find(view => view.slug === entry.slug && view.direction === "up").sittingSourceSha256) {
+      throw new Error(`Frozen sitting source drift: ${entry.slug}`);
+    }
     if (!frame || frame.frame !== index || frame.file !== expectedFile || frame.source !== expectedSource) {
       throw new Error(`Noncanonical packaged sitting declaration for ${entry.slug} frame ${index}`);
     }

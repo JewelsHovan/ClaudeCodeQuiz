@@ -22,7 +22,7 @@ const PAYLOAD_ALLOWLIST = [
   "portraits/*.png", "headshots/*.png", "sprites/*.png", "sprites-walk/**/*.png", "sprites-walk/**/manifest.json", "sprites-walk/manifest.json",
   "sprites-locomotion-pilot/**/*.png", "sprites-locomotion-pilot/**/manifest.json",
   "sprites-idle/**/*.png", "sprites-idle/manifest.json",
-  "sprites-sit/**/*.png", "sprites-sit/manifest.json",
+  "sprites-sit/**/*.png", "sprites-sit/manifest.json", "sprites-sit-sources/*/up_0.png",
   "tiles/*.png", "props/*.png", "props/manifest.json", "props-study/*.png", "props-study/manifest.json",
   "props-wayfinding/*.png", "props-wayfinding/manifest.json",
   "battlemons/*.png", "battlemons/manifest.json",
@@ -53,7 +53,7 @@ function payloadFiles() {
   // promoted immutable environment batch). Private staging/review/raw paths match no pattern.
   const existing = [];
   const allowedTopDirectories = new Set([
-    "portraits", "headshots", "sprites", "sprites-walk", "sprites-locomotion-pilot", "sprites-idle", "sprites-sit", "tiles", "props", "props-study", "props-wayfinding", "audio", "library", "environment", "battlemons", "battle-arenas",
+    "portraits", "headshots", "sprites", "sprites-walk", "sprites-locomotion-pilot", "sprites-idle", "sprites-sit", "sprites-sit-sources", "tiles", "props", "props-study", "props-wayfinding", "audio", "library", "environment", "battlemons", "battle-arenas",
   ]);
   function walk(dir, prefix = "") {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
