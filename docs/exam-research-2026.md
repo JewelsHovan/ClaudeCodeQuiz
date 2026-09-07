@@ -7,6 +7,50 @@
 
 ---
 
+---
+
+## ✅ RE-VERIFIED 2026-09-07 — no change; guide is still v1.0
+
+An independent research pass on **2026-09-07** retrieved the official **Exam Guide PDF** again (two
+independently hosted copies, identical content) from the Partner Academy certifications page. Cover
+page still reads **"Version 1.0 · Effective July 2026 · Exam code: CCAR-F."** **No v2.0 exists.**
+
+**All eleven headline facts re-confirmed against primary sources**: 60 items (multiple-choice *and*
+multiple-response, each item stating how many to select) · 120 min exam / ~135 min seat time ·
+720/1000 scaled · Pearson VUE OnVUE or test centre · $125 (raised from $99 on 2026-06-30) ·
+12-month validity with free non-proctored renewal · retakes 14/30/90 days, max 4 per 12 months ·
+Partner Network org + company email required, no individual signup · exactly 6 scenarios with 4 drawn
+per exam · domain weights 27/18/20/20/15 · 4-cert program (Associate $99, Developer $125,
+Architect-Foundations $125, Architect-Professional $175).
+
+**Two refinements worth acting on:**
+
+1. **The MCP spec revision of 2026-07-28 is NOT tested.** Domain 2's task statements (2.1–2.5) cover
+   tool-description design, the `isError` flag with structured error categories
+   (transient / validation / permission), `tool_choice` and tool distribution, `.mcp.json` /
+   `~/.claude.json` scoping, and MCP resources — i.e. the **older two-layer error model**. There is
+   zero mention of statelessness, sessions, Sampling, Roots or Logging anywhere in the blueprint.
+   The v1.0 guide predates that spec revision and does not track it. **Answer the two-layer model.**
+2. **Claude Code plugins are not a named exam topic.** D3's task statements (3.1–3.6) cover CLAUDE.md
+   hierarchy and `@import`, custom slash commands, Agent Skills (`.claude/skills/`, `SKILL.md`,
+   `context: fork`, `allowed-tools`, `argument-hint`), `.claude/rules/` path scoping, plan mode vs
+   direct execution, iterative refinement, and CI/CD integration. Plugins, plugin marketplaces and
+   `claude plugin init` are absent — despite shipping before the guide's effective date.
+   `quiz/bank/domain3.json` question **d3-016** tests plugin scaffolding, which is therefore
+   **off-blueprint**; it is a true fact about Claude Code but not a likely exam item.
+
+**Caveats, stated plainly**: pages beyond Domain 5 Task 5.2 of the PDF were not personally read
+(sample questions and the prep-resource list) — blueprint-level change there is unlikely but
+unverified. A separate, **undated** PDF variant found in the wild claims "all questions are multiple
+choice, one correct answer"; the dated v1.0 copy explicitly includes multiple-response items, and the
+dated copy wins. No firsthand Aug/Sept-2026 test-taker accounts were found — only low-quality SEO
+content with self-contradictory launch-date and price claims, which was not used for any fact above.
+
+Sources: `anthropic-partners.skilljar.com/page/faq-certifications` ·
+`anthropic-partners.skilljar.com/page/partner-certifications` · official Exam Guide PDF v1.0 (CCAR-F).
+
+---
+
 ## ⭐ UPDATE 2026-08-18 — official Exam Guide v1.0 found (supersedes conflicting claims below)
 
 A follow-up research pass located and read **Anthropic's official Exam Guide v1.0 (effective July 2026,

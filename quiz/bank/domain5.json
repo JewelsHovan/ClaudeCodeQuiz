@@ -844,25 +844,25 @@
     "domain_name": "Context Management & Reliability",
     "scenario": "Structured Data Extraction",
     "difficulty": "hard",
-    "stem": "Your extraction system reports 97% overall accuracy, so the team wants to drop human review. Before doing so, what is the most important check, and why?",
+    "stem": "To cut human review, your extraction pipeline asks the model to emit a self-reported confidence score for each field and auto-approves anything scoring above 0.9. Spot checks reveal a steady stream of confidently wrong values sitting well above that threshold. What is the core problem, and the right fix?",
     "options": {
-      "A": "Nothing further — 97% overall clears the bar, so automate fully",
-      "B": "Measure accuracy stratified by document type and field, because a high aggregate can mask poor performance on specific document types or fields that the overall number hides",
-      "C": "Re-run the whole dataset a second time and average the two accuracy numbers",
-      "D": "Switch to a larger model to push overall accuracy above 99%"
+      "A": "Self-reported confidence is not inherently calibrated, so 0.9 does not mean 90% correct; validate the score against labeled outcomes, measure the actual precision at each cutoff, and set the routing threshold from that measurement.",
+      "B": "The threshold is simply too permissive; raise it to 0.99 and auto-approve everything above that.",
+      "C": "The model lacks context to judge its own output; enlarge the context window so its confidence scores become trustworthy.",
+      "D": "Self-reported confidence is unusable in principle; route 100% of extractions to human review."
     },
-    "answer": "B",
-    "explanation": "A single aggregate accuracy figure can hide segments that perform badly — a rare document type or a specific field may be far below 97% while common cases inflate the average. Validating accuracy stratified by document type and field segment before automating is the essential check.",
+    "answer": "A",
+    "explanation": "A self-reported confidence value is just another generated token, not a calibrated probability — nothing guarantees that items scoring 0.9 are correct 90% of the time. Before routing on it you must compare scores against labeled ground truth, measure the real precision at candidate cutoffs, and choose the threshold empirically.",
     "distractors": {
-      "A": "Automating on the aggregate alone risks shipping systematic errors on segments the overall number conceals.",
-      "C": "Averaging two runs measures consistency, not whether specific segments are accurate.",
-      "D": "A bigger model may raise the average without fixing the weak segments, and it still does not tell you where the weaknesses are."
+      "B": "Moving an uncalibrated number to a stricter value just relocates an arbitrary line; without measuring precision at the cutoff you still cannot say what auto-approval buys or costs.",
+      "C": "Miscalibration is not caused by context size — the score is a generated token either way, and a larger window does not make it a probability.",
+      "D": "Confidence routing is effective once calibrated against labeled data; abandoning it discards the main lever for safely reducing review volume."
     },
     "tags": [
       "confidence-calibration",
-      "stratified-sampling",
-      "aggregate-metrics",
-      "human-review"
+      "human-review",
+      "threshold-tuning",
+      "reliability"
     ],
     "source": "original-2026"
   },
@@ -900,7 +900,7 @@
     "domain_name": "Context Management & Reliability",
     "scenario": "Multi-Agent Research System",
     "difficulty": "medium",
-    "stem": "During a long autonomous exploration of a large codebase, your agent starts giving inconsistent answers and referencing \"typical patterns\" instead of the specific classes it identified earlier — its context has degraded as verbose discovery output piled up. Which combination best addresses this?",
+    "stem": "A research agent has spent hours mapping a large repository. Its recent summaries describe components in generic terms and contradict details it had established earlier, and its transcript is now dominated by raw file dumps from the discovery phase. Which combination best addresses this?",
     "options": {
       "A": "Increase the context window size and continue",
       "B": "Have the agent persist key findings to scratchpad files it can re-read, and use /compact to reduce context when it fills with verbose discovery output",

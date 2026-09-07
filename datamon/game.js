@@ -7065,6 +7065,12 @@ function _agentDrawBattle(b) {
   ctx.restore();
 }
 
+// Quiet command-console materials: domain color belongs to identity; amber only marks focus.
+const CLASSIC_BATTLE_COLORS = Object.freeze({
+  ink: "#09121f", panel: "#182536", line: "#435366",
+  text: "#e8dfcc", muted: "#aab9cc", focus: "#f2ca63",
+});
+
 // Compact pixel-banded contact shadow. Keeping every band above the authored ground
 // coordinate preserves the platform lip while visually seating feet/claws on its surface.
 function drawBattleContactShadow(cx, groundY, width, alpha) {
@@ -7084,6 +7090,7 @@ function drawBattle() {
   if (b.agentOps) { _agentDrawBattle(b); return; }
   var BPS = typeof DatamonBattlePresentation !== "undefined" ? DatamonBattlePresentation : null;
   var GEO = BPS ? BPS.GEOMETRY : null;
+  var UI = CLASSIC_BATTLE_COLORS;
   var reducedMotion = typeof AgentArena !== "undefined" && AgentArena.prefersReducedMotion
     ? AgentArena.prefersReducedMotion()
     : !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -7139,8 +7146,8 @@ function drawBattle() {
   var impactActive = !!(b.attackAt && frame >= b.attackAt && frame - b.attackAt < 16);
   var playerPose = BPS ? BPS.resolveTrainerPose("player", b.phase, b.feedback, impactActive) : "idle";
   var opponentPose = BPS ? BPS.resolveTrainerPose("opponent", b.phase, b.feedback, impactActive) : "idle";
-  var oppH = GEO ? GEO.OPPONENT_VISIBLE_HEIGHT : 156;
-  var plyH = GEO ? GEO.PLAYER_VISIBLE_HEIGHT : 172;
+  var oppH = GEO ? GEO.OPPONENT_VISIBLE_HEIGHT : 132;
+  var plyH = GEO ? GEO.PLAYER_VISIBLE_HEIGHT : 146;
   var oppParams = BPS ? BPS.POSE_PARAMS[opponentPose] : null;
   var plyParams = BPS ? BPS.POSE_PARAMS[playerPose] : null;
 
@@ -7224,33 +7231,57 @@ function drawBattle() {
   // ---- Compact diegetic telemetry modules ----
   var oppPlate = GEO ? GEO.OPPONENT_PLATE : [18, 16, 310, 86];
   var oW = oppPlate[2] - oppPlate[0], oH = oppPlate[3] - oppPlate[1];
-  ctx.fillStyle = "rgba(5,12,26,0.94)"; ctx.fillRect(oppPlate[0], oppPlate[1], oW, oH);
-  ctx.fillStyle = typeColor; ctx.fillRect(oppPlate[0], oppPlate[1], oW, 4);
-  ctx.strokeStyle = "rgba(226,232,240,0.62)"; ctx.lineWidth = 1; ctx.strokeRect(oppPlate[0], oppPlate[1], oW, oH);
+  ctx.fillStyle = UI.ink; ctx.fillRect(oppPlate[0], oppPlate[1], oW, oH);
+  ctx.fillStyle = typeColor; ctx.fillRect(oppPlate[0], oppPlate[1], oW, 3);
+  ctx.strokeStyle = UI.line; ctx.lineWidth = 1; ctx.strokeRect(oppPlate[0], oppPlate[1], oW, oH);
   ctx.drawImage(pixelHead(b.npc.slug, 48), oppPlate[0] + 8, oppPlate[1] + 13, 44, 44);
   ctx.strokeStyle = typeColor; ctx.lineWidth = 2; ctx.strokeRect(oppPlate[0] + 8, oppPlate[1] + 13, 44, 44);
   var oTx = oppPlate[0] + 62, opponentName = displayName(b.npc.slug);
-  ctx.fillStyle = "#f1f5f9"; ctx.font = "bold " + fitFont(opponentName, oW - 76, 14) + "px monospace"; ctx.textAlign = "left";
+  ctx.fillStyle = UI.text; ctx.font = "bold " + fitFont(opponentName, oW - 76, 14) + "px monospace"; ctx.textAlign = "left";
   ctx.fillText(opponentName, oTx, oppPlate[1] + 22);
   ctx.fillStyle = typeColor; ctx.font = "bold 10px monospace";
   ctx.fillText(b.npc.type + " // " + TYPE_NAMES[b.npc.type], oTx, oppPlate[1] + 39);
-  ctx.fillStyle = "#b6c2d5"; ctx.font = "10px monospace";
-  ctx.fillText(mon.name.toUpperCase() + "  Lv." + mon.level, oTx, oppPlate[1] + 56);
+  ctx.fillStyle = UI.muted; ctx.font = "9px monospace";
+  ctx.fillText("TEAM", oTx, oppPlate[1] + 58);
+  // Numbered slots distinguish the active creature, reserves, and defeated team members.
+  // Correct feedback previews the faint; the battle adapter still owns `alive`/`idx`.
+  var currentFainted = !mon.alive || b.phase === "win" ||
+    (b.phase === "feedback" && b.feedback && b.feedback.correct);
   for (var i = 0; i < b.mons.length; i++) {
-    ctx.fillStyle = b.mons[i].alive ? typeColor : "#334155";
-    ctx.fillRect(oppPlate[2] - 13 - (b.mons.length - i) * 11, oppPlate[1] + 63, 7, 3);
+    var slotX = oTx + 34 + i * 20, slotY = oppPlate[1] + 47;
+    var alive = b.mons[i].alive && !(i === b.idx && currentFainted);
+    var active = i === b.idx && alive;
+    ctx.fillStyle = active ? typeColor : UI.panel; ctx.fillRect(slotX, slotY, 15, 15);
+    ctx.strokeStyle = alive ? typeColor : UI.line; ctx.lineWidth = 1; ctx.strokeRect(slotX, slotY, 15, 15);
+    ctx.fillStyle = active ? UI.ink : alive ? UI.text : UI.muted;
+    ctx.textAlign = "center"; ctx.fillText(alive ? String(i + 1) : "-", slotX + 7.5, slotY + 11);
   }
+  ctx.textAlign = "left";
+
+  // A single target readout is physically tied to the central platform. Its domain is the
+  // creature's identity, not necessarily the question category in a mixed encounter.
+  var monPlate = GEO ? GEO.BATTLEMON_PLATE : [383, 270, 607, 308];
+  var mW = monPlate[2] - monPlate[0], mH = monPlate[3] - monPlate[1];
+  ctx.fillStyle = monColor; ctx.fillRect(monPlate[0] + mW / 2, monPlate[1] - 8, 1, 8);
+  ctx.fillStyle = UI.ink; ctx.fillRect(monPlate[0], monPlate[1], mW, mH);
+  ctx.strokeStyle = UI.line; ctx.lineWidth = 1; ctx.strokeRect(monPlate[0], monPlate[1], mW, mH);
+  ctx.fillStyle = monColor; ctx.fillRect(monPlate[0], monPlate[1], 2, mH);
+  ctx.fillStyle = UI.text; ctx.font = "bold " + fitFont(mon.name.toUpperCase(), mW - 20, 12) + "px monospace";
+  ctx.fillText(mon.name.toUpperCase(), monPlate[0] + 10, monPlate[1] + 15);
+  ctx.fillStyle = monColor; ctx.font = "9px monospace";
+  ctx.fillText(currentFainted ? "FAINTED" : mon.domain + " // Lv." + mon.level, monPlate[0] + 10, monPlate[1] + 29);
 
   var plyPlate = GEO ? GEO.PLAYER_PLATE : [500, 340, 782, 412];
   var pW = plyPlate[2] - plyPlate[0], pH = plyPlate[3] - plyPlate[1];
-  ctx.fillStyle = "rgba(5,12,26,0.94)"; ctx.fillRect(plyPlate[0], plyPlate[1], pW, pH);
-  ctx.fillStyle = "#ef5e6a"; ctx.fillRect(plyPlate[0], plyPlate[1], pW, 4);
-  ctx.strokeStyle = "rgba(226,232,240,0.62)"; ctx.lineWidth = 1; ctx.strokeRect(plyPlate[0], plyPlate[1], pW, pH);
+  ctx.fillStyle = UI.ink; ctx.fillRect(plyPlate[0], plyPlate[1], pW, pH);
+  ctx.fillStyle = "#ef5e6a"; ctx.fillRect(plyPlate[0], plyPlate[1], pW, 3);
+  ctx.strokeStyle = UI.line; ctx.lineWidth = 1; ctx.strokeRect(plyPlate[0], plyPlate[1], pW, pH);
   ctx.drawImage(pixelHead(player.slug, 48), plyPlate[0] + 8, plyPlate[1] + 14, 44, 44);
   ctx.strokeStyle = "#ef5e6a"; ctx.lineWidth = 2; ctx.strokeRect(plyPlate[0] + 8, plyPlate[1] + 14, 44, 44);
   var pTx = plyPlate[0] + 62;
-  ctx.fillStyle = "#f1f5f9"; ctx.font = "bold 13px monospace"; ctx.textAlign = "left";
-  ctx.fillText("YOU // " + firstName(player.slug).toUpperCase(), pTx, plyPlate[1] + 22);
+  var playerLabel = "YOU // " + firstName(player.slug).toUpperCase();
+  ctx.fillStyle = UI.text; ctx.font = "bold " + fitFont(playerLabel, pW - 76, 13) + "px monospace"; ctx.textAlign = "left";
+  ctx.fillText(playerLabel, pTx, plyPlate[1] + 22);
   var maxHp = battleMaxHp(b);
   drawHPBar(pTx, plyPlate[1] + 32, 142, 10, Math.min(1, player.dispHp / maxHp));
   ctx.fillStyle = "#b6c2d5"; ctx.font = "10px monospace";
@@ -7264,7 +7295,7 @@ function drawBattle() {
     if (dT < 45) {
       ctx.globalAlpha = Math.max(0, 1 - dT / 45);
       ctx.fillStyle = "#f87171"; ctx.font = "bold 22px monospace"; ctx.textAlign = "center";
-      ctx.fillText("-" + battleWrongDamage(b), CANVAS_W - 240, 290 - dT * 1.1);
+      ctx.fillText("-" + battleWrongDamage(b), plyX, plyBaseY - plyH - 12 - (reducedMotion ? 0 : dT * 1.1));
       ctx.globalAlpha = 1;
     }
   }
@@ -7272,9 +7303,10 @@ function drawBattle() {
   // ---- text/question box (unchanged geometry below y=432) ----
   var layout = layoutChoices();
   var bx = layout.bx, by = layout.by, bw = layout.bw, bh = layout.bh;
-  ctx.fillStyle = "rgba(15,23,42,0.95)";
+  ctx.fillStyle = UI.ink;
   ctx.fillRect(bx, by, bw, bh);
-  ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 3; ctx.strokeRect(bx, by, bw, bh);
+  ctx.strokeStyle = UI.line; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, bh);
+  ctx.fillStyle = UI.focus; ctx.fillRect(bx, by, 3, bh);
 
   if (b.phase === "question") {
     var q = mon.q;
@@ -7284,26 +7316,34 @@ function drawBattle() {
       qFont = "bold 12px monospace"; lh = 15; qy = by + 18;
       qLines = wrapTextMemo("[" + q.cat + "] " + q.q, bw - 110, qFont);
     }
-    ctx.fillStyle = "#facc15"; ctx.font = qFont; ctx.textAlign = "left";
+    ctx.fillStyle = UI.text; ctx.font = qFont; ctx.textAlign = "left";
     qLines.slice(0, 3).forEach(function(ln, i) { ctx.fillText(ln, bx + 14, qy + i * lh); });
     for (var i = 0; i < 4; i++) {
       var cr = CHOICE_RECTS[i];
       var isSel = i === b.sel;
-      ctx.fillStyle = isSel ? "#facc15" : "#1e293b";
-      ctx.fillRect(cr[0], cr[1], cr[2], cr[3]);
-      if (isSel) { ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2; ctx.strokeRect(cr[0], cr[1], cr[2], cr[3]); }
-      ctx.fillStyle = isSel ? "#0f172a" : "#e2e8f0";
-      ctx.font = "13px monospace"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      var clines = wrapTextMemo((i + 1) + ". " + q.c[i], cr[2] - 20, "13px monospace");
-      if (clines.length === 1) ctx.fillText(clines[0], cr[0] + 10, cr[1] + cr[3] / 2);
-      else clines.slice(0, 2).forEach(function(ln, j) { ctx.fillText(ln, cr[0] + 10, cr[1] + cr[3] / 2 + (j - 0.5) * 15); });
+      ctx.fillStyle = UI.panel; ctx.fillRect(cr[0], cr[1], cr[2], cr[3]);
+      ctx.strokeStyle = isSel ? UI.focus : UI.line; ctx.lineWidth = isSel ? 2 : 1;
+      ctx.strokeRect(cr[0], cr[1], cr[2], cr[3]);
+      if (isSel) { ctx.fillStyle = UI.focus; ctx.fillRect(cr[0], cr[1], 3, cr[3]); }
+      // Focus is not a correct-answer reveal: a small amber keycap, never a yellow tile.
+      ctx.fillStyle = isSel ? UI.focus : UI.ink;
+      ctx.fillRect(cr[0] + 9, cr[1] + 11, 20, 20);
+      ctx.fillStyle = isSel ? UI.ink : UI.muted; ctx.font = "bold 11px monospace";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(i + 1), cr[0] + 19, cr[1] + cr[3] / 2);
+      var choiceFont = "13px monospace";
+      var clines = wrapTextMemo(q.c[i], cr[2] - 48, choiceFont);
+      if (clines.length > 2) { choiceFont = "12px monospace"; clines = wrapTextMemo(q.c[i], cr[2] - 48, choiceFont); }
+      ctx.fillStyle = UI.text; ctx.font = choiceFont; ctx.textAlign = "left";
+      if (clines.length === 1) ctx.fillText(clines[0], cr[0] + 38, cr[1] + cr[3] / 2);
+      else clines.slice(0, 2).forEach(function(ln, j) { ctx.fillText(ln, cr[0] + 38, cr[1] + cr[3] / 2 + (j - 0.5) * 15); });
       ctx.textBaseline = "alphabetic";
     }
     var rrx = RUN_RECT[0], rry = RUN_RECT[1], rrw = RUN_RECT[2], rrh = RUN_RECT[3];
-    ctx.fillStyle = "#7f1d1d";
+    ctx.fillStyle = UI.panel;
     ctx.fillRect(rrx, rry, rrw, rrh);
-    ctx.strokeStyle = "#f87171"; ctx.lineWidth = 2; ctx.strokeRect(rrx, rry, rrw, rrh);
-    ctx.fillStyle = "#fecaca"; ctx.font = "bold 13px monospace";
+    ctx.strokeStyle = UI.line; ctx.lineWidth = 1; ctx.strokeRect(rrx, rry, rrw, rrh);
+    ctx.fillStyle = UI.muted; ctx.font = "bold 11px monospace";
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText("RUN (R)", rrx + rrw / 2, rry + rrh / 2);
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
@@ -7313,13 +7353,12 @@ function drawBattle() {
       var secs = Math.ceil(remMs / 1000);
       var frac = Math.max(0, Math.min(1, remMs / battleTimerLimit(b)));
       var low = remMs < 10000;
-      var barW = 220, barH = 12, tcx = CANVAS_W / 2, tby = by - 34;
-      var col = low ? "#f87171" : "#facc15";
-      ctx.fillStyle = col; ctx.font = "bold 16px monospace"; ctx.textAlign = "center";
-      ctx.fillText("⏱ " + secs + "s", tcx, tby - 4);
-      ctx.fillStyle = "#0f172a"; ctx.fillRect(tcx - barW / 2, tby + 4, barW, barH);
-      ctx.fillStyle = col; ctx.fillRect(tcx - barW / 2, tby + 4, barW * frac, barH);
-      ctx.strokeStyle = "#334155"; ctx.lineWidth = 1; ctx.strokeRect(tcx - barW / 2, tby + 4, barW, barH);
+      // Use the header's reserved control column. The old timer overlapped the HP plate.
+      var col = low ? "#f87171" : UI.focus;
+      ctx.fillStyle = col; ctx.font = "bold 10px monospace"; ctx.textAlign = "right";
+      ctx.fillText(secs + "s", rrx + rrw, rry + rrh + 12);
+      ctx.fillStyle = UI.line; ctx.fillRect(rrx, rry + rrh + 16, rrw, 3);
+      ctx.fillStyle = col; ctx.fillRect(rrx, rry + rrh + 16, rrw * frac, 3);
       ctx.textAlign = "left";
     }
   } else {

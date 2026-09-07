@@ -155,16 +155,17 @@
     c.strokeStyle = "rgba(156,177,207,0.22)"; c.lineWidth = 2;
     for (var x = 40; x < 800; x += 78) { c.strokeRect(x, 28, 58, 78); c.fillStyle = x % 156 ? "#1c2d43" : palette[1]; c.fillRect(x + 8, 40, 42, 4); }
     c.strokeStyle = palette[1]; c.lineWidth = 4;
-    c.beginPath(); c.moveTo(130, 390); c.lineTo(500, 255); c.lineTo(668, 198); c.stroke();
+    c.beginPath(); c.moveTo(151, 340); c.lineTo(495, 226); c.lineTo(683, 158); c.stroke();
     c.fillStyle = "#172234"; c.strokeStyle = palette[1]; c.lineWidth = 3;
     function deck(points) {
       c.beginPath(); c.moveTo(points[0][0], points[0][1]);
       for (var point = 1; point < points.length; point++) c.lineTo(points[point][0], points[point][1]);
       c.closePath(); c.fill(); c.stroke();
     }
-    deck([[48,382],[100,350],[222,350],[272,382],[218,422],[98,422]]);
-    deck([[576,194],[616,174],[702,174],[738,194],[696,222],[614,222]]);
-    deck([[412,266],[458,234],[548,234],[592,266],[548,302],[456,302]]);
+    // Match the accepted theaters' foot contacts, not the obsolete taller-stage anchors.
+    deck([[48,340],[94,309],[218,309],[266,340],[218,379],[94,379]]);
+    deck([[600,155],[628,138],[720,138],[752,155],[718,181],[630,181]]);
+    deck([[397,226],[442,199],[548,199],[593,226],[548,260],[442,260]]);
     fallbackCanvas = canvas; fallbackDomain = normalized; return canvas;
   }
   function drawArena(context, domain, dx, dy, dw, dh) {

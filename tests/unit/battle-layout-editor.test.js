@@ -13,7 +13,14 @@ describe("battle layout editor handoff", () => {
     assert.deepEqual(Array.from(geometry.PLAYER_ANCHOR), [151, 340]);
     assert.deepEqual(Array.from(geometry.OPPONENT_ANCHOR), [683, 158]);
     assert.deepEqual(Array.from(geometry.BATTLEMON_CENTER), [495, 170]);
+    assert.equal(geometry.PLAYER_VISIBLE_HEIGHT, 146);
+    assert.equal(geometry.OPPONENT_VISIBLE_HEIGHT, 132);
+    assert.equal(geometry.BATTLEMON_DRAW_SIZE, 128);
+    assert.deepEqual(Array.from(geometry.BATTLEMON_PLATE), [383, 270, 607, 308]);
+    assert.deepEqual(Array.from(geometry.OPPONENT_PLATE), [18, 16, 310, 86]);
+    assert.deepEqual(Array.from(geometry.PLAYER_PLATE), [500, 340, 782, 412]);
     assert.ok(Object.isFrozen(geometry));
+    assert.ok(Object.isFrozen(geometry.BATTLEMON_PLATE));
   });
 
   it("accepts only bounded integer drag results", () => {

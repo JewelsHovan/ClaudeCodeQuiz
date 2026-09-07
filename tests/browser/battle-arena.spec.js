@@ -64,7 +64,7 @@ test.describe("Authored classic domain arenas", () => {
     expect(await page.evaluate(()=>{const ge=(0,eval),b=ge("battle"),context=ge("ctx"),original=context.drawImage,seen=[];context.drawImage=function(...args){if(String(args[0]?.src||"").includes("sprites/oyku-cildir.png"))seen.push(b.phase);return original.apply(this,args);};try{for(const phase of ["feedback","win","lose"]){b.phase=phase;b.feedback={correct:phase!=="feedback"};ge("drawBattle")();}}finally{context.drawImage=original;}return seen;})).toEqual(["feedback","win","lose"]);
     expect(result.geometry.PLAYER_ANCHOR).toEqual([151,340]);expect(result.geometry.OPPONENT_ANCHOR).toEqual([683,158]);
     expect([result.geometry.BATTLEMON_CENTER_X,result.geometry.BATTLEMON_CENTER_Y]).toEqual([495,170]);
-    expect(result.geometry.OPPONENT_VISIBLE_HEIGHT).toBe(156);expect(result.geometry.PLAYER_VISIBLE_HEIGHT).toBe(172);
+    expect(result.geometry.OPPONENT_VISIBLE_HEIGHT).toBe(132);expect(result.geometry.PLAYER_VISIBLE_HEIGHT).toBe(146);
     expect(result.choices).toEqual([[36,490,358,42],[406,490,358,42],[36,540,358,42],[406,540,358,42]]);
     expect(result.run).toEqual([688,440,76,26]);
     expect(observed.errors).toEqual([]);expect(observed.failures).toEqual([]);

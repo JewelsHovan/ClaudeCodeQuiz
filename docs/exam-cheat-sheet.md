@@ -13,9 +13,9 @@
 | Prerequisite | none formal, but need a **Claude Partner Network** org + company email |
 | Max tools per agent for reliable selection | **4-5** |
 | Batch API cost savings | **50%** |
-| Batch API max processing time | **24 hours** |
-| Batch API max requests per batch | **10,000** |
-| Batch API result retention | **29 days** |
+| Batch API max processing time | **24 hours** (most finish <1 hr; unprocessed requests expire, not billed) |
+| Batch API max requests per batch | **100,000** requests *or* **256 MB**, whichever first · *(10,000 was the Oct-2024 beta figure, superseded at GA Dec 2024 — old notes citing it are stale)* |
+| Batch API result retention | **29 days from batch *creation*** (not completion) |
 
 > Confirmed from the **official Exam Guide v1.0 (July 2026)** + Anthropic Partner Academy FAQ + Pearson VUE
 > (see `exam-research-2026.md`). The **6 official scenario themes**: Customer Support Resolution Agent · Code
@@ -31,7 +31,7 @@
 |--------|---|------------|
 | 1. Agentic Architecture & Orchestration | **27%** | Biggest domain — weight study time here |
 | 2. Tool Design & MCP Integration | **18%** | Tool descriptions, MCP errors, scoping |
-| 3. Claude Code Config & Workflows | **20%** | Commands vs skills, hooks, plugins, CI |
+| 3. Claude Code Config & Workflows | **20%** | CLAUDE.md hierarchy/`@import`, commands, skills, `.claude/rules/`, plan mode, CI |
 | 4. Prompt Eng & Structured Output | **20%** | tool_use vs few-shot, schemas, tool_choice |
 | 5. Context & Reliability | **15%** | Escalation, degradation, stratified validation |
 
@@ -48,7 +48,8 @@
 | Flagship model | **Claude 5 family**: Fable 5 (flagship) · Opus 5 (coding/enterprise default) · Sonnet 5 · Haiku 4.5. Opus 4.8 now legacy; Opus 4.1 **retired Aug 5, 2026** | Principle only — don't memorize versions |
 | MCP spec | 2026-07-28 rev went **stateless** and **deprecates Sampling/Roots/Logging** | Know tools/resources/prompts + two-layer errors (the exam-era model), not the rewrite |
 | Thinking control | `effort` (low→max) replaced `budget_tokens`; `temperature/top_p/top_k` 400 on Opus 4.7+/Sonnet 5 | Minor; principle: let it reason before answering |
-| Claude Code plugins | `claude plugin init <name>` scaffolds a plugin; skills in `.claude/skills` **auto-load** (no marketplace/install) | Yes |
+| Claude Code **skills** | `.claude/skills/` + `SKILL.md`; frontmatter `context: fork`, `allowed-tools`, `argument-hint` | **Yes — named in D3 task statements** |
+| Claude Code **plugins** | `claude plugin init <name>` scaffolds a plugin; its skills auto-load as `<name>@skills-dir` (no marketplace/install) | ⚠️ **Not a named blueprint topic** — D3's task statements 3.1–3.6 never mention plugins. Real, but low-yield; don't over-invest |
 | Stop / SubagentStop hooks | can return `hookSpecificOutput.additionalContext` (≤10k chars) to feed context **without** a hook error | Yes |
 
 > Model/tooling facts are time-sensitive — re-verify on `platform.claude.com/docs` and

@@ -1,0 +1,2879 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-05T23:24:19.313Z",
+  "browser": "149.0.7827.55",
+  "host": "Apple M4 Max, 64 GB, macOS 26.5",
+  "commit": "5af9fa98ec64ead67c08930d90148b95b0ea3f99",
+  "payloadSha256": "a062e1fcb42c799ae44790901e63e280d5d2c6cb8a6fa9132acbfdda1b3a5be6",
+  "payloadFiles": 1386,
+  "payloadBytes": 33052793,
+  "measurementNotes": [
+    "Local Python HTTP server, no HTTP compression; fresh isolated Chromium contexts. Not deployed performance.",
+    "First game frame is the end of the initial game rAF callback, not compositor presentation.",
+    "RGBA inventories estimate width*height*4 for explicitly retained images/canvases; not RSS or actual GPU residency. Audio and classic arena diagnostics are separate.",
+    "Main-loop callback work excludes deferred canvas commit/raster work. Frame intervals include scheduling delays."
+  ],
+  "existingCold": [
+    {
+      "run": 1,
+      "coldTitleMs": 37,
+      "requestCount": 113,
+      "transferBytes": 2323809,
+      "failedRequests": [],
+      "state": "title",
+      "residentWalkSlugs": 0,
+      "residentWalkFrames": 0
+    },
+    {
+      "run": 2,
+      "coldTitleMs": 31,
+      "requestCount": 113,
+      "transferBytes": 2305896,
+      "failedRequests": [],
+      "state": "title",
+      "residentWalkSlugs": 0,
+      "residentWalkFrames": 0
+    },
+    {
+      "run": 3,
+      "coldTitleMs": 31,
+      "requestCount": 113,
+      "transferBytes": 2305896,
+      "failedRequests": [],
+      "state": "title",
+      "residentWalkSlugs": 0,
+      "residentWalkFrames": 0
+    }
+  ],
+  "existingWorld": [
+    {
+      "dpr": 1,
+      "cpu": 1,
+      "scenes": [
+        {
+          "scene": "office",
+          "timing": {
+            "samples": 108,
+            "median": 8.299999999999955,
+            "p95": 9.200000000000045,
+            "max": 9.400000000000091
+          },
+          "loopAdvanced": true,
+          "movedTo": {
+            "x": 18,
+            "y": 15
+          },
+          "caches": {
+            "count": 1,
+            "mib": 3.375,
+            "dimensions": [
+              [
+                1152,
+                768,
+                1
+              ]
+            ]
+          }
+        },
+        {
+          "scene": "library",
+          "timing": {
+            "samples": 109,
+            "median": 8.300000000000182,
+            "p95": 9.100000000000364,
+            "max": 9.300000000000182
+          },
+          "loopAdvanced": true,
+          "movedTo": {
+            "x": 18,
+            "y": 21
+          },
+          "caches": {
+            "count": 2,
+            "mib": 6.75,
+            "dimensions": [
+              [
+                1152,
+                768,
+                1
+              ],
+              [
+                1152,
+                768,
+                1
+              ]
+            ]
+          }
+        },
+        {
+          "scene": "battleRoom",
+          "timing": {
+            "samples": 109,
+            "median": 8.300000000000182,
+            "p95": 9.100000000000364,
+            "max": 9.300000000000182
+          },
+          "loopAdvanced": true,
+          "movedTo": {
+            "x": 18,
+            "y": 21
+          },
+          "caches": {
+            "count": 2,
+            "mib": 6.75,
+            "dimensions": [
+              [
+                1152,
+                768,
+                1
+              ],
+              [
+                1152,
+                768,
+                1
+              ]
+            ]
+          }
+        }
+      ],
+      "classicBattle": {
+        "timing": {
+          "samples": 108,
+          "median": 8.300000000000182,
+          "p95": 9,
+          "max": 9.399999999999636
+        },
+        "firstAuthoredPaintMs": 6.799999952316284,
+        "loopAdvanced": true,
+        "stayedInteractive": true,
+        "requested": 3,
+        "loaded": 3,
+        "inFlight": 0,
+        "domain": "CONTEXT",
+        "arena": "CONTEXT",
+        "resident": 1,
+        "arenaInFlight": 0,
+        "arenaDecodedBytes": 5529600,
+        "arenaFallbackDecodedBytes": 0,
+        "battlemonDecodedBytes": 1179648,
+        "battlemonFallbackDecodedBytes": 0,
+        "presentationDecodedMiB": 6.3984375
+      },
+      "errors": []
+    },
+    {
+      "dpr": 2,
+      "cpu": 1,
+      "scenes": [
+        {
+          "scene": "office",
+          "timing": {
+            "samples": 109,
+            "median": 8.299999999999955,
+            "p95": 8.900000000000091,
+            "max": 9.399999999999864
+          },
+          "loopAdvanced": true,
+          "movedTo": {
+            "x": 18,
+            "y": 15
+          },
+          "caches": {
+            "count": 1,
+            "mib": 13.5,
+            "dimensions": [
+              [
+                2304,
+                1536,
+                2
+              ]
+            ]
+          }
+        },
+        {
+          "scene": "library",
+          "timing": {
+            "samples": 108,
+            "median": 8.300000000000182,
+            "p95": 9.300000000000182,
+            "max": 10.5
+          },
+          "loopAdvanced": true,
+          "movedTo": {
+            "x": 18,
+            "y": 21
+          },
+          "caches": {
+            "count": 2,
+            "mib": 27,
+            "dimensions": [
+              [
+                2304,
+                1536,
+                2
+              ],
+              [
+                2304,
+                1536,
+                2
+              ]
+            ]
+          }
+        },
+        {
+          "scene": "battleRoom",
+          "timing": {
+            "samples": 108,
+            "median": 8.300000000000182,
+            "p95": 8.900000000000546,
+            "max": 9.300000000000182
+          },
+          "loopAdvanced": true,
+          "movedTo": {
+            "x": 18,
+            "y": 21
+          },
+          "caches": {
+            "count": 2,
+            "mib": 27,
+            "dimensions": [
+              [
+                2304,
+                1536,
+                2
+              ],
+              [
+                2304,
+                1536,
+                2
+              ]
+            ]
+          }
+        }
+      ],
+      "classicBattle": {
+        "timing": {
+          "samples": 108,
+          "median": 8.300000000000182,
+          "p95": 9.100000000000364,
+          "max": 10.199999999999818
+        },
+        "firstAuthoredPaintMs": 5.5,
+        "loopAdvanced": true,
+        "stayedInteractive": true,
+        "requested": 3,
+        "loaded": 3,
+        "inFlight": 0,
+        "domain": "CONTEXT",
+        "arena": "CONTEXT",
+        "resident": 1,
+        "arenaInFlight": 0,
+        "arenaDecodedBytes": 5529600,
+        "arenaFallbackDecodedBytes": 0,
+        "battlemonDecodedBytes": 1179648,
+        "battlemonFallbackDecodedBytes": 0,
+        "presentationDecodedMiB": 6.3984375
+      },
+      "errors": []
+    },
+    {
+      "dpr": 2,
+      "cpu": 4,
+      "scenes": [
+        {
+          "scene": "office",
+          "timing": {
+            "samples": 109,
+            "median": 8.299999999999955,
+            "p95": 9.200000000000045,
+            "max": 9.300000000000182
+          },
+          "loopAdvanced": true,
+          "movedTo": {
+            "x": 18,
+            "y": 15
+          },
+          "caches": {
+            "count": 1,
+            "mib": 13.5,
+            "dimensions": [
+              [
+                2304,
+                1536,
+                2
+              ]
+            ]
+          }
+        },
+        {
+          "scene": "library",
+          "timing": {
+            "samples": 109,
+            "median": 8.300000000000182,
+            "p95": 9.100000000000364,
+            "max": 9.300000000000182
+          },
+          "loopAdvanced": true,
+          "movedTo": {
+            "x": 18,
+            "y": 21
+          },
+          "caches": {
+            "count": 2,
+            "mib": 27,
+            "dimensions": [
+              [
+                2304,
+                1536,
+                2
+              ],
+              [
+                2304,
+                1536,
+                2
+              ]
+            ]
+          }
+        },
+        {
+          "scene": "battleRoom",
+          "timing": {
+            "samples": 109,
+            "median": 8.300000000000182,
+            "p95": 9.199999999999818,
+            "max": 9.300000000000182
+          },
+          "loopAdvanced": true,
+          "movedTo": {
+            "x": 18,
+            "y": 21
+          },
+          "caches": {
+            "count": 2,
+            "mib": 27,
+            "dimensions": [
+              [
+                2304,
+                1536,
+                2
+              ],
+              [
+                2304,
+                1536,
+                2
+              ]
+            ]
+          }
+        }
+      ],
+      "classicBattle": {
+        "timing": {
+          "samples": 109,
+          "median": 8.300000000001091,
+          "p95": 9.100000000000364,
+          "max": 9.300000000001091
+        },
+        "firstAuthoredPaintMs": 41.89999997615814,
+        "loopAdvanced": true,
+        "stayedInteractive": true,
+        "requested": 3,
+        "loaded": 3,
+        "inFlight": 0,
+        "domain": "CONTEXT",
+        "arena": "CONTEXT",
+        "resident": 1,
+        "arenaInFlight": 0,
+        "arenaDecodedBytes": 5529600,
+        "arenaFallbackDecodedBytes": 1382400,
+        "battlemonDecodedBytes": 1179648,
+        "battlemonFallbackDecodedBytes": 0,
+        "presentationDecodedMiB": 7.716796875
+      },
+      "errors": []
+    },
+    {
+      "dpr": 2,
+      "cpu": 8,
+      "scenes": [
+        {
+          "scene": "office",
+          "timing": {
+            "samples": 72,
+            "median": 15.899999999999636,
+            "p95": 17.40000000000009,
+            "max": 17.5
+          },
+          "loopAdvanced": true,
+          "movedTo": {
+            "x": 18,
+            "y": 15
+          },
+          "caches": {
+            "count": 1,
+            "mib": 13.5,
+            "dimensions": [
+              [
+                2304,
+                1536,
+                2
+              ]
+            ]
+          }
+        },
+        {
+          "scene": "library",
+          "timing": {
+            "samples": 74,
+            "median": 9.699999999999818,
+            "p95": 17.5,
+            "max": 17.899999999999636
+          },
+          "loopAdvanced": true,
+          "movedTo": {
+            "x": 18,
+            "y": 21
+          },
+          "caches": {
+            "count": 2,
+            "mib": 27,
+            "dimensions": [
+              [
+                2304,
+                1536,
+                2
+              ],
+              [
+                2304,
+                1536,
+                2
+              ]
+            ]
+          }
+        },
+        {
+          "scene": "battleRoom",
+          "timing": {
+            "samples": 67,
+            "median": 15.900000000001455,
+            "p95": 17.800000000000182,
+            "max": 24.900000000001455
+          },
+          "loopAdvanced": true,
+          "movedTo": {
+            "x": 18,
+            "y": 21
+          },
+          "caches": {
+            "count": 2,
+            "mib": 27,
+            "dimensions": [
+              [
+                2304,
+                1536,
+                2
+              ],
+              [
+                2304,
+                1536,
+                2
+              ]
+            ]
+          }
+        }
+      ],
+      "classicBattle": {
+        "timing": {
+          "samples": 102,
+          "median": 8.300000000001091,
+          "p95": 15.799999999999272,
+          "max": 17.600000000000364
+        },
+        "firstAuthoredPaintMs": 85.80000007152557,
+        "loopAdvanced": true,
+        "stayedInteractive": true,
+        "requested": 3,
+        "loaded": 3,
+        "inFlight": 0,
+        "domain": "CONTEXT",
+        "arena": "CONTEXT",
+        "resident": 1,
+        "arenaInFlight": 0,
+        "arenaDecodedBytes": 5529600,
+        "arenaFallbackDecodedBytes": 1382400,
+        "battlemonDecodedBytes": 1179648,
+        "battlemonFallbackDecodedBytes": 0,
+        "presentationDecodedMiB": 7.716796875
+      },
+      "errors": []
+    }
+  ],
+  "cold": [
+    {
+      "config": {
+        "name": "desktop-local",
+        "dpr": 1,
+        "cpu": 1
+      },
+      "run": 1,
+      "stateObservedMs": 36.39999997615814,
+      "firstGameFrameMs": 67.5,
+      "requestCountIncludingDocument": 113,
+      "bodyBytesIncludingDocument": 2346895,
+      "transferBytesIncludingDocument": 2380795,
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "desktop-local",
+        "dpr": 1,
+        "cpu": 1
+      },
+      "run": 2,
+      "stateObservedMs": 30.100000023841858,
+      "firstGameFrameMs": 64.10000002384186,
+      "requestCountIncludingDocument": 113,
+      "bodyBytesIncludingDocument": 2346895,
+      "transferBytesIncludingDocument": 2380795,
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "desktop-local",
+        "dpr": 1,
+        "cpu": 1
+      },
+      "run": 3,
+      "stateObservedMs": 28.100000023841858,
+      "firstGameFrameMs": 62.5,
+      "requestCountIncludingDocument": 113,
+      "bodyBytesIncludingDocument": 2346895,
+      "transferBytesIncludingDocument": 2380795,
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "retina-local",
+        "dpr": 2,
+        "cpu": 1
+      },
+      "run": 1,
+      "stateObservedMs": 27.799999952316284,
+      "firstGameFrameMs": 77.19999992847443,
+      "requestCountIncludingDocument": 133,
+      "bodyBytesIncludingDocument": 2367953,
+      "transferBytesIncludingDocument": 2407853,
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "retina-local",
+        "dpr": 2,
+        "cpu": 1
+      },
+      "run": 2,
+      "stateObservedMs": 31.100000023841858,
+      "firstGameFrameMs": 79.10000002384186,
+      "requestCountIncludingDocument": 133,
+      "bodyBytesIncludingDocument": 2367953,
+      "transferBytesIncludingDocument": 2407853,
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "retina-local",
+        "dpr": 2,
+        "cpu": 1
+      },
+      "run": 3,
+      "stateObservedMs": 31.899999976158142,
+      "firstGameFrameMs": 81.19999992847443,
+      "requestCountIncludingDocument": 133,
+      "bodyBytesIncludingDocument": 2367953,
+      "transferBytesIncludingDocument": 2407853,
+      "longTasks": {
+        "count": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      },
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "mobile-simulated",
+        "dpr": 2,
+        "cpu": 4,
+        "mobile": true,
+        "mbps": 1.6,
+        "latency": 150
+      },
+      "run": 1,
+      "stateObservedMs": 3903.5,
+      "firstGameFrameMs": 14191.5,
+      "requestCountIncludingDocument": 133,
+      "bodyBytesIncludingDocument": 2367953,
+      "transferBytesIncludingDocument": 2407853,
+      "longTasks": {
+        "count": 2,
+        "totalMs": 179,
+        "maxMs": 124
+      },
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "mobile-simulated",
+        "dpr": 2,
+        "cpu": 4,
+        "mobile": true,
+        "mbps": 1.6,
+        "latency": 150
+      },
+      "run": 2,
+      "stateObservedMs": 3915.7000000476837,
+      "firstGameFrameMs": 14220.300000071526,
+      "requestCountIncludingDocument": 133,
+      "bodyBytesIncludingDocument": 2367953,
+      "transferBytesIncludingDocument": 2407853,
+      "longTasks": {
+        "count": 2,
+        "totalMs": 178,
+        "maxMs": 124
+      },
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "mobile-simulated",
+        "dpr": 2,
+        "cpu": 4,
+        "mobile": true,
+        "mbps": 1.6,
+        "latency": 150
+      },
+      "run": 3,
+      "stateObservedMs": 3908.899999976158,
+      "firstGameFrameMs": 14215,
+      "requestCountIncludingDocument": 133,
+      "bodyBytesIncludingDocument": 2367953,
+      "transferBytesIncludingDocument": 2407853,
+      "longTasks": {
+        "count": 2,
+        "totalMs": 181,
+        "maxMs": 126
+      },
+      "errors": []
+    }
+  ],
+  "retinaColdResourceGroups": {
+    "state.js": {
+      "count": 1,
+      "encodedBytes": 14594,
+      "transferBytes": 14894
+    },
+    "battle-presentation.js": {
+      "count": 1,
+      "encodedBytes": 19528,
+      "transferBytes": 19828
+    },
+    "attributes.js": {
+      "count": 1,
+      "encodedBytes": 4317,
+      "transferBytes": 4617
+    },
+    "battle-ops.js": {
+      "count": 1,
+      "encodedBytes": 13525,
+      "transferBytes": 13825
+    },
+    "battle-arena.js": {
+      "count": 1,
+      "encodedBytes": 12765,
+      "transferBytes": 13065
+    },
+    "questions.js": {
+      "count": 1,
+      "encodedBytes": 47484,
+      "transferBytes": 47784
+    },
+    "agent-arena.js": {
+      "count": 1,
+      "encodedBytes": 46190,
+      "transferBytes": 46490
+    },
+    "progress.js": {
+      "count": 1,
+      "encodedBytes": 12712,
+      "transferBytes": 13012
+    },
+    "question-hub.js": {
+      "count": 1,
+      "encodedBytes": 18272,
+      "transferBytes": 18572
+    },
+    "dialogue.js": {
+      "count": 1,
+      "encodedBytes": 18973,
+      "transferBytes": 19273
+    },
+    "dialogue-runtime.js": {
+      "count": 1,
+      "encodedBytes": 9863,
+      "transferBytes": 10163
+    },
+    "world-art.js": {
+      "count": 1,
+      "encodedBytes": 22417,
+      "transferBytes": 22717
+    },
+    "world-layout.js": {
+      "count": 1,
+      "encodedBytes": 10348,
+      "transferBytes": 10648
+    },
+    "locomotion.js": {
+      "count": 1,
+      "encodedBytes": 17198,
+      "transferBytes": 17498
+    },
+    "audio.js": {
+      "count": 1,
+      "encodedBytes": 36177,
+      "transferBytes": 36477
+    },
+    "music.js": {
+      "count": 1,
+      "encodedBytes": 16311,
+      "transferBytes": 16611
+    },
+    "game.js": {
+      "count": 1,
+      "encodedBytes": 361175,
+      "transferBytes": 361475
+    },
+    "environment": {
+      "count": 21,
+      "encodedBytes": 30264,
+      "transferBytes": 36564
+    },
+    "battle-arenas": {
+      "count": 1,
+      "encodedBytes": 3567,
+      "transferBytes": 3867
+    },
+    "battlemons": {
+      "count": 1,
+      "encodedBytes": 20150,
+      "transferBytes": 20450
+    },
+    "props": {
+      "count": 16,
+      "encodedBytes": 33181,
+      "transferBytes": 37981
+    },
+    "props-study": {
+      "count": 6,
+      "encodedBytes": 5181,
+      "transferBytes": 6981
+    },
+    "props-wayfinding": {
+      "count": 10,
+      "encodedBytes": 9899,
+      "transferBytes": 12899
+    },
+    "library": {
+      "count": 2,
+      "encodedBytes": 7900,
+      "transferBytes": 8500
+    },
+    "sprites": {
+      "count": 37,
+      "encodedBytes": 1562288,
+      "transferBytes": 1573388
+    },
+    "tiles": {
+      "count": 21,
+      "encodedBytes": 4455,
+      "transferBytes": 10755
+    }
+  },
+  "runtime": [
+    {
+      "config": {
+        "name": "runtime-dpr2-cpu1",
+        "dpr": 2,
+        "cpu": 1
+      },
+      "samples": [
+        {
+          "label": "title",
+          "elapsedMs": 3001.5677920000016,
+          "intervals": {
+            "count": 363,
+            "median": 8.300000000000182,
+            "p95": 8.900000000000091,
+            "max": 9.400000000000091,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 364,
+            "median": 0.10000002384185791,
+            "p95": 0.20000004768371582,
+            "max": 0.30000007152557373,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "title",
+          "map": "office",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 2869.3970000000004,
+            "ScriptDurationMs": 37.78,
+            "LayoutDurationMs": 0,
+            "RecalcStyleDurationMs": 3.758
+          }
+        },
+        {
+          "label": "select",
+          "elapsedMs": 3001.377499999995,
+          "intervals": {
+            "count": 360,
+            "median": 8.300000000000182,
+            "p95": 8.899999999999636,
+            "max": 9.300000000000182,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 361,
+            "median": 0.10000002384185791,
+            "p95": 0.20000004768371582,
+            "max": 0.30000007152557373,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "select",
+          "map": "office",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 329.091,
+            "ScriptDurationMs": 40.63499999999999,
+            "LayoutDurationMs": 0,
+            "RecalcStyleDurationMs": 3.6859999999999995
+          }
+        },
+        {
+          "label": "office-idle",
+          "elapsedMs": 3000.065208,
+          "intervals": {
+            "count": 360,
+            "median": 8.300000000000182,
+            "p95": 9,
+            "max": 9.399999999999636,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 361,
+            "median": 0.19999992847442627,
+            "p95": 0.30000007152557373,
+            "max": 3.5,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "overworld",
+          "map": "office",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 602.6530000000001,
+            "ScriptDurationMs": 70.37899999999999,
+            "LayoutDurationMs": 0.294,
+            "RecalcStyleDurationMs": 0.06399999999999982
+          }
+        },
+        {
+          "label": "office-moving",
+          "elapsedMs": 6187.157333000003,
+          "intervals": {
+            "count": 742,
+            "median": 8.300000000001091,
+            "p95": 9,
+            "max": 9.400000000001455,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 743,
+            "median": 0.19999992847442627,
+            "p95": 0.30000007152557373,
+            "max": 1.5,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "overworld",
+          "map": "office",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 864.6919999999998,
+            "ScriptDurationMs": 135.897,
+            "LayoutDurationMs": 0.8220000000000003,
+            "RecalcStyleDurationMs": 0.14199999999999977
+          }
+        },
+        {
+          "label": "question-hub-open",
+          "elapsedMs": 3001.5753750000003,
+          "intervals": {
+            "count": 359,
+            "median": 8.300000000001091,
+            "p95": 9.299999999999272,
+            "max": 9.400000000001455,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 360,
+            "median": 0.10000002384185791,
+            "p95": 0.20000004768371582,
+            "max": 0.30000007152557373,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "overworld",
+          "map": "office",
+          "hub": true,
+          "cpu": {
+            "TaskDurationMs": 400.00500000000017,
+            "ScriptDurationMs": 55.67100000000003,
+            "LayoutDurationMs": 0,
+            "RecalcStyleDurationMs": 4.6080000000000005
+          }
+        },
+        {
+          "label": "library",
+          "elapsedMs": 3001.2284590000054,
+          "intervals": {
+            "count": 361,
+            "median": 8.30000000000291,
+            "p95": 9.299999999999272,
+            "max": 9.400000000001455,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 362,
+            "median": 0.10000002384185791,
+            "p95": 0.20000004768371582,
+            "max": 0.20000004768371582,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "overworld",
+          "map": "library",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 503.0470000000005,
+            "ScriptDurationMs": 33.67300000000001,
+            "LayoutDurationMs": 0,
+            "RecalcStyleDurationMs": 0
+          }
+        },
+        {
+          "label": "battle-MCP",
+          "elapsedMs": 3000.435540999999,
+          "intervals": {
+            "count": 358,
+            "median": 8.30000000000291,
+            "p95": 9.299999999999272,
+            "max": 15.799999999999272,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 359,
+            "median": 0.10000002384185791,
+            "p95": 0.20000004768371582,
+            "max": 3.200000047683716,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "battle",
+          "map": "battleRoom",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 422.6719999999995,
+            "ScriptDurationMs": 58.598999999999954,
+            "LayoutDurationMs": 0.042999999999999636,
+            "RecalcStyleDurationMs": 5.068999999999999
+          }
+        },
+        {
+          "label": "battle-AGENT",
+          "elapsedMs": 3001.1152500000026,
+          "intervals": {
+            "count": 358,
+            "median": 8.30000000000291,
+            "p95": 9.299999999999272,
+            "max": 16.599999999998545,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 359,
+            "median": 0.19999992847442627,
+            "p95": 0.2999999523162842,
+            "max": 14.799999952316284,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "battle",
+          "map": "battleRoom",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 2009.4990000000007,
+            "ScriptDurationMs": 78.75500000000002,
+            "LayoutDurationMs": 0.0889999999999988,
+            "RecalcStyleDurationMs": 5.198000000000001
+          }
+        },
+        {
+          "label": "agent-answer-effects",
+          "elapsedMs": 1508.6759170000005,
+          "intervals": {
+            "count": 181,
+            "median": 8.30000000000291,
+            "p95": 9.200000000000728,
+            "max": 9.399999999997817,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 182,
+            "median": 0.19999992847442627,
+            "p95": 0.2999999523162842,
+            "max": 0.8999999761581421,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "battle",
+          "map": "battleRoom",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 984.7479999999997,
+            "ScriptDurationMs": 33.20400000000001,
+            "LayoutDurationMs": 0.14500000000000102,
+            "RecalcStyleDurationMs": 2.3109999999999973
+          }
+        }
+      ],
+      "rosterBrowse": {
+        "addedRequests": 751,
+        "addedEncodedBytes": 17088020
+      },
+      "warps": [
+        {
+          "destination": "library",
+          "elapsedMs": 25.03595900000073
+        },
+        {
+          "destination": "battleRoom",
+          "elapsedMs": 8.466958000004524
+        },
+        {
+          "destination": "library",
+          "elapsedMs": 20.38195799999812
+        },
+        {
+          "destination": "battleRoom",
+          "elapsedMs": 21.282459000009112
+        },
+        {
+          "destination": "library",
+          "elapsedMs": 20.510332999998354
+        },
+        {
+          "destination": "battleRoom",
+          "elapsedMs": 20.803375000003143
+        },
+        {
+          "destination": "library",
+          "elapsedMs": 19.779999999998836
+        },
+        {
+          "destination": "battleRoom",
+          "elapsedMs": 20.098708999998053
+        }
+      ],
+      "errors": [],
+      "memory": {
+        "title": {
+          "explicitRgbaMiB": 47.47589111328125,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 1,
+              "rgbaBytes": 6144
+            },
+            "miniCache": {
+              "count": 37,
+              "rgbaBytes": 1480000
+            },
+            "hdImages": {
+              "count": 20,
+              "rgbaBytes": 1671168
+            }
+          },
+          "walkSlugs": 0,
+          "idleRecords": 0,
+          "jsHeapUsedBytes": 1994860,
+          "audioDecodedBytes": 0,
+          "audioVoices": 0,
+          "audioContexts": 0,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": null,
+            "residentArenaCount": 0,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": null,
+            "residentDecodedBytes": 0,
+            "fallbackDecodedBytes": 0
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 0,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 0,
+            "loadedSheetDecodedBytes": 0,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 0
+          }
+        },
+        "select": {
+          "explicitRgbaMiB": 57.55055236816406,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 1,
+              "rgbaBytes": 6144
+            },
+            "walkAnim": {
+              "count": 16,
+              "rgbaBytes": 1593600
+            },
+            "locomotionPilot": {
+              "count": 68,
+              "rgbaBytes": 7307520
+            },
+            "miniCache": {
+              "count": 74,
+              "rgbaBytes": 3142928
+            },
+            "hdImages": {
+              "count": 20,
+              "rgbaBytes": 1671168
+            }
+          },
+          "walkSlugs": 1,
+          "idleRecords": 0,
+          "jsHeapUsedBytes": 2280164,
+          "audioDecodedBytes": 30720,
+          "audioVoices": 5,
+          "audioContexts": 1,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": null,
+            "residentArenaCount": 0,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": null,
+            "residentDecodedBytes": 0,
+            "fallbackDecodedBytes": 0
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 0,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 0,
+            "loadedSheetDecodedBytes": 0,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 0
+          }
+        },
+        "browsedRoster": {
+          "explicitRgbaMiB": 127.00978088378906,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 1,
+              "rgbaBytes": 6144
+            },
+            "walkAnim": {
+              "count": 592,
+              "rgbaBytes": 60253440
+            },
+            "locomotionPilot": {
+              "count": 204,
+              "rgbaBytes": 21480960
+            },
+            "miniCache": {
+              "count": 74,
+              "rgbaBytes": 3142928
+            },
+            "hdImages": {
+              "count": 20,
+              "rgbaBytes": 1671168
+            }
+          },
+          "walkSlugs": 37,
+          "idleRecords": 0,
+          "jsHeapUsedBytes": 2592480,
+          "audioDecodedBytes": 44164,
+          "audioVoices": 6,
+          "audioContexts": 1,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": null,
+            "residentArenaCount": 0,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": null,
+            "residentDecodedBytes": 0,
+            "fallbackDecodedBytes": 0
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 0,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 0,
+            "loadedSheetDecodedBytes": 0,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 0
+          }
+        },
+        "library": {
+          "explicitRgbaMiB": 145.45985412597656,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "libraryMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 29,
+              "rgbaBytes": 278528
+            },
+            "walkAnim": {
+              "count": 592,
+              "rgbaBytes": 60253440
+            },
+            "locomotionPilot": {
+              "count": 204,
+              "rgbaBytes": 21480960
+            },
+            "idleImageState": {
+              "count": 27,
+              "rgbaBytes": 2398080
+            },
+            "_sittingAssetStore": {
+              "count": 12,
+              "rgbaBytes": 196608
+            },
+            "pixelCache": {
+              "count": 1,
+              "rgbaBytes": 9216
+            },
+            "miniCache": {
+              "count": 98,
+              "rgbaBytes": 4347152
+            },
+            "walkMiniCache": {
+              "count": 43,
+              "rgbaBytes": 1056000
+            },
+            "portraits": {
+              "count": 1,
+              "rgbaBytes": 37632
+            },
+            "hdImages": {
+              "count": 21,
+              "rgbaBytes": 1687552
+            }
+          },
+          "walkSlugs": 37,
+          "idleRecords": 27,
+          "jsHeapUsedBytes": 3759072,
+          "audioDecodedBytes": 3227524,
+          "audioVoices": 5,
+          "audioContexts": 1,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": null,
+            "residentArenaCount": 0,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": null,
+            "residentDecodedBytes": 0,
+            "fallbackDecodedBytes": 0
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 0,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 0,
+            "loadedSheetDecodedBytes": 0,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 0
+          }
+        },
+        "MCP": {
+          "explicitRgbaMiB": 146.32472229003906,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "battleRoomMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 29,
+              "rgbaBytes": 278528
+            },
+            "walkAnim": {
+              "count": 592,
+              "rgbaBytes": 60253440
+            },
+            "locomotionPilot": {
+              "count": 204,
+              "rgbaBytes": 21480960
+            },
+            "idleImageState": {
+              "count": 33,
+              "rgbaBytes": 2943360
+            },
+            "_sittingAssetStore": {
+              "count": 12,
+              "rgbaBytes": 196608
+            },
+            "pixelCache": {
+              "count": 2,
+              "rgbaBytes": 18432
+            },
+            "miniCache": {
+              "count": 104,
+              "rgbaBytes": 4648208
+            },
+            "walkMiniCache": {
+              "count": 43,
+              "rgbaBytes": 1056000
+            },
+            "portraits": {
+              "count": 2,
+              "rgbaBytes": 72576
+            },
+            "hdImages": {
+              "count": 22,
+              "rgbaBytes": 1703936
+            }
+          },
+          "walkSlugs": 37,
+          "idleRecords": 33,
+          "jsHeapUsedBytes": 3892496,
+          "audioDecodedBytes": 3240960,
+          "audioVoices": 5,
+          "audioContexts": 1,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": "MCP",
+            "residentArenaCount": 1,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": null,
+            "residentDecodedBytes": 5529600,
+            "fallbackDecodedBytes": 0
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 2,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 2,
+            "loadedSheetDecodedBytes": 786432,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 2
+          }
+        },
+        "AGENT": {
+          "explicitRgbaMiB": 146.45518493652344,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "battleRoomMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 29,
+              "rgbaBytes": 278528
+            },
+            "walkAnim": {
+              "count": 592,
+              "rgbaBytes": 60253440
+            },
+            "locomotionPilot": {
+              "count": 204,
+              "rgbaBytes": 21480960
+            },
+            "idleImageState": {
+              "count": 33,
+              "rgbaBytes": 2943360
+            },
+            "_sittingAssetStore": {
+              "count": 12,
+              "rgbaBytes": 196608
+            },
+            "pixelCache": {
+              "count": 2,
+              "rgbaBytes": 18432
+            },
+            "miniCache": {
+              "count": 104,
+              "rgbaBytes": 4648208
+            },
+            "walkMiniCache": {
+              "count": 49,
+              "rgbaBytes": 1192800
+            },
+            "portraits": {
+              "count": 2,
+              "rgbaBytes": 72576
+            },
+            "hdImages": {
+              "count": 22,
+              "rgbaBytes": 1703936
+            }
+          },
+          "walkSlugs": 37,
+          "idleRecords": 33,
+          "jsHeapUsedBytes": 4048120,
+          "audioDecodedBytes": 3363840,
+          "audioVoices": 3,
+          "audioContexts": 1,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": "MCP",
+            "residentArenaCount": 1,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": null,
+            "residentDecodedBytes": 5529600,
+            "fallbackDecodedBytes": 0
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 0,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 0,
+            "loadedSheetDecodedBytes": 0,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 3
+          }
+        },
+        "end": {
+          "explicitRgbaMiB": 146.45518493652344,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "battleRoomMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 29,
+              "rgbaBytes": 278528
+            },
+            "walkAnim": {
+              "count": 592,
+              "rgbaBytes": 60253440
+            },
+            "locomotionPilot": {
+              "count": 204,
+              "rgbaBytes": 21480960
+            },
+            "idleImageState": {
+              "count": 33,
+              "rgbaBytes": 2943360
+            },
+            "_sittingAssetStore": {
+              "count": 12,
+              "rgbaBytes": 196608
+            },
+            "pixelCache": {
+              "count": 2,
+              "rgbaBytes": 18432
+            },
+            "miniCache": {
+              "count": 104,
+              "rgbaBytes": 4648208
+            },
+            "walkMiniCache": {
+              "count": 49,
+              "rgbaBytes": 1192800
+            },
+            "portraits": {
+              "count": 2,
+              "rgbaBytes": 72576
+            },
+            "hdImages": {
+              "count": 22,
+              "rgbaBytes": 1703936
+            }
+          },
+          "walkSlugs": 37,
+          "idleRecords": 33,
+          "jsHeapUsedBytes": 4117756,
+          "audioDecodedBytes": 3363840,
+          "audioVoices": 3,
+          "audioContexts": 1,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": "MCP",
+            "residentArenaCount": 1,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": null,
+            "residentDecodedBytes": 5529600,
+            "fallbackDecodedBytes": 0
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 0,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 0,
+            "loadedSheetDecodedBytes": 0,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 3
+          }
+        }
+      }
+    },
+    {
+      "config": {
+        "name": "runtime-dpr2-cpu8",
+        "dpr": 2,
+        "cpu": 8
+      },
+      "samples": [
+        {
+          "label": "title",
+          "elapsedMs": 3001.3481670000037,
+          "intervals": {
+            "count": 45,
+            "median": 67.09999999999991,
+            "p95": 75.30000000000018,
+            "max": 75.59999999999991,
+            "over16_7": 45,
+            "over33_4": 45
+          },
+          "callbackWork": {
+            "count": 46,
+            "median": 1.5,
+            "p95": 2.5,
+            "max": 4.300000071525574,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 46,
+            "totalMs": 3135,
+            "maxMs": 73
+          },
+          "state": "title",
+          "map": "office",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 3041.114,
+            "ScriptDurationMs": 65.866,
+            "LayoutDurationMs": 0,
+            "RecalcStyleDurationMs": 8.732999999999999
+          }
+        },
+        {
+          "label": "select",
+          "elapsedMs": 3001.325874999995,
+          "intervals": {
+            "count": 354,
+            "median": 8.300000000000182,
+            "p95": 9.199999999999818,
+            "max": 59.29999999999927,
+            "over16_7": 3,
+            "over33_4": 1
+          },
+          "callbackWork": {
+            "count": 355,
+            "median": 0.5,
+            "p95": 1.7999999523162842,
+            "max": 3,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "select",
+          "map": "office",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 2746.615,
+            "ScriptDurationMs": 256.487,
+            "LayoutDurationMs": 0,
+            "RecalcStyleDurationMs": 37.314
+          }
+        },
+        {
+          "label": "office-idle",
+          "elapsedMs": 3001.1821659999987,
+          "intervals": {
+            "count": 215,
+            "median": 16.399999999999636,
+            "p95": 17.400000000001455,
+            "max": 49.80000000000018,
+            "over16_7": 67,
+            "over33_4": 1
+          },
+          "callbackWork": {
+            "count": 216,
+            "median": 1.5,
+            "p95": 2.700000047683716,
+            "max": 28.799999952316284,
+            "over16_7": 1,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "overworld",
+          "map": "office",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 2984.725999999999,
+            "ScriptDurationMs": 328.1449999999999,
+            "LayoutDurationMs": 0.08300000000000017,
+            "RecalcStyleDurationMs": 0.014000000000000123
+          }
+        },
+        {
+          "label": "office-moving",
+          "elapsedMs": 6279.879417000004,
+          "intervals": {
+            "count": 695,
+            "median": 8.300000000001091,
+            "p95": 16.5,
+            "max": 24.900000000001455,
+            "over16_7": 23,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 696,
+            "median": 1.3000000715255737,
+            "p95": 2.6999999284744263,
+            "max": 10,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "overworld",
+          "map": "office",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 6217.970000000001,
+            "ScriptDurationMs": 948.787,
+            "LayoutDurationMs": 5.8,
+            "RecalcStyleDurationMs": 0.11299999999999505
+          }
+        },
+        {
+          "label": "question-hub-open",
+          "elapsedMs": 3001.319082999995,
+          "intervals": {
+            "count": 314,
+            "median": 8.399999999997817,
+            "p95": 16.700000000000728,
+            "max": 17.600000000002183,
+            "over16_7": 20,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 315,
+            "median": 1.399999976158142,
+            "p95": 2.3000000715255737,
+            "max": 3.399999976158142,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "overworld",
+          "map": "office",
+          "hub": true,
+          "cpu": {
+            "TaskDurationMs": 2977.798,
+            "ScriptDurationMs": 418.1579999999998,
+            "LayoutDurationMs": 0,
+            "RecalcStyleDurationMs": 37.775
+          }
+        },
+        {
+          "label": "library",
+          "elapsedMs": 3000.3612090000097,
+          "intervals": {
+            "count": 247,
+            "median": 9.299999999999272,
+            "p95": 17.400000000001455,
+            "max": 17.600000000002183,
+            "over16_7": 58,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 248,
+            "median": 0.8999999761581421,
+            "p95": 1.899999976158142,
+            "max": 3.399999976158142,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "totalMs": 0,
+            "maxMs": 0
+          },
+          "state": "overworld",
+          "map": "library",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 2987.099999999998,
+            "ScriptDurationMs": 221.94800000000026,
+            "LayoutDurationMs": 0,
+            "RecalcStyleDurationMs": 0
+          }
+        },
+        {
+          "label": "battle-MCP",
+          "elapsedMs": 3001.4963340000104,
+          "intervals": {
+            "count": 342,
+            "median": 8.30000000000291,
+            "p95": 15.899999999997817,
+            "max": 99.70000000000073,
+            "over16_7": 9,
+            "over33_4": 1
+          },
+          "callbackWork": {
+            "count": 343,
+            "median": 0.9000000953674316,
+            "p95": 2,
+            "max": 3.200000047683716,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 2,
+            "totalMs": 145,
+            "maxMs": 91
+          },
+          "state": "battle",
+          "map": "battleRoom",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 2952.583999999998,
+            "ScriptDurationMs": 333.4649999999999,
+            "LayoutDurationMs": 0,
+            "RecalcStyleDurationMs": 33.37799999999999
+          }
+        },
+        {
+          "label": "battle-AGENT",
+          "elapsedMs": 3001.2504590000026,
+          "intervals": {
+            "count": 65,
+            "median": 49.599999999998545,
+            "p95": 50.79999999999927,
+            "max": 50.900000000001455,
+            "over16_7": 65,
+            "over33_4": 65
+          },
+          "callbackWork": {
+            "count": 66,
+            "median": 1.600000023841858,
+            "p95": 2.5999999046325684,
+            "max": 2.799999952316284,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 1,
+            "totalMs": 169,
+            "maxMs": 169
+          },
+          "state": "battle",
+          "map": "battleRoom",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 3007.133,
+            "ScriptDurationMs": 123.65799999999982,
+            "LayoutDurationMs": 0,
+            "RecalcStyleDurationMs": 7.542999999999994
+          }
+        },
+        {
+          "label": "agent-answer-effects",
+          "elapsedMs": 1735.162083000003,
+          "intervals": {
+            "count": 36,
+            "median": 50,
+            "p95": 58.5,
+            "max": 74.90000000000146,
+            "over16_7": 36,
+            "over33_4": 36
+          },
+          "callbackWork": {
+            "count": 37,
+            "median": 1.7999999523162842,
+            "p95": 4.200000047683716,
+            "max": 7.300000071525574,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 5,
+            "totalMs": 273,
+            "maxMs": 65
+          },
+          "state": "battle",
+          "map": "battleRoom",
+          "hub": false,
+          "cpu": {
+            "TaskDurationMs": 1764.408999999997,
+            "ScriptDurationMs": 91.31599999999995,
+            "LayoutDurationMs": 1.2160000000000017,
+            "RecalcStyleDurationMs": 9.147999999999989
+          }
+        }
+      ],
+      "warps": [
+        {
+          "destination": "library",
+          "elapsedMs": 211.00049999999464
+        },
+        {
+          "destination": "battleRoom",
+          "elapsedMs": 116.13404200000514
+        }
+      ],
+      "errors": [],
+      "memory": {
+        "title": {
+          "explicitRgbaMiB": 47.47589111328125,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 1,
+              "rgbaBytes": 6144
+            },
+            "miniCache": {
+              "count": 37,
+              "rgbaBytes": 1480000
+            },
+            "hdImages": {
+              "count": 20,
+              "rgbaBytes": 1671168
+            }
+          },
+          "walkSlugs": 0,
+          "idleRecords": 0,
+          "jsHeapUsedBytes": 1971848,
+          "audioDecodedBytes": 0,
+          "audioVoices": 0,
+          "audioContexts": 0,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": null,
+            "residentArenaCount": 0,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": null,
+            "residentDecodedBytes": 0,
+            "fallbackDecodedBytes": 0
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 0,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 0,
+            "loadedSheetDecodedBytes": 0,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 0
+          }
+        },
+        "select": {
+          "explicitRgbaMiB": 57.55055236816406,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 1,
+              "rgbaBytes": 6144
+            },
+            "walkAnim": {
+              "count": 16,
+              "rgbaBytes": 1593600
+            },
+            "locomotionPilot": {
+              "count": 68,
+              "rgbaBytes": 7307520
+            },
+            "miniCache": {
+              "count": 74,
+              "rgbaBytes": 3142928
+            },
+            "hdImages": {
+              "count": 20,
+              "rgbaBytes": 1671168
+            }
+          },
+          "walkSlugs": 1,
+          "idleRecords": 0,
+          "jsHeapUsedBytes": 2249056,
+          "audioDecodedBytes": 30720,
+          "audioVoices": 5,
+          "audioContexts": 1,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": null,
+            "residentArenaCount": 0,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": null,
+            "residentDecodedBytes": 0,
+            "fallbackDecodedBytes": 0
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 0,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 0,
+            "loadedSheetDecodedBytes": 0,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 0
+          }
+        },
+        "library": {
+          "explicitRgbaMiB": 76.00062561035156,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "libraryMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 29,
+              "rgbaBytes": 278528
+            },
+            "walkAnim": {
+              "count": 16,
+              "rgbaBytes": 1593600
+            },
+            "locomotionPilot": {
+              "count": 68,
+              "rgbaBytes": 7307520
+            },
+            "idleImageState": {
+              "count": 27,
+              "rgbaBytes": 2398080
+            },
+            "_sittingAssetStore": {
+              "count": 12,
+              "rgbaBytes": 196608
+            },
+            "pixelCache": {
+              "count": 1,
+              "rgbaBytes": 9216
+            },
+            "miniCache": {
+              "count": 98,
+              "rgbaBytes": 4347152
+            },
+            "walkMiniCache": {
+              "count": 43,
+              "rgbaBytes": 1056000
+            },
+            "portraits": {
+              "count": 1,
+              "rgbaBytes": 37632
+            },
+            "hdImages": {
+              "count": 21,
+              "rgbaBytes": 1687552
+            }
+          },
+          "walkSlugs": 1,
+          "idleRecords": 27,
+          "jsHeapUsedBytes": 3435388,
+          "audioDecodedBytes": 3227524,
+          "audioVoices": 5,
+          "audioContexts": 1,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": null,
+            "residentArenaCount": 0,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": null,
+            "residentDecodedBytes": 0,
+            "fallbackDecodedBytes": 0
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 0,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 0,
+            "loadedSheetDecodedBytes": 0,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 0
+          }
+        },
+        "MCP": {
+          "explicitRgbaMiB": 77.28599548339844,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "battleRoomMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 29,
+              "rgbaBytes": 278528
+            },
+            "walkAnim": {
+              "count": 16,
+              "rgbaBytes": 1593600
+            },
+            "locomotionPilot": {
+              "count": 68,
+              "rgbaBytes": 7307520
+            },
+            "idleImageState": {
+              "count": 36,
+              "rgbaBytes": 3211200
+            },
+            "_sittingAssetStore": {
+              "count": 12,
+              "rgbaBytes": 196608
+            },
+            "pixelCache": {
+              "count": 2,
+              "rgbaBytes": 18432
+            },
+            "miniCache": {
+              "count": 107,
+              "rgbaBytes": 4798736
+            },
+            "walkMiniCache": {
+              "count": 44,
+              "rgbaBytes": 1078560
+            },
+            "portraits": {
+              "count": 2,
+              "rgbaBytes": 72576
+            },
+            "hdImages": {
+              "count": 22,
+              "rgbaBytes": 1703936
+            }
+          },
+          "walkSlugs": 1,
+          "idleRecords": 36,
+          "jsHeapUsedBytes": 3611452,
+          "audioDecodedBytes": 3194880,
+          "audioVoices": 6,
+          "audioContexts": 1,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": "MCP",
+            "residentArenaCount": 1,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": "MCP",
+            "residentDecodedBytes": 5529600,
+            "fallbackDecodedBytes": 1382400
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 2,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 2,
+            "loadedSheetDecodedBytes": 786432,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 2
+          }
+        },
+        "AGENT": {
+          "explicitRgbaMiB": 77.39494323730469,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "battleRoomMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 29,
+              "rgbaBytes": 278528
+            },
+            "walkAnim": {
+              "count": 16,
+              "rgbaBytes": 1593600
+            },
+            "locomotionPilot": {
+              "count": 68,
+              "rgbaBytes": 7307520
+            },
+            "idleImageState": {
+              "count": 36,
+              "rgbaBytes": 3211200
+            },
+            "_sittingAssetStore": {
+              "count": 12,
+              "rgbaBytes": 196608
+            },
+            "pixelCache": {
+              "count": 2,
+              "rgbaBytes": 18432
+            },
+            "miniCache": {
+              "count": 107,
+              "rgbaBytes": 4798736
+            },
+            "walkMiniCache": {
+              "count": 49,
+              "rgbaBytes": 1192800
+            },
+            "portraits": {
+              "count": 2,
+              "rgbaBytes": 72576
+            },
+            "hdImages": {
+              "count": 22,
+              "rgbaBytes": 1703936
+            }
+          },
+          "walkSlugs": 1,
+          "idleRecords": 36,
+          "jsHeapUsedBytes": 3735300,
+          "audioDecodedBytes": 3317760,
+          "audioVoices": 5,
+          "audioContexts": 1,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": "MCP",
+            "residentArenaCount": 1,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": "MCP",
+            "residentDecodedBytes": 5529600,
+            "fallbackDecodedBytes": 1382400
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 0,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 0,
+            "loadedSheetDecodedBytes": 0,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 3
+          }
+        },
+        "end": {
+          "explicitRgbaMiB": 77.39494323730469,
+          "groups": {
+            "canvas": {
+              "count": 1,
+              "rgbaBytes": 7782400
+            },
+            "officeMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "battleRoomMapCv": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "floorTex": {
+              "count": 1,
+              "rgbaBytes": 14155776
+            },
+            "sprites": {
+              "count": 37,
+              "rgbaBytes": 9699328
+            },
+            "tileStore": {
+              "count": 21,
+              "rgbaBytes": 86016
+            },
+            "propStore": {
+              "count": 15,
+              "rgbaBytes": 139264
+            },
+            "studyPropStore": {
+              "count": 5,
+              "rgbaBytes": 163840
+            },
+            "wayfindingStore": {
+              "count": 9,
+              "rgbaBytes": 442368
+            },
+            "libStore": {
+              "count": 29,
+              "rgbaBytes": 278528
+            },
+            "walkAnim": {
+              "count": 16,
+              "rgbaBytes": 1593600
+            },
+            "locomotionPilot": {
+              "count": 68,
+              "rgbaBytes": 7307520
+            },
+            "idleImageState": {
+              "count": 36,
+              "rgbaBytes": 3211200
+            },
+            "_sittingAssetStore": {
+              "count": 12,
+              "rgbaBytes": 196608
+            },
+            "pixelCache": {
+              "count": 2,
+              "rgbaBytes": 18432
+            },
+            "miniCache": {
+              "count": 107,
+              "rgbaBytes": 4798736
+            },
+            "walkMiniCache": {
+              "count": 49,
+              "rgbaBytes": 1192800
+            },
+            "portraits": {
+              "count": 2,
+              "rgbaBytes": 72576
+            },
+            "hdImages": {
+              "count": 22,
+              "rgbaBytes": 1703936
+            }
+          },
+          "walkSlugs": 1,
+          "idleRecords": 36,
+          "jsHeapUsedBytes": 3733428,
+          "audioDecodedBytes": 3317760,
+          "audioVoices": 4,
+          "audioContexts": 1,
+          "arena": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 5,
+            "activeDomain": "MCP",
+            "residentArenaCount": 1,
+            "inFlightArenaCount": 0,
+            "failedArenaCount": 0,
+            "fallbackDomain": "MCP",
+            "residentDecodedBytes": 5529600,
+            "fallbackDecodedBytes": 1382400
+          },
+          "battlemons": {
+            "manifestStatus": "accepted",
+            "manifestEntryCount": 35,
+            "loadedSheetCount": 0,
+            "inFlightSheetCount": 0,
+            "failedSheetCount": 0,
+            "fallbackDomainCount": 0,
+            "activeSheetCount": 0,
+            "loadedSheetDecodedBytes": 0,
+            "fallbackDecodedBytes": 0,
+            "alphaCacheSize": 3
+          }
+        }
+      }
+    }
+  ],
+  "independentFrameConfirmations": [
+    {
+      "cpu": 4,
+      "label": "title",
+      "n": 65,
+      "p95": 41.899999999999864,
+      "median": 33.399999999999636,
+      "max": 42.39999999999998
+    },
+    {
+      "cpu": 4,
+      "label": "agent",
+      "n": 92,
+      "p95": 25.90000000000009,
+      "median": 25,
+      "max": 25.900000000000546
+    },
+    {
+      "cpu": 8,
+      "label": "title",
+      "n": 33,
+      "p95": 75.10000000000002,
+      "median": 66.60000000000014,
+      "max": 75.60000000000014
+    },
+    {
+      "cpu": 8,
+      "label": "agent",
+      "n": 48,
+      "p95": 50.5,
+      "median": 49.19999999999982,
+      "max": 50.80000000000018
+    },
+    {
+      "cpu": 8,
+      "label": "title",
+      "n": 32,
+      "p95": 75.90000000000009,
+      "median": 67.30000000000007,
+      "max": 83.29999999999995
+    },
+    {
+      "cpu": 8,
+      "label": "agent",
+      "n": 46,
+      "p95": 50.80000000000018,
+      "median": 50,
+      "max": 57.80000000000018
+    }
+  ],
+  "agentCpu8Trace": {
+    "durationApproxMs": 2000,
+    "eventTotalsInclusive": true,
+    "commit": {
+      "count": 41,
+      "totalMs": 1846.9,
+      "maxMs": 48.358
+    },
+    "fireAnimationFrame": {
+      "count": 42,
+      "totalMs": 66.336,
+      "maxMs": 2.678
+    }
+  },
+  "verification": {
+    "performanceContract": "pass: 3 cold runs and 4 device/CPU configurations",
+    "unitTests": 362,
+    "browserTests": 26,
+    "browserFiles": [
+      "agent-arena",
+      "audio",
+      "music",
+      "question-hub"
+    ]
+  }
+}

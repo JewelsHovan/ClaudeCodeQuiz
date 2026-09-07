@@ -100,7 +100,11 @@ localStorage (per browser + port, so stick with one way of serving it).
   opponent team size (1–3), and **Jargon** restores 0–8 HP after a correct answer. The battle
   intro toast and persistent HUD expose the resolved values.
 - Classic battles use a certification proving-ground stage with alpha-normalized trainer
-  proportions: the near candidate is only 10.3% larger than the far colleague. Challenge,
+  proportions: 146px near / 132px far (10.6% perspective), preserving platform foot contacts
+  and at least 12px of headroom in every pose. Incident Command shares these proportions.
+  A platform-linked readout identifies the active Battlemon; numbered team slots show active,
+  reserve, and fainted creatures. Amber keycaps/borders mark answer focus without implying
+  correctness; Hard-mode time sits beside the question instead of overlapping HP. Challenge,
   command, hit, win, and loss poses are presentation-only and derive from existing battle
   phases. Each of the 35 named Battlemon species has a stable six-state local pixel-art sheet;
   five shape-distinct domain families remain identifiable without color. A correct answer
@@ -229,6 +233,13 @@ for its 1–3 sheets; malformed or missing art cannot authorize an arbitrary URL
 to a cached shape-coded domain silhouette. Rollback removes `battle-presentation.js`,
 `battlemons-source/`, and `battlemons/` together and restores the prior classic renderer; no save
 migration is involved.
+
+## Battle scene review
+
+See [`docs/battle-scene-review.md`](../docs/battle-scene-review.md) for the visual audit,
+remaining asset opportunities, and focused verification commands. `npm run edit:battle-layout`
+previews current trainer sizes and all three HUD clearances directly from the runtime geometry;
+its saved drag draft does not modify the game.
 
 ## Classic domain arena regeneration
 
