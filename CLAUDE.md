@@ -10,8 +10,10 @@ This project is Julien's personalized study environment for the Claude Certified
 - `mock-exams/` — Timed HTML exam generator (`generate_exam.py`); `attempts/` output is gitignored
 - `profile/` — Personal learner profile (gitignored); `profile-template/` is the committed blank
 - `.claude-plans/` — Implementation plans (ephemeral, gitignored)
+- `docs/research/` — Sourced research from Anthropic primary sources, with explicit verification-gap sections
 
 ## Key Study Files
+- `docs/practice-workflow.md` — **How to use this repo**: the generate → take → paste-JSON → walkthrough loop, all generator flags, recipes
 - `docs/exam-cheat-sheet.md` — Quick reference with numbers, decision trees, anti-patterns, 2026 currency
 - `docs/exam-research-2026.md` — Cited research: confirmed blueprint, what changed since launch, resources
 - `docs/tips-from-passers.md` — How-to-pass guide: gotchas, time management, study plan
@@ -30,6 +32,8 @@ This project is Julien's personalized study environment for the Claude Certified
 ## Commands
 `/setup` `/study [topic]` `/quiz` `/flashcards` `/weak-spots` `/learn-doc [topic]` `/mock-exam` `/cheat-sheet` `/save-progress`
 - `/mock-exam` runs `uv run python mock-exams/generate_exam.py` → standalone timed HTML exam, then opens it.
+  Flags: `--count` `--time` `--domain` `--difficulty` `--include` `--unseen` `--unseen-since` `--adaptive` `--seed`.
+  Paste the results JSON back into the session for an error walkthrough. See `docs/practice-workflow.md`.
 - `/learn-doc` fills `learn-docs/template.html` with content authored from `docs/` → a shareable HTML study guide
   (diagrams via Mermaid, callouts, self-check). Writes to `learn-docs/generated/` (gitignored) or the committed root for samples.
 

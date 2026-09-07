@@ -101,8 +101,9 @@ article strong{color:var(--ink)}
 <div class="nav-section">Start Here</div>
 <a class="nav-link" href="exam-cheat-sheet.html" data-kw="Numbers to Memorize Domain Weight at a Glance 2026 Currency (don&#x27;t get caught on stale facts) Decision Trees stop_reason Quick Reference tool_choice Quick Reference Error Categories MCP Server Scopes CLAUDE.md Hierarchy Skills Frontmatter Commands Scoping Anti-Patterns to Remember Key Patterns to Remember CI/CD Integration">Exam Cheat Sheet</a>
 <a class="nav-link" href="tips-from-passers.html" data-kw="1. Snapshot — the confirmed blueprint 2. What people who passed say 3. Time management 4. Common gotchas / traps 5. A study plan (keyed to this repo) 6. Canonical resources (primary first) 7. Caveats (read before you book)">Tips from Passers</a>
-<a class="nav-link active" href="exam-research-2026.html" data-kw="⭐ UPDATE 2026-08-18 — official Exam Guide v1.0 found (supersedes conflicting claims below) TL;DR — what changed since this env was built (March 2026) Confirmed exam blueprint Domains &amp;amp; weights (CONFIRMED — match this env exactly) Content currency (study to 2026 reality) Practice questions &amp;amp; sample material Out-of-scope topics (per the paullarionov guide — don&#x27;t burn study time here) Tips from people who passed Canonical study resources (primary first) Caveats &amp;amp; open questions Sources (selected)">Exam Research (2026)</a>
+<a class="nav-link active" href="exam-research-2026.html" data-kw="✅ RE-VERIFIED 2026-09-07 — no change; guide is still v1.0 ⭐ UPDATE 2026-08-18 — official Exam Guide v1.0 found (supersedes conflicting claims below) TL;DR — what changed since this env was built (March 2026) Confirmed exam blueprint Domains &amp;amp; weights (CONFIRMED — match this env exactly) Content currency (study to 2026 reality) Practice questions &amp;amp; sample material Out-of-scope topics (per the paullarionov guide — don&#x27;t burn study time here) Tips from people who passed Canonical study resources (primary first) Caveats &amp;amp; open questions Sources (selected)">Exam Research (2026)</a>
 <div class="toc">
+<a href="#re-verified-2026-09-07-no-change-guide-is-still-v10">✅ RE-VERIFIED 2026-09-07 — no change; guide is still v1.0</a>
 <a href="#update-2026-08-18-official-exam-guide-v10-found-supersedes-conflicting-claims-below">⭐ UPDATE 2026-08-18 — official Exam Guide v1.0 found (supersedes conflicting claims below)</a>
 <a href="#tldr-what-changed-since-this-env-was-built-march-2026">TL;DR — what changed since this env was built (March 2026)</a>
 <a href="#confirmed-exam-blueprint">Confirmed exam blueprint</a>
@@ -133,6 +134,43 @@ research pass (18 sources fetched, 71 claims extracted, 25 verified, 22 confirme
 <strong>Read the caveats</strong> — Anthropic publishes no public blueprint; figures below are
 community-consensus + one hosted copy of the gated official guide, not a citable Anthropic URL.</p>
 </blockquote>
+<hr />
+<hr />
+<h2 id="re-verified-2026-09-07-no-change-guide-is-still-v10">✅ RE-VERIFIED 2026-09-07 — no change; guide is still v1.0</h2>
+<p>An independent research pass on <strong>2026-09-07</strong> retrieved the official <strong>Exam Guide PDF</strong> again (two
+independently hosted copies, identical content) from the Partner Academy certifications page. Cover
+page still reads <strong>"Version 1.0 · Effective July 2026 · Exam code: CCAR-F."</strong> <strong>No v2.0 exists.</strong></p>
+<p><strong>All eleven headline facts re-confirmed against primary sources</strong>: 60 items (multiple-choice <em>and</em>
+multiple-response, each item stating how many to select) · 120 min exam / ~135 min seat time ·
+720/1000 scaled · Pearson VUE OnVUE or test centre · $125 (raised from $99 on 2026-06-30) ·
+12-month validity with free non-proctored renewal · retakes 14/30/90 days, max 4 per 12 months ·
+Partner Network org + company email required, no individual signup · exactly 6 scenarios with 4 drawn
+per exam · domain weights 27/18/20/20/15 · 4-cert program (Associate $99, Developer $125,
+Architect-Foundations $125, Architect-Professional $175).</p>
+<p><strong>Two refinements worth acting on:</strong></p>
+<ol>
+<li><strong>The MCP spec revision of 2026-07-28 is NOT tested.</strong> Domain 2's task statements (2.1–2.5) cover
+   tool-description design, the <code>isError</code> flag with structured error categories
+   (transient / validation / permission), <code>tool_choice</code> and tool distribution, <code>.mcp.json</code> /
+   <code>~/.claude.json</code> scoping, and MCP resources — i.e. the <strong>older two-layer error model</strong>. There is
+   zero mention of statelessness, sessions, Sampling, Roots or Logging anywhere in the blueprint.
+   The v1.0 guide predates that spec revision and does not track it. <strong>Answer the two-layer model.</strong></li>
+<li><strong>Claude Code plugins are not a named exam topic.</strong> D3's task statements (3.1–3.6) cover CLAUDE.md
+   hierarchy and <code>@import</code>, custom slash commands, Agent Skills (<code>.claude/skills/</code>, <code>SKILL.md</code>,
+   <code>context: fork</code>, <code>allowed-tools</code>, <code>argument-hint</code>), <code>.claude/rules/</code> path scoping, plan mode vs
+   direct execution, iterative refinement, and CI/CD integration. Plugins, plugin marketplaces and
+   <code>claude plugin init</code> are absent — despite shipping before the guide's effective date.
+   <code>quiz/bank/domain3.json</code> question <strong>d3-016</strong> tests plugin scaffolding, which is therefore
+   <strong>off-blueprint</strong>; it is a true fact about Claude Code but not a likely exam item.</li>
+</ol>
+<p><strong>Caveats, stated plainly</strong>: pages beyond Domain 5 Task 5.2 of the PDF were not personally read
+(sample questions and the prep-resource list) — blueprint-level change there is unlikely but
+unverified. A separate, <strong>undated</strong> PDF variant found in the wild claims "all questions are multiple
+choice, one correct answer"; the dated v1.0 copy explicitly includes multiple-response items, and the
+dated copy wins. No firsthand Aug/Sept-2026 test-taker accounts were found — only low-quality SEO
+content with self-contradictory launch-date and price claims, which was not used for any fact above.</p>
+<p>Sources: <code>anthropic-partners.skilljar.com/page/faq-certifications</code> ·
+<code>anthropic-partners.skilljar.com/page/partner-certifications</code> · official Exam Guide PDF v1.0 (CCAR-F).</p>
 <hr />
 <h2 id="update-2026-08-18-official-exam-guide-v10-found-supersedes-conflicting-claims-below">⭐ UPDATE 2026-08-18 — official Exam Guide v1.0 found (supersedes conflicting claims below)</h2>
 <p>A follow-up research pass located and read <strong>Anthropic's official Exam Guide v1.0 (effective July 2026,
