@@ -70,6 +70,35 @@ def load_bank() -> list[dict]:
     return questions
 
 
+ATTEMPTS_GLOB = os.path.join(REPO_ROOT, "mock-exams", "attempts", "*.html")
+
+
+def load_seen_ids(since: str | None = None) -> set[str]:
+    """Collect every question id already delivered in a generated attempt.
+
+    Reads the QUESTIONS payload embedded in each attempt HTML. `since` is an
+    optional YYYY-MM-DD floor matched against the attempt filename stamp, so a
+    long-past exam drawn from a smaller bank can be ignored."""
+    seen: set[str] = set()
+    for path in sorted(glob.glob(ATTEMPTS_GLOB)):
+        if since:
+            stamp = re.search(r"(\d{8})-\d{6}\.html$", os.path.basename(path))
+            if stamp and stamp.group(1) < since.replace("-", ""):
+                continue
+        try:
+            html = open(path, encoding="utf-8").read()
+        except OSError:
+            continue
+        m = re.search(r"const\s+QUESTIONS\s*=\s*(\[.*?\]);\s*\n", html, re.S)
+        if not m:
+            continue
+        try:
+            seen.update(q["id"] for q in json.loads(m.group(1)))
+        except (json.JSONDecodeError, KeyError, TypeError):
+            continue
+    return seen
+
+
 def load_adaptive(path: str) -> dict:
     """Read a prior results JSON (Exam Center download or a mock result) and derive
     weakness-adaptive sampling inputs: amplified per-domain weights, the set of
@@ -149,6 +178,9 @@ def _order(pool: list[dict], rng: random.Random, adaptive: dict | None) -> list[
     """Shuffle a domain pool; when adaptive, float previously-missed questions and
     weak-tag concepts to the front (stable sort preserves the shuffle as a tiebreak)."""
     rng.shuffle(pool)
+    # Stable sorts: later sorts dominate, earlier ones survive as tiebreaks.
+    if any("_fresh" in q for q in pool):
+        pool.sort(key=lambda q: q.get("_fresh", False), reverse=True)
     if adaptive:
         def pri(q):
             s = 3 if q["id"] in adaptive["missed_ids"] else 0
@@ -187,8 +219,12 @@ def sample(questions: list[dict], count: int, domain: int | None,
         rng.shuffle(leftovers)
         picked.extend(_take(leftovers, shortfall, picked))
 
-    # Group by scenario theme (mirrors the real exam's scenario structure),
-    # but keep the group order shuffled so two attempts differ.
+    return group_by_scenario(picked, rng)
+
+
+def group_by_scenario(picked: list[dict], rng: random.Random) -> list[dict]:
+    """Group by scenario theme (mirrors the real exam's scenario structure), but keep
+    the group order shuffled so two attempts differ."""
     groups: dict[str, list[dict]] = {}
     for q in picked:
         groups.setdefault(q.get("scenario") or "General (no scenario)", []).append(q)
@@ -202,7 +238,7 @@ def sample(questions: list[dict], count: int, domain: int | None,
     return ordered
 
 
-def _shuffle_options(q: dict, rng: random.Random) -> tuple[dict, "str | list[str]", dict]:
+def _shuffle_options(q: dict, rng: random.Random) -> tuple[dict, "str | list[str]", dict, dict]:
     """Randomize option order and remap the answer key + distractor rationales.
 
     Neutralizes any answer-position bias in the authored bank (the correct letter
@@ -222,15 +258,31 @@ def _shuffle_options(q: dict, rng: random.Random) -> tuple[dict, "str | list[str
         new_answer: "str | list[str]" = sorted(remap[a] for a in ans)
     else:
         new_answer = remap[ans]
-    new_distractors = {remap[k]: v for k, v in q.get("distractors", {}).items() if k in remap}
-    return new_options, new_answer, new_distractors
+    new_distractors = {remap[k]: _remap_letter_refs(v, remap)
+                       for k, v in q.get("distractors", {}).items() if k in remap}
+    return new_options, new_answer, new_distractors, remap
+
+
+_LETTER_REF = re.compile(r"\((?P<L>[A-D])\)")
+
+
+def _remap_letter_refs(text: str, remap: dict[str, str]) -> str:
+    """Rewrite parenthesised option references like "(A)" after options are shuffled.
+
+    Authored explanations cite options by their bank letter. Shuffling the options
+    without rewriting those citations leaves the prose contradicting the rendered
+    letters, which reads as a grading bug. Only the "(X)" form is touched — a bare
+    capital letter in prose is too ambiguous to rewrite safely."""
+    if not text:
+        return text
+    return _LETTER_REF.sub(lambda m: f"({remap.get(m.group('L'), m.group('L'))})", text)
 
 
 def build_client_questions(picked: list[dict], rng: random.Random) -> list[dict]:
     """Strip to what the browser needs (answer included — it's a local file)."""
     out = []
     for i, q in enumerate(picked):
-        options, answer, distractors = _shuffle_options(q, rng)
+        options, answer, distractors, remap = _shuffle_options(q, rng)
         multi = isinstance(answer, list)
         out.append({
             "n": i + 1,
@@ -243,7 +295,7 @@ def build_client_questions(picked: list[dict], rng: random.Random) -> list[dict]
             "options": options,
             "answer": answer,
             "selectCount": len(answer) if multi else 1,
-            "explanation": q.get("explanation", ""),
+            "explanation": _remap_letter_refs(q.get("explanation", ""), remap),
             "distractors": distractors,
             "tags": q.get("tags", []),
         })
@@ -315,7 +367,10 @@ _TEMPLATE = r"""<!DOCTYPE html>
   .opt.sel{border-color:var(--accent);background:var(--pick)}
   .opt .L{font-weight:700;color:var(--accent2);margin-right:8px}
   .opt.correct{border-color:var(--good);background:#13261b}
+  .opt.missed{border-color:var(--warn,#d0a215);background:#2a2410;border-style:dashed}
   .opt.wrong{border-color:var(--bad);background:#2a1518}
+  .selhint{margin-top:10px;padding:8px 11px;border-left:3px solid var(--warn,#d0a215);
+    background:#2a2410;font-size:13px;border-radius:4px}
   .palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:7px}
   .pal{padding:8px 0;text-align:center;border-radius:8px;border:1px solid var(--line);background:var(--panel2);font-size:13px}
   .pal.answered{border-color:var(--accent2);color:var(--accent2)}
@@ -367,6 +422,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
       </div>
       <h2 id="stem"></h2>
       <div id="opts"></div>
+      <div id="selhint" class="selhint hide"></div>
       <div class="row spread" style="margin-top:14px">
         <button id="btnPrev">← Prev</button>
         <button id="btnFlag">⚑ Flag for review</button>
@@ -475,8 +531,12 @@ function render(){
     const btn=document.createElement('button');
     btn.className='opt'+(selected(q,s,L)?' sel':'')+(multi?' multi':'');
     btn.innerHTML = `<span class="L">${L}</span>${q.options[L]}`;
-    btn.onclick=()=>{ if(submitted) return; togglePick(q,s,L); render();
-      if(reveal) showInlineReveal(); };
+    btn.onclick=(ev)=>{ if(submitted) return; togglePick(q,s,L); render();
+      if(reveal) showInlineReveal();
+      // Pointer click (detail>0): drop focus so a later Space/Enter meant for
+      // scrolling cannot re-fire this button and silently un-toggle the option.
+      if(ev && ev.detail>0 && ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
+    };
     if(reveal && answered(q,s)){
       const correctL = multi ? q.answer.includes(L) : L===q.answer;
       if(correctL) btn.classList.add('correct');
@@ -484,6 +544,17 @@ function render(){
     }
     o.appendChild(btn);
   }
+  const hint=$('#selhint');
+  if(multi){
+    const n = Array.isArray(s.pick)?s.pick.length:0;
+    if(n===q.selectCount){ hint.classList.add('hide'); }
+    else {
+      hint.classList.remove('hide');
+      hint.textContent = n===0
+        ? `This item asks for ${q.selectCount} answers — none selected yet.`
+        : `You have selected ${n} of ${q.selectCount}. A partial selection scores zero.`;
+    }
+  } else { hint.classList.add('hide'); }
   $('#btnFlag').textContent = s.flag ? '⚑ Unflag' : '⚑ Flag for review';
   $('#btnPrev').disabled = cur===0;
   $('#btnNext').textContent = cur===META.count-1 ? 'Last →' : 'Next →';
@@ -503,6 +574,7 @@ $('#btnNext').onclick=()=>{ if(cur<META.count-1){cur++;render();} else window.sc
 $('#btnFlag').onclick=()=>{ state[cur].flag=!state[cur].flag; render(); };
 document.addEventListener('keydown',e=>{
   if(submitted||$('#exam').classList.contains('hide')) return;
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
   if(['a','b','c','d','A','B','C','D'].includes(e.key)){ togglePick(QUESTIONS[cur],state[cur],e.key.toUpperCase()); render(); if(reveal) showInlineReveal(); }
   else if(e.key==='ArrowRight') $('#btnNext').click();
   else if(e.key==='ArrowLeft') $('#btnPrev').click();
@@ -597,8 +669,13 @@ function renderResults(r){
       for(const L of Object.keys(q.options)){
         const isAns = multi ? q.answer.includes(L) : L===q.answer;
         const isPick = selected(q,s,L);
-        let cls='opt'; if(isAns) cls+=' correct'; else if(isPick) cls+=' wrong';
-        const tag = isAns?' ✓':(isPick?' ✗ your answer':'');
+        let cls='opt';
+        if(isAns && isPick) cls+=' correct';
+        else if(isAns) cls+=' missed';
+        else if(isPick) cls+=' wrong';
+        const tag = (isAns&&isPick) ? ' ✓ correct — you picked this'
+                  : isAns ? ' ✓ correct — YOU DID NOT PICK THIS'
+                  : isPick ? ' ✗ your answer' : '';
         opts += `<div class="${cls}"><span class="L">${L}</span>${q.options[L]}<span class="muted small">${tag}</span></div>`;
       }
       let dz='';
@@ -642,18 +719,97 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=None, help="seed for a reproducible set")
     ap.add_argument("--adaptive", metavar="RESULTS.json", default=None,
                     help="bias sampling toward weak domains + missed concepts from a prior results JSON")
+    ap.add_argument("--difficulty", metavar="LEVELS", default=None,
+                    help="restrict to these difficulties, comma-separated (easy,medium,hard). "
+                         "Force-included questions are exempt.")
+    ap.add_argument("--include", metavar="IDS", default=None,
+                    help="comma-separated question ids to force into the exam (bypasses --unseen); "
+                         "or the path to a results JSON, whose wrong[] ids are used")
+    ap.add_argument("--unseen", action="store_true",
+                    help="exclude questions already delivered in mock-exams/attempts/*.html")
+    ap.add_argument("--unseen-since", metavar="YYYY-MM-DD", default=None,
+                    help="with --unseen, only treat attempts on/after this date as seen")
     ap.add_argument("-o", "--output", default=None, help="output HTML path")
     args = ap.parse_args()
 
     rng = random.Random(args.seed)
     bank = load_bank()
     adaptive = load_adaptive(args.adaptive) if args.adaptive else None
-    available = len([q for q in bank if args.domain is None or q["domain"] == args.domain])
-    count = min(args.count, available)
-    if count < args.count:
-        print(f"⚠  Only {available} questions available; generating {count}.", file=sys.stderr)
 
-    picked = sample(bank, count, args.domain, rng, adaptive)
+    # --include is resolved first: forced questions are held out of every later filter
+    # (notably --unseen, which would otherwise drop the very questions being re-tested).
+    forced: list[dict] = []
+    if args.include:
+        if os.path.exists(args.include):
+            try:
+                r = json.load(open(args.include, encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as e:
+                sys.exit(f"--include: cannot read {args.include}: {e}")
+            want = [w["id"] for w in (r.get("wrong") or []) if w.get("id")]
+        else:
+            want = [i.strip() for i in args.include.split(",") if i.strip()]
+        by_id = {q["id"]: q for q in bank}
+        missing = [i for i in want if i not in by_id]
+        if missing:
+            sys.exit(f"--include: unknown question id(s): {', '.join(missing)}")
+        seen_forced: set[str] = set()
+        for i in want:                       # de-duplicate, preserve order
+            if i not in seen_forced and (args.domain is None or by_id[i]["domain"] == args.domain):
+                seen_forced.add(i)
+                forced.append(by_id[i])
+        if len(forced) > args.count:
+            sys.exit(f"--include lists {len(forced)} question(s) but --count is {args.count}.")
+        bank = [q for q in bank if q["id"] not in seen_forced]
+        print(f"✓ Force-including {len(forced)} question(s).", file=sys.stderr)
+
+    if args.difficulty:
+        levels = {d.strip().lower() for d in args.difficulty.split(",") if d.strip()}
+        unknown = levels - {"easy", "medium", "hard"}
+        if unknown:
+            sys.exit(f"--difficulty: unknown level(s): {', '.join(sorted(unknown))}")
+        before = len(bank)
+        bank = [q for q in bank if (q.get("difficulty") or "").lower() in levels]
+        print(f"✓ Difficulty filter {sorted(levels)}: {len(bank)} of {before} questions "
+              f"(+{len(forced)} force-included, exempt).", file=sys.stderr)
+
+    if args.unseen or args.unseen_since:
+        seen = load_seen_ids(args.unseen_since)
+        fresh = [q for q in bank if q["id"] not in seen]
+        scope = "" if args.domain is None else f" in D{args.domain}"
+        n_fresh = len([q for q in fresh if args.domain is None or q["domain"] == args.domain])
+        n_want = min(args.count - len(forced), len([q for q in bank
+                                                    if args.domain is None or q["domain"] == args.domain]))
+        # A strict unseen-only pool is used only when it can satisfy the request without
+        # distorting the blueprint. Check per-domain: a domain whose unseen pool is short
+        # would silently skew the domain mix, so fall back to unseen-preferred instead.
+        short: list[str] = []
+        if args.domain is None:
+            alloc = allocate(n_want, sorted({q["domain"] for q in bank}),
+                             adaptive["weights"] if adaptive else None)
+            for d, need in alloc.items():
+                have = len([q for q in fresh if q["domain"] == d])
+                if have < need:
+                    short.append(f"D{d} needs {need}, has {have}")
+        if n_fresh < n_want or short:
+            why = f"only {n_fresh} unseen{scope}" if n_fresh < n_want else "; ".join(short)
+            print(f"⚠  Unseen pool cannot fill the blueprint ({why}). "
+                  f"Preferring unseen, repeating previously-seen where a domain runs dry.",
+                  file=sys.stderr)
+            for q in bank:
+                q["_fresh"] = q["id"] not in seen   # _order floats unseen to the front
+        else:
+            print(f"✓ Drawing from {n_fresh} unseen question(s){scope} "
+                  f"({len(seen)} already delivered).", file=sys.stderr)
+            bank = fresh
+
+    available = len([q for q in bank if args.domain is None or q["domain"] == args.domain])
+    count = min(args.count, available + len(forced))
+    if count < args.count:
+        print(f"⚠  Only {count} questions available; generating {count}.", file=sys.stderr)
+
+    picked = sample(bank, count - len(forced), args.domain, rng, adaptive) if count > len(forced) else []
+    if forced:
+        picked = group_by_scenario(picked + forced, rng)
     minutes = args.time if args.time else max(1, round(len(picked) * DEFAULT_MINUTES / DEFAULT_COUNT))
 
     if adaptive and not args.domain:
