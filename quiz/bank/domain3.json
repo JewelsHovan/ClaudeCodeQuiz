@@ -249,26 +249,27 @@
     "domain_name": "Claude Code Configuration & Workflows",
     "scenario": "Developer Productivity with Claude",
     "difficulty": "medium",
-    "stem": "Two .claude/rules/ files match the file you are editing: rules/general.md with paths [\"src/**/*\"] and rules/payments.md with paths [\"src/payments/**/*.ts\"]. The file is src/payments/charge.ts. Which rule guidance should take precedence when they conflict?",
+    "stem": "Two files in `.claude/rules/` match the file you are editing: `general.md` with `paths: [\"src/**/*\"]` and `payments.md` with `paths: [\"src/payments/**/*.ts\"]`. You are editing `src/payments/charge.ts`. What actually happens?",
     "options": {
-      "A": "Neither; conflicting rules are both ignored",
-      "B": "payments.md, because its glob is more specific to the file",
-      "C": "general.md, because it was likely defined first",
-      "D": "Whichever file is alphabetically last"
+      "A": "Only `payments.md` loads, because the more specific glob overrides the broader one.",
+      "B": "Both rule files load and are concatenated into context. There is no documented override between matching rules, so contradictory guidance may be resolved arbitrarily — keeping matching rules consistent is the author's job.",
+      "C": "Neither loads; when path rules conflict, Claude skips both and falls back to `CLAUDE.md`.",
+      "D": "`general.md` loads and `payments.md` is ignored, because the first glob to match wins."
     },
     "answer": "B",
-    "explanation": "When multiple path-specific rules match, the more specific glob (the narrower, deeper pattern targeting src/payments/**/*.ts) is the more targeted match and should govern that file, just as more-specific scoping wins elsewhere in the config hierarchy.",
+    "explanation": "Path-scoped rules follow the same concatenate-don't-override model as CLAUDE.md files: every rule whose glob matches the file being read is loaded into context, and the documentation describes no priority system between them. If two matching rules contradict each other, Claude may pick one arbitrarily, so consistency across rules is the author's responsibility. The one ordering rule that does exist is between scopes, not globs — user-level rules load before project rules, which gives project rules the later (more salient) position.",
     "distractors": {
-      "A": "Matching rules are applied, not discarded; the more specific one governs on conflict.",
-      "C": "Definition order is not the basis for precedence; specificity of the path match is.",
-      "D": "Alphabetical ordering is not how rule precedence is determined."
+      "A": "Specificity controls *when* a rule loads, not which rule wins. A narrower glob simply matches fewer files; it does not suppress a broader rule that also matches.",
+      "C": "Matching rules are always applied, never discarded. There is no conflict-detection step that skips them.",
+      "D": "There is no first-match-wins behaviour — every matching rule loads."
     },
     "tags": [
       "path-specific-rules",
       "glob",
-      "specificity"
+      "rules-precedence",
+      "config-hierarchy"
     ],
-    "source": "original-2026"
+    "source": "original-2026 (corrected 2026-09-07 against code.claude.com/docs/en/memory)"
   },
   {
     "id": "d3-011",
@@ -794,28 +795,29 @@
     "id": "d3-030",
     "domain": 3,
     "domain_name": "Claude Code Configuration & Workflows",
-    "scenario": "Code Generation with Claude Code",
+    "scenario": "Developer Productivity with Claude",
     "difficulty": "easy",
-    "stem": "You want to create a custom slash command `/review` that runs your team's standard code review checklist. It should be available to every developer when they clone or update the repository. Where should you create the command file?",
+    "stem": "You have a personal `/scratch` command that spins up throwaway analysis notes the way you like them. You want it available in every repository you work in, without committing it to any project or exposing it to teammates. Where should the command file live?",
     "options": {
-      "A": "In `~/.claude/commands/` in each developer's home directory.",
-      "B": "In the project repository under `.claude/commands/`.",
-      "C": "In `.claude/config.json` as an array of commands.",
-      "D": "In the root project CLAUDE.md."
+      "A": "In `~/.claude/commands/` in your home directory.",
+      "B": "In `.claude/commands/` in each project repository, with the file added to `.gitignore`.",
+      "C": "In a personal section at the bottom of each project's `CLAUDE.md`.",
+      "D": "In `.claude/settings.local.json` as a `commands` array."
     },
-    "answer": "B",
-    "explanation": "Custom slash commands placed under `.claude/commands/` inside the project repository are version-controlled and automatically available to every developer who clones or updates the repo—this is the intended location for shared, project-level commands.",
+    "answer": "A",
+    "explanation": "User-level commands in `~/.claude/commands/` load in every project you open and live outside any repository, so they are never committed and never visible to teammates. This is the personal counterpart to project-level `.claude/commands/`, which is version-controlled and shared.",
     "distractors": {
-      "A": "Home-directory commands are personal: each developer would have to copy the file manually, and updates would not propagate via the repo.",
-      "C": "Slash commands are defined as Markdown files in a commands directory, not as an array inside a config JSON file.",
-      "D": "CLAUDE.md holds persistent instructions and context; it is not a mechanism for defining slash commands."
+      "B": "This works only if you recreate the file in every repo and keep the gitignore entry correct in each one; a single user-level file achieves the same thing everywhere with no per-repo maintenance.",
+      "C": "CLAUDE.md carries persistent instructions and context; it is not a mechanism for defining slash commands.",
+      "D": "settings.local.json holds machine-local settings such as permissions. Slash commands are Markdown files in a commands directory, not entries in a settings array."
     },
     "tags": [
       "commands",
-      "shared-config",
-      "personal-vs-shared"
+      "personal-vs-shared",
+      "config-scoping",
+      "user-level"
     ],
-    "source": "paullarionov/claude-certified-architect"
+    "source": "original-2026"
   },
   {
     "id": "d3-031",
