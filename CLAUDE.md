@@ -14,6 +14,10 @@ This project is Julien's personalized study environment for the Claude Certified
 
 ## Key Study Files
 - `docs/practice-workflow.md` — **How to use this repo**: the generate → take → paste-JSON → walkthrough loop, all generator flags, recipes
+- `docs/exam-objectives.md` — **The real objective-level blueprint**: the exam's own 37 objectives (from a
+  2026-09-07 score report), domain-mapped, with per-objective bank coverage and the gaps worth closing
+- `docs/writing-questions.md` — **How to author exam-accurate questions**: the exam asks *how to do it
+  effectively*, not *do you know the concept*. Distractor archetypes, eliminating clauses, worked example
 - `docs/exam-cheat-sheet.md` — Quick reference with numbers, decision trees, anti-patterns, 2026 currency
 - `docs/exam-research-2026.md` — Cited research: confirmed blueprint, what changed since launch, resources
 - `docs/tips-from-passers.md` — How-to-pass guide: gotchas, time management, study plan

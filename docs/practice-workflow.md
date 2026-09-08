@@ -140,6 +140,13 @@ minimum fix, or answering a "why" question with a remedy. Those are worth far mo
 
 ## Contributing questions
 
+> **Read `docs/writing-questions.md` first.** The exam asks *how to do this effectively*, not *do you
+> know the concept* — which means every distractor has to be something a competent engineer might
+> actually do, and the stem has to carry a constraint that eliminates the losers. Most of this bank
+> predates that insight. And anchor new questions to `docs/exam-objectives.md`, which lists the exam's
+> own 37 objectives with current coverage.
+
+
 The bank is `quiz/bank/domain{1..5}.json`. Each question needs `id`, `domain`, `scenario`,
 `difficulty`, `stem`, `options`, `answer`, `explanation`, `distractors` and `tags`. Set `answer` to a
 **list** for multiple-response items; the UI then shows a "Select N" badge and scores a partial
