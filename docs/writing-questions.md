@@ -54,6 +54,58 @@ practitioner would propose. Those make the item a vocabulary check.
 
 ---
 
+## Length parity — the rule that matters most
+
+An audit of this bank in September 2026 found the correct answer was **the longest option in 83% of
+questions**, averaging **54 characters longer** than its distractors. Chance is 25%.
+
+**A candidate who always picks the longest option, without reading a single stem, scores 83% here.**
+The pass mark is around 72%. The bank was gameable, and every score it produced was inflated.
+
+The cause is mechanical, not conceptual. It is easy to explain the reasoning *inside* the correct
+option — "…because X, so do Y" — and leave the distractors terse. Do that consistently and the key
+becomes visually identifiable, which trains pattern-matching instead of judgment.
+
+**The rule: every option gets the same treatment.** Reasoning belongs in `explanation` and
+`distractors`, never inside the option text. If the key needs a clause to be correct, give the
+distractors the same kind of clause.
+
+### Before — the key argues its own case
+
+> A. Use the more specific glob
+> B. Both rule files load and are concatenated into context. There is no documented override between
+>    matching rules, so contradictory guidance may be resolved arbitrarily — keeping matching rules
+>    consistent is the author's job.
+> C. Neither loads
+> D. The first glob to match wins
+
+B is visibly the answer before you have read the stem. (This example is real — it is `d3-010`, which
+appears in the audit's worst-offenders list.)
+
+### After — all four options carry the same weight
+
+> A. Only the more specific glob loads; the narrower pattern overrides the broader one
+> B. Both files load and concatenate; there is no documented override, so conflicts resolve arbitrarily
+> C. Neither loads; Claude skips conflicting path rules and falls back to CLAUDE.md
+> D. The first glob to match loads and later matches are ignored
+
+Same key, same discrimination, no visual tell. The *why* moves to `explanation`, where it belongs and
+where the candidate reads it after answering.
+
+### Check before you commit
+
+```bash
+uv run python scripts/audit_bank.py            # report
+uv run python scripts/audit_bank.py --worst 20 # the offenders to fix first
+uv run python scripts/audit_bank.py --strict   # exit 1 on a breach, for CI
+```
+
+Targets: key is longest in **≤35%** of questions, key exceeds the mean distractor by **≤15 chars**, no
+distractor under **45 characters**. A distractor shorter than that reads as filler and tells the
+candidate it is not the answer.
+
+---
+
 ## Every stem needs an eliminating clause
 
 Good exam items contain **one sentence that rules options out**. It is what converts a "which is best
@@ -158,9 +210,10 @@ uv run python scripts/validate_bank.py
 
 ## A self-check before you commit an item
 
-1. Could a competent engineer defend **every** option in isolation? If not, that option is filler.
-2. Which sentence in the stem eliminates each wrong option? If you cannot name it, the key is arguable.
-3. Is the question "do you know X" or "given these constraints, what do you do about X"? Only the
+1. Is the key the longest option? If so, either trim it or give the distractors equal weight. Run `scripts/audit_bank.py`.
+2. Could a competent engineer defend **every** option in isolation? If not, that option is filler.
+3. Which sentence in the stem eliminates each wrong option? If you cannot name it, the key is arguable.
+4. Is the question "do you know X" or "given these constraints, what do you do about X"? Only the
    second belongs here.
-4. Would someone who knows the concept but has never *applied* it still get it right? If yes, it is
+5. Would someone who knows the concept but has never *applied* it still get it right? If yes, it is
    too easy.
