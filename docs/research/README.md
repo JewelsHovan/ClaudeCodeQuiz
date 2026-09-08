@@ -8,6 +8,7 @@ docs, and the Anthropic engineering blog.
 |---|---|
 | `research-mcp-jsonrpc.md` | JSON-RPC envelopes, the `initialize` handshake, capability negotiation, the three primitives with full payloads, the two-layer error model, transports, tool description quality, annotations |
 | `research-agentic-orchestration.md` | Workflow patterns vs agents, `stop_reason` and the agent loop, parallel tool use, orchestrator/subagent architecture and token economics, tool distribution, context engineering, evaluation |
+| `research-community-banks.md` | Survey of community question banks and study repos — licences, quality, and per-domain topic intelligence. Read for coverage, not for text |
 | `research-prompt-structured-claudecode.md` | Structured output and the guarantee boundary, `tool_choice` and thinking, schema design, prefilling, prompt techniques, the Batch API, Claude Code configuration and headless CI |
 
 Each file ends with an explicit **verification gaps** section listing what could not be confirmed
