@@ -100,9 +100,10 @@ article strong{color:var(--ink)}
 <div class="search"><input id="navfilter" type="search" placeholder="Filter pages &amp; topics…"></div>
 <div class="nav-section">Start Here</div>
 <a class="nav-link" href="exam-cheat-sheet.html" data-kw="Numbers to Memorize Domain Weight at a Glance 2026 Currency (don&#x27;t get caught on stale facts) Decision Trees stop_reason Quick Reference tool_choice Quick Reference Error Categories MCP Server Scopes CLAUDE.md Hierarchy Skills Frontmatter Commands Scoping Anti-Patterns to Remember Key Patterns to Remember CI/CD Integration">Exam Cheat Sheet</a>
-<a class="nav-link active" href="tips-from-passers.html" data-kw="1. Snapshot — the confirmed blueprint 2. What people who passed say 3. Time management 4. Common gotchas / traps 5. A study plan (keyed to this repo) 6. Canonical resources (primary first) 7. Caveats (read before you book)">Tips from Passers</a>
+<a class="nav-link active" href="tips-from-passers.html" data-kw="1. Snapshot — the confirmed blueprint 1b. Firsthand report — passed 2026-09-07, scaled 887 2. What people who passed say 3. Time management 4. Common gotchas / traps 5. A study plan (keyed to this repo) 6. Canonical resources (primary first) 7. Caveats (read before you book)">Tips from Passers</a>
 <div class="toc">
 <a href="#1-snapshot-the-confirmed-blueprint">1. Snapshot — the confirmed blueprint</a>
+<a href="#1b-firsthand-report-passed-2026-09-07-scaled-887">1b. Firsthand report — passed 2026-09-07, scaled 887</a>
 <a href="#2-what-people-who-passed-say">2. What people who passed say</a>
 <a href="#3-time-management">3. Time management</a>
 <a href="#4-common-gotchas-traps">4. Common gotchas / traps</a>
@@ -221,6 +222,66 @@ limited</strong> — much of "what passers say" below rests on one verified acco
 <p>~720/1000 scaled ≈ you cannot afford to punt a whole domain. Even the 15% domain is roughly
 9 questions — enough to fail you if you skip it.</p>
 </blockquote>
+<hr />
+<h2 id="1b-firsthand-report-passed-2026-09-07-scaled-887">1b. Firsthand report — passed 2026-09-07, scaled 887</h2>
+<p>The first account in this repo from someone who actually sat the exam, rather than secondhand
+research. Two things worth acting on:</p>
+<p><strong>CI/CD and GitHub Actions were over-represented relative to this repo's practice material.</strong>
+The reported surprise was how much of the exam turned on <strong>configuring CI workflows with Claude</strong> —
+GitHub Actions setup, workflow configuration, and running Claude in a pipeline. Questions felt
+noticeably different from our bank in that area.</p>
+<p><strong>Our bank under-covers it, measurably.</strong> Scenario themes are drawn 4-of-6 at random, so each should
+carry roughly equal weight — about 32 questions at parity across a 191-question bank. Actual spread
+as of 2026-09-07:</p>
+<table>
+<thead>
+<tr>
+<th>Scenario theme</th>
+<th>Questions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Customer Support Resolution Agent</td>
+<td>52</td>
+</tr>
+<tr>
+<td>Multi-Agent Research System</td>
+<td>40</td>
+</tr>
+<tr>
+<td>Code Generation with Claude Code</td>
+<td>36</td>
+</tr>
+<tr>
+<td>Developer Productivity with Claude</td>
+<td>27</td>
+</tr>
+<tr>
+<td>Structured Data Extraction</td>
+<td>26</td>
+</tr>
+<tr>
+<td><strong>Claude Code for Continuous Integration</strong></td>
+<td><strong>10</strong></td>
+</tr>
+</tbody>
+</table>
+<p>At the time of the exam, <strong>zero questions in the bank mentioned GitHub Actions</strong>. CI/CD had roughly a
+two-in-three chance of appearing on any given exam while receiving 5% of practice coverage.</p>
+<p><strong>What to do about it if you are studying now:</strong>
+- Read <code>docs/domain3-claude-code-config-workflows.md</code> on CI/CD, then go past it to the primary docs:
+  headless mode (<code>claude -p</code>), <code>--output-format json</code>, <code>--allowedTools</code> and permission scoping,
+  <code>--permission-mode</code>, and the <code>anthropics/claude-code-action</code> GitHub Action.
+- Know how Claude is <em>invoked</em> inside a pipeline, not just what it does once running: workflow
+  triggers, passing repo context, permission scoping for unattended runs, and how results come back
+  in a form CI can act on.
+- The generic principles still carry — the session that generated code is weaker at reviewing it,
+  pass prior findings on re-runs and ask for new issues only, keep testing standards in <code>CLAUDE.md</code>.
+  But expect configuration-level questions on top of those.</p>
+<p><strong>What held up well:</strong> everything else. Domains 1, 2, 4 and 5 tracked the practice material closely,
+and the two-layer MCP error model, <code>tool_choice</code>, context management and escalation questions all
+behaved as the bank trains you for.</p>
 <hr />
 <h2 id="2-what-people-who-passed-say">2. What people who passed say</h2>
 <p>Distilled, actionable takeaways. Where a point comes from the one verified first-hand account,
