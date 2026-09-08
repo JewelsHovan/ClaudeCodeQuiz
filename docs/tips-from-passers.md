@@ -36,6 +36,49 @@
 
 ---
 
+## 1b. Firsthand report — passed 2026-09-07, scaled 887
+
+The first account in this repo from someone who actually sat the exam, rather than secondhand
+research. Two things worth acting on:
+
+**CI/CD and GitHub Actions were over-represented relative to this repo's practice material.**
+The reported surprise was how much of the exam turned on **configuring CI workflows with Claude** —
+GitHub Actions setup, workflow configuration, and running Claude in a pipeline. Questions felt
+noticeably different from our bank in that area.
+
+**Our bank under-covers it, measurably.** Scenario themes are drawn 4-of-6 at random, so each should
+carry roughly equal weight — about 32 questions at parity across a 191-question bank. Actual spread
+as of 2026-09-07:
+
+| Scenario theme | Questions |
+|---|---|
+| Customer Support Resolution Agent | 52 |
+| Multi-Agent Research System | 40 |
+| Code Generation with Claude Code | 36 |
+| Developer Productivity with Claude | 27 |
+| Structured Data Extraction | 26 |
+| **Claude Code for Continuous Integration** | **10** |
+
+At the time of the exam, **zero questions in the bank mentioned GitHub Actions**. CI/CD had roughly a
+two-in-three chance of appearing on any given exam while receiving 5% of practice coverage.
+
+**What to do about it if you are studying now:**
+- Read `docs/domain3-claude-code-config-workflows.md` on CI/CD, then go past it to the primary docs:
+  headless mode (`claude -p`), `--output-format json`, `--allowedTools` and permission scoping,
+  `--permission-mode`, and the `anthropics/claude-code-action` GitHub Action.
+- Know how Claude is *invoked* inside a pipeline, not just what it does once running: workflow
+  triggers, passing repo context, permission scoping for unattended runs, and how results come back
+  in a form CI can act on.
+- The generic principles still carry — the session that generated code is weaker at reviewing it,
+  pass prior findings on re-runs and ask for new issues only, keep testing standards in `CLAUDE.md`.
+  But expect configuration-level questions on top of those.
+
+**What held up well:** everything else. Domains 1, 2, 4 and 5 tracked the practice material closely,
+and the two-layer MCP error model, `tool_choice`, context management and escalation questions all
+behaved as the bank trains you for.
+
+---
+
 ## 2. What people who passed say
 
 Distilled, actionable takeaways. Where a point comes from the one verified first-hand account,

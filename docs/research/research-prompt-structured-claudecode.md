@@ -800,6 +800,51 @@ skips specific CLAUDE.md/rules files by glob against absolute paths:
 growing large, use path-scoped rules." Claude Code loads a CLAUDE.md up to 4 MiB in full and skips
 anything larger.
 
+### D9.1 `settings.json` layer precedence — documented, exact order, and it's the OPPOSITE shape from skills
+
+Source: https://code.claude.com/docs/en/settings, section "## Settings precedence" (fetched
+2026-09-07). **This is a real, explicitly documented order — unlike `.claude/rules/`, which is
+silent on precedence (see D9 above), `settings.json` layering has a stated, numbered hierarchy.**
+Quoted exactly:
+
+> "In order, highest precedence first:
+> 1. **Managed settings**: settings your organization deploys, by a `managed-settings.json` file, an
+>    MDM policy, or server-managed settings from the claude.ai console. Nothing you set overrides
+>    them...
+> 2. **Command line arguments**: flags you pass when you start `claude` from a terminal, for one
+>    session...
+> 3. **Project local settings** (`.claude/settings.local.json`): your personal settings for this
+>    project.
+> 4. **Shared project settings** (`.claude/settings.json`): settings your team checks into source
+>    control.
+> 5. **User settings** (`~/.claude/settings.json`): your personal settings for every project."
+
+And the governing rule, quoted: "When the same key appears in more than one place, Claude Code uses
+the value from the highest level that sets it... a key at a higher level overrides the same key
+anywhere below it."
+
+**Worth flagging explicitly for the study guide — this is the inverse shape from skill resolution:**
+for `settings.json`, **project (both local and shared) outranks user** — the intuitive "more specific
+scope wins" ordering. But for **skills**, personal (`~/.claude/skills/`) outranks project
+(`.claude/skills/`) — see D10/D11 below, re-verified against the primary source. These are two
+different, independently-documented precedence systems in the same product, and they order user vs.
+project **oppositely**. Don't let a mental model built on one predict the other.
+
+Two more precedence details worth keeping for the exam:
+- **List-valued keys merge instead of overriding.** Quoted: "When you set the same list key, such
+  as `permissions.allow`, in more than one file, Claude Code combines the lists instead of picking
+  one." (Scalar keys like `model` instead take the single highest-precedence value, per the ordered
+  list above.) A few specific list-shaped keys — `fallbackModel`, `modelPicker`, `availableModels`,
+  `modelSettings` — are explicitly called out as exceptions that do NOT merge; each takes the whole
+  value from one source rather than combining, because order/replacement semantics matter for those
+  keys specifically.
+- **Environment variables are not a level in this stack at all.** Quoted: "Environment variables
+  aren't a level in this stack. When a behavior has both a shell variable and a settings key, which
+  one applies is decided per pair, not by level." E.g. `ANTHROPIC_MODEL` (env var) overrides the
+  `model` key from any settings file, while `ANTHROPIC_DEFAULT_MODEL` only applies when no file sets
+  `model` at all — so you can't place "env vars" at a fixed rung on the managed→CLI→local→project→user
+  ladder; it's resolved key-by-key.
+
 ### D10 & D11. Custom slash commands and Agent Skills — now unified
 
 **Structural change worth flagging in the study guide:** commands and skills are documented as the
@@ -820,9 +865,38 @@ supported." If a skill and a command share a name, **the skill takes precedence*
 | `~/.claude/skills/<name>/SKILL.md` | Personal — all your projects |
 | Managed settings directory | Enterprise — all users in org |
 
-**Skill resolution priority across levels: Enterprise > Personal > Project.** A local skill also
-overrides a same-named bundled skill (built into Claude Code), but not that bundled skill's aliases.
-Nested skills appear as directory-qualified commands, e.g. `/apps/web:deploy`.
+**Skill resolution priority across levels: Enterprise > Personal > Project — RE-VERIFIED against the
+live primary source on 2026-09-07 at your request, this is stated verbatim, not inferred.**
+
+Source: https://code.claude.com/docs/en/skills, under the heading **"Where skills live"**, exact
+quote:
+> "When skills share the same name, Claude Code resolves the conflict by source:
+> Across levels, enterprise overrides personal, and personal overrides project. For example, with a
+> `deploy` skill in both `~/.claude/skills/` and your project's `.claude/skills/`, `/deploy` runs the
+> personal one."
+
+**Confirmed explicitly: yes, Personal (`~/.claude/skills/`) really does outrank Project
+(`.claude/skills/`).** This is stated with a concrete worked example ("`/deploy` runs the personal
+one"), not just a table I inferred an order from — I re-fetched the page specifically to check for
+transcription slips and got the same answer with a fuller quote than my first pass. This does run
+against the "more specific scope wins" intuition (and against how MCP server scoping is ordered) —
+Anthropic's own stated reasoning isn't given on that page, so I can't tell you *why* they chose
+personal-over-project, only that they explicitly do.
+
+Full stated hierarchy, highest to lowest: **Enterprise (managed) > Personal (`~/.claude/skills/`) >
+Project (`.claude/skills/`) > Bundled** (a local skill at any level overrides a same-named
+built-in/bundled skill, but not that bundled skill's aliases). Nested skills appear as
+directory-qualified commands, e.g. `/apps/web:deploy`.
+
+**Slash commands specifically — the docs are silent on this.** I checked
+https://code.claude.com/docs/en/commands directly for whether the same enterprise>personal>project
+ordering applies when a command of the same name exists in both `.claude/commands/` and
+`~/.claude/commands/`. **It does not state one.** The commands page doesn't discuss cross-location
+name-conflict resolution at all. Since commands and skills are documented as "the same mechanism" (a
+`commands/*.md` file behaves like a `skills/*/SKILL.md` file for invocation purposes), it's plausible
+the same resolution logic applies underneath — but that would be my inference, not a documented fact,
+so per your instruction I'm reporting this as **not documented** rather than asserting the skills
+ordering carries over.
 
 **Argument substitution (applies to both commands and skills):**
 
