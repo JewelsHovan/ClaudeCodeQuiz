@@ -38,11 +38,20 @@ Target **6–8 questions** on how Claude is *invoked* in a pipeline, not what it
 - The non-interactive flag surface: `--max-turns`, `--max-budget-usd`, `--bare`,
   `--no-session-persistence`, `--fallback-model`, `--permission-mode`, `--permission-prompt-tool`
   (delegating approvals to an MCP tool headlessly), `--setting-sources`, `--agent` / `--agents`.
+  `--permission-mode` takes `acceptEdits`, `auto`, `bypassPermissions`, `manual`, `dontAsk` or `plan`;
+  `--restricted` removes the built-in command- and code-running tools outright, which is a different
+  lever from allow-listing and worth an item of its own.
 - Restricting tool access for unattended runs rather than skipping permissions wholesale.
 - Loading project standards so a review applies team conventions — and reducing false positives by
   supplying accepted patterns as persistent context.
 - Managed integrations beyond hand-rolled CLI calls: the `claude-code-action` GitHub Action, GitLab
   CI/CD, zero-workflow-file GitHub Code Review, cloud-scheduled Routines.
+- **`--system-prompt` vs `--append-system-prompt`.** Flagged by the 2026-09-07 test-taker and verified
+  against `claude --help`: `--system-prompt` is "System prompt to use for the session" — it
+  **replaces** Claude Code's default — while `--append-system-prompt` "appends a system prompt to
+  **the default** system prompt". In CI, reaching for the former silently discards the default
+  instructions the tool relies on. Both have `-file` variants. This is an ideal "how to do it
+  effectively" item: two flags that look interchangeable, one of which quietly removes behaviour.
 - Avoiding duplicate PR comments across re-runs — pass prior findings, ask for new issues only.
 - Sync review (pre-merge, blocking) versus Batch (overnight, 50% cheaper, no multi-turn tool loop).
 
@@ -112,6 +121,19 @@ New CI/CD questions should carry the `Claude Code for Continuous Integration` sc
 Support needs no additions — and notably did not appear at all on the 2026-09-07 sitting.
 
 ---
+
+## Priority 3b — fix the length bias in existing questions
+
+The September 2026 audit found the correct answer is **the longest option in 83% of questions**,
+averaging 54 characters longer than its distractors — so always-pick-longest scores 83% here against
+a ~72% pass mark. Every score this bank has produced is inflated, and it trains pattern-matching
+rather than judgment, which is precisely the gap the 2026-09-07 test-taker described.
+
+This is a bigger quality win than any new question. Work through
+`uv run python scripts/audit_bank.py --worst 20` and rewrite the options for length parity, moving
+the reasoning into `explanation` where it belongs. The rule and a worked before/after are in
+`docs/writing-questions.md`. Targets: key longest in ≤35% of questions, key within +15 chars of the
+mean distractor, no distractor under 45 characters (15 currently are).
 
 ## Priority 4 — accuracy refresh on existing questions
 
