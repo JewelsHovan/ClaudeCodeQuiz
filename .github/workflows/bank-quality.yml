@@ -41,12 +41,16 @@ jobs:
     name: study bank — validate + audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.12'
+          # These scripts are stdlib-only and the repo has no uv.lock or
+          # requirements.txt, so the cache has no key to invalidate against
+          # and would only ever grow stale.
+          enable-cache: false
 
       # Invariants: schema, ids, answer letters, distractor coverage, canonical formatting.
       # Any error here means a question is structurally broken and the generator may crash.
@@ -83,11 +87,11 @@ jobs:
     name: DATAMON battle bank — audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
 
       # The game's 120-question bank had the same defect as the study bank, but its
       # choices are ~33 characters rather than ~137, so it needs a ratio test rather
