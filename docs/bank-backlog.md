@@ -122,18 +122,30 @@ Support needs no additions — and notably did not appear at all on the 2026-09-
 
 ---
 
-## Priority 3b — fix the length bias in existing questions
+## ~~Priority 3b — fix the length bias in existing questions~~ — DONE (2026-09-09)
 
-The September 2026 audit found the correct answer is **the longest option in 83% of questions**,
-averaging 54 characters longer than its distractors — so always-pick-longest scores 83% here against
-a ~72% pass mark. Every score this bank has produced is inflated, and it trains pattern-matching
-rather than judgment, which is precisely the gap the 2026-09-07 test-taker described.
+The September 2026 audit found the correct answer was **the longest option in 83% of questions**,
+averaging 54 characters longer than its distractors — so always-pick-longest scored 83% here
+against a ~72% pass mark.
 
-This is a bigger quality win than any new question. Work through
-`uv run python scripts/audit_bank.py --worst 20` and rewrite the options for length parity, moving
-the reasoning into `explanation` where it belongs. The rule and a worked before/after are in
-`docs/writing-questions.md`. Targets: key longest in ≤35% of questions, key within +15 chars of the
-mean distractor, no distractor under 45 characters (15 currently are).
+Repaired across all 191 questions, and across the other three question sources in the repo, which
+had the same defect:
+
+| Source | Key was longest | Now |
+|---|---|---|
+| `quiz/bank/*.json` (191) | 83% | 29% |
+| `datamon/questions.js` (120) | 83% | 28% |
+| `quiz/practice-questions.md` + `scenario-questions.md` (32) | 72% | 25% |
+
+Also: mean delta +54 → +2 chars, spread 68 → 13, filler distractors 15 → 0, oversized options
+24 → 0. Answers, stems and metadata are byte-identical.
+
+`.github/workflows/bank-quality.yml` now runs the audits in strict mode on every PR touching a
+question source, so this cannot drift back. The rule and the three metrics are documented in
+`docs/writing-questions.md`.
+
+**What is left here:** nothing on length. If you add questions, `audit_bank.py` will tell you
+before CI does.
 
 ## Priority 4 — accuracy refresh on existing questions
 
