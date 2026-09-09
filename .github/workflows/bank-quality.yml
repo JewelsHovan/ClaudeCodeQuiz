@@ -1,0 +1,106 @@
+name: Question bank quality
+
+# The bank is the product here. Two scripts guard it, and they guard different things:
+# validate_bank.py enforces invariants (schema, unique ids, answers point at real options),
+# audit_bank.py enforces that the questions still *behave* like exam questions — chiefly that
+# the correct answer is not identifiable by length alone.
+#
+# The second one exists because the bank silently drifted to 83% "key is the longest option"
+# against a 25% chance baseline, which meant a candidate could score 83% without reading a
+# single stem. Nothing caught it for months because nothing was watching. This is what watches.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'quiz/bank/**'
+      - 'quiz/practice-questions.md'
+      - 'quiz/scenario-questions.md'
+      - 'datamon/questions.js'
+      - 'scripts/validate_bank.py'
+      - 'scripts/audit_bank.py'
+      - 'scripts/audit_datamon_bank.mjs'
+      - '.github/workflows/bank-quality.yml'
+  pull_request:
+    paths:
+      - 'quiz/bank/**'
+      - 'quiz/practice-questions.md'
+      - 'quiz/scenario-questions.md'
+      - 'datamon/questions.js'
+      - 'scripts/validate_bank.py'
+      - 'scripts/audit_bank.py'
+      - 'scripts/audit_datamon_bank.mjs'
+      - '.github/workflows/bank-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  study-bank:
+    name: study bank — validate + audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.12'
+
+      # Invariants: schema, ids, answer letters, distractor coverage, canonical formatting.
+      # Any error here means a question is structurally broken and the generator may crash.
+      - name: Validate invariants
+        run: uv run python scripts/validate_bank.py
+
+      # Quality: length bias, filler distractors, oversized options, scenario balance.
+      # --strict turns the report's findings into a non-zero exit.
+      - name: Audit quality
+        run: uv run python scripts/audit_bank.py --strict
+
+      # The readable practice sets are studied as often as the JSON bank and drifted
+      # the same way, so they are held to the same thresholds.
+      - name: Audit readable practice sets
+        run: uv run python scripts/audit_bank.py --markdown --strict
+
+      # Runs whether or not the gate passed, so a failed run still shows the numbers
+      # rather than only the threshold that tripped.
+      - name: Report
+        if: always()
+        run: |
+          {
+            echo '## Question bank audit'
+            echo '```'
+            uv run python scripts/audit_bank.py
+            echo '```'
+            echo '## Readable practice sets'
+            echo '```'
+            uv run python scripts/audit_bank.py --markdown
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  battle-bank:
+    name: DATAMON battle bank — audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # The game's 120-question bank had the same defect as the study bank, but its
+      # choices are ~33 characters rather than ~137, so it needs a ratio test rather
+      # than an absolute character budget. Same idea, different yardstick.
+      - name: Audit battle bank
+        run: node scripts/audit_datamon_bank.mjs --strict
+
+      - name: Report
+        if: always()
+        run: |
+          {
+            echo '## DATAMON battle bank audit'
+            echo '```'
+            node scripts/audit_datamon_bank.mjs
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
