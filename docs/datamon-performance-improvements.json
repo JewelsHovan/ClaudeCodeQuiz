@@ -1,0 +1,1798 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-06T02:12:01.207Z",
+  "baseCommit": "8c1d87fb9cc95966f8e632926e42b3a7932b8f48",
+  "artifact": {
+    "payloadSha256": "07f00968607a84f0429eed6f6f85a15a7c3e19de5986cc040daa54c162717def",
+    "fileCount": 1388,
+    "totalBytes": 33856093
+  },
+  "comparator": {
+    "path": "scripts/perf-audit.mjs",
+    "sha256": "868bad7af2bce7ebb7129d0a286a7c925339b31eb2997d031785fa272e14c67f",
+    "unchangedFromBaseCommit": true
+  },
+  "baseline": {
+    "path": "docs/datamon-performance-audit.json",
+    "sha256": "8c874f60ff8fcf33c7c0cf18687583c2a68b43d2c054bde3a82b40bc9d950a05"
+  },
+  "browser": "149.0.7827.55",
+  "cold": [
+    {
+      "config": {
+        "name": "desktop-local",
+        "dpr": 1,
+        "cpu": 1
+      },
+      "run": 1,
+      "firstGameFrameMs": 62.60000002384186,
+      "requests": 78,
+      "bodyBytes": 1587907,
+      "transferBytes": 1611307,
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "desktop-local",
+        "dpr": 1,
+        "cpu": 1
+      },
+      "run": 2,
+      "firstGameFrameMs": 59.10000002384186,
+      "requests": 78,
+      "bodyBytes": 1587907,
+      "transferBytes": 1611307,
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "desktop-local",
+        "dpr": 1,
+        "cpu": 1
+      },
+      "run": 3,
+      "firstGameFrameMs": 59.199999928474426,
+      "requests": 78,
+      "bodyBytes": 1587907,
+      "transferBytes": 1611307,
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "retina-local",
+        "dpr": 2,
+        "cpu": 1
+      },
+      "run": 1,
+      "firstGameFrameMs": 84.79999995231628,
+      "requests": 98,
+      "bodyBytes": 1608965,
+      "transferBytes": 1638365,
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "retina-local",
+        "dpr": 2,
+        "cpu": 1
+      },
+      "run": 2,
+      "firstGameFrameMs": 84.89999997615814,
+      "requests": 98,
+      "bodyBytes": 1608965,
+      "transferBytes": 1638365,
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "retina-local",
+        "dpr": 2,
+        "cpu": 1
+      },
+      "run": 3,
+      "firstGameFrameMs": 86.70000004768372,
+      "requests": 98,
+      "bodyBytes": 1608965,
+      "transferBytes": 1638365,
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "mobile-simulated",
+        "dpr": 2,
+        "cpu": 4,
+        "mobile": true,
+        "mbps": 1.6,
+        "latency": 150
+      },
+      "run": 1,
+      "firstGameFrameMs": 10328,
+      "requests": 98,
+      "bodyBytes": 1608965,
+      "transferBytes": 1638365,
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "mobile-simulated",
+        "dpr": 2,
+        "cpu": 4,
+        "mobile": true,
+        "mbps": 1.6,
+        "latency": 150
+      },
+      "run": 2,
+      "firstGameFrameMs": 10320.100000023842,
+      "requests": 98,
+      "bodyBytes": 1608965,
+      "transferBytes": 1638365,
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "mobile-simulated",
+        "dpr": 2,
+        "cpu": 4,
+        "mobile": true,
+        "mbps": 1.6,
+        "latency": 150
+      },
+      "run": 3,
+      "firstGameFrameMs": 10327.700000047684,
+      "requests": 98,
+      "bodyBytes": 1608965,
+      "transferBytes": 1638365,
+      "errors": []
+    }
+  ],
+  "runtime": [
+    {
+      "config": {
+        "name": "runtime-dpr2-cpu1",
+        "dpr": 2,
+        "cpu": 1
+      },
+      "samples": [
+        {
+          "label": "title",
+          "state": "title",
+          "map": "office",
+          "hub": false,
+          "intervals": {
+            "count": 359,
+            "median": 8.300000000000068,
+            "p95": 10.299999999999727,
+            "max": 10.400000000000091,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 360,
+            "median": 0.10000002384185791,
+            "p95": 0.19999992847442627,
+            "max": 0.20000004768371582,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "select",
+          "state": "select",
+          "map": "office",
+          "hub": false,
+          "intervals": {
+            "count": 359,
+            "median": 8.300000000000182,
+            "p95": 10.199999999999818,
+            "max": 10.400000000000546,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 360,
+            "median": 0.10000002384185791,
+            "p95": 0.20000004768371582,
+            "max": 0.3999999761581421,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "office-idle",
+          "state": "overworld",
+          "map": "office",
+          "hub": false,
+          "intervals": {
+            "count": 360,
+            "median": 8.300000000000182,
+            "p95": 10,
+            "max": 10.300000000001091,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 361,
+            "median": 0.19999992847442627,
+            "p95": 0.30000007152557373,
+            "max": 3.200000047683716,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "office-moving",
+          "state": "overworld",
+          "map": "office",
+          "hub": false,
+          "intervals": {
+            "count": 743,
+            "median": 8.300000000001091,
+            "p95": 9.899999999999636,
+            "max": 10.5,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 744,
+            "median": 0.19999992847442627,
+            "p95": 0.2999999523162842,
+            "max": 1.399999976158142,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "question-hub-open",
+          "state": "overworld",
+          "map": "office",
+          "hub": true,
+          "intervals": {
+            "count": 360,
+            "median": 8.300000000001091,
+            "p95": 9.899999999997817,
+            "max": 10.299999999999272,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 361,
+            "median": 0,
+            "p95": 0.10000002384185791,
+            "max": 0.10000002384185791,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "library",
+          "state": "overworld",
+          "map": "library",
+          "hub": false,
+          "intervals": {
+            "count": 361,
+            "median": 8.30000000000291,
+            "p95": 9.799999999999272,
+            "max": 10.30000000000291,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 362,
+            "median": 0.10000002384185791,
+            "p95": 0.20000004768371582,
+            "max": 0.20000004768371582,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "battle-MCP",
+          "state": "battle",
+          "map": "battleRoom",
+          "hub": false,
+          "intervals": {
+            "count": 359,
+            "median": 8.30000000000291,
+            "p95": 9.799999999999272,
+            "max": 15.600000000002183,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 360,
+            "median": 0.10000002384185791,
+            "p95": 0.20000004768371582,
+            "max": 3.799999952316284,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "battle-AGENT",
+          "state": "battle",
+          "map": "battleRoom",
+          "hub": false,
+          "intervals": {
+            "count": 357,
+            "median": 8.30000000000291,
+            "p95": 10,
+            "max": 24.900000000001455,
+            "over16_7": 1,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 358,
+            "median": 0.10000002384185791,
+            "p95": 0.20000004768371582,
+            "max": 26.90000009536743,
+            "over16_7": 1,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "agent-answer-effects",
+          "state": "battle",
+          "map": "battleRoom",
+          "hub": false,
+          "intervals": {
+            "count": 180,
+            "median": 8.299999999999272,
+            "p95": 9.799999999999272,
+            "max": 10.399999999997817,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 181,
+            "median": 0.10000002384185791,
+            "p95": 0.20000004768371582,
+            "max": 0.8999999761581421,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        }
+      ],
+      "rosterBrowse": {
+        "addedRequests": 0,
+        "addedEncodedBytes": 0
+      },
+      "walkSlugsAfterBrowse": 0,
+      "walkSlugsAtEnd": 1,
+      "errors": []
+    },
+    {
+      "config": {
+        "name": "runtime-dpr2-cpu8",
+        "dpr": 2,
+        "cpu": 8
+      },
+      "samples": [
+        {
+          "label": "title",
+          "state": "title",
+          "map": "office",
+          "hub": false,
+          "intervals": {
+            "count": 363,
+            "median": 8.299999999999727,
+            "p95": 10.099999999999909,
+            "max": 10.400000000000091,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 364,
+            "median": 0.10000002384185791,
+            "p95": 1.100000023841858,
+            "max": 2.200000047683716,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "select",
+          "state": "select",
+          "map": "office",
+          "hub": false,
+          "intervals": {
+            "count": 361,
+            "median": 8.300000000000182,
+            "p95": 10.100000000000364,
+            "max": 17.09999999999991,
+            "over16_7": 1,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 362,
+            "median": 0.10000002384185791,
+            "p95": 1.3000000715255737,
+            "max": 2.100000023841858,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "office-idle",
+          "state": "overworld",
+          "map": "office",
+          "hub": false,
+          "intervals": {
+            "count": 220,
+            "median": 15.600000000000364,
+            "p95": 18.399999999999636,
+            "max": 43.30000000000018,
+            "over16_7": 60,
+            "over33_4": 1
+          },
+          "callbackWork": {
+            "count": 221,
+            "median": 1.5,
+            "p95": 2.700000047683716,
+            "max": 27.399999976158142,
+            "over16_7": 1,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "office-moving",
+          "state": "overworld",
+          "map": "office",
+          "hub": false,
+          "intervals": {
+            "count": 700,
+            "median": 8.300000000001091,
+            "p95": 16.5,
+            "max": 26.099999999998545,
+            "over16_7": 30,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 701,
+            "median": 1.2000000476837158,
+            "p95": 2.700000047683716,
+            "max": 13.199999928474426,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "question-hub-open",
+          "state": "overworld",
+          "map": "office",
+          "hub": true,
+          "intervals": {
+            "count": 360,
+            "median": 8.299999999999272,
+            "p95": 10.100000000002183,
+            "max": 10.30000000000291,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 361,
+            "median": 0,
+            "p95": 0.10000002384185791,
+            "max": 0.3999999761581421,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "library",
+          "state": "overworld",
+          "map": "library",
+          "hub": false,
+          "intervals": {
+            "count": 258,
+            "median": 9.900000000001455,
+            "p95": 17.799999999999272,
+            "max": 18.299999999999272,
+            "over16_7": 49,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 259,
+            "median": 0.19999992847442627,
+            "p95": 2.100000023841858,
+            "max": 8.5,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        },
+        {
+          "label": "battle-MCP",
+          "state": "battle",
+          "map": "battleRoom",
+          "hub": false,
+          "intervals": {
+            "count": 332,
+            "median": 8.399999999997817,
+            "p95": 16.400000000001455,
+            "max": 99.5,
+            "over16_7": 11,
+            "over33_4": 1
+          },
+          "callbackWork": {
+            "count": 333,
+            "median": 0.8999999761581421,
+            "p95": 2.299999952316284,
+            "max": 9.899999976158142,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 1,
+            "maxMs": 91
+          }
+        },
+        {
+          "label": "battle-AGENT",
+          "state": "battle",
+          "map": "battleRoom",
+          "hub": false,
+          "intervals": {
+            "count": 294,
+            "median": 8.5,
+            "p95": 17.5,
+            "max": 25,
+            "over16_7": 29,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 295,
+            "median": 1.100000023841858,
+            "p95": 2.399999976158142,
+            "max": 14.5,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 1,
+            "maxMs": 185
+          }
+        },
+        {
+          "label": "agent-answer-effects",
+          "state": "battle",
+          "map": "battleRoom",
+          "hub": false,
+          "intervals": {
+            "count": 159,
+            "median": 8.400000000001455,
+            "p95": 17.899999999997817,
+            "max": 33.39999999999782,
+            "over16_7": 18,
+            "over33_4": 0
+          },
+          "callbackWork": {
+            "count": 160,
+            "median": 1,
+            "p95": 2.4000000953674316,
+            "max": 9.399999976158142,
+            "over16_7": 0,
+            "over33_4": 0
+          },
+          "longTasks": {
+            "count": 0,
+            "maxMs": 0
+          }
+        }
+      ],
+      "walkSlugsAtEnd": 1,
+      "errors": []
+    }
+  ],
+  "expandedColdGate": {
+    "budgets": {
+      "coldTitleMs": 2500,
+      "requestCount": 110,
+      "transferBytes": 1750000,
+      "slowNetworkTitleMs": 11000,
+      "imageCanvasBudgetMiB": 80,
+      "rendererCacheBudgetMiB": 8,
+      "residentWalkSlugs": 0,
+      "residentWalkFrames": 0,
+      "agentArenaFrameP95Ms": 16.7,
+      "agentArenaMaxParticles": 64,
+      "agentArenaMaxVoices": 8,
+      "agentArenaMaxDelayedTones": 16,
+      "agentArenaMaxFrameSamples": 120,
+      "musicActiveFrameP95Ms": 34,
+      "musicActiveFrameSamples": 90,
+      "musicMaxVoices": 24,
+      "audioMaxContexts": 1,
+      "audioMaxVoices": 32,
+      "audioMaxDecodedBytes": 4194304,
+      "audioMaxPayloadBytes": 1048576,
+      "classicArenaFirstAuthoredPaintMs": 2500,
+      "classicBattlePresentationDecodedMiB": 8
+    },
+    "runs": [
+      {
+        "config": {
+          "name": "desktop",
+          "dpr": 1,
+          "cpu": 1
+        },
+        "run": 1,
+        "titleBudget": 2500,
+        "state": "title",
+        "coldTitleMs": 60.60000002384186,
+        "bootReadyMs": 36.90000009536743,
+        "requestCount": 78,
+        "transferBytes": 1611307,
+        "bodyBytes": 1587907,
+        "savedPlayer": null,
+        "residentWalkSlugs": 0,
+        "residentWalkFrames": 0,
+        "failedRequests": []
+      },
+      {
+        "config": {
+          "name": "desktop",
+          "dpr": 1,
+          "cpu": 1
+        },
+        "run": 2,
+        "titleBudget": 2500,
+        "state": "title",
+        "coldTitleMs": 61,
+        "bootReadyMs": 37.199999928474426,
+        "requestCount": 78,
+        "transferBytes": 1611307,
+        "bodyBytes": 1587907,
+        "savedPlayer": null,
+        "residentWalkSlugs": 0,
+        "residentWalkFrames": 0,
+        "failedRequests": []
+      },
+      {
+        "config": {
+          "name": "desktop",
+          "dpr": 1,
+          "cpu": 1
+        },
+        "run": 3,
+        "titleBudget": 2500,
+        "state": "title",
+        "coldTitleMs": 60.200000047683716,
+        "bootReadyMs": 36.200000047683716,
+        "requestCount": 78,
+        "transferBytes": 1611307,
+        "bodyBytes": 1587907,
+        "savedPlayer": null,
+        "residentWalkSlugs": 0,
+        "residentWalkFrames": 0,
+        "failedRequests": []
+      },
+      {
+        "config": {
+          "name": "retina",
+          "dpr": 2,
+          "cpu": 1
+        },
+        "run": 1,
+        "titleBudget": 2500,
+        "state": "title",
+        "coldTitleMs": 85.89999997615814,
+        "bootReadyMs": 51.700000047683716,
+        "requestCount": 98,
+        "transferBytes": 1638365,
+        "bodyBytes": 1608965,
+        "savedPlayer": null,
+        "residentWalkSlugs": 0,
+        "residentWalkFrames": 0,
+        "failedRequests": []
+      },
+      {
+        "config": {
+          "name": "retina",
+          "dpr": 2,
+          "cpu": 1
+        },
+        "run": 2,
+        "titleBudget": 2500,
+        "state": "title",
+        "coldTitleMs": 87.30000007152557,
+        "bootReadyMs": 54.300000071525574,
+        "requestCount": 98,
+        "transferBytes": 1638365,
+        "bodyBytes": 1608965,
+        "savedPlayer": null,
+        "residentWalkSlugs": 0,
+        "residentWalkFrames": 0,
+        "failedRequests": []
+      },
+      {
+        "config": {
+          "name": "retina",
+          "dpr": 2,
+          "cpu": 1
+        },
+        "run": 3,
+        "titleBudget": 2500,
+        "state": "title",
+        "coldTitleMs": 84.59999990463257,
+        "bootReadyMs": 51.299999952316284,
+        "requestCount": 98,
+        "transferBytes": 1638365,
+        "bodyBytes": 1608965,
+        "savedPlayer": null,
+        "residentWalkSlugs": 0,
+        "residentWalkFrames": 0,
+        "failedRequests": []
+      },
+      {
+        "config": {
+          "name": "returning-retina",
+          "dpr": 2,
+          "cpu": 1,
+          "saved": true
+        },
+        "run": 1,
+        "titleBudget": 2500,
+        "state": "title",
+        "coldTitleMs": 83,
+        "bootReadyMs": 50.60000002384186,
+        "requestCount": 98,
+        "transferBytes": 1638365,
+        "bodyBytes": 1608965,
+        "savedPlayer": "julien-hovan",
+        "residentWalkSlugs": 0,
+        "residentWalkFrames": 0,
+        "failedRequests": []
+      },
+      {
+        "config": {
+          "name": "returning-retina",
+          "dpr": 2,
+          "cpu": 1,
+          "saved": true
+        },
+        "run": 2,
+        "titleBudget": 2500,
+        "state": "title",
+        "coldTitleMs": 82.30000007152557,
+        "bootReadyMs": 49.700000047683716,
+        "requestCount": 98,
+        "transferBytes": 1638365,
+        "bodyBytes": 1608965,
+        "savedPlayer": "julien-hovan",
+        "residentWalkSlugs": 0,
+        "residentWalkFrames": 0,
+        "failedRequests": []
+      },
+      {
+        "config": {
+          "name": "returning-retina",
+          "dpr": 2,
+          "cpu": 1,
+          "saved": true
+        },
+        "run": 3,
+        "titleBudget": 2500,
+        "state": "title",
+        "coldTitleMs": 85.20000004768372,
+        "bootReadyMs": 52.799999952316284,
+        "requestCount": 98,
+        "transferBytes": 1638365,
+        "bodyBytes": 1608965,
+        "savedPlayer": "julien-hovan",
+        "residentWalkSlugs": 0,
+        "residentWalkFrames": 0,
+        "failedRequests": []
+      },
+      {
+        "config": {
+          "name": "slow-mobile",
+          "dpr": 2,
+          "cpu": 4,
+          "mbps": 1.6,
+          "latency": 150
+        },
+        "run": 1,
+        "titleBudget": 11000,
+        "state": "title",
+        "coldTitleMs": 10337.900000095367,
+        "bootReadyMs": 10196.200000047684,
+        "requestCount": 98,
+        "transferBytes": 1638365,
+        "bodyBytes": 1608965,
+        "savedPlayer": null,
+        "residentWalkSlugs": 0,
+        "residentWalkFrames": 0,
+        "failedRequests": []
+      },
+      {
+        "config": {
+          "name": "slow-mobile",
+          "dpr": 2,
+          "cpu": 4,
+          "mbps": 1.6,
+          "latency": 150
+        },
+        "run": 2,
+        "titleBudget": 11000,
+        "state": "title",
+        "coldTitleMs": 10330.5,
+        "bootReadyMs": 10187.600000023842,
+        "requestCount": 98,
+        "transferBytes": 1638365,
+        "bodyBytes": 1608965,
+        "savedPlayer": null,
+        "residentWalkSlugs": 0,
+        "residentWalkFrames": 0,
+        "failedRequests": []
+      },
+      {
+        "config": {
+          "name": "slow-mobile",
+          "dpr": 2,
+          "cpu": 4,
+          "mbps": 1.6,
+          "latency": 150
+        },
+        "run": 3,
+        "titleBudget": 11000,
+        "state": "title",
+        "coldTitleMs": 10321.899999976158,
+        "bootReadyMs": 10184.699999928474,
+        "requestCount": 98,
+        "transferBytes": 1638365,
+        "bodyBytes": 1608965,
+        "savedPlayer": null,
+        "residentWalkSlugs": 0,
+        "residentWalkFrames": 0,
+        "failedRequests": []
+      }
+    ],
+    "violations": []
+  },
+  "expandedWorldGate": [
+    {
+      "dpr": 1,
+      "cpu": 1,
+      "title": {
+        "timing": {
+          "samples": 216,
+          "median": 8.300000000000011,
+          "p95": 9.899999999999977,
+          "max": 10.300000000000068
+        },
+        "memory": {
+          "groups": {
+            "maps": 3538944,
+            "display": 1945600,
+            "title": 1945600,
+            "rosterAtlas": 10485760,
+            "worldImages": 837632,
+            "minis": 370000
+          },
+          "mapBytes": 3538944,
+          "floorBytes": 0,
+          "rendererBytes": 1945600,
+          "imageCanvasBytes": 19123536,
+          "audioDecodedBytes": 0,
+          "mapCount": 1
+        }
+      },
+      "agentBattle": {
+        "timing": {
+          "samples": 217,
+          "median": 8.299999999999272,
+          "p95": 10.299999999999272,
+          "max": 10.400000000001455
+        },
+        "memory": {
+          "groups": {
+            "maps": 7077888,
+            "display": 1945600,
+            "rosterAtlas": 10485760,
+            "trainers": 1310720,
+            "worldImages": 1110016,
+            "characterImages": 11863488,
+            "minis": 1399188,
+            "portraits": 169728
+          },
+          "mapBytes": 7077888,
+          "floorBytes": 0,
+          "rendererBytes": 1945600,
+          "imageCanvasBytes": 44482132,
+          "audioDecodedBytes": 3283196,
+          "mapCount": 2
+        }
+      },
+      "agentEffects": {
+        "timing": {
+          "samples": 217,
+          "median": 8.299999999999272,
+          "p95": 10.299999999999272,
+          "max": 10.400000000001455
+        },
+        "memory": {
+          "groups": {
+            "maps": 7077888,
+            "display": 1945600,
+            "rosterAtlas": 10485760,
+            "trainers": 1310720,
+            "worldImages": 1110016,
+            "characterImages": 11863488,
+            "minis": 1399188,
+            "portraits": 169728
+          },
+          "mapBytes": 7077888,
+          "floorBytes": 0,
+          "rendererBytes": 1945600,
+          "imageCanvasBytes": 44482132,
+          "audioDecodedBytes": 3406076,
+          "mapCount": 2
+        }
+      },
+      "maps": [
+        {
+          "scene": "office",
+          "timing": {
+            "samples": 216,
+            "median": 8.300000000000182,
+            "p95": 9.900000000000546,
+            "max": 10.300000000000182
+          },
+          "memory": {
+            "groups": {
+              "maps": 3538944,
+              "display": 1945600,
+              "rosterAtlas": 10485760,
+              "trainers": 262144,
+              "worldImages": 837632,
+              "characterImages": 10974528,
+              "minis": 1149860,
+              "portraits": 37632
+            },
+            "mapBytes": 3538944,
+            "floorBytes": 0,
+            "rendererBytes": 0,
+            "imageCanvasBytes": 29232100,
+            "audioDecodedBytes": 1580164,
+            "mapCount": 1
+          }
+        },
+        {
+          "scene": "library",
+          "timing": {
+            "samples": 217,
+            "median": 8.300000000001091,
+            "p95": 9.699999999998909,
+            "max": 10.300000000001091
+          },
+          "memory": {
+            "groups": {
+              "maps": 7077888,
+              "display": 1945600,
+              "rosterAtlas": 10485760,
+              "trainers": 262144,
+              "worldImages": 1110016,
+              "characterImages": 11335488,
+              "minis": 1266372,
+              "portraits": 72192
+            },
+            "mapBytes": 7077888,
+            "floorBytes": 0,
+            "rendererBytes": 0,
+            "imageCanvasBytes": 33555460,
+            "audioDecodedBytes": 3204484,
+            "mapCount": 2
+          }
+        },
+        {
+          "scene": "battleRoom",
+          "timing": {
+            "samples": 216,
+            "median": 8.299999999999272,
+            "p95": 9.900000000001455,
+            "max": 10.300000000001091
+          },
+          "memory": {
+            "groups": {
+              "maps": 7077888,
+              "display": 1945600,
+              "rosterAtlas": 10485760,
+              "trainers": 262144,
+              "worldImages": 1110016,
+              "characterImages": 11863488,
+              "minis": 1380756,
+              "portraits": 72192
+            },
+            "mapBytes": 7077888,
+            "floorBytes": 0,
+            "rendererBytes": 0,
+            "imageCanvasBytes": 34197844,
+            "audioDecodedBytes": 3200644,
+            "mapCount": 2
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "dpr": 2,
+      "cpu": 1,
+      "title": {
+        "timing": {
+          "samples": 216,
+          "median": 8.300000000000068,
+          "p95": 10.299999999999955,
+          "max": 10.400000000000091
+        },
+        "memory": {
+          "groups": {
+            "maps": 14155776,
+            "display": 7782400,
+            "title": 7782400,
+            "rosterAtlas": 10485760,
+            "worldImages": 837632,
+            "minis": 1480000,
+            "hdImages": 1671168
+          },
+          "mapBytes": 14155776,
+          "floorBytes": 0,
+          "rendererBytes": 7782400,
+          "imageCanvasBytes": 44195136,
+          "audioDecodedBytes": 0,
+          "mapCount": 1
+        }
+      },
+      "agentBattle": {
+        "timing": {
+          "samples": 216,
+          "median": 8.299999999999272,
+          "p95": 9.799999999999272,
+          "max": 10.299999999999272
+        },
+        "memory": {
+          "groups": {
+            "maps": 28311552,
+            "display": 7782400,
+            "rosterAtlas": 10485760,
+            "trainers": 1310720,
+            "worldImages": 1110016,
+            "characterImages": 11863488,
+            "minis": 3729920,
+            "portraits": 169728,
+            "hdImages": 1703936
+          },
+          "mapBytes": 28311552,
+          "floorBytes": 0,
+          "rendererBytes": 7782400,
+          "imageCanvasBytes": 81424064,
+          "audioDecodedBytes": 3283196,
+          "mapCount": 2
+        }
+      },
+      "agentEffects": {
+        "timing": {
+          "samples": 217,
+          "median": 8.299999999999272,
+          "p95": 10.099999999998545,
+          "max": 10.399999999997817
+        },
+        "memory": {
+          "groups": {
+            "maps": 28311552,
+            "display": 7782400,
+            "rosterAtlas": 10485760,
+            "trainers": 1310720,
+            "worldImages": 1110016,
+            "characterImages": 11863488,
+            "minis": 3729920,
+            "portraits": 169728,
+            "hdImages": 1703936
+          },
+          "mapBytes": 28311552,
+          "floorBytes": 0,
+          "rendererBytes": 7782400,
+          "imageCanvasBytes": 81424064,
+          "audioDecodedBytes": 3406076,
+          "mapCount": 2
+        }
+      },
+      "maps": [
+        {
+          "scene": "office",
+          "timing": {
+            "samples": 217,
+            "median": 8.300000000000182,
+            "p95": 10.300000000000182,
+            "max": 10.400000000000546
+          },
+          "memory": {
+            "groups": {
+              "maps": 14155776,
+              "display": 7782400,
+              "rosterAtlas": 10485760,
+              "trainers": 262144,
+              "worldImages": 837632,
+              "characterImages": 10974528,
+              "minis": 2908384,
+              "portraits": 37632,
+              "hdImages": 1671168
+            },
+            "mapBytes": 14155776,
+            "floorBytes": 0,
+            "rendererBytes": 0,
+            "imageCanvasBytes": 49115424,
+            "audioDecodedBytes": 1580164,
+            "mapCount": 1
+          }
+        },
+        {
+          "scene": "library",
+          "timing": {
+            "samples": 216,
+            "median": 8.300000000001091,
+            "p95": 10,
+            "max": 10.399999999999636
+          },
+          "memory": {
+            "groups": {
+              "maps": 28311552,
+              "display": 7782400,
+              "rosterAtlas": 10485760,
+              "trainers": 262144,
+              "worldImages": 1110016,
+              "characterImages": 11335488,
+              "minis": 3254912,
+              "portraits": 72192,
+              "hdImages": 1687552
+            },
+            "mapBytes": 28311552,
+            "floorBytes": 0,
+            "rendererBytes": 0,
+            "imageCanvasBytes": 64302016,
+            "audioDecodedBytes": 3204484,
+            "mapCount": 2
+          }
+        },
+        {
+          "scene": "battleRoom",
+          "timing": {
+            "samples": 217,
+            "median": 8.300000000001091,
+            "p95": 9.700000000000728,
+            "max": 10.400000000001455
+          },
+          "memory": {
+            "groups": {
+              "maps": 28311552,
+              "display": 7782400,
+              "rosterAtlas": 10485760,
+              "trainers": 262144,
+              "worldImages": 1110016,
+              "characterImages": 11863488,
+              "minis": 3711488,
+              "portraits": 72192,
+              "hdImages": 1703936
+            },
+            "mapBytes": 28311552,
+            "floorBytes": 0,
+            "rendererBytes": 0,
+            "imageCanvasBytes": 65302976,
+            "audioDecodedBytes": 3200644,
+            "mapCount": 2
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "dpr": 2,
+      "cpu": 4,
+      "title": {
+        "timing": {
+          "samples": 216,
+          "median": 8.299999999999955,
+          "p95": 10.099999999999909,
+          "max": 10.300000000000068
+        },
+        "memory": {
+          "groups": {
+            "maps": 14155776,
+            "display": 7782400,
+            "title": 7782400,
+            "rosterAtlas": 10485760,
+            "worldImages": 837632,
+            "minis": 1480000,
+            "hdImages": 1671168
+          },
+          "mapBytes": 14155776,
+          "floorBytes": 0,
+          "rendererBytes": 7782400,
+          "imageCanvasBytes": 44195136,
+          "audioDecodedBytes": 0,
+          "mapCount": 1
+        }
+      },
+      "agentBattle": {
+        "timing": {
+          "samples": 217,
+          "median": 8.299999999999272,
+          "p95": 10.099999999998545,
+          "max": 10.400000000001455
+        },
+        "memory": {
+          "groups": {
+            "maps": 28311552,
+            "display": 7782400,
+            "rosterAtlas": 10485760,
+            "trainers": 1310720,
+            "worldImages": 1110016,
+            "characterImages": 12131328,
+            "minis": 5552592,
+            "portraits": 169728,
+            "hdImages": 1703936
+          },
+          "mapBytes": 28311552,
+          "floorBytes": 0,
+          "rendererBytes": 7782400,
+          "imageCanvasBytes": 83514576,
+          "audioDecodedBytes": 3219832,
+          "mapCount": 2
+        }
+      },
+      "agentEffects": {
+        "timing": {
+          "samples": 216,
+          "median": 8.299999999999272,
+          "p95": 10.200000000000728,
+          "max": 10.30000000000291
+        },
+        "memory": {
+          "groups": {
+            "maps": 28311552,
+            "display": 7782400,
+            "rosterAtlas": 10485760,
+            "trainers": 1310720,
+            "worldImages": 1110016,
+            "characterImages": 12131328,
+            "minis": 5552592,
+            "portraits": 169728,
+            "hdImages": 1703936
+          },
+          "mapBytes": 28311552,
+          "floorBytes": 0,
+          "rendererBytes": 7782400,
+          "imageCanvasBytes": 83514576,
+          "audioDecodedBytes": 3342712,
+          "mapCount": 2
+        }
+      },
+      "maps": [
+        {
+          "scene": "office",
+          "timing": {
+            "samples": 216,
+            "median": 8.299999999999272,
+            "p95": 10.099999999999454,
+            "max": 10.300000000000182
+          },
+          "memory": {
+            "groups": {
+              "maps": 14155776,
+              "display": 7782400,
+              "rosterAtlas": 10485760,
+              "trainers": 262144,
+              "worldImages": 837632,
+              "characterImages": 10974528,
+              "minis": 4571312,
+              "portraits": 37632,
+              "hdImages": 1671168
+            },
+            "mapBytes": 14155776,
+            "floorBytes": 0,
+            "rendererBytes": 0,
+            "imageCanvasBytes": 50778352,
+            "audioDecodedBytes": 1580164,
+            "mapCount": 1
+          }
+        },
+        {
+          "scene": "library",
+          "timing": {
+            "samples": 216,
+            "median": 8.300000000001091,
+            "p95": 10,
+            "max": 10.399999999999636
+          },
+          "memory": {
+            "groups": {
+              "maps": 28311552,
+              "display": 7782400,
+              "rosterAtlas": 10485760,
+              "trainers": 262144,
+              "worldImages": 1110016,
+              "characterImages": 11335488,
+              "minis": 4917840,
+              "portraits": 72192,
+              "hdImages": 1687552
+            },
+            "mapBytes": 28311552,
+            "floorBytes": 0,
+            "rendererBytes": 0,
+            "imageCanvasBytes": 65964944,
+            "audioDecodedBytes": 3204484,
+            "mapCount": 2
+          }
+        },
+        {
+          "scene": "battleRoom",
+          "timing": {
+            "samples": 216,
+            "median": 8.300000000001091,
+            "p95": 10.200000000000728,
+            "max": 10.400000000001455
+          },
+          "memory": {
+            "groups": {
+              "maps": 28311552,
+              "display": 7782400,
+              "rosterAtlas": 10485760,
+              "trainers": 262144,
+              "worldImages": 1110016,
+              "characterImages": 12131328,
+              "minis": 5524944,
+              "portraits": 72192,
+              "hdImages": 1703936
+            },
+            "mapBytes": 28311552,
+            "floorBytes": 0,
+            "rendererBytes": 0,
+            "imageCanvasBytes": 67384272,
+            "audioDecodedBytes": 3137280,
+            "mapCount": 2
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "dpr": 2,
+      "cpu": 8,
+      "title": {
+        "timing": {
+          "samples": 216,
+          "median": 8.299999999999955,
+          "p95": 10.100000000000136,
+          "max": 15.100000000000023
+        },
+        "memory": {
+          "groups": {
+            "maps": 14155776,
+            "display": 7782400,
+            "title": 7782400,
+            "rosterAtlas": 10485760,
+            "worldImages": 837632,
+            "minis": 1480000,
+            "hdImages": 1671168
+          },
+          "mapBytes": 14155776,
+          "floorBytes": 0,
+          "rendererBytes": 7782400,
+          "imageCanvasBytes": 44195136,
+          "audioDecodedBytes": 0,
+          "mapCount": 1
+        }
+      },
+      "agentBattle": {
+        "timing": {
+          "samples": 188,
+          "median": 8.400000000001455,
+          "p95": 16.900000000001455,
+          "max": 25.700000000000728
+        },
+        "memory": {
+          "groups": {
+            "maps": 28311552,
+            "display": 7782400,
+            "rosterAtlas": 10485760,
+            "trainers": 1310720,
+            "worldImages": 1110016,
+            "characterImages": 12131328,
+            "minis": 5552592,
+            "portraits": 169728,
+            "hdImages": 1703936
+          },
+          "mapBytes": 28311552,
+          "floorBytes": 0,
+          "rendererBytes": 7782400,
+          "imageCanvasBytes": 83514576,
+          "audioDecodedBytes": 3154552,
+          "mapCount": 2
+        }
+      },
+      "agentEffects": {
+        "timing": {
+          "samples": 202,
+          "median": 8.299999999999272,
+          "p95": 16.5,
+          "max": 24.899999999997817
+        },
+        "memory": {
+          "groups": {
+            "maps": 28311552,
+            "display": 7782400,
+            "rosterAtlas": 10485760,
+            "trainers": 1310720,
+            "worldImages": 1110016,
+            "characterImages": 12131328,
+            "minis": 5552592,
+            "portraits": 169728,
+            "hdImages": 1703936
+          },
+          "mapBytes": 28311552,
+          "floorBytes": 0,
+          "rendererBytes": 7782400,
+          "imageCanvasBytes": 83514576,
+          "audioDecodedBytes": 3277432,
+          "mapCount": 2
+        }
+      },
+      "maps": [
+        {
+          "scene": "office",
+          "timing": {
+            "samples": 132,
+            "median": 15.799999999999272,
+            "p95": 18.100000000000364,
+            "max": 25.099999999999454
+          },
+          "memory": {
+            "groups": {
+              "maps": 14155776,
+              "display": 7782400,
+              "rosterAtlas": 10485760,
+              "trainers": 262144,
+              "worldImages": 837632,
+              "characterImages": 10974528,
+              "minis": 4571312,
+              "portraits": 37632,
+              "hdImages": 1671168
+            },
+            "mapBytes": 14155776,
+            "floorBytes": 0,
+            "rendererBytes": 0,
+            "imageCanvasBytes": 50778352,
+            "audioDecodedBytes": 1580164,
+            "mapCount": 1
+          }
+        },
+        {
+          "scene": "library",
+          "timing": {
+            "samples": 150,
+            "median": 10,
+            "p95": 18.100000000000364,
+            "max": 18.5
+          },
+          "memory": {
+            "groups": {
+              "maps": 28311552,
+              "display": 7782400,
+              "rosterAtlas": 10485760,
+              "trainers": 262144,
+              "worldImages": 1110016,
+              "characterImages": 11335488,
+              "minis": 4917840,
+              "portraits": 72192,
+              "hdImages": 1687552
+            },
+            "mapBytes": 28311552,
+            "floorBytes": 0,
+            "rendererBytes": 0,
+            "imageCanvasBytes": 65964944,
+            "audioDecodedBytes": 3204484,
+            "mapCount": 2
+          }
+        },
+        {
+          "scene": "battleRoom",
+          "timing": {
+            "samples": 136,
+            "median": 15.200000000000728,
+            "p95": 18.30000000000109,
+            "max": 26.399999999999636
+          },
+          "memory": {
+            "groups": {
+              "maps": 28311552,
+              "display": 7782400,
+              "rosterAtlas": 10485760,
+              "trainers": 262144,
+              "worldImages": 1110016,
+              "characterImages": 12131328,
+              "minis": 5524944,
+              "portraits": 72192,
+              "hdImages": 1703936
+            },
+            "mapBytes": 28311552,
+            "floorBytes": 0,
+            "rendererBytes": 0,
+            "imageCanvasBytes": 67384272,
+            "audioDecodedBytes": 3072000,
+            "mapCount": 2
+          }
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "verification": {
+    "command": "just check",
+    "passed": true,
+    "pythonTests": 60,
+    "datamonUnitTests": 362,
+    "sharedCheckoutUnitTests": 380,
+    "browserTests": 111,
+    "newBrowserRegressions": 11,
+    "locomotion": "all profile and art cases passed",
+    "atlas": "deterministic lossless visible RGB and alpha; transparent RGB canonicalized",
+    "cachedBackgroundPixelParity": "exact at DPR1 and DPR2",
+    "browserAtlasColorTolerance": "at most one premultiplied color byte; exact alpha/bounds",
+    "limitations": [
+      "headless Chromium only",
+      "simulated mobile/CPU, not a real device",
+      "no deployed/CDN verification",
+      "RGBA-equivalent inventory, not RSS/GPU allocation"
+    ]
+  },
+  "deliveryRevalidation": {
+    "generatedAt": "2026-09-06T02:26:51.593Z",
+    "command": "just check",
+    "log": "/tmp/datamon-performance-delivery-check.log",
+    "passed": true,
+    "payloadUnchanged": true,
+    "comparatorAndBaselineUnchanged": true,
+    "review": "Parent source/evidence review completed for all six requirements; independent reviewer timed out and supplies no acceptance.",
+    "requirements": [
+      {
+        "requirement": "Truthful startup and completed network measurement",
+        "evidence": [
+          "scripts/perf-baseline.mjs",
+          "tests/browser/performance-regressions.spec.js: title readiness and saved-player tests"
+        ],
+        "passed": true
+      },
+      {
+        "requirement": "Smaller startup with accepted art and bounded fallbacks",
+        "evidence": [
+          "datamon/tools/gen_roster_atlas.py --check",
+          "scripts/verify-artifact.mjs",
+          "tests/browser/performance-regressions.spec.js: roster parity, stalled boot, missing atlas"
+        ],
+        "passed": true
+      },
+      {
+        "requirement": "Player-only movement residency and stale-load eviction",
+        "evidence": [
+          "tests/browser/performance-regressions.spec.js: browsing and stale-load tests",
+          "scripts/eval-locomotion.mjs: unchanged traversal/scoring"
+        ],
+        "passed": true
+      },
+      {
+        "requirement": "Static title and Agent caches preserve live behavior",
+        "evidence": [
+          "tests/browser/performance-regressions.spec.js: DPR1/DPR2 cache parity/invalidation",
+          "tests/browser/agent-arena.spec.js",
+          "scripts/perf-worlds.mjs"
+        ],
+        "passed": true
+      },
+      {
+        "requirement": "Released floor scratch and expanded retained-memory accounting",
+        "evidence": [
+          "tests/browser/performance-regressions.spec.js: released scratch",
+          "scripts/perf-worlds.mjs: all four configurations within resource bounds"
+        ],
+        "passed": true
+      },
+      {
+        "requirement": "Question Hub freezes covered world without breaking audio/input",
+        "evidence": [
+          "tests/browser/performance-regressions.spec.js: frozen clock/draws and resumed drawing",
+          "tests/browser/question-hub.spec.js",
+          "tests/browser/audio.spec.js",
+          "tests/browser/music.spec.js"
+        ],
+        "passed": true
+      }
+    ],
+    "cold": [
+      {
+        "profile": "desktop",
+        "run": 1,
+        "titleMs": 70.10000002384186,
+        "requests": 78,
+        "transferBytes": 1611307,
+        "walkSlugs": 0
+      },
+      {
+        "profile": "desktop",
+        "run": 2,
+        "titleMs": 59.39999997615814,
+        "requests": 78,
+        "transferBytes": 1611307,
+        "walkSlugs": 0
+      },
+      {
+        "profile": "desktop",
+        "run": 3,
+        "titleMs": 59.10000002384186,
+        "requests": 78,
+        "transferBytes": 1611307,
+        "walkSlugs": 0
+      },
+      {
+        "profile": "retina",
+        "run": 1,
+        "titleMs": 84.5,
+        "requests": 98,
+        "transferBytes": 1638365,
+        "walkSlugs": 0
+      },
+      {
+        "profile": "retina",
+        "run": 2,
+        "titleMs": 85.89999997615814,
+        "requests": 98,
+        "transferBytes": 1638365,
+        "walkSlugs": 0
+      },
+      {
+        "profile": "retina",
+        "run": 3,
+        "titleMs": 81.89999997615814,
+        "requests": 98,
+        "transferBytes": 1638365,
+        "walkSlugs": 0
+      },
+      {
+        "profile": "returning-retina",
+        "run": 1,
+        "titleMs": 86.60000002384186,
+        "requests": 98,
+        "transferBytes": 1638365,
+        "walkSlugs": 0
+      },
+      {
+        "profile": "returning-retina",
+        "run": 2,
+        "titleMs": 87.09999990463257,
+        "requests": 98,
+        "transferBytes": 1638365,
+        "walkSlugs": 0
+      },
+      {
+        "profile": "returning-retina",
+        "run": 3,
+        "titleMs": 88.29999995231628,
+        "requests": 98,
+        "transferBytes": 1638365,
+        "walkSlugs": 0
+      },
+      {
+        "profile": "slow-mobile",
+        "run": 1,
+        "titleMs": 10325,
+        "requests": 98,
+        "transferBytes": 1638365,
+        "walkSlugs": 0
+      },
+      {
+        "profile": "slow-mobile",
+        "run": 2,
+        "titleMs": 10331.100000023842,
+        "requests": 98,
+        "transferBytes": 1638365,
+        "walkSlugs": 0
+      },
+      {
+        "profile": "slow-mobile",
+        "run": 3,
+        "titleMs": 10308.900000095367,
+        "requests": 98,
+        "transferBytes": 1638365,
+        "walkSlugs": 0
+      }
+    ],
+    "world": [
+      {
+        "dpr": 1,
+        "cpu": 1,
+        "titleP95": 10.199999999999818,
+        "agentP95": 9.899999999997817,
+        "effectsP95": 10.099999999998545
+      },
+      {
+        "dpr": 2,
+        "cpu": 1,
+        "titleP95": 9.700000000000017,
+        "agentP95": 10.299999999999272,
+        "effectsP95": 10.200000000000728
+      },
+      {
+        "dpr": 2,
+        "cpu": 4,
+        "titleP95": 10.200000000000045,
+        "agentP95": 10.200000000000728,
+        "effectsP95": 10.299999999999272
+      },
+      {
+        "dpr": 2,
+        "cpu": 8,
+        "titleP95": 10.199999999999818,
+        "agentP95": 17.200000000000728,
+        "effectsP95": 10.400000000001455
+      }
+    ],
+    "peakImageCanvasBytes": 83514576
+  }
+}

@@ -40,7 +40,12 @@ async function startServer() {
 async function setup(page, profile, slug="julien-hovan") {
   await page.goto(URL);
   await page.waitForFunction(()=>{try{return(0,eval)("state")==="title"&&(0,eval)("officeMapCv")!==null;}catch(_){return false;}});
-  await page.keyboard.press("Enter");await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  // Select the evaluated subject before confirmation. Movement is now player-only;
+  // replacing a different live player mid-load would intentionally cancel their requests.
+  // Traversal workload, timing window, profiles and scoring policy are unchanged.
+  await page.evaluate(slug=>(0,eval)("setSelect")((0,eval)("ROSTER").indexOf(slug)),slug);
+  await page.keyboard.press("Enter");
   await page.waitForFunction(()=>(0,eval)("state")==="dialogue");await page.keyboard.press("Escape");
   await page.waitForFunction(()=>(0,eval)("state")==="overworld");
   await page.evaluate(async ({profileName,slug})=>{

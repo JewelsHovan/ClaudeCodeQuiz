@@ -1,7 +1,10 @@
 {
   "coldTitleMs": 2500,
-  "requestCount": 194,
-  "transferBytes": 3000000,
+  "requestCount": 110,
+  "transferBytes": 1750000,
+  "slowNetworkTitleMs": 11000,
+  "imageCanvasBudgetMiB": 80,
+  "rendererCacheBudgetMiB": 8,
   "residentWalkSlugs": 0,
   "residentWalkFrames": 0,
   "agentArenaFrameP95Ms": 16.7,

@@ -2,6 +2,8 @@
 
 **Audited:** 2026-09-05 · commit `5af9fa9` · Chromium `149.0.7827.55`
 
+**Follow-up:** all six recommendations are addressed in [Performance improvements](datamon-performance-improvements.md). Measurements below remain the historical pre-change baseline.
+
 ## Verdict
 
 **Fast on this desktop, but the green performance checks hide meaningful loading, memory, and slow-device rendering problems.** Prioritize truthful startup measurement, bounded character prefetch, and the title's critical asset path before micro-optimizing gameplay JavaScript.

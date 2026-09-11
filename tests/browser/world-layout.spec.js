@@ -84,7 +84,7 @@ test.describe("High-detail campus layout and readable instrumentation", () => {
           if(data[i]!==data[j]||data[i+1]!==data[j+1]||data[i]!==data[k]||data[i+2]!==data[l+2])detailed++;
         }}return{detailed,sampled};
       };
-      return {height:ge("STANDING_CHARACTER_HEIGHT"),drawCalls,stat,hud,officeDetail:logicalDetail(ge("floorTex"))};
+      return {height:ge("STANDING_CHARACTER_HEIGHT"),drawCalls,stat,hud,officeDetail:logicalDetail(ge("officeMapCv"))};
     });
     expect(office.height).toBe(56);
     expect(office.drawCalls.filter(([,height])=>Math.abs(height-56)<0.01).length).toBeGreaterThanOrEqual(3);

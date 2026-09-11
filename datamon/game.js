@@ -377,22 +377,57 @@ if (typeof DatamonWorldArt !== "undefined") {
 }
 const walkMiniCache = {}; // walk-frame key+devicesize -> HQ-downscaled canvas
 
+const ASSET_TIMEOUT_MS = 12000;
+function fetchAsset(src, options) {
+  return fetch(src, Object.assign({ signal: AbortSignal.timeout(ASSET_TIMEOUT_MS) }, options));
+}
 function loadOne(src, store, slug) {
   return new Promise(resolve => {
     const img = new Image();
-    img.onload = () => { store[slug] = img; resolve(); };
-    img.onerror = () => { store[slug] = null; resolve(); };
+    let settled = false;
+    const timer = setTimeout(() => finish(null), ASSET_TIMEOUT_MS);
+    function finish(image) {
+      if (settled) return;
+      settled = true; clearTimeout(timer); img.onload = img.onerror = null;
+      if (!image) img.removeAttribute("src");
+      store[slug] = image; resolve(image);
+    }
+    img.onload = () => finish(img);
+    img.onerror = () => finish(null);
     img.src = src;
   });
 }
 
-function loadImages() {
-  // Headshots are never requested at runtime (privacy/package guard #044).
-  // Portraits are lazy-loaded via DatamonWorldArt on first use.
-  // Sprites remain eager (needed for overworld NPC rendering).
-  return Promise.all(ROSTER.map(slug =>
-    loadOne(`sprites/${slug}.png`, sprites, slug)
-  ));
+// The exact accepted roster in one lossless request. No full trainer PNGs are needed
+// for the title, selection grid or world minis. Large showcases/battles load on demand.
+const rosterAtlasStore = {};
+let rosterAtlasEntries = new Map();
+const spriteLoads = {};
+function loadTrainerSprite(slug) {
+  if (!ROSTER.includes(slug)) return Promise.resolve(null);
+  if (!spriteLoads[slug]) spriteLoads[slug] = loadOne(`sprites/${slug}.png`, sprites, slug);
+  return spriteLoads[slug];
+}
+function loadImages() { return Promise.all(ROSTER.map(loadTrainerSprite)); }
+function loadRosterAtlas() {
+  return fetchAsset("roster-atlas.json").then(r => r.ok ? r.json() : null).then(async manifest => {
+    if (!manifest || manifest.schemaVersion !== 1 || manifest.file !== "roster-atlas.webp" ||
+        manifest.cell !== 256 || manifest.width !== 2048 || manifest.height !== 1280 ||
+        !Array.isArray(manifest.entries) || manifest.entries.length !== ROSTER.length ||
+        !manifest.entries.every((e,i) => e.slug === ROSTER[i] && e.x === i % 8 * 256 && e.y === Math.floor(i/8) * 256 &&
+          e.bounds && [e.bounds.x,e.bounds.y,e.bounds.w,e.bounds.h].every(Number.isInteger) &&
+          e.bounds.x >= 0 && e.bounds.y >= 0 && e.bounds.w > 0 && e.bounds.h > 0 && e.bounds.x+e.bounds.w <= 256 && e.bounds.y+e.bounds.h <= 256)) return;
+    const image = await loadOne("roster-atlas.webp", rosterAtlasStore, "roster");
+    if (!image || image.naturalWidth !== manifest.width || image.naturalHeight !== manifest.height) {
+      rosterAtlasStore.roster = null; return;
+    }
+    rosterAtlasEntries = new Map(manifest.entries.map(e => [e.slug,e]));
+  }).catch(() => { rosterAtlasStore.roster = null; });
+}
+function trainerSource(slug) {
+  if (sprites[slug]) return {image:sprites[slug],x:0,y:0,w:256,h:256};
+  const entry = rosterAtlasEntries.get(slug), atlas = rosterAtlasStore.roster;
+  return entry && atlas ? {image:atlas,x:entry.x,y:entry.y,w:256,h:256,bounds:entry.bounds} : null;
 }
 
 // AI-generated 4-direction walk-cycle frames (PRD: real walk/run animation). Each animated
@@ -406,34 +441,55 @@ const walkAnimLoads = {}; // slug -> in-flight/completed Promise (deduplicates h
 const locomotionPilot = {}; // bounded pilot slug -> authored eight-frame walk/run + metadata
 const LOCOMOTION_PILOT_SLUGS = new Set(["julien-hovan", "veronica-marallag", "alex-andrianavalontsalama"]);
 const WALK_DIRS = ["down", "up", "left", "right"];
-
-function loadLocomotionPilot(slug) {
+let walkLoadRecord = null;
+function clearWalkAssets() {
+  if (walkLoadRecord) {
+    walkLoadRecord.controller.abort();
+    for (const cancel of walkLoadRecord.cancelImages) cancel();
+  }
+  walkLoadRecord = null;
+  for (const store of [walkAnim, walkAnimMeta, walkAnimLoads, locomotionPilot, walkMiniCache]) {
+    for (const key of Object.keys(store)) delete store[key];
+  }
+}
+function loadWalkFrame(src, record) {
+  return new Promise(resolve => {
+    const image = new Image(); let settled = false;
+    const timer = setTimeout(() => finish(null), ASSET_TIMEOUT_MS);
+    function finish(value) {
+      if (settled) return;
+      settled = true; clearTimeout(timer); image.onload = image.onerror = null;
+      record.cancelImages.delete(cancel);
+      if (!value) image.removeAttribute("src");
+      resolve(record === walkLoadRecord ? value : null);
+    }
+    function cancel() { finish(null); }
+    record.cancelImages.add(cancel);
+    image.onload = () => finish(image); image.onerror = cancel; image.src = src;
+  });
+}
+function loadLocomotionPilot(slug, record) {
   if (!LOCOMOTION_PILOT_SLUGS.has(slug)) return Promise.resolve();
-  return fetch(`sprites-locomotion-pilot/${slug}/manifest.json`)
+  return fetchAsset(`sprites-locomotion-pilot/${slug}/manifest.json`, { signal: AbortSignal.any([record.controller.signal, AbortSignal.timeout(ASSET_TIMEOUT_MS)]) })
     .then(function(response) { return response.ok ? response.json() : null; })
     .then(function(raw) {
       var manifest = typeof DatamonLocomotion !== "undefined"
         ? DatamonLocomotion.normalizePilotManifest(raw) : null;
-      if (!manifest) return;
+      if (!manifest || record !== walkLoadRecord) return;
       var jobs = [], refs = [];
       ["idle", "walk", "run"].forEach(function(motion) {
         WALK_DIRS.forEach(function(direction) {
           var count = motion === "idle" ? manifest.idleFrameCount : manifest.frameCount;
           for (var index = 0; index < count; index++) {
             refs.push({ motion: motion, direction: direction, index: index });
-            jobs.push(new Promise(function(resolve) {
-              var image = new Image();
-              image.onload = function() { resolve(image); };
-              image.onerror = function() { resolve(null); };
-              image.src = motion === "idle"
-                ? `sprites-locomotion-pilot/${slug}/idle_${direction}.png`
-                : `sprites-locomotion-pilot/${slug}/${motion}_${direction}_${index}.png`;
-            }));
+            jobs.push(loadWalkFrame(motion === "idle"
+              ? `sprites-locomotion-pilot/${slug}/idle_${direction}.png`
+              : `sprites-locomotion-pilot/${slug}/${motion}_${direction}_${index}.png`, record));
           }
         });
       });
       return Promise.all(jobs).then(function(images) {
-        if (images.some(function(image) { return !image; })) return;
+        if (record !== walkLoadRecord || images.some(function(image) { return !image; })) return;
         var motions = { idle: { down: [], up: [], left: [], right: [] }, walk: { down: [], up: [], left: [], right: [] }, run: { down: [], up: [], left: [], right: [] } };
         for (var i = 0; i < images.length; i++) {
           var ref = refs[i], frame = images[i];
@@ -450,23 +506,24 @@ function loadLocomotionPilot(slug) {
 function loadWalkAnim(slug) {
   if (!slug || !ROSTER.includes(slug)) return Promise.resolve();
   if (walkAnimLoads[slug]) return walkAnimLoads[slug];
+  clearWalkAssets();
+  const record = { slug, controller: new AbortController(), cancelImages: new Set() };
+  walkLoadRecord = record;
   walkAnim[slug] = { down: [], up: [], left: [], right: [] };
-  var metadataLoad = fetch(`sprites-walk/${slug}/manifest.json`)
+  var metadataLoad = fetchAsset(`sprites-walk/${slug}/manifest.json`, { signal: AbortSignal.any([record.controller.signal, AbortSignal.timeout(ASSET_TIMEOUT_MS)]) })
     .then(function(response) { return response.ok ? response.json() : null; })
     .then(function(raw) {
-      walkAnimMeta[slug] = typeof DatamonLocomotion !== "undefined"
+      if (record === walkLoadRecord) walkAnimMeta[slug] = typeof DatamonLocomotion !== "undefined"
         ? DatamonLocomotion.normalizeAnchorManifest(raw) : null;
     })
-    .catch(function() { walkAnimMeta[slug] = null; });
+    .catch(function() { if (record === walkLoadRecord) walkAnimMeta[slug] = null; });
   var frameLoads = WALK_DIRS.flatMap(dir =>
-    [0, 1, 2, 3].map(i => new Promise(resolve => {
-      const img = new Image();
-      img.onload = () => { walkAnim[slug][dir][i] = img; resolve(); };
-      img.onerror = () => { resolve(); };
-      img.src = `sprites-walk/${slug}/${dir}_${i}.png`;
+    [0, 1, 2, 3].map(i => loadWalkFrame(`sprites-walk/${slug}/${dir}_${i}.png`, record).then(image => {
+      if (record === walkLoadRecord && image) walkAnim[slug][dir][i] = image;
     }))
   );
-  walkAnimLoads[slug] = Promise.all([metadataLoad, loadLocomotionPilot(slug), ...frameLoads]);
+  // Completed promises retain no image arrays; stale completions cannot refill an old slug.
+  walkAnimLoads[slug] = Promise.all([metadataLoad, loadLocomotionPilot(slug, record), ...frameLoads]).then(() => undefined);
   return walkAnimLoads[slug];
 }
 
@@ -675,7 +732,7 @@ const WAYFINDING_IDS = Object.freeze([
   "door-context-surround", "door-library-surround", "door-battle-surround",
 ]);
 function loadProps() {
-  return fetch("props/manifest.json")
+  return fetchAsset("props/manifest.json")
     .then(r => (r.ok ? r.json() : []))
     .then(list => {
       propManifest = Array.isArray(list) ? list : [];
@@ -686,7 +743,7 @@ function loadProps() {
 }
 
 function loadStudyProps() {
-  return fetch("props-study/manifest.json")
+  return fetchAsset("props-study/manifest.json")
     .then(r => (r.ok ? r.json() : { entries: [] }))
     .then(manifest => {
       studyPropManifest = manifest && Array.isArray(manifest.entries)
@@ -700,7 +757,7 @@ function loadStudyProps() {
 // Books (#027): load books.json for the in-game reader. Mirrors loadLibraryAssets() crash-safety.
 // On missing/malformed/network error: loadedBooks stays [] — never rejects boot Promise.all.
 function loadBooks() {
-  return fetch("library/books.json")
+  return fetchAsset("library/books.json")
     .then(r => (r.ok ? r.json() : []))
     .then(data => { if (Array.isArray(data)) loadedBooks = data; })
     .catch(() => { loadedBooks = []; });
@@ -708,7 +765,7 @@ function loadBooks() {
 
 // Matching pairs (#029): mirrors loadBooks() for crash-safety.
 function loadPairs() {
-  return fetch("library/pairs.json")
+  return fetchAsset("library/pairs.json")
     .then(r => (r.ok ? r.json() : []))
     .then(data => { if (Array.isArray(data)) loadedPairs = data; })
     .catch(() => { loadedPairs = []; });
@@ -716,7 +773,7 @@ function loadPairs() {
 
 // Cloze items (#029): mirrors loadBooks() for crash-safety.
 function loadCloze() {
-  return fetch("library/cloze.json")
+  return fetchAsset("library/cloze.json")
     .then(r => (r.ok ? r.json() : []))
     .then(data => { if (Array.isArray(data)) loadedCloze = data; })
     .catch(() => { loadedCloze = []; });
@@ -725,7 +782,7 @@ function loadCloze() {
 // Diagram layouts (#030): mirrors loadCloze() for crash-safety. Per-piece sprites (if present)
 // load via loadLibraryAssets() into libStore; missing sprites degrade to labelled boxes downstream.
 function loadDiagrams() {
-  return fetch("library/diagrams.json")
+  return fetchAsset("library/diagrams.json")
     .then(r => (r.ok ? r.json() : []))
     .then(data => { if (Array.isArray(data)) loadedDiagrams = data; })
     .catch(() => { loadedDiagrams = []; });
@@ -735,7 +792,7 @@ function loadDiagrams() {
 // On file:// protocol or any network error: libManifest = [], libStore stays empty,
 // buildLibraryMapCanvas() degrades to drawn-box fallbacks — never rejects the boot Promise.all.
 function loadLibraryAssets() {
-  return fetch("library/assets/manifest.json")
+  return fetchAsset("library/assets/manifest.json")
     .then(r => (r.ok ? r.json() : []))
     .then(list => {
       libManifest = Array.isArray(list) ? list : [];
@@ -778,19 +835,12 @@ function normalizeWayfindingManifest(manifest) {
   return normalized;
 }
 function loadWayfindingImage(entry) {
-  return new Promise(function(resolve) {
-    var image = new Image();
-    image.onload = function() {
-      var valid = image.naturalWidth === entry.sourceWidthPx && image.naturalHeight === entry.sourceHeightPx;
-      wayfindingStore[entry.id] = valid ? image : null;
-      resolve();
-    };
-    image.onerror = function() { wayfindingStore[entry.id] = null; resolve(); };
-    image.src = "props-wayfinding/" + entry.file;
+  return loadOne("props-wayfinding/" + entry.file, wayfindingStore, entry.id).then(function(image) {
+    if (!image || image.naturalWidth !== entry.sourceWidthPx || image.naturalHeight !== entry.sourceHeightPx) wayfindingStore[entry.id] = null;
   });
 }
 function loadWayfindingAssets() {
-  return fetch("props-wayfinding/manifest.json")
+  return fetchAsset("props-wayfinding/manifest.json")
     .then(function (response) { return response.ok ? response.json() : null; })
     .then(function (manifest) {
       wayfindingManifest = normalizeWayfindingManifest(manifest);
@@ -811,14 +861,14 @@ function spriteMini(slug, size) {
   const dpx = Math.max(1, Math.round(size * scale));   // device pixels
   const key = slug + ":" + dpx;
   if (miniCache[key]) return miniCache[key];
-  const img = sprites[slug];
-  if (!img) return null;
+  const source = trainerSource(slug);
+  if (!source) return null;
   const cv = document.createElement("canvas");
   cv.width = dpx; cv.height = dpx;
   const c = cv.getContext("2d");
   c.imageSmoothingEnabled = true;
   c.imageSmoothingQuality = "high";
-  c.drawImage(img, 0, 0, dpx, dpx);
+  c.drawImage(source.image, source.x, source.y, source.w, source.h, 0, 0, dpx, dpx);
   miniCache[key] = cv;
   return cv;
 }
@@ -899,7 +949,7 @@ const LIBRARY_DOOR_TILE        = [18, 23];      // "L" in library south wall
 const LIBRARY_ENTRY            = [18, 22];      // land here entering library
 const BATTLE_ROOM_DOOR_TILE    = [18, 23];      // "A" in battle room south wall
 const BATTLE_ROOM_ENTRY        = [18, 22];      // land here entering battle room
-let state = "title";    // title | select | overworld | dialogue | transition | battle | victory | search | minigame
+let state = "loading";  // loading | title | select | overworld | dialogue | transition | battle | victory | search | minigame
 let selectIdx = 0;
 let player = { slug: null, x: 18, y: 16, fx: 18, fy: 16, dir: "down", moving: false, hp: MAX_HP, dispHp: MAX_HP, seated: null };
 let battleTransition = null;   // {npc, t} — flash + iris wipe into battle
@@ -1282,6 +1332,7 @@ function spawnPoof(b) {
 }
 
 function startBattle(npc, portraitLed) {
+  loadTrainerSprite(player.slug); loadTrainerSprite(npc.slug);
   // Player cannot be seated during battle (#047).
   leaveSeat();
   clearMentorReview(); // #049: modal must not survive battle start
@@ -2877,6 +2928,7 @@ function handleKey(k) {
       const s = getSave();
       if (s) {
         player.slug = s.player;
+        loadTrainerSprite(player.slug);
         restorePlayerHp(true);
         player.seated = null; certConsoleOpen = false; clearMentorReview(); resetDialogueLifecycle();
         loadWalkAnim(player.slug); // prewarmed at boot; idempotent if already complete
@@ -2889,7 +2941,6 @@ function handleKey(k) {
         } else { state = "overworld"; bufferedDir = null; turnStartMs = null; }
       } else {
         state = "select";
-        loadWalkAnim(ROSTER[selectIdx]);
         announceSelectProfile();
       }
     }
@@ -2901,6 +2952,7 @@ function handleKey(k) {
         localStorage.removeItem(SAVE_KEY);
       }
       saveCache = undefined;
+      clearWalkAssets();
       defeated = new Set();
       questionStats = {};
       seenCounter = 0; _evidenceRevision++; clearMentorReview(); resetDialogueLifecycle();
@@ -2923,6 +2975,7 @@ function handleKey(k) {
     if (k === "Enter" || k === " ") {
       sfx.confirm();
       player.slug = ROSTER[selectIdx];
+      loadTrainerSprite(player.slug);
       loadWalkAnim(player.slug);
       gameplayIdleBootstrap(player.slug);
       resetSitAssetCache();
@@ -5488,10 +5541,12 @@ function drawTrainer(slug, cx, baseY, h, bobAmp, poseParams, mirrorPose, imageOv
   if (mirrorPose) { dx = -dx; rotation = -rotation; }
 
   var image = imageOverride || sprites[slug];
-  var bounds = image && typeof DatamonBattlePresentation !== "undefined"
+  var atlasSource = !image ? trainerSource(slug) : null;
+  if (atlasSource) image = atlasSource.image;
+  var bounds = atlasSource ? atlasSource.bounds : image && typeof DatamonBattlePresentation !== "undefined"
     ? DatamonBattlePresentation.computeAlphaBounds(image) : null;
-  var sourceX = bounds ? bounds.x : 0;
-  var sourceY = bounds ? bounds.y : 0;
+  var sourceX = (atlasSource ? atlasSource.x : 0) + (bounds ? bounds.x : 0);
+  var sourceY = (atlasSource ? atlasSource.y : 0) + (bounds ? bounds.y : 0);
   var sourceW = bounds ? bounds.w : (image ? image.naturalWidth : 64);
   var sourceH = bounds ? bounds.h : (image ? image.naturalHeight : 64);
   var visibleW = h * sourceW / Math.max(1, sourceH);
@@ -5512,7 +5567,13 @@ function drawTrainer(slug, cx, baseY, h, bobAmp, poseParams, mirrorPose, imageOv
 }
 
 // ---------- Scenes ----------
-function drawTitle() {
+let titleBackdropCv = null, titleBackdropMap = null, titleBackdropSave = null;
+let titleBackdropBuilds = 0;
+function releaseTitleBackdrop() {
+  if (titleBackdropCv) titleBackdropCv.width = titleBackdropCv.height = 0;
+  titleBackdropCv = titleBackdropMap = titleBackdropSave = null;
+}
+function drawTitleBase(ctx) {
   const save = getSave();
   const wins = save?.defeated?.length || 0;
   const accent = "#fbbf24", coral = "#f9735b", teal = "#2dd4bf";
@@ -5571,6 +5632,21 @@ function drawTitle() {
   ctx.fillStyle = "#94a3b8"; ctx.font = "10px monospace";
   ctx.fillText(save ? `${wins}/${ROSTER.length - 1} CONSULTANTS BESTED` : "FIVE DOMAINS AWAIT CERTIFICATION", bx + 22, by + 91);
 
+}
+function drawTitle() {
+  const save = getSave();
+  if (!titleBackdropCv || titleBackdropMap !== mapCv || titleBackdropSave !== save) {
+    releaseTitleBackdrop();
+    titleBackdropCv = document.createElement("canvas");
+    titleBackdropCv.width = canvas.width; titleBackdropCv.height = canvas.height;
+    const target = titleBackdropCv.getContext("2d");
+    target.setTransform(scale,0,0,scale,0,0); target.imageSmoothingEnabled = false;
+    drawTitleBase(target);
+    titleBackdropMap = mapCv; titleBackdropSave = save; titleBackdropBuilds++;
+  }
+  ctx.drawImage(titleBackdropCv,0,0,CANVAS_W,CANVAS_H);
+  ctx.textBaseline = "alphabetic";
+  const coral = "#f9735b", accent = "#fbbf24";
   // One orchestrated call-to-action instead of scattered blinking decorations.
   const pulse = 0.58 + Math.sin(frame / 14) * 0.22;
   const ctaX = 258, ctaY = 365, ctaW = 284, ctaH = 48;
@@ -5634,7 +5710,7 @@ function setSelect(i, silent) {
   if (i === selectIdx) return;
   selectIdx = i;
   selChangedAt = frame;
-  loadWalkAnim(ROSTER[selectIdx]); // browsing doubles as a tiny, deduplicated prefetch
+  // The lossless atlas supplies the full-size showcase; no per-selection prefetch.
   announceSelectProfile();
   if (!silent) sfx.select();
 }
@@ -5860,8 +5936,8 @@ function drawSelect() {
   const breathe = 1 + Math.sin(frame / 17) * 0.008;
   const h = 240 * (0.92 + 0.08 * ease) * breathe;
   ctx.globalAlpha = 0.25 + 0.75 * ease;
-  const img = sprites[ROSTER[selectIdx]];
-  if (img) ctx.drawImage(img, px(cx - h / 2 + slide), px(baseY - h + bob), h, h);
+  const source = trainerSource(ROSTER[selectIdx]);
+  if (source) ctx.drawImage(source.image, source.x, source.y, source.w, source.h, px(cx - h / 2 + slide), px(baseY - h + bob), h, h);
   else ctx.drawImage(pixelHead(ROSTER[selectIdx], 128), px(cx - 70 + slide), px(baseY - 150 + bob), 140, 140);
   ctx.globalAlpha = 1;
 
@@ -6440,6 +6516,9 @@ function buildMapCanvas() {
     drawWayfindingSurround(c, surround, surroundGeometry);
   }
 
+  // Scratch is used only during this bake; do not retain a third 13.5 MiB map surface.
+  if (floorTex) floorTex.width = floorTex.height = 0;
+  floorTex = null; floorTexKey = null;
   return cv;
 }
 
@@ -6725,6 +6804,7 @@ function overworldHudGeometry(mapName) {
 
 function drawOverworld() {
   if (!mapCv) return;
+  performanceState.worldDraws++;
   // Focus follows the player normally; during a search scout it pans to the target NPC
   // (phase out→hold) then back to the player (phase back) before returning control.
   const panToNpc = scout && scout.phase !== "back";
@@ -7646,6 +7726,46 @@ function drawDialogue() {
   ctx.fillText("ENTER/SPACE advance  ·  ↑↓ choose  ·  1–6 direct select  ·  ESC skip/close", 26, 580);
 }
 
+// Read-only lifecycle and resource diagnostics. Invoked by tests/tools, not per frame.
+const performanceState = { bootReadyMs: null, firstTitleDrawMs: null, firstPlayableDrawMs: null, worldDraws: 0 };
+function resourceInventory() {
+  const seen = new Set(), groups = {};
+  function visit(value, group) {
+    if (!value || typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+    if (value instanceof HTMLCanvasElement || value instanceof HTMLImageElement) {
+      const w = value instanceof HTMLImageElement ? value.naturalWidth : value.width;
+      const h = value instanceof HTMLImageElement ? value.naturalHeight : value.height;
+      groups[group] = (groups[group] || 0) + w * h * 4;
+    } else if (value instanceof Map) { for (const v of value.values()) visit(v, group); }
+    else if (!(value instanceof Promise) && !(value instanceof Set)) {
+      for (const v of Object.values(value)) visit(v, group);
+    }
+  }
+  visit([officeMapCv,libraryMapCv,battleRoomMapCv],"maps"); visit(floorTex,"floor");
+  visit(canvas,"display"); visit(titleBackdropCv,"title");
+  visit(rosterAtlasStore,"rosterAtlas"); visit(sprites,"trainers");
+  visit([tileStore,propStore,studyPropStore,wayfindingStore,libStore],"worldImages");
+  visit([walkAnim,locomotionPilot,idleImageState,_sittingAssetStore],"characterImages");
+  visit([pixelCache,miniCache,walkMiniCache,monCache],"minis");
+  if (typeof DatamonWorldArt !== "undefined") {
+    for (const slug of ROSTER) visit(DatamonWorldArt.getPortrait(slug),"portraits");
+    for (const scene of ["office","library","battleRoom"]) for (const entry of DatamonWorldArt.entriesForScene(scene)) {
+      visit(DatamonWorldArt.getHDAsset(entry.slug,entry.kind,scene)?.image,"hdImages");
+    }
+  }
+  const agentBytes = typeof AgentArena !== "undefined" ? AgentArena.getDiagnostics().backgroundBytes || 0 : 0;
+  const arena = DatamonBattleArena.getDiagnostics(), mons = DatamonBattlePresentation.getDiagnostics();
+  const presentationBytes = agentBytes + arena.residentDecodedBytes + arena.fallbackDecodedBytes + mons.loadedSheetDecodedBytes + mons.fallbackDecodedBytes + mons.alphaScanBytes;
+  return { groups, mapBytes:groups.maps || 0, floorBytes:groups.floor || 0,
+    rendererBytes:(groups.title || 0)+agentBytes,
+    imageCanvasBytes:Object.values(groups).reduce((n,v)=>n+v,0)+presentationBytes,
+    audioDecodedBytes:DatamonAudio.getDiagnostics().decodedBytes,
+    mapCount:[officeMapCv,libraryMapCv,battleRoomMapCv].filter(Boolean).length };
+}
+window.DatamonPerformance = Object.freeze({ getDiagnostics: () => ({ ...performanceState,
+  titleBackdropBuilds, walkSlugs:Object.keys(walkAnim).length, memory:resourceInventory() }) });
+
 // ---------- Main loop ----------
 let lastT = performance.now();
 function drawSearch() {
@@ -7747,6 +7867,16 @@ function resolveAudioSnapshot() {
 function loop(t) {
   const dt = Math.min(0.05, (t - lastT) / 1000); // clamp caps tab-refocus dt spikes
   lastT = t;
+  if (questionHubOpen()) {
+    // The native modal covers the world. Freeze simulation AND canvas drawing, while
+    // the independent audio scheduler keeps the existing focused music/ambience.
+    if (typeof DatamonAudio !== "undefined") DatamonAudio.setSnapshot(resolveAudioSnapshot());
+    DatamonQuestionHub.sync(false, hubMissedCount);
+    requestAnimationFrame(loop);
+    return;
+  }
+  if (state !== "title" && titleBackdropCv) releaseTitleBackdrop();
+  if (!(state === "battle" && battle?.agentOps) && typeof AgentArena !== "undefined") AgentArena.releaseRenderCache();
   dtF = dt * 60;
   frame += dtF;
   // Advance the subtle seated idle at one frame/second (0.5 Hz full cycle).
@@ -7787,7 +7917,10 @@ function loop(t) {
   player.dispHp += (player.hp - player.dispHp) * (1 - Math.pow(0.88, dtF));
   if (Math.abs(player.hp - player.dispHp) < 0.6) player.dispHp = player.hp;
 
-  if (state === "title") drawTitle();
+  if (state === "title") {
+    drawTitle();
+    if (performanceState.firstTitleDrawMs === null) performanceState.firstTitleDrawMs = performance.now();
+  }
   else if (state === "select") drawSelect();
   else if (state === "overworld") drawOverworld();
   else if (state === "dialogue") { drawOverworld(); drawDialogue(); }
@@ -7802,6 +7935,9 @@ function loop(t) {
   // Mentor review is the final visual layer; no stale toast or navigation chrome can cover it.
   if (state === "overworld" && mentorReview) drawMentorReview();
 
+  if (performanceState.firstPlayableDrawMs === null && ["overworld","dialogue"].includes(state)) {
+    performanceState.firstPlayableDrawMs = performance.now();
+  }
   if (hubMissedRevision !== _evidenceRevision) {
     hubMissedRevision = _evidenceRevision;
     hubMissedCount = DatamonProgress.questionCatalog(QUESTION_BANK, questionStats, seenCounter, []).filter(function (r) { return r.missed; }).length;
@@ -7838,19 +7974,18 @@ var battlePresentationManifestPromise = (typeof DatamonBattlePresentation !== "u
   ? DatamonBattlePresentation.loadManifest() : Promise.resolve(null);
 var battleArenaManifestPromise = (typeof DatamonBattleArena !== "undefined")
   ? DatamonBattleArena.loadManifest() : Promise.resolve(null);
-// Prewarm only the saved player without delaying the title screen. A new run preloads its
-// highlighted character when character select opens.
-loadWalkAnim(getSave()?.player);
+// Movement is confirmation-only, including returning saves. Title readiness never races
+// a hidden saved-player prewarm, and browsing cannot download the entire walk roster.
 // Boot: load office assets + shared library assets (lib-door) but NOT full library.
 // Full library assets load lazily on first warp.
 Promise.all([
-  loadImages(), loadTiles(), loadProps(), loadStudyProps(),
+  loadRosterAtlas(), loadTiles(), loadProps(), loadStudyProps(),
   loadWayfindingAssets(),
   hdOfficePromise,
   battlePresentationManifestPromise,
   battleArenaManifestPromise,
   // Load only shared library dependencies needed by the office entrance
-  fetch("library/assets/manifest.json")
+  fetchAsset("library/assets/manifest.json")
     .then(r => (r.ok ? r.json() : []))
     .then(list => {
       libManifest = Array.isArray(list) ? list : [];
@@ -7865,5 +8000,7 @@ Promise.all([
   libraryMapCv = null;                    // first interaction loads data/art and builds once
   mapCv = officeMapCv;
   if (typeof DatamonWorldArt !== "undefined") DatamonWorldArt.activateScene("office");
+  performanceState.bootReadyMs = performance.now();
+  state = "title";
   requestAnimationFrame(loop);
 });

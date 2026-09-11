@@ -44,7 +44,7 @@ test.describe("Classic certification-stage presentation and Battlemon art", () =
     expect(observed.requests.filter(path => /^\/battlemons\/.*\.png$/.test(path))).toEqual([]);
     expect(await page.evaluate(() => window.DatamonBattlePresentation.getDiagnostics())).toEqual({
       manifestStatus:"accepted",manifestEntryCount:35,loadedSheetCount:0,inFlightSheetCount:0,
-      failedSheetCount:0,fallbackDomainCount:0,activeSheetCount:0,loadedSheetDecodedBytes:0,fallbackDecodedBytes:0,alphaCacheSize:0,
+      failedSheetCount:0,fallbackDomainCount:0,activeSheetCount:0,loadedSheetDecodedBytes:0,fallbackDecodedBytes:0,alphaCacheSize:0,alphaScanBytes:0,
     });
 
     const battle = await startClassic(page, "MCP");
@@ -69,6 +69,7 @@ test.describe("Classic certification-stage presentation and Battlemon art", () =
 
   test("all 37 trainer sources normalize to exact visible height and the reviewed stage geometry", async ({ page }) => {
     const observed = await boot(page);
+    await page.evaluate(() => (0,eval)("loadImages")()); // original sources are intentionally lazy
     const result = await page.evaluate(() => {
       const ge=(0,eval),context=ge("ctx"),originalDraw=context.drawImage,calls=[];
       context.drawImage=function(...args){calls.push(args);};

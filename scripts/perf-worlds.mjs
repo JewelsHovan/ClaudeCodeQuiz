@@ -8,6 +8,7 @@ import path from "node:path";
 const ROOT = path.resolve(import.meta.dirname, "..");
 const DIST = path.join(ROOT, "dist");
 const OUTPUT = path.join(ROOT, "test-results", "world-performance.json");
+const BUDGETS = JSON.parse(fs.readFileSync(path.join(import.meta.dirname,"performance-budgets.json"),"utf8"));
 const PORT = 8746;
 const BASE_URL = `http://127.0.0.1:${PORT}/`;
 const MATRIX = [
@@ -40,7 +41,7 @@ function percentile(values, fraction) {
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * fraction) - 1))] || 0;
 }
 
-async function frameSample(page, durationMs = 900) {
+async function frameSample(page, durationMs = 1800) {
   return page.evaluate(duration => new Promise(resolve => {
     const values = [];
     let first = null, previous = null;
@@ -205,9 +206,11 @@ async function sceneMetrics(page, scene) {
   const caches = await page.evaluate(() => {
     const ge = (0, eval);
     const values = [ge("officeMapCv"), ge("libraryMapCv"), ge("battleRoomMapCv")].filter(Boolean);
+    const memory = window.DatamonPerformance.getDiagnostics().memory;
     return {
+      memory,
       count: values.length,
-      mib: values.reduce((sum, canvas) => sum + canvas.width * canvas.height * 4, 0) / 1024 / 1024,
+      mib: (memory.mapBytes + memory.floorBytes) / 1024 / 1024,
       dimensions: values.map(canvas => [canvas.width, canvas.height, canvas.detailScale]),
     };
   });
@@ -236,6 +239,8 @@ try {
       try { return (0, eval)("state") === "title" && (0, eval)("officeMapCv") !== null; }
       catch (_) { return false; }
     }, null, { timeout: 15000 });
+    await page.waitForFunction(() => window.DatamonPerformance.getDiagnostics().firstTitleDrawMs > 0);
+    const title = { timing:await frameSample(page), memory:await page.evaluate(()=>DatamonPerformance.getDiagnostics().memory) };
     await page.keyboard.press("Enter"); await page.keyboard.press("Enter");
     await page.waitForFunction(() => (0, eval)("state") === "dialogue");
     const dialogue = await dialogueMetrics(page);
@@ -255,6 +260,13 @@ try {
     scenes.push(await sceneMetrics(page, "battleRoom"));
     const classicBattle = await classicBattleMetrics(page);
     const classicSequence = await sequentialClassicCacheMetrics(page, classicBattle.domain);
+    await page.evaluate(() => { const ge=(0,eval);ge("startBattle")(ge("npcs").find(n=>n.type==="AGENT")); });
+    await page.waitForLoadState("networkidle");
+    const agentBattle = { timing:await frameSample(page), memory:await page.evaluate(()=>DatamonPerformance.getDiagnostics().memory) };
+    await page.keyboard.press("1");
+    const answer = await page.evaluate(() => {const q=(0,eval)("battle.agentOps.question");return q.correct ?? q.a;});
+    await page.keyboard.press(String(answer+1));
+    const agentEffects = { timing:await frameSample(page), memory:await page.evaluate(()=>DatamonPerformance.getDiagnostics().memory) };
 
     const architectureRequests = requests.filter(value => value.includes("/environment/accepted/batch-architecture/"));
     const duplicateArchitectureRequests = [...new Set(architectureRequests)].filter(value => architectureRequests.filter(item => item === value).length > 1);
@@ -268,13 +280,13 @@ try {
     const duplicateBattlemonRequests = [...new Set(battlemonRequests)].filter(value => battlemonRequests.filter(item => item === value).length > 1);
     const battleArenaRequests = requests.filter(value => value.startsWith("/battle-arenas/"));
     const duplicateBattleArenaRequests = [...new Set(battleArenaRequests)].filter(value => battleArenaRequests.filter(item => item === value).length > 1);
-    const run = { ...config, scenes, dialogue, seatedHandoff, certificationConsole, mentorReview, classicBattle, classicSequence, errors, requestCount: requests.length,
+    const run = { ...config, title, agentBattle, agentEffects, scenes, dialogue, seatedHandoff, certificationConsole, mentorReview, classicBattle, classicSequence, errors, requestCount: requests.length,
       architectureRequests, duplicateArchitectureRequests, studyRequests, duplicateStudyRequests,
       idleRequests, duplicateIdleRequests,
       wayfindingRequests, duplicateWayfindingRequests, battlemonRequests, duplicateBattlemonRequests,
       battleArenaRequests, duplicateBattleArenaRequests };
     runs.push(run);
-    console.log(`DPR${config.dpr} CPU${config.cpu}x: ` + scenes.map(item => `${item.scene} p95=${item.timing.p95.toFixed(1)}ms cache=${item.caches.mib.toFixed(1)}MiB`).join(" | ") +
+    console.log(`DPR${config.dpr} CPU${config.cpu}x: title=${title.timing.p95.toFixed(1)}ms agent=${agentBattle.timing.p95.toFixed(1)}ms effects=${agentEffects.timing.p95.toFixed(1)}ms | ` + scenes.map(item => `${item.scene} p95=${item.timing.p95.toFixed(1)}ms cache=${item.caches.mib.toFixed(1)}MiB`).join(" | ") +
       ` | dialogue p95=${dialogue.timing.p95.toFixed(1)}ms` +
       ` | handoff p95=${seatedHandoff.timing.p95.toFixed(1)}ms` +
       ` | console p95=${certificationConsole.timing.p95.toFixed(1)}ms` +
@@ -303,6 +315,16 @@ for (const run of runs) {
   const expectedArenaRequests=1+1+run.classicSequence.encounters.length;
   if (run.battleArenaRequests.length !== expectedArenaRequests) violations.push(`DPR${run.dpr}/CPU${run.cpu}: expected ${expectedArenaRequests} arena manifest/background requests, got ${run.battleArenaRequests.length}`);
   const consoleBudget = run.cpu === 1 ? NORMAL_FRAME_P95_BUDGET_MS : STRESS_FRAME_P95_BUDGET_MS;
+  for(const [name,scene] of Object.entries({title:run.title,agentBattle:run.agentBattle,agentEffects:run.agentEffects})) {
+    if(scene.timing.samples<10 || scene.timing.p95>consoleBudget) violations.push(`DPR${run.dpr}/CPU${run.cpu}/${name}: frame p95 ${scene.timing.p95.toFixed(1)}ms > ${consoleBudget}, samples=${scene.timing.samples}`);
+  }
+  const allMemory=[run.title.memory,run.agentBattle.memory,run.agentEffects.memory,...run.scenes.map(s=>s.caches.memory)];
+  for(const memory of allMemory) {
+    if(memory.floorBytes!==0)violations.push(`DPR${run.dpr}/CPU${run.cpu}: persistent floor scratch ${memory.floorBytes}`);
+    if(memory.rendererBytes>BUDGETS.rendererCacheBudgetMiB*1048576)violations.push(`DPR${run.dpr}/CPU${run.cpu}: renderer cache exceeds ${BUDGETS.rendererCacheBudgetMiB}MiB`);
+    if(memory.imageCanvasBytes>BUDGETS.imageCanvasBudgetMiB*1048576)violations.push(`DPR${run.dpr}/CPU${run.cpu}: retained images/canvases ${(memory.imageCanvasBytes/1048576).toFixed(1)}MiB > ${BUDGETS.imageCanvasBudgetMiB}`);
+    if(memory.audioDecodedBytes>BUDGETS.audioMaxDecodedBytes)violations.push(`DPR${run.dpr}/CPU${run.cpu}: decoded audio budget exceeded`);
+  }
   if (!run.dialogue.loopAdvanced || !run.dialogue.stayedOpen || run.dialogue.script !== "certification-prologue-v1") violations.push(`DPR${run.dpr}/CPU${run.cpu}/dialogue: lifecycle failed`);
   if (run.dialogue.timing.p95 > consoleBudget) violations.push(`DPR${run.dpr}/CPU${run.cpu}/dialogue: frame p95 ${run.dialogue.timing.p95.toFixed(2)} ms > ${consoleBudget}`);
   if (!run.seatedHandoff.loopAdvanced || !run.seatedHandoff.converged || !run.seatedHandoff.facing || !run.seatedHandoff.cleaned || run.seatedHandoff.resident > 1) violations.push(`DPR${run.dpr}/CPU${run.cpu}/handoff: lifecycle/facing bound failed`);
@@ -335,6 +357,8 @@ for (const run of runs) {
 const summary = {
   generatedAt: new Date().toISOString(),
   cacheBudgetMiB: CACHE_BUDGET_MIB,
+  imageCanvasBudgetMiB:BUDGETS.imageCanvasBudgetMiB,
+  rendererCacheBudgetMiB:BUDGETS.rendererCacheBudgetMiB,
   battlePresentationBudgetMiB: BATTLE_PRESENTATION_BUDGET_MIB,
   classicFirstAuthoredPaintBudgetMs: CLASSIC_FIRST_AUTHORED_PAINT_BUDGET_MS,
   normalFrameP95BudgetMs: NORMAL_FRAME_P95_BUDGET_MS,
@@ -353,7 +377,7 @@ const summary = {
         sequentialMaxPresentationDecodedMiB: run.classicSequence.maxPresentationDecodedMiB },
     };
   })(),
-  allFrameP95: percentile(runs.flatMap(run => [run.certificationConsole.timing.p95, run.mentorReview.timing.p95, run.classicBattle.timing.p95, ...run.scenes.map(scene => scene.timing.p95)]), 0.95),
+  allFrameP95: percentile(runs.flatMap(run => [run.title.timing.p95, run.agentBattle.timing.p95, run.agentEffects.timing.p95, run.certificationConsole.timing.p95, run.mentorReview.timing.p95, run.classicBattle.timing.p95, ...run.scenes.map(scene => scene.timing.p95)]), 0.95),
 };
 fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
 fs.writeFileSync(OUTPUT, JSON.stringify(summary, null, 2) + "\n");

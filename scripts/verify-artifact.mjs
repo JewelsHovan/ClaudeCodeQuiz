@@ -147,6 +147,21 @@ if (JSON.stringify(rosterSlugs) !== JSON.stringify(EXPECTED_ROSTER)) {
   throw new Error("Packaged ROSTER must exactly match the accepted 37-person roster");
 }
 const canonicalRosterSlugs = [...EXPECTED_ROSTER];
+const rosterAtlas = JSON.parse(fs.readFileSync(path.join(DIST, "roster-atlas.json"), "utf8"));
+const atlasBytes = fs.readFileSync(path.join(DIST, "roster-atlas.webp"));
+if (rosterAtlas.schemaVersion !== 1 || rosterAtlas.file !== "roster-atlas.webp" || rosterAtlas.cell !== 256 ||
+    rosterAtlas.width !== 2048 || rosterAtlas.height !== 1280 || rosterAtlas.bytes !== atlasBytes.length ||
+    rosterAtlas.sha256 !== createHash("sha256").update(atlasBytes).digest("hex") ||
+    !Array.isArray(rosterAtlas.entries) || rosterAtlas.entries.length !== EXPECTED_ROSTER.length ||
+    !rosterAtlas.entries.every((entry,i) => entry.slug === EXPECTED_ROSTER[i] && entry.x === i % 8 * 256 &&
+      entry.y === Math.floor(i / 8) * 256 && entry.bounds &&
+      [entry.bounds.x,entry.bounds.y,entry.bounds.w,entry.bounds.h].every(Number.isInteger) &&
+      entry.bounds.x >= 0 && entry.bounds.y >= 0 && entry.bounds.w > 0 && entry.bounds.h > 0 &&
+      entry.bounds.x + entry.bounds.w <= 256 && entry.bounds.y + entry.bounds.h <= 256 &&
+      entry.sourceSha256 === createHash("sha256")
+        .update(fs.readFileSync(path.join(DIST,"sprites",entry.slug + ".png"))).digest("hex"))) {
+  throw new Error("Roster atlas differs from its manifest or accepted source sprites; regenerate it");
+}
 if (JSON.stringify(portraitSlugs) !== JSON.stringify(canonicalRosterSlugs)) {
   throw new Error("Packaged portrait slugs must exactly match ROSTER");
 }

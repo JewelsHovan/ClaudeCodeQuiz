@@ -392,6 +392,7 @@
       loadedSheetDecodedBytes: Object.keys(_sheetImages).length * SHEET_WIDTH * SHEET_HEIGHT * 4,
       fallbackDecodedBytes: Object.keys(_fallbackSheets).length * SHEET_WIDTH * SHEET_HEIGHT * 4,
       alphaCacheSize: _alphaBoundsCount,
+      alphaScanBytes: _alphaScanCanvas ? _alphaScanCanvas.width * _alphaScanCanvas.height * 4 : 0,
     });
   }
 

@@ -1,0 +1,455 @@
+{
+  "schemaVersion": 1,
+  "file": "roster-atlas.webp",
+  "cell": 256,
+  "width": 2048,
+  "height": 1280,
+  "sha256": "8601ed6f32d9c63494f0b804ddde6111f38413b33004d9d15c7820fa94a65d0a",
+  "bytes": 782932,
+  "entries": [
+    {
+      "slug": "alex-andrianavalontsalama",
+      "x": 0,
+      "y": 0,
+      "bounds": {
+        "x": 69,
+        "y": 0,
+        "w": 118,
+        "h": 256
+      },
+      "sourceSha256": "ffd6b3403801e4db8229af0e90b830d769bb3451b6badd966141f63da242092f"
+    },
+    {
+      "slug": "andrea-vreugdenhil",
+      "x": 256,
+      "y": 0,
+      "bounds": {
+        "x": 79,
+        "y": 0,
+        "w": 97,
+        "h": 256
+      },
+      "sourceSha256": "07df342c999834f206c289cf7f6c82c669485ce279fe141f11578c386aa2f6b8"
+    },
+    {
+      "slug": "antonia-nistor",
+      "x": 512,
+      "y": 0,
+      "bounds": {
+        "x": 75,
+        "y": 0,
+        "w": 106,
+        "h": 256
+      },
+      "sourceSha256": "980477e5ceb0b86cd76cd6b8c15ed4cfb0a5982759e9c99633966f10fc960f3c"
+    },
+    {
+      "slug": "aurelien-bouffanais",
+      "x": 768,
+      "y": 0,
+      "bounds": {
+        "x": 77,
+        "y": 0,
+        "w": 102,
+        "h": 256
+      },
+      "sourceSha256": "2fcbcf313e4453e9ca519e38e0edc90b4bc37d26a014bad6f6199807b2ceae6e"
+    },
+    {
+      "slug": "dana-domanko",
+      "x": 1024,
+      "y": 0,
+      "bounds": {
+        "x": 85,
+        "y": 0,
+        "w": 86,
+        "h": 256
+      },
+      "sourceSha256": "a5426dbcdd02b1deca85b0df8eef2ad1f7b7131976e16ee0446dc681cf9e593d"
+    },
+    {
+      "slug": "duc-an-nguyen",
+      "x": 1280,
+      "y": 0,
+      "bounds": {
+        "x": 73,
+        "y": 0,
+        "w": 110,
+        "h": 256
+      },
+      "sourceSha256": "0e63e7749051bb13cc190067bb35e4be6905277f3963fda24d7ea71c99608667"
+    },
+    {
+      "slug": "elina-gu",
+      "x": 1536,
+      "y": 0,
+      "bounds": {
+        "x": 86,
+        "y": 0,
+        "w": 83,
+        "h": 256
+      },
+      "sourceSha256": "f7c269bd99740d0b2d85c8a7967d96e85bead2bc6b3d3722518c42b996070219"
+    },
+    {
+      "slug": "emile-moffatt",
+      "x": 1792,
+      "y": 0,
+      "bounds": {
+        "x": 75,
+        "y": 0,
+        "w": 105,
+        "h": 256
+      },
+      "sourceSha256": "87c9200060b2e451bb94c8f6d34fc1deec0afe4462db7694d34ac207239aa385"
+    },
+    {
+      "slug": "ethan-pirso",
+      "x": 0,
+      "y": 256,
+      "bounds": {
+        "x": 75,
+        "y": 0,
+        "w": 106,
+        "h": 256
+      },
+      "sourceSha256": "6d512dcc8eefeccf08660f4454695ac94531707d8c43fcff2c8e6f4b8ed461ea"
+    },
+    {
+      "slug": "felicia-gorgacheva",
+      "x": 256,
+      "y": 256,
+      "bounds": {
+        "x": 81,
+        "y": 0,
+        "w": 93,
+        "h": 256
+      },
+      "sourceSha256": "368d19665531eb3d5d8b78783e0250dcf4ca949d28811890ad0f896990a302b4"
+    },
+    {
+      "slug": "francesco-finn",
+      "x": 512,
+      "y": 256,
+      "bounds": {
+        "x": 83,
+        "y": 0,
+        "w": 90,
+        "h": 256
+      },
+      "sourceSha256": "5bbe93140f0b87ee4bd1dfb96fe0ab4a929ed789e6e7df78e3eecc7a70b55884"
+    },
+    {
+      "slug": "guillaume-delmas-frenette",
+      "x": 768,
+      "y": 256,
+      "bounds": {
+        "x": 76,
+        "y": 0,
+        "w": 104,
+        "h": 256
+      },
+      "sourceSha256": "7cb60e358562994787154d040b34fb234cf1672f48932d85856eb795e10d87f9"
+    },
+    {
+      "slug": "guillaume-pregent",
+      "x": 1024,
+      "y": 256,
+      "bounds": {
+        "x": 76,
+        "y": 0,
+        "w": 104,
+        "h": 256
+      },
+      "sourceSha256": "345557ca6ae389b6d531c54bc7ad5a76d739262ff11e119a3939a558226bf775"
+    },
+    {
+      "slug": "jerry-zhu",
+      "x": 1280,
+      "y": 256,
+      "bounds": {
+        "x": 77,
+        "y": 0,
+        "w": 102,
+        "h": 256
+      },
+      "sourceSha256": "e728e16148e45bfaff1b6611b4a1afea57aa17bb3a130b7026a6799cb823c3f9"
+    },
+    {
+      "slug": "jewoo-lee",
+      "x": 1536,
+      "y": 256,
+      "bounds": {
+        "x": 78,
+        "y": 0,
+        "w": 100,
+        "h": 256
+      },
+      "sourceSha256": "71eadcd25c2f85f7a6bcffd4b3a4a9fde62bc2ec2efa11caeb00b169a43677d7"
+    },
+    {
+      "slug": "jonah-lee",
+      "x": 1792,
+      "y": 256,
+      "bounds": {
+        "x": 76,
+        "y": 0,
+        "w": 104,
+        "h": 256
+      },
+      "sourceSha256": "32e1a884fcec7a8b1f39779b8dd9da2e886ce1a31c19ab82a63b31af98cc2a2f"
+    },
+    {
+      "slug": "jonathan-kim",
+      "x": 0,
+      "y": 512,
+      "bounds": {
+        "x": 87,
+        "y": 8,
+        "w": 83,
+        "h": 240
+      },
+      "sourceSha256": "a47fe912f75e0dbb3e74b0c492ce824ddf20d3e64f284ff89e53a74ff3dfe6d5"
+    },
+    {
+      "slug": "julien-hovan",
+      "x": 256,
+      "y": 512,
+      "bounds": {
+        "x": 75,
+        "y": 0,
+        "w": 106,
+        "h": 256
+      },
+      "sourceSha256": "bfc23763b8dcb013aed70d8c656b78cf4263d343190d1b8122b47045337ca515"
+    },
+    {
+      "slug": "logan-labossiere",
+      "x": 512,
+      "y": 512,
+      "bounds": {
+        "x": 88,
+        "y": 0,
+        "w": 80,
+        "h": 256
+      },
+      "sourceSha256": "3cf306916061c4c81715fd2bd54aca88f9cb48c510fd4f467c68f942527252d7"
+    },
+    {
+      "slug": "megane-darnaud",
+      "x": 768,
+      "y": 512,
+      "bounds": {
+        "x": 85,
+        "y": 0,
+        "w": 85,
+        "h": 256
+      },
+      "sourceSha256": "5f814ba76d5406f9fce06d3f4fd00ebce2c18cfab20234d511a654f5b1aeb786"
+    },
+    {
+      "slug": "milen-thomas",
+      "x": 1024,
+      "y": 512,
+      "bounds": {
+        "x": 79,
+        "y": 0,
+        "w": 97,
+        "h": 256
+      },
+      "sourceSha256": "7027ffb503382d028d0245dd76a785e1d0a7c70c21952571125e5c5f1a2f8934"
+    },
+    {
+      "slug": "minh-ngoc-do",
+      "x": 1280,
+      "y": 512,
+      "bounds": {
+        "x": 83,
+        "y": 0,
+        "w": 89,
+        "h": 256
+      },
+      "sourceSha256": "7a905eab61fc4c675c7ec6b9104eaa6ec5bfd590a39871b77f2561a28ba49821"
+    },
+    {
+      "slug": "oyku-cildir",
+      "x": 1536,
+      "y": 512,
+      "bounds": {
+        "x": 83,
+        "y": 0,
+        "w": 89,
+        "h": 256
+      },
+      "sourceSha256": "50f8b520ed7e8684317f42f3eab9b44be563cd38c80a76b13ca5b67b3f8bb339"
+    },
+    {
+      "slug": "pentcho-tchomakov",
+      "x": 1792,
+      "y": 512,
+      "bounds": {
+        "x": 76,
+        "y": 0,
+        "w": 104,
+        "h": 256
+      },
+      "sourceSha256": "9c10f5c815e691081345b561a525e486b689c9211eaa0bf3f9bf0964fe04870d"
+    },
+    {
+      "slug": "philippe-miranda-jean",
+      "x": 0,
+      "y": 768,
+      "bounds": {
+        "x": 81,
+        "y": 0,
+        "w": 94,
+        "h": 256
+      },
+      "sourceSha256": "0bf3aa0f87c93044878aff33ccf28fd5214c45b21bd595bead6c804e13ceb2e2"
+    },
+    {
+      "slug": "richard-el-chaar",
+      "x": 256,
+      "y": 768,
+      "bounds": {
+        "x": 77,
+        "y": 0,
+        "w": 102,
+        "h": 256
+      },
+      "sourceSha256": "dda43a6072f6290ddea3dc749ed80bbe53d6860d6891b00fef6a97c9a4391f46"
+    },
+    {
+      "slug": "sarah-kotb",
+      "x": 512,
+      "y": 768,
+      "bounds": {
+        "x": 77,
+        "y": 0,
+        "w": 102,
+        "h": 256
+      },
+      "sourceSha256": "bf96090a83da61edc6e49dab8b632f6d940584e5b7240744ca8e750cfe2f09f7"
+    },
+    {
+      "slug": "saransh-padhy",
+      "x": 768,
+      "y": 768,
+      "bounds": {
+        "x": 78,
+        "y": 0,
+        "w": 99,
+        "h": 256
+      },
+      "sourceSha256": "6e35653c489c0cf210a8763729b8d35c55fad92bd0e7b6f5d776caf7b81b601c"
+    },
+    {
+      "slug": "scott-carr",
+      "x": 1024,
+      "y": 768,
+      "bounds": {
+        "x": 75,
+        "y": 0,
+        "w": 106,
+        "h": 256
+      },
+      "sourceSha256": "9e522ffda20af5e0c16bcbf61b4b379b9e7467bc08bf39802951e2c6b019db03"
+    },
+    {
+      "slug": "stephanie-fontaine",
+      "x": 1280,
+      "y": 768,
+      "bounds": {
+        "x": 81,
+        "y": 0,
+        "w": 94,
+        "h": 256
+      },
+      "sourceSha256": "c4cf7a3dde7855b977cc7d82f0cb302c38007e7e9044264d5a28af2a058f0f6d"
+    },
+    {
+      "slug": "tabarek-al-khalidi",
+      "x": 1536,
+      "y": 768,
+      "bounds": {
+        "x": 82,
+        "y": 0,
+        "w": 92,
+        "h": 256
+      },
+      "sourceSha256": "05b04f5423cfcb65fb1dfc62a8626a03caa6f59793e8a794f64031c6c95366d0"
+    },
+    {
+      "slug": "tyler-nagano",
+      "x": 1792,
+      "y": 768,
+      "bounds": {
+        "x": 80,
+        "y": 0,
+        "w": 96,
+        "h": 256
+      },
+      "sourceSha256": "da9540fdf05e62bcefed96fc52debaecbc19e8c07aff3ebf421e4934c50712eb"
+    },
+    {
+      "slug": "veronica-marallag",
+      "x": 0,
+      "y": 1024,
+      "bounds": {
+        "x": 83,
+        "y": 0,
+        "w": 89,
+        "h": 256
+      },
+      "sourceSha256": "d3a024fae24501b55aa82fd87db672e48a7478f268ac0c3b72c4424f8ee92fd6"
+    },
+    {
+      "slug": "victor-desautels",
+      "x": 256,
+      "y": 1024,
+      "bounds": {
+        "x": 80,
+        "y": 0,
+        "w": 96,
+        "h": 256
+      },
+      "sourceSha256": "4711c755e0070e818ca08d9272037b382f58eba0af54e83bf30d176c170a2ee3"
+    },
+    {
+      "slug": "vincent-anctil",
+      "x": 512,
+      "y": 1024,
+      "bounds": {
+        "x": 76,
+        "y": 0,
+        "w": 104,
+        "h": 256
+      },
+      "sourceSha256": "a6931fe7e0fa9a6c14c8040635ade35225b11d014cb7df2b9903da29b4f1d4b7"
+    },
+    {
+      "slug": "wild-guevera",
+      "x": 768,
+      "y": 1024,
+      "bounds": {
+        "x": 79,
+        "y": 0,
+        "w": 97,
+        "h": 256
+      },
+      "sourceSha256": "36f2f949cdb09c2792de62b5f0c3127b1cb2ca332f966e6a61030355448dc8f9"
+    },
+    {
+      "slug": "william-chan",
+      "x": 1024,
+      "y": 1024,
+      "bounds": {
+        "x": 77,
+        "y": 0,
+        "w": 102,
+        "h": 256
+      },
+      "sourceSha256": "bf62ec41efc74ec39ca7d03a3f13a4c683167c788933ba6547d8da253966a846"
+    }
+  ]
+}
