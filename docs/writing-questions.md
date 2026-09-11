@@ -56,11 +56,21 @@ practitioner would propose. Those make the item a vocabulary check.
 
 ## Length parity — the rule that matters most
 
-An audit of this bank in September 2026 found the correct answer was **the longest option in 83% of
-questions**, averaging **54 characters longer** than its distractors. Chance is 25%.
+An audit in September 2026 found the correct answer was **the longest option in 83% of questions**
+in `quiz/bank/*.json`, averaging **54 characters longer** than its distractors. Chance is 25%.
 
-**A candidate who always picks the longest option, without reading a single stem, scores 83% here.**
+**A candidate who always picked the longest option, without reading a single stem, scored 83%.**
 The pass mark is around 72%. The bank was gameable, and every score it produced was inflated.
+
+It was not one file's problem. Checking every question source in the repo found the same defect
+in all four:
+
+| Source | Questions | Key was longest | After the repair |
+|---|---|---|---|
+| `quiz/bank/*.json` | 191 | 83% | **29%** |
+| `datamon/questions.js` | 120 | 83% | **28%** |
+| `quiz/practice-questions.md` | 20 | 65% | **25%** |
+| `quiz/scenario-questions.md` | 12 | 83% | **25%** |
 
 The cause is mechanical, not conceptual. It is easy to explain the reasoning *inside* the correct
 option — "…because X, so do Y" — and leave the distractors terse. Do that consistently and the key
@@ -79,8 +89,7 @@ distractors the same kind of clause.
 > C. Neither loads
 > D. The first glob to match wins
 
-B is visibly the answer before you have read the stem. (This example is real — it is `d3-010`, which
-appears in the audit's worst-offenders list.)
+B is visibly the answer before you have read the stem. (This example is real — it is `d3-010`.)
 
 ### After — all four options carry the same weight
 
@@ -92,17 +101,81 @@ appears in the audit's worst-offenders list.)
 Same key, same discrimination, no visual tell. The *why* moves to `explanation`, where it belongs and
 where the candidate reads it after answering.
 
+### Three metrics, because the obvious two are gameable
+
+`audit_bank.py` reports all three. Understanding why there are three is the difference between
+fixing this and appearing to fix it.
+
+| Metric | Target | What it catches |
+|---|---|---|
+| **Key-longest rate** | 25–35% | The headline exploit: always-pick-longest |
+| **Mean delta** | ≤ +15 chars | How far the key outruns its distractors |
+| **Spread** (longest − shortest) | ≤ 45 chars | Whether the options are actually parallel |
+
+Spread is the one that resists gaming. You can pull the first two into range by inflating a single
+distractor to match a bloated key — but that leaves two long options and two short ones, and the key
+is still findable by elimination. Only spread notices.
+
+**Let the key land in any rank.** If every key becomes the *shortest* option you have inverted the
+tell, not removed it. A quarter to a third of keys being longest is what chance looks like, and it is
+the goal.
+
+### Thresholds are relative to the format
+
+The character budgets above are calibrated to this bank, whose options average ~137 characters. They
+do not transfer. The DATAMON battle bank's choices average ~33 characters, and at that size a +15
+character delta is 45% longer — a glaring tell that the absolute rule would wave through. Its audit
+(`scripts/audit_datamon_bank.mjs`) therefore measures the **ratio** of key length to mean distractor
+length, capped at 1.10×, which is what generalises across formats.
+
+If you add a new question format, measure the ratio, not the difference.
+
+### Short is not the defect — unequal is
+
+`config-012` in the battle bank offers exit codes `0` / `1` / `130` / `2`. Every choice is under four
+characters and the item is perfect: nothing about its length tells you the answer. An early version of
+the audit flagged it under a minimum-length rule, which was the rule being wrong, not the question.
+
+Never pad an option to clear a threshold. A choice is only too short *relative to its siblings*, which
+spread and ratio already measure. The 45-character floor in this bank exists because prose options
+that terse next to 137-character ones read as filler — not because 45 characters is meaningful on its
+own.
+
+### A margin the reader can see
+
+The audit also reports how often the key is longest *by 15 or more characters*. Once options are tight,
+a key that wins by two characters is still an exploit for a script but is invisible to a human under
+time pressure. Both numbers are reported so severity is legible; the gate stays on the strict rate,
+because varying which option runs longest costs nothing.
+
 ### Check before you commit
 
 ```bash
-uv run python scripts/audit_bank.py            # report
-uv run python scripts/audit_bank.py --worst 20 # the offenders to fix first
-uv run python scripts/audit_bank.py --strict   # exit 1 on a breach, for CI
+uv run python scripts/audit_bank.py             # report
+uv run python scripts/audit_bank.py --worst 20  # the offenders to fix first
+uv run python scripts/audit_bank.py --markdown  # the readable practice sets
+uv run python scripts/audit_bank.py --strict    # exit 1 on a breach, for CI
+node scripts/audit_datamon_bank.mjs             # the game's battle bank
 ```
 
-Targets: key is longest in **≤35%** of questions, key exceeds the mean distractor by **≤15 chars**, no
-distractor under **45 characters**. A distractor shorter than that reads as filler and tells the
-candidate it is not the answer.
+CI runs the strict form on every pull request touching a question source
+(`.github/workflows/bank-quality.yml`), so this cannot silently drift again — which is how it reached
+83% in the first place: nothing was watching.
+
+### Editing options in bulk
+
+When rewriting many questions at once, the thing you need to prove is a negative: that nothing changed
+except the wording. `scripts/check_bank_diff.py` diffs the working tree against a git ref and fails on
+any change to `answer`, `stem`, `id`, `difficulty`, `scenario`, `tags` or `source`, while allowing
+`options`, `explanation` and `distractors` to move.
+
+```bash
+uv run python scripts/check_bank_diff.py --ref main
+uv run python scripts/check_bank_diff.py --show-options d3-010   # before/after, side by side
+```
+
+In the DATAMON bank the equivalent trap is `a`, which is a numeric **index** into the choices array.
+Reordering choices there silently repoints the answer with no error anywhere. Rewrite text in place.
 
 ---
 
@@ -210,7 +283,7 @@ uv run python scripts/validate_bank.py
 
 ## A self-check before you commit an item
 
-1. Is the key the longest option? If so, either trim it or give the distractors equal weight. Run `scripts/audit_bank.py`.
+1. Is the key the longest option, and is the spread tight? Run `scripts/audit_bank.py`. If the key is longest, either trim it or give a distractor equal weight — do not simply pad.
 2. Could a competent engineer defend **every** option in isolation? If not, that option is filler.
 3. Which sentence in the stem eliminates each wrong option? If you cannot name it, the key is arguable.
 4. Is the question "do you know X" or "given these constraints, what do you do about X"? Only the

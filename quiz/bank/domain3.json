@@ -7,10 +7,10 @@
     "difficulty": "easy",
     "stem": "A team wants coding conventions to be shared with everyone who clones the repository and applied automatically in every session. Where should these conventions live?",
     "options": {
-      "A": "In project-level CLAUDE.md (root or .claude/CLAUDE.md), committed to version control",
-      "B": "In each developer's user-level ~/.claude/CLAUDE.md",
-      "C": "Pasted into the system prompt at the start of every session",
-      "D": "In a .claude/skills/ skill that each developer invokes manually"
+      "A": "In project-level CLAUDE.md (root or .claude/CLAUDE.md), committed to the repo",
+      "B": "In each developer's user-level ~/.claude/CLAUDE.md, kept in sync by hand",
+      "C": "Pasted into the system prompt at the start of every session by each developer",
+      "D": "In a .claude/skills/ skill that each developer invokes manually when needed"
     },
     "answer": "A",
     "explanation": "Project-level CLAUDE.md (root CLAUDE.md or .claude/CLAUDE.md) is committed to version control, so it is shared with the whole team and always loaded into context. This is the canonical place for shared, always-on conventions.",
@@ -34,10 +34,10 @@
     "difficulty": "easy",
     "stem": "A developer wants to keep a few personal Claude Code preferences (preferred commit message style, verbosity) that should NOT affect teammates. Where should these go?",
     "options": {
-      "A": "A directory-level CLAUDE.md in the repo's src/ folder",
-      "B": "A .claude/rules/ file with a broad glob pattern",
-      "C": "Root CLAUDE.md committed to the repo",
-      "D": "User-level ~/.claude/CLAUDE.md"
+      "A": "A directory-level CLAUDE.md in the repo's src/ folder, committed with the code",
+      "B": "A .claude/rules/ file with a broad glob pattern so it matches most edits",
+      "C": "The root CLAUDE.md, committed to the repo alongside the team's conventions",
+      "D": "The user-level ~/.claude/CLAUDE.md in the developer's home directory"
     },
     "answer": "D",
     "explanation": "User-level ~/.claude/CLAUDE.md holds personal preferences that apply across all of a developer's projects and are never shared via version control, making it the correct home for individual, non-team settings.",
@@ -61,9 +61,9 @@
     "difficulty": "easy",
     "stem": "Your CI job runs `claude \"Review this diff for security issues\"` and the build hangs until it times out. What is the correct fix?",
     "options": {
-      "A": "Set a shorter session timeout in the CI configuration",
-      "B": "Wrap the command so it pipes 'yes' into Claude Code's stdin",
-      "C": "Add the --interactive=false flag",
+      "A": "Set a shorter session timeout in the CI configuration so the job exits sooner",
+      "B": "Wrap the command so it pipes 'yes' into Claude Code's stdin to answer prompts",
+      "C": "Add the --interactive=false flag so the CLI skips the interactive session",
       "D": "Add the -p (print) flag: claude -p \"Review this diff for security issues\""
     },
     "answer": "D",
@@ -89,10 +89,10 @@
     "difficulty": "easy",
     "stem": "Which statement best captures the difference between CLAUDE.md and a skill?",
     "options": {
-      "A": "CLAUDE.md is for tool definitions; skills are for documentation",
-      "B": "They are interchangeable; the choice is purely stylistic",
-      "C": "Skills are always loaded; CLAUDE.md is loaded only when a matching file is edited",
-      "D": "CLAUDE.md provides always-loaded universal standards; skills are invoked on-demand for task-specific workflows"
+      "A": "CLAUDE.md defines the tools Claude is allowed to call; skills carry the project docs",
+      "B": "The two are interchangeable; which one you put guidance in is purely a stylistic choice",
+      "C": "Skills are always loaded; CLAUDE.md is loaded only when a file matching its scope is edited",
+      "D": "CLAUDE.md holds always-loaded universal standards; skills are invoked on demand per workflow"
     },
     "answer": "D",
     "explanation": "CLAUDE.md is always loaded into context and carries universal, always-on standards. Skills are invoked on demand for specific task workflows, keeping their (often verbose) instructions out of context until needed.",
@@ -115,17 +115,17 @@
     "difficulty": "easy",
     "stem": "Claude Code is behaving inconsistently across sessions and you suspect a stale or wrong memory file is being loaded. Which command helps you verify which memory (CLAUDE.md) files are active?",
     "options": {
-      "A": "/config",
-      "B": "/rules",
-      "C": "/reload",
-      "D": "/memory"
+      "A": "`/config` — expecting it to print the configuration and memory files in effect",
+      "B": "`/rules` — expecting it to list the instruction files loaded for this session",
+      "C": "`/reload` — expecting it to re-read and report the memory files it picks up",
+      "D": "`/memory` — expecting it to list the memory files currently loaded"
     },
     "answer": "D",
-    "explanation": "The /memory command shows which memory (CLAUDE.md) files are currently loaded, letting you diagnose hierarchy issues such as a user-level file overriding or conflicting with project-level instructions.",
+    "explanation": "The /memory command reports which memory (CLAUDE.md) files are currently loaded and at which scope, letting you diagnose hierarchy issues such as a user-level file conflicting with project-level instructions. The other three options name commands that do not report loaded memory files, so none of them answers the diagnostic question.",
     "distractors": {
-      "A": "/config is not the command for inspecting loaded memory files.",
-      "B": "/rules is not the command used to list loaded CLAUDE.md memory files.",
-      "C": "/reload is not the diagnostic command for which memory files are loaded."
+      "A": "/config surfaces configuration settings, not the set of memory files loaded and the scope each came from — it cannot tell you that a user-level CLAUDE.md is shadowing a project one.",
+      "B": "/rules is not a Claude Code command; nothing lists loaded CLAUDE.md memory files under that name.",
+      "C": "/reload is not a Claude Code diagnostic. Even a reload would only re-read files, not report which ones are in effect."
     },
     "tags": [
       "claude-md",
@@ -142,10 +142,10 @@
     "difficulty": "medium",
     "stem": "Your repo has Terraform under infrastructure/, React components under web/, and Python services under services/. Test files live next to the source files they cover throughout all three trees. You want testing conventions to apply to every test file regardless of location, while each language tree keeps its own conventions. What is the best configuration?",
     "options": {
-      "A": "Put testing conventions in a directory CLAUDE.md at the repo root",
-      "B": "Create a skill that developers invoke before writing any test",
-      "C": "Put all conventions, including testing, in one large root CLAUDE.md",
-      "D": "Use directory-level CLAUDE.md files in each language tree, plus a .claude/rules/ file with a glob like \"**/*.test.*\" (and equivalents) for testing conventions"
+      "A": "Put the testing conventions in a directory CLAUDE.md at the repo root, above all three trees",
+      "B": "Create a testing-conventions skill that developers invoke before writing any test file",
+      "C": "Put all conventions, testing included, in one large root CLAUDE.md loaded for every file",
+      "D": "Directory-level CLAUDE.md files in each language tree, plus a .claude/rules/ file globbing \"**/*.test.*\""
     },
     "answer": "D",
     "explanation": "Directory CLAUDE.md files are ideal when conventions are contained within a single directory tree (the per-language conventions). Path-specific .claude/rules/ with glob patterns are ideal when conventions must apply to files spread across the codebase by type (test files everywhere). Combining them matches each need.",
@@ -170,10 +170,10 @@
     "difficulty": "medium",
     "stem": "You want a custom slash command that accepts a free-form argument the user types after the command name (e.g., /triage <issue-url>) and injects it into the prompt. What is the correct mechanism?",
     "options": {
-      "A": "Reference $ARGUMENTS in the command's markdown body",
-      "B": "Add context: fork to the command frontmatter",
-      "C": "Define a JSON schema in the command file describing the argument",
-      "D": "Add an argument-hint frontmatter key and Claude will parse the value"
+      "A": "Reference the $ARGUMENTS placeholder in the command's markdown body",
+      "B": "Add context: fork to the command frontmatter so the argument runs in its own context",
+      "C": "Define a JSON schema in the command file describing the shape of the argument",
+      "D": "Add an argument-hint frontmatter key and let Claude parse the value the user typed"
     },
     "answer": "A",
     "explanation": "Custom slash commands substitute the text the user supplies into the command body via the $ARGUMENTS placeholder. This is the mechanism for passing free-form input to a command.",
@@ -197,17 +197,17 @@
     "difficulty": "medium",
     "stem": "You are authoring a codebase-analysis skill that produces hundreds of lines of exploratory output. You want that output kept out of the main conversation so it does not consume the user's context budget. Which frontmatter setting accomplishes this?",
     "options": {
-      "A": "output: summary",
-      "B": "context: fork",
-      "C": "allowed-tools: [Read, Grep, Glob]",
-      "D": "argument-hint: \"target directory\""
+      "A": "`output: summary`, to have the skill return only a condensed summary of its work",
+      "B": "`context: fork`, to run the skill in an isolated execution context",
+      "C": "`allowed-tools: [Read, Grep, Glob]`, to limit the skill to read-only tools",
+      "D": "`argument-hint: \"target directory\"`, to prompt for the directory to analyse"
     },
     "answer": "B",
     "explanation": "context: fork runs the skill in an isolated sub-agent context so its verbose output does not pollute the main conversation; only a summary returns. This is the recommended pattern for verbose/exploratory skills.",
     "distractors": {
-      "A": "output: summary is not a real frontmatter key.",
-      "C": "allowed-tools restricts which tools the skill may use; it does not isolate context.",
-      "D": "argument-hint prompts for a required parameter; it has no effect on context isolation."
+      "A": "output: summary is not a real frontmatter key, so the skill would run unchanged and its full output would land in the main conversation.",
+      "C": "allowed-tools restricts which tools the skill may call. That bounds what it can do, not where its output goes.",
+      "D": "argument-hint prompts for a parameter at invocation time; it has no bearing on context isolation."
     },
     "tags": [
       "skills",
@@ -224,17 +224,17 @@
     "difficulty": "medium",
     "stem": "A skill is supposed to operate read-only (it should never modify files), but it occasionally writes files when the model decides to. What is the most reliable way to guarantee it cannot write?",
     "options": {
-      "A": "Set context: fork so writes happen in an isolated context",
-      "B": "Set allowed-tools to a read-only set (e.g., Read, Grep, Glob) so write tools are unavailable",
-      "C": "Add a sentence to the skill body saying 'do not modify any files'",
-      "D": "Add an argument-hint warning the user that the skill is read-only"
+      "A": "Set context: fork so any writes happen in an isolated context rather than the repo",
+      "B": "Set allowed-tools to a read-only set such as Read, Grep and Glob",
+      "C": "Add a sentence to the skill body instructing it never to modify any files",
+      "D": "Add an argument-hint warning the user that the skill is meant to be read-only"
     },
     "answer": "B",
-    "explanation": "allowed-tools restricts the tools available during skill execution. Limiting it to read-only tools makes write/edit tools simply unavailable, giving a deterministic guarantee rather than relying on the model to comply with prose.",
+    "explanation": "(B) is the only deterministic control. allowed-tools restricts the tools available during skill execution, so limiting it to a read-only set makes the write and edit tools simply unavailable rather than relying on the model to comply with prose.",
     "distractors": {
-      "A": "context: fork isolates context but does not prevent the forked context from writing files.",
-      "C": "Prose instructions are probabilistic; the model can still choose to write despite them.",
-      "D": "argument-hint only prompts for parameters; it does not restrict tools."
+      "A": "context: fork isolates the skill's context, but a forked context still has the write tools and can still modify files.",
+      "C": "A prose instruction is probabilistic — the same failure mode the stem already describes, since the model is choosing to write despite intent.",
+      "D": "argument-hint only prompts for a parameter; a warning aimed at the user restricts nothing about what the skill may call."
     },
     "tags": [
       "skills",
@@ -251,10 +251,10 @@
     "difficulty": "medium",
     "stem": "Two files in `.claude/rules/` match the file you are editing: `general.md` with `paths: [\"src/**/*\"]` and `payments.md` with `paths: [\"src/payments/**/*.ts\"]`. You are editing `src/payments/charge.ts`. What actually happens?",
     "options": {
-      "A": "Only `payments.md` loads, because the more specific glob overrides the broader one.",
-      "B": "Both rule files load and are concatenated into context. There is no documented override between matching rules, so contradictory guidance may be resolved arbitrarily — keeping matching rules consistent is the author's job.",
-      "C": "Neither loads; when path rules conflict, Claude skips both and falls back to `CLAUDE.md`.",
-      "D": "`general.md` loads and `payments.md` is ignored, because the first glob to match wins."
+      "A": "Only the more specific glob loads; the narrower pattern overrides the broader one.",
+      "B": "Both files load and concatenate; there is no documented override, so conflicts resolve arbitrarily.",
+      "C": "Neither loads; Claude skips conflicting path rules and falls back to `CLAUDE.md`.",
+      "D": "The first glob to match loads and later matches are ignored."
     },
     "answer": "B",
     "explanation": "Path-scoped rules follow the same concatenate-don't-override model as CLAUDE.md files: every rule whose glob matches the file being read is loaded into context, and the documentation describes no priority system between them. If two matching rules contradict each other, Claude may pick one arbitrarily, so consistency across rules is the author's responsibility. The one ordering rule that does exist is between scopes, not globs — user-level rules load before project rules, which gives project rules the later (more salient) position.",
@@ -280,9 +280,9 @@
     "stem": "You want to keep your monolithic root CLAUDE.md from growing unwieldy. Standards for API conventions, testing, and deployment each live in their own markdown files under standards/. What is the recommended way to compose them into CLAUDE.md?",
     "options": {
       "A": "Convert each standards file into a separate skill and invoke them all at session start",
-      "B": "Use @import references (e.g., @import ./standards/api-conventions.md) so each package imports only relevant standards",
-      "C": "Move all standards into ~/.claude/CLAUDE.md so they load globally",
-      "D": "Copy the full text of each file into CLAUDE.md and keep them in sync manually"
+      "B": "Use @import references such as @import ./standards/api-conventions.md from CLAUDE.md",
+      "C": "Move all the standards into ~/.claude/CLAUDE.md so they load globally for every project",
+      "D": "Copy the full text of each standards file into CLAUDE.md and keep the copies in sync by hand"
     },
     "answer": "B",
     "explanation": "@import lets CLAUDE.md reference external files, keeping it modular. Each package's CLAUDE.md can import only the standards relevant to its domain, avoiding a giant monolith and avoiding manual duplication.",
@@ -306,10 +306,10 @@
     "difficulty": "medium",
     "stem": "Your CI generates unit tests, but many duplicate tests that already exist or cover trivial getters/setters. What two-part change most improves generated test quality?",
     "options": {
-      "A": "Run the generator twice and keep only tests that appear both times",
-      "B": "Lower temperature to 0 and increase max_tokens",
-      "C": "Provide the existing test files in context and document testing standards plus valuable-test criteria in CLAUDE.md",
-      "D": "Only run test generation on files with low code coverage"
+      "A": "Run the generator twice on each file and keep only the tests that appear in both runs",
+      "B": "Lower temperature to 0 and raise max_tokens so the generator produces tighter output",
+      "C": "Supply the existing test files as context and document testing standards and valuable-test criteria in CLAUDE.md",
+      "D": "Only run test generation on the files whose measured code coverage is below target"
     },
     "answer": "C",
     "explanation": "Supplying existing test files lets the generator avoid duplicating scenarios, and documenting testing standards and what counts as a valuable test in CLAUDE.md steers it away from trivial getters/setters. Both address the underlying knowledge gap.",
@@ -333,17 +333,17 @@
     "difficulty": "medium",
     "stem": "You want to guarantee that whenever Claude Code edits a file under src/, the formatter runs and the file is reformatted before the change is considered done, without relying on the model to remember. Which hook fits best?",
     "options": {
-      "A": "A Stop hook that returns additionalContext reminding Claude to format",
-      "B": "A line in CLAUDE.md instructing Claude to always format after editing",
-      "C": "A PostToolUse hook that runs the formatter on the edited file after the write completes",
-      "D": "A PreToolUse hook that blocks all edits to src/"
+      "A": "A Stop hook that returns additionalContext reminding Claude to format what it edited",
+      "B": "A line in CLAUDE.md instructing Claude to always run the formatter after editing",
+      "C": "A PostToolUse hook that runs the formatter on the edited file",
+      "D": "A PreToolUse hook that blocks any edit to a file under src/ before it is written"
     },
     "answer": "C",
-    "explanation": "PostToolUse hooks fire after a tool runs and are the right place for deterministic transformations like formatting the file that was just written. This guarantees formatting without depending on the model.",
+    "explanation": "(C) is the right hook stage: PostToolUse fires after a tool has run, which is exactly when the just-written file exists on disk and can be reformatted. That makes the format step deterministic instead of depending on the model remembering to run it.",
     "distractors": {
-      "A": "A Stop hook returning additionalContext nudges the model but is still probabilistic, not a guaranteed transform.",
-      "B": "A CLAUDE.md instruction is probabilistic; the model may forget to format.",
-      "D": "PreToolUse fires before the edit and is for blocking/validation, not for formatting a not-yet-written file."
+      "A": "A Stop hook fires when the turn ends and additionalContext only nudges the model, so formatting stays probabilistic — the stem asks for a guarantee.",
+      "B": "A CLAUDE.md instruction is probabilistic; the model may skip formatting, which is exactly the dependency the stem wants removed.",
+      "D": "PreToolUse fires before the write, so there is no file to format yet; blocking edits to src/ stops the work rather than formatting it."
     },
     "tags": [
       "hooks",
@@ -360,10 +360,10 @@
     "difficulty": "medium",
     "stem": "Company policy forbids editing files under config/secrets/. Developers occasionally still ask Claude Code to touch them. What gives the strongest, deterministic guarantee that such edits are blocked before they happen?",
     "options": {
-      "A": "A PreToolUse hook that inspects the target path and denies any Edit/Write to config/secrets/",
-      "B": "Few-shot examples in the prompt showing Claude refusing such edits",
-      "C": "A PostToolUse hook that reverts any change made under config/secrets/",
-      "D": "A bold warning in CLAUDE.md telling Claude never to edit config/secrets/"
+      "A": "A PreToolUse hook that inspects the target path and denies Edit/Write under config/secrets/",
+      "B": "Few-shot examples in the prompt showing Claude refusing to edit config/secrets/",
+      "C": "A PostToolUse hook that reverts any change made under config/secrets/ right after the write",
+      "D": "A bold warning in CLAUDE.md telling Claude it must never edit files under config/secrets/"
     },
     "answer": "A",
     "explanation": "PreToolUse hooks intercept a tool call before it executes and can deterministically deny it based on the target path. This blocks the edit before any change is made, which prompt-based approaches cannot guarantee.",
@@ -387,17 +387,17 @@
     "difficulty": "hard",
     "stem": "You want a workflow where, when Claude tries to end its turn, a Stop hook checks whether the test suite passed; if not, it should feed the failing test output back to Claude and let it keep working in the SAME turn, without the hook being treated as an error. In Claude Code v2.1.163+, what is the correct hook output?",
     "options": {
-      "A": "Return a PreToolUse deny decision so the turn is blocked",
-      "B": "Return hookSpecificOutput.additionalContext containing the failing test output (within the 10,000-char cap)",
-      "C": "Write the failures to CLAUDE.md so they load next session",
-      "D": "Exit with a non-zero status code and print the failures to stderr"
+      "A": "Return a PreToolUse deny decision so the turn is blocked before Claude stops",
+      "B": "Return hookSpecificOutput.additionalContext containing the failing test output",
+      "C": "Write the failures into CLAUDE.md so they are loaded at the start of the next session",
+      "D": "Exit with a non-zero status code and print the failing test output to stderr"
     },
     "answer": "B",
-    "explanation": "As of v2.1.163 (June 2026), Stop and SubagentStop hooks can return hookSpecificOutput.additionalContext to feed Claude context and continue the turn WITHOUT being treated as a hook error. The additionalContext is capped at 10,000 characters.",
+    "explanation": "As of v2.1.163 (June 2026), Stop and SubagentStop hooks can return hookSpecificOutput.additionalContext (B) to feed Claude context and continue the SAME turn without the hook being treated as an error. The additionalContext payload is capped at 10,000 characters, so the hook should truncate long test output before returning it.",
     "distractors": {
-      "A": "PreToolUse deny is the wrong hook type and is about blocking tool calls, not continuing after Stop.",
-      "C": "Writing to CLAUDE.md affects future sessions, not the current turn's continuation.",
-      "D": "A non-zero exit is treated as a hook error and does not cleanly feed context back to continue the turn."
+      "A": "PreToolUse is the wrong hook stage entirely — it gates tool calls before they run and has no bearing on what happens when Claude tries to end a turn.",
+      "C": "Writing to CLAUDE.md affects a future session's context. The stem asks for continuation within the SAME turn.",
+      "D": "A non-zero exit is treated as a hook error, which is precisely the outcome the stem rules out, and stderr text is not fed back as usable context."
     },
     "tags": [
       "hooks",
@@ -443,10 +443,10 @@
     "difficulty": "hard",
     "stem": "Your single Claude Code session writes a feature and then reviews its own diff, but it consistently rates its own code as fine and misses real bugs. What is the most effective architectural change?",
     "options": {
-      "A": "Run the review in a separate reviewer subagent/instance with isolated context from the implementer",
-      "B": "Increase the model's temperature so the review is more varied",
-      "C": "Re-run the same session twice and merge the two reviews",
-      "D": "Tell the same session in the prompt to 'be a harsh, skeptical reviewer'"
+      "A": "Run the review in a separate reviewer subagent with an isolated context",
+      "B": "Increase the model's temperature so the review explores more varied criticisms",
+      "C": "Re-run the same session twice and merge the two reviews into one findings list",
+      "D": "Tell the same session in the prompt to act as a harsh, skeptical reviewer"
     },
     "answer": "A",
     "explanation": "A session that generated code is less effective at critically reviewing its own changes because it shares the implementer's assumptions and context. Using a separate reviewer subagent with isolated context removes that bias and catches more real issues.",
@@ -471,10 +471,10 @@
     "difficulty": "hard",
     "stem": "Your automated PR review runs on every push. After a developer addresses the first round and pushes again, the second run re-flags the already-fixed issues and adds new ones, spamming the PR with duplicate comments. What is the best fix?",
     "options": {
-      "A": "Include the prior review findings in context and instruct Claude to report only new or still-unaddressed issues",
-      "B": "Only review the files changed in the latest commit",
-      "C": "Clear all context before each run so the review starts fresh",
-      "D": "Post the full review every time and let developers ignore duplicates"
+      "A": "Include the prior review findings in context and report only new or still-unaddressed issues",
+      "B": "Only review the files changed in the latest commit, ignoring the earlier ones",
+      "C": "Clear all context before each run so every review starts from a clean slate",
+      "D": "Post the full review on every push and let developers ignore the duplicates"
     },
     "answer": "A",
     "explanation": "Incremental reviews should carry prior findings into context and instruct Claude to report only new or still-unaddressed issues. This prevents duplicate comments while still catching newly introduced problems.",
@@ -498,10 +498,10 @@
     "difficulty": "hard",
     "stem": "A shared project skill named /deploy works well for the team, but you personally want a slightly different variant that does an extra dry-run step, without changing the team's behavior or affecting teammates. What is the cleanest approach?",
     "options": {
-      "A": "Add context: fork to the project skill so it runs differently for you",
-      "B": "Override the team skill by adding deploy to your ~/.claude/CLAUDE.md",
-      "C": "Edit the project's .claude/skills/deploy/SKILL.md and only commit it locally",
-      "D": "Create a personal variant under ~/.claude/skills/ with a different name (e.g., deploy-dryrun)"
+      "A": "Add context: fork to the project skill so it runs differently in your sessions",
+      "B": "Override the team skill by defining deploy in your ~/.claude/CLAUDE.md",
+      "C": "Edit the project's .claude/skills/deploy/SKILL.md and keep the edit uncommitted locally",
+      "D": "Create a differently named variant under ~/.claude/skills/, such as deploy-dryrun"
     },
     "answer": "D",
     "explanation": "Personal skill customization is done by creating a variant in user-level ~/.claude/skills/ with a different name. This is private, does not touch the shared project skill, and avoids affecting teammates.",
@@ -525,17 +525,17 @@
     "difficulty": "hard",
     "stem": "Your team wants every member to share a GitHub MCP server when they open the repo in Claude Code, but each member's personal access token must NOT be committed. What is the correct configuration?",
     "options": {
-      "A": "Commit the token to .mcp.json so the server works immediately on clone",
-      "B": "Add the server to each developer's user-level config and ask everyone to replicate it",
-      "C": "Add the server to project-scoped .mcp.json and reference the token via environment variable expansion (e.g., ${GITHUB_TOKEN})",
-      "D": "Add the server config to the project CLAUDE.md with the token inline"
+      "A": "Commit the token into .mcp.json so the server works immediately on clone",
+      "B": "Add the server to each developer's user-level config and have everyone replicate it",
+      "C": "Add the server to project-scoped .mcp.json and reference the token as ${GITHUB_TOKEN}",
+      "D": "Add the server configuration to the project CLAUDE.md with the token inline"
     },
     "answer": "C",
-    "explanation": "Project-scoped .mcp.json is committed to version control so the server is available to everyone on clone, and ${VAR} environment-variable expansion keeps each developer's token out of the repo. Each developer sets GITHUB_TOKEN locally.",
+    "explanation": "(C) combines the two things the requirement needs. Project-scoped .mcp.json is committed to version control, so the server is available to everyone on clone; ${VAR} environment-variable expansion resolves the token at launch from each developer's own environment, so no secret is committed. Each developer sets GITHUB_TOKEN locally.",
     "distractors": {
-      "A": "Committing the token to .mcp.json leaks a secret into version control.",
-      "B": "User-level config is not shared and requires manual replication by every member, defeating the goal.",
-      "D": "CLAUDE.md is for instructions, not MCP server configuration, and inlining the token commits a secret."
+      "A": "Committing the token makes the server work on clone, but it leaks a live credential into version control — the one thing the stem forbids.",
+      "B": "User-level config is not shared, so every member has to replicate it by hand and the setup drifts; the goal was that it just works on clone.",
+      "D": "CLAUDE.md carries instructions, not MCP server definitions, so the server would not register — and the inline token still commits a secret."
     },
     "tags": [
       "mcp",
@@ -553,10 +553,10 @@
     "difficulty": "easy",
     "stem": "You need a custom `/review` slash command for your team's standard code-review workflow, and it must be available to every teammate who clones the repository. Where should you create the command file?",
     "options": {
-      "A": "In `.claude/commands/` inside the project repository",
-      "B": "In `~/.claude/commands/` in each developer's home directory",
-      "C": "In the root `CLAUDE.md` file",
-      "D": "In `.claude/config.json`"
+      "A": "In a Markdown file under `.claude/commands/` in the project repository",
+      "B": "In a Markdown file under `~/.claude/commands/` in each developer's home directory",
+      "C": "As a section of the repository's root `CLAUDE.md`, alongside the conventions",
+      "D": "As an entry in `.claude/config.json` at the root of the project repository"
     },
     "answer": "A",
     "explanation": "Project commands stored in `.claude/commands/` are version-controlled with the repository and automatically available to everyone who clones it — exactly the requirement for a shared team command.",
@@ -580,8 +580,8 @@
     "difficulty": "easy",
     "stem": "You need to restructure a monolithic application into microservices — a change spanning dozens of files and requiring service-boundary decisions. What approach should you use in Claude Code?",
     "options": {
-      "A": "Use planning mode first: explore the codebase, understand dependencies, and design an approach before making any edits",
-      "B": "Use direct execution and refactor incrementally, one piece at a time",
+      "A": "Use planning mode first to explore the codebase and design the approach before making any edits",
+      "B": "Use direct execution and refactor incrementally, extracting one piece of the monolith at a time",
       "C": "Use direct execution with very detailed up-front instructions describing the target architecture",
       "D": "Start with direct execution and switch to planning mode only when the work becomes difficult"
     },
@@ -607,10 +607,10 @@
     "difficulty": "medium",
     "stem": "Your CI pipeline runs the Claude Code CLI in `--print` mode with CLAUDE.md providing project context for code review, and developers find the reviews substantive. However, integrating findings is painful: Claude outputs narrative paragraphs that must be manually copied into PR comments. The team wants to automatically post each finding as a separate inline PR comment at the relevant place in code, which requires structured data with file path, line number, severity level, and suggested fix. Which approach is most effective?",
     "options": {
-      "A": "Add an \"Output Format for Review\" section to CLAUDE.md with examples of structured findings so Claude learns the expected format from project context",
-      "B": "Use the CLI flags `--output-format json` and `--json-schema` to enforce structured findings, then parse the output and post inline comments via the GitHub API",
-      "C": "Include explicit formatting instructions in the review prompt requiring each finding to follow a parseable template like `[FILE:path] [LINE:n] [SEVERITY:level] ...`",
-      "D": "Keep the narrative review format but add a second Claude pass that converts it into a structured JSON summary of findings"
+      "A": "Add an \"Output Format for Review\" section to CLAUDE.md with examples of structured findings to follow",
+      "B": "Use the CLI flags `--output-format json` and `--json-schema`, then parse the result and post inline comments via the GitHub API",
+      "C": "Require each finding in the review prompt to follow a parseable template such as `[FILE:path] [LINE:n] [SEVERITY:level]`",
+      "D": "Keep the narrative review format and add a second Claude pass that converts it into structured JSON findings"
     },
     "answer": "B",
     "explanation": "`--output-format json` combined with `--json-schema` enforces structured output at the CLI level, guaranteeing well-formed JSON with the required fields (file path, line number, severity, suggested fix) that can be reliably parsed and posted as inline PR comments via the GitHub API. It uses built-in CLI capabilities designed specifically for structured output, rather than hoping the model formats correctly.",
@@ -635,8 +635,8 @@
     "stem": "You need to add Slack as a new notification channel. The existing codebase has clear, established patterns for email, SMS, and push channels. However, Slack's API offers fundamentally different integration approaches—incoming webhooks (simple, one-way), bot tokens (delivery confirmation and programmatic control), or Slack Apps (two-way events, requires workspace approval). Your task says \"add Slack support\" without specifying the integration method or requiring advanced features like delivery tracking. How should you approach this task in Claude Code?",
     "options": {
       "A": "Start in direct execution mode using incoming webhooks to match the existing one-way notification pattern.",
-      "B": "Switch to planning mode to explore the integration options and their architectural implications, then present a recommendation before implementation.",
-      "C": "Start in direct execution mode by scaffolding a Slack channel class using the existing patterns, deferring the integration-method decision until later.",
+      "B": "Switch to planning mode to weigh the integration options and present a recommendation before implementing.",
+      "C": "Start in direct execution mode, scaffolding a Slack channel class on the existing patterns and deferring the method choice.",
       "D": "Start in direct execution mode using a bot-token approach to ensure delivery confirmation is possible."
     },
     "answer": "B",
@@ -664,7 +664,7 @@
       "A": "Move all guidance into separate skill files organized by workflow type, leaving only a brief project description in CLAUDE.md.",
       "B": "Keep everything in CLAUDE.md but use `@import` syntax to organize the content into separately maintained files by category.",
       "C": "Split CLAUDE.md into files under `.claude/rules/` with path-bound glob patterns so each rule loads only for the relevant file types.",
-      "D": "Keep the universal standards in CLAUDE.md and create skills for the workflow-specific guidance (PR review, deployment, migrations) with trigger keywords."
+      "D": "Keep the universal standards in CLAUDE.md and move the workflow-specific guidance into skills with trigger keywords."
     },
     "answer": "D",
     "explanation": "CLAUDE.md content loads in every session, which is exactly right for coding standards and testing conventions that must always apply. Skills are invoked on demand when Claude detects relevant triggers—ideal for workflow-specific guidance like PR review, deployment, and migrations that would otherwise waste always-on context.",
@@ -689,7 +689,7 @@
     "difficulty": "easy",
     "stem": "You're tasked with restructuring your team's monolithic application into microservices. The work impacts dozens of files and requires decisions about service boundaries and module dependencies. Which Claude Code approach should you choose?",
     "options": {
-      "A": "Switch to planning mode to explore the codebase, understand the dependencies, and design the implementation approach before making any changes.",
+      "A": "Switch to planning mode to explore the codebase and design the implementation approach before making changes.",
       "B": "Start in direct execution mode and switch to planning only after encountering unexpected complexity during implementation.",
       "C": "Start in direct execution mode and make incremental changes, letting the implementation reveal natural service boundaries.",
       "D": "Use direct execution mode with detailed upfront instructions that specify the structure of each service."
@@ -715,17 +715,17 @@
     "difficulty": "medium",
     "stem": "Your team has used Claude Code for months. Recently, three developers report that Claude follows the guidance \"always include comprehensive error handling,\" but a fourth developer who just joined says Claude does not follow it. All four work in the same repo and have up-to-date code. What is the most likely cause and fix?",
     "options": {
-      "A": "The guidance lives in the original developers' user-level `~/.claude/CLAUDE.md` files, not in the project-level `.claude/CLAUDE.md`; move the instruction to the project-level file so all team members receive it.",
-      "B": "The new developer's `~/.claude/CLAUDE.md` contains conflicting instructions overriding the project settings; they should delete the conflicting section.",
+      "A": "The guidance lives only in the original developers' user-level `~/.claude/CLAUDE.md`; move it to the project-level `.claude/CLAUDE.md`.",
+      "B": "The new developer's `~/.claude/CLAUDE.md` holds conflicting instructions that override the project settings; delete that section.",
       "C": "Claude Code learns per-user preferences over time, so the new developer must repeat the requirement until Claude \"remembers\" it.",
-      "D": "Claude Code caches CLAUDE.md after the first read, so the original developers are using cached versions; everyone should clear the Claude Code cache."
+      "D": "Claude Code caches CLAUDE.md after the first read, so the others are running stale copies; everyone should clear the cache."
     },
     "answer": "A",
-    "explanation": "If the guidance was added only to the original developers' user-level configs and never to the project-level `.claude/CLAUDE.md`, new team members will not receive it even with up-to-date code. Moving it to the project-level file—which is version-controlled and loaded for everyone—ensures all current and future members get it automatically.",
+    "explanation": "(A) is the simplest hypothesis that fits every fact in the stem: same repo, up-to-date code, and a split exactly along who has been on the team a while. Guidance added only to the original developers' user-level configs never reaches a new joiner. Moving it into the project-level `.claude/CLAUDE.md`, which is version-controlled and loaded for everyone, fixes it for all current and future members.",
     "distractors": {
-      "B": "Conflicting personal instructions are possible but less likely as a first hypothesis: the new developer presumably has a fresh, near-empty user config, and nothing suggests they added contradicting rules.",
-      "C": "Claude Code does not implicitly learn preferences over time; persistent guidance comes from memory files like CLAUDE.md, not gradual reinforcement.",
-      "D": "Claude Code reads memory files at session start rather than serving stale long-term caches; cache-clearing is not the documented remedy for inconsistent guidance."
+      "B": "Possible, but a weaker first hypothesis: a brand-new joiner has a near-empty user config, and nothing in the stem suggests they authored a contradicting rule.",
+      "C": "Claude Code does not accumulate per-user preferences over time. Persistent guidance comes from memory files, not repetition.",
+      "D": "Memory files are read at session start rather than served from a long-lived cache, so cache-clearing is not the documented remedy and would not explain the split by tenure."
     },
     "tags": [
       "claude-md",
@@ -745,8 +745,8 @@
     "options": {
       "A": "Add the endpoint examples and pattern documentation to the project CLAUDE.md so they are always available.",
       "B": "Manually reference the endpoint examples in every generation request by copying the code into the prompt.",
-      "C": "Configure path-specific rules in `.claude/rules/api/` that include the endpoint examples and activate when working in the API directory.",
-      "D": "Create a skill that references the endpoint examples and contains pattern-following instructions, invoked on demand via a slash command."
+      "C": "Configure path-specific rules in `.claude/rules/api/` that include the endpoint examples and activate in the API directory.",
+      "D": "Create a skill that references the endpoint examples and carries the pattern-following instructions, invoked via a slash command."
     },
     "answer": "D",
     "explanation": "A skill invoked on demand loads the bulky example context only for the task that needs it—generating new endpoints—and not during debugging, review, or other API-directory work. This keeps the main context clean while preserving high-quality, pattern-consistent generation when invoked.",
@@ -771,10 +771,10 @@
     "difficulty": "hard",
     "stem": "Your team created a `/migration` skill that generates database migration files, taking the migration name via `$ARGUMENTS`. In production you observe three issues: (1) developers often run the skill without arguments, causing poorly named files, (2) the skill sometimes uses database schema details from unrelated prior conversations, and (3) a developer accidentally ran destructive test cleanup because the skill had broad tool access. Which configuration approach fixes all three problems?",
     "options": {
-      "A": "Use positional parameters `$1` and `$2` instead of `$ARGUMENTS` to enforce specific inputs, include explicit schema file references via `@` syntax for context control, and add a frontmatter description warning about destructive operations.",
-      "B": "Add `argument-hint` in the frontmatter to prompt for the required parameter, use `context: fork` to isolate execution from the main conversation, and restrict `allowed-tools` to file-write operations.",
-      "C": "Split the skill into `/migration-create` and `/migration-apply`, add validation instructions to request the migration name if missing, and use different `allowed-tools` scopes for each.",
-      "D": "Add validation instructions in SKILL.md to ensure `$ARGUMENTS` is a valid name, add prompts telling the model to ignore prior conversation context, and list prohibited operations to avoid."
+      "A": "Use `$1` and `$2` instead of `$ARGUMENTS`, pull in schema files with `@` references, and warn about destructive operations in the description.",
+      "B": "Add `argument-hint` to prompt for the required parameter, `context: fork` to isolate execution, and `allowed-tools` limited to file writes.",
+      "C": "Split the skill into `/migration-create` and `/migration-apply`, request the name when it is missing, and scope `allowed-tools` for each.",
+      "D": "Add SKILL.md instructions that validate `$ARGUMENTS`, tell the model to ignore prior conversation context, and list prohibited operations."
     },
     "answer": "B",
     "explanation": "Each problem maps to a dedicated configuration feature: `argument-hint` surfaces the expected parameter at invocation time, reducing missing-argument runs; `context: fork` isolates execution so stale schema details from prior conversation cannot leak in; and `allowed-tools` deterministically constrains the skill to safe file-writing operations, preventing destructive actions.",
@@ -799,10 +799,10 @@
     "difficulty": "easy",
     "stem": "You have a personal `/scratch` command that spins up throwaway analysis notes the way you like them. You want it available in every repository you work in, without committing it to any project or exposing it to teammates. Where should the command file live?",
     "options": {
-      "A": "In `~/.claude/commands/` in your home directory.",
+      "A": "As a Markdown file under `~/.claude/commands/` in your home directory.",
       "B": "In `.claude/commands/` in each project repository, with the file added to `.gitignore`.",
-      "C": "In a personal section at the bottom of each project's `CLAUDE.md`.",
-      "D": "In `.claude/settings.local.json` as a `commands` array."
+      "C": "In a personal section at the bottom of each project's committed `CLAUDE.md`.",
+      "D": "In `.claude/settings.local.json`, as an entry in a `commands` array."
     },
     "answer": "A",
     "explanation": "User-level commands in `~/.claude/commands/` load in every project you open and live outside any repository, so they are never committed and never visible to teammates. This is the personal counterpart to project-level `.claude/commands/`, which is version-controlled and shared.",
@@ -855,16 +855,16 @@
     "stem": "You are applying a large but mechanical change — renaming a function across about 30 files — and Claude Code prompts you to approve every individual file edit, which is slowing you down. You still want to manually review any shell commands Claude wants to run. Which permission mode best fits?",
     "options": {
       "A": "bypassPermissions — skip all permission prompts for the session, including shell commands",
-      "B": "plan mode — so Claude proposes the edits but does not apply them",
-      "C": "default — keep approving each edit individually",
-      "D": "acceptEdits — auto-approve file edits for the session while still prompting for other actions such as shell commands"
+      "B": "plan mode — Claude proposes the full set of edits but does not apply any of them",
+      "C": "default — keep approving each individual file edit as it is proposed",
+      "D": "acceptEdits — auto-approve file edits for the session, still prompting for other actions"
     },
     "answer": "D",
-    "explanation": "acceptEdits mode automatically accepts file edit tool calls for the session, removing the per-edit prompts for a trusted, well-scoped editing task, while still prompting for higher-risk actions like Bash commands. That exactly matches the requirement: fast edits, but keep a gate on shell commands.",
+    "explanation": "(D) acceptEdits automatically accepts file-edit tool calls for the session, removing the per-edit prompts on a trusted, well-scoped mechanical change, while still prompting for higher-risk actions such as Bash commands. That is exactly the requirement: fast edits, but keep a gate on shell commands.",
     "distractors": {
-      "A": "bypassPermissions removes ALL permission prompts, including shell commands, which is riskier than needed and violates the requirement to still review shell commands; it is appropriate only in fully sandboxed/isolated environments.",
-      "B": "plan mode is read-only — Claude would not apply the edits at all, so the rename never happens.",
-      "C": "default still prompts on every edit, so it does not relieve the friction the developer is trying to eliminate."
+      "A": "bypassPermissions removes every prompt, shell commands included, which breaks the stated requirement to keep reviewing them; it belongs only in fully sandboxed environments.",
+      "B": "plan mode is read-only, so Claude would propose all 30 edits and apply none of them — the rename never lands.",
+      "C": "default is the mode the developer is already in, so it changes nothing about the per-edit prompting they are trying to eliminate."
     },
     "tags": [
       "permissions",
@@ -882,10 +882,10 @@
     "difficulty": "medium",
     "stem": "Your CI pipeline runs Claude Code non-interactively to run the test suite and the linter, and you want a least-privilege setup that deterministically limits which shell commands it can execute without a human approving each one. Select the TWO mechanisms that restrict which commands Claude Code may run without prompting.",
     "options": {
-      "A": "A permissions.allow allowlist in .claude/settings.json enumerating the exact tool patterns permitted (e.g., Bash(npm run test:*), Bash(npm run lint))",
-      "B": "A permissions.deny list in .claude/settings.json that unconditionally blocks specific dangerous commands (e.g., Bash(rm:*), Bash(curl:*))",
-      "C": "A note in CLAUDE.md instructing Claude to only run the test and lint commands and nothing else",
-      "D": "Running the job in bypassPermissions mode so the pipeline never blocks on a prompt"
+      "A": "A permissions.allow allowlist in .claude/settings.json naming exact tool patterns like Bash(npm run test:*)",
+      "B": "A permissions.deny list in .claude/settings.json blocking specific dangerous commands, e.g. Bash(rm:*)",
+      "C": "A note in CLAUDE.md instructing Claude to run only the project's test and lint commands and nothing else",
+      "D": "Running the job in bypassPermissions mode so the non-interactive pipeline never blocks on a prompt"
     },
     "answer": [
       "A",
@@ -914,9 +914,9 @@
     "stem": "Your organization publishes an enterprise-managed policy that denies Bash(curl:*) for all Claude Code users. A project's committed .claude/settings.json lists Bash(curl:*) in its allow rules, and one developer also adds it to their personal .claude/settings.local.json. When that developer runs Claude Code in the project and Claude tries to run curl, what happens?",
     "options": {
       "A": "curl runs, because the developer's settings.local.json allow rule is the most specific and wins",
-      "B": "curl runs, because the project's committed .claude/settings.json allow rule grants it to everyone on the team",
-      "C": "curl is denied, because enterprise-managed policy settings sit at the top of the precedence chain and cannot be overridden by project or local allow rules",
-      "D": "Claude prompts the developer, because the conflicting allow and deny rules cancel out"
+      "B": "curl runs, because the project's committed .claude/settings.json allow rule grants it to the team",
+      "C": "curl is denied, because enterprise-managed policy sits at the top of the precedence chain",
+      "D": "Claude prompts the developer, because the conflicting allow and deny rules cancel each other out"
     },
     "answer": "C",
     "explanation": "Settings precedence runs enterprise-managed policy above all project and user settings, including both the shared .claude/settings.json and the personal .claude/settings.local.json. An enterprise deny rule is authoritative and cannot be overridden by a project or personal allow rule, so curl is denied.",
@@ -942,17 +942,17 @@
     "difficulty": "medium",
     "stem": "A unit test fails with a stack trace pointing to a single off-by-one error in one utility function. The cause is clear and the fix is confined to that one function. Which Claude Code approach is most appropriate?",
     "options": {
-      "A": "Enter plan mode first so Claude can explore the whole codebase and present a plan before touching anything",
-      "B": "Execute the fix directly — the change is well-scoped, mechanical, and confined to one function with a clear cause",
+      "A": "Enter plan mode first so Claude explores the codebase and presents a plan before touching anything",
+      "B": "Execute the fix directly in the single utility function the stack trace points to",
       "C": "Restructure the surrounding module in plan mode to prevent similar bugs in the future",
-      "D": "Delegate the fix to a separate reviewer subagent before making any change"
+      "D": "Delegate the fix to a separate reviewer subagent before making any change to the function"
     },
     "answer": "B",
-    "explanation": "Direct execution is the right choice for simple, well-scoped changes with a clear cause — here a single-file, single-function off-by-one that the stack trace already pinpoints. Plan mode exists for large, multi-file, or architecturally ambiguous work; adding it (or extra subagents) here is needless overhead. The simplest approach that works is preferred.",
+    "explanation": "(B) is the least intervention that treats the diagnosed cause. The stack trace already pinpoints a single off-by-one in one function, so the change is well-scoped and mechanical — direct execution is appropriate. Plan mode exists for large, multi-file, or architecturally ambiguous work; adding it (or an extra reviewer subagent) here is pure overhead.",
     "distractors": {
-      "A": "Plan mode and whole-codebase exploration are overkill for a one-line, well-understood fix whose scope and cause are already clear.",
-      "C": "Restructuring the module is scope creep beyond the reported bug and risks introducing new defects; fix the actual error instead.",
-      "D": "A reviewer subagent adds process overhead with no benefit for a trivial, obvious correction; independent review pays off on ambiguous or high-risk changes, not this one."
+      "A": "Whole-codebase exploration is overhead the stem has already made unnecessary: the cause is known and the scope is one function.",
+      "C": "Restructuring the module is scope creep well beyond the reported bug, and it risks new defects in code that currently works.",
+      "D": "An independent reviewer pays off on ambiguous or high-risk changes; on a one-line correction with a stack trace pointing at it, it is process for its own sake."
     },
     "tags": [
       "planning-mode",
@@ -970,9 +970,9 @@
     "difficulty": "medium",
     "stem": "You ask Claude to \"reformat these API responses into our standard shape,\" but across runs it interprets \"standard shape\" inconsistently — sometimes nesting, sometimes flattening, sometimes renaming fields differently. The prose description clearly is not pinning it down. What most reliably fixes this?",
     "options": {
-      "A": "Provide 2-3 concrete input->output examples showing exactly how a raw response maps to the standard shape",
-      "B": "Add words like \"carefully\" and \"exactly\" to the instruction and re-run",
-      "C": "Lower the temperature so the transformation is deterministic",
+      "A": "Provide 2-3 concrete input->output examples of a raw response mapped to the standard shape",
+      "B": "Add emphatic words like \"carefully\" and \"exactly\" to the instruction and re-run it",
+      "C": "Lower the temperature so the transformation comes out deterministic across runs",
       "D": "Ask Claude to first explain what it thinks \"standard shape\" means before transforming"
     },
     "answer": "A",
@@ -998,10 +998,10 @@
     "difficulty": "medium",
     "stem": "You are using Claude Code to implement a tricky date-rollover utility and want it to converge on correct behavior including edge cases (leap years, month boundaries, DST) rather than iterating vaguely. What is the most effective way to drive the iteration?",
     "options": {
-      "A": "Describe all the edge cases in prose in one large prompt and ask for a complete, correct implementation",
-      "B": "Ask Claude to implement it, then manually eyeball the output for bugs",
-      "C": "Increase the thinking budget so it reasons longer about edge cases up front",
-      "D": "Write the test suite first (covering the edge cases), have Claude implement against it, and iterate by feeding it the specific failing tests"
+      "A": "Describe all the edge cases in prose in one large prompt and ask for a complete implementation",
+      "B": "Ask Claude to implement the utility, then manually eyeball the output for edge-case bugs",
+      "C": "Raise the thinking budget so Claude reasons longer about the edge cases before writing code",
+      "D": "Write the edge-case test suite first, have Claude implement against it, and feed back the failing tests"
     },
     "answer": "D",
     "explanation": "Test-driven iteration — write tests (including edge cases) first, implement against them, then iterate by sharing the specific failures — gives concrete, objective feedback that guides the model toward correctness far more reliably than prose descriptions or manual inspection.",
@@ -1026,17 +1026,17 @@
     "difficulty": "hard",
     "stem": "You ask Claude to add caching to an unfamiliar service. There are decisions it cannot safely assume (invalidation strategy, cache-key scope, failure behavior), and you want to avoid it charging ahead on wrong assumptions. What is the best approach, including how to batch interacting vs independent fixes?",
     "options": {
-      "A": "Tell it to make reasonable assumptions and proceed, then fix whatever is wrong afterward",
-      "B": "Use the interview pattern — have Claude ask clarifying questions to surface those decisions before implementing; then fix interacting problems together in one message, while handling independent problems sequentially",
-      "C": "Provide every possible detail up front in one giant prompt so no questions are needed",
-      "D": "Have it implement three separate caching designs in parallel and pick one"
+      "A": "Tell it to make reasonable assumptions and proceed, then fix whatever turns out to be wrong afterwards",
+      "B": "Use the interview pattern to surface the decisions first, then batch interacting fixes and sequence independent ones",
+      "C": "Write one giant prompt containing every detail you can think of so no clarifying questions are needed",
+      "D": "Have it implement three separate caching designs in parallel and pick whichever one looks best"
     },
     "answer": "B",
-    "explanation": "The interview pattern has Claude surface considerations (invalidation, key scope, failure modes) before implementing, avoiding wrong assumptions in an unfamiliar domain. Batching also matters: interacting problems should be fixed together in one message so the model sees the whole picture, while independent problems can be addressed sequentially.",
+    "explanation": "(B) is right on both halves of the question. The interview pattern has Claude ask clarifying questions to surface the decisions it cannot safely assume — invalidation strategy, cache-key scope, failure behaviour — before writing code in an unfamiliar service. On batching: interacting problems should be fixed together in one message so the model can see how they constrain each other, while independent problems can be handed over sequentially.",
     "distractors": {
-      "A": "Letting it assume and fixing later invites rework on decisions that were knowable up front, especially in an unfamiliar domain.",
-      "C": "A giant up-front prompt is hard to make complete and still cannot anticipate what the model actually needs clarified.",
-      "D": "Building three full designs in parallel is wasteful over-engineering before the key decisions are even settled."
+      "A": "Assume-and-fix invites rework on decisions that were knowable up front, and in an unfamiliar service the wrong invalidation strategy is expensive to unwind.",
+      "C": "A giant up-front prompt still cannot anticipate what the model actually needs clarified — you are guessing at the questions instead of letting it ask them.",
+      "D": "Three parallel implementations spend the effort before the decisions are settled; the cheap step is asking, not building."
     },
     "tags": [
       "interview-pattern",

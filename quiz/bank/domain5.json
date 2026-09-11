@@ -7,17 +7,17 @@
     "difficulty": "easy",
     "stem": "A support agent handles long multi-turn conversations. Over time, the running summary condenses the order total ($1,249.00), the order date, and the RMA number into vague phrases like \"a recent high-value order.\" The agent then quotes wrong figures. What is the most reliable fix?",
     "options": {
-      "A": "Extract transactional facts (amounts, dates, order/RMA numbers, statuses) into a persistent case facts block included in each prompt, outside the summarized history",
-      "B": "Disable summarization entirely and always pass the full raw history",
-      "C": "Instruct the model to never summarize numeric values",
-      "D": "Increase the model's max_tokens so summaries can be longer"
+      "A": "Extract transactional facts into a persistent case-facts block sent with every prompt, outside the summarized history",
+      "B": "Disable summarization entirely and pass the full raw history on every turn so nothing is ever condensed",
+      "C": "Instruct the model in its system prompt never to summarize numeric values, dates, or identifiers",
+      "D": "Raise max_tokens so the running summary has room to retain the original figures verbatim"
     },
     "answer": "A",
-    "explanation": "Progressive summarization reliably degrades precise transactional data (amounts, dates, identifiers). A case facts block stores these values verbatim in a structured block that travels with each prompt OUTSIDE the summarized history, so they are never lost to compression.",
+    "explanation": "Progressive summarization reliably degrades precise transactional data. A case-facts block holds the amounts, dates, order/RMA numbers and statuses verbatim in a structured block that travels with each prompt OUTSIDE the summarized history (A), so compression can never reach them.",
     "distractors": {
-      "B": "Never summarizing eventually overflows the context window in long conversations; the goal is to keep the facts that matter, not all raw text.",
-      "C": "A prompt instruction is probabilistic and still degrades over many turns; it does not guarantee the values persist.",
-      "D": "Larger max_tokens affects output length, not whether summarization drops precise figures from the running history."
+      "B": "Never summarizing eventually overflows the context window in a long conversation; the goal is to keep the facts that matter, not every raw turn.",
+      "C": "A prompt instruction is probabilistic and decays over many turns; it does not guarantee the values survive compression.",
+      "D": "max_tokens caps Claude's output length, not whether summarization drops precise figures from the running history."
     },
     "tags": [
       "context-management",
@@ -34,17 +34,17 @@
     "difficulty": "easy",
     "stem": "A synthesis agent receives a single long concatenation of findings from five subagents. It consistently captures conclusions from the first and last subagents but omits findings from those in the middle. What is the best mitigation?",
     "options": {
-      "A": "Increase the model's temperature so it explores more of the input",
-      "B": "Truncate the input to only the first and last subagents' findings",
-      "C": "Place a key-findings summary at the beginning and organize the detailed sections with explicit headers",
-      "D": "Process the concatenation in reverse so the middle is seen last"
+      "A": "Increase the model's temperature so it samples more widely across the input it was given",
+      "B": "Truncate the input to the first and last subagents' findings, where the model already attends reliably",
+      "C": "Place a key-findings summary at the top and split the details under explicit per-subagent headers",
+      "D": "Process the concatenation in reverse order so the previously omitted middle is read last"
     },
     "answer": "C",
-    "explanation": "This is the \"lost in the middle\" effect: models reliably attend to the beginning and end of long inputs but may skip middle content. Putting a key-findings summary up front and using explicit section headers makes the middle content salient and addressable.",
+    "explanation": "This is the \"lost in the middle\" effect: models reliably attend to the beginning and end of long inputs but may skip middle content. A key-findings summary up front plus explicit section headers (C) makes the middle salient and individually addressable rather than relying on position alone.",
     "distractors": {
-      "A": "Temperature controls output randomness, not attention distribution across a long input.",
-      "B": "Truncating the middle deliberately discards exactly the findings being lost.",
-      "D": "Reversing the order just moves the neglected content to a new middle position; the positional bias remains."
+      "A": "Temperature controls output randomness, not how attention is distributed across a long input.",
+      "B": "Restricting the input to the positions the model already reads well deliberately discards exactly the findings being lost.",
+      "D": "Reversing the order just moves the neglected content to a new middle position; the positional bias travels with it."
     },
     "tags": [
       "context-management",
@@ -64,14 +64,14 @@
       "A": "Acknowledge the frustration, attempt resolution, and escalate only if frustration persists",
       "B": "Investigate and resolve the order question first, then escalate only if the customer asks again",
       "C": "Escalate to a human immediately, without first attempting to investigate or resolve",
-      "D": "Ask the customer to explain why they want a human before deciding"
+      "D": "Ask the customer why they want a human before deciding whether escalation is warranted"
     },
     "answer": "C",
-    "explanation": "An explicit request for a human is a hard escalation trigger: escalate immediately, no investigation first. The agent should not gate an explicit human request behind a resolution attempt or interrogation.",
+    "explanation": "An explicit request for a human is a hard escalation trigger: escalate immediately, with no investigation first (C). The agent should not gate an explicit human request behind a resolution attempt or an interrogation, however easily it could have handled the underlying task.",
     "distractors": {
-      "A": "Offering resolution first is the correct response to implicit frustration alone, not to an explicit demand for a human.",
-      "B": "Resolving first applies to implicit frustration, not an explicit human request; delaying here ignores a direct instruction.",
-      "D": "Interrogating the customer about why they want a human adds friction and ignores the explicit request."
+      "A": "Offering resolution first is the right response to implicit frustration alone, not to an explicit demand for a human.",
+      "B": "Resolving first applies to implicit frustration; here it delays a direct instruction the customer already gave.",
+      "D": "Asking the customer to justify the request adds friction and still ignores an explicit, unambiguous instruction."
     },
     "tags": [
       "escalation",
@@ -87,17 +87,17 @@
     "difficulty": "easy",
     "stem": "An order lookup tool returns 40+ fields per order, but only 5 are relevant to return processing. Across a long conversation these full payloads accumulate and crowd out context. What is the recommended approach?",
     "options": {
-      "A": "Switch to a model with a larger context window",
-      "B": "Ask the customer to read the order details aloud to avoid the tool call",
-      "C": "Trim the tool output to only the relevant fields before it enters the conversation context",
-      "D": "Raise max_tokens so the extra fields fit"
+      "A": "Switch to a model with a larger context window so the full payloads fit comfortably",
+      "B": "Ask the customer to read the relevant order details aloud so the agent can skip the tool call",
+      "C": "Trim the tool output to only the fields return processing needs before it enters the context",
+      "D": "Raise max_tokens so the extra fields have room and stop crowding out the rest of the conversation"
     },
     "answer": "C",
-    "explanation": "Verbose tool outputs cause context bloat. Trimming to only the fields the task needs, before they accumulate, is the core mitigation and keeps the context lean across many turns.",
+    "explanation": "Verbose tool outputs cause context bloat: 35 of the 40 fields are dead weight on every call, and they accumulate turn after turn. Trimming the payload to the five relevant fields before it ever enters the conversation (C) is the mitigation that keeps context lean across a long session.",
     "distractors": {
-      "A": "A bigger window delays the problem and adds cost; the waste of 35 irrelevant fields per call remains.",
-      "B": "Routing data through the customer is error-prone and unnecessary when the tool already returns it.",
-      "D": "max_tokens governs output length, not the size of accumulated tool results in context."
+      "A": "A bigger window delays the problem and raises cost; the 35 irrelevant fields per call still accumulate.",
+      "B": "Routing data through the customer is slow and error-prone when the tool already returns it reliably.",
+      "D": "max_tokens governs the length of Claude's output, not the size of tool results accumulating in context."
     },
     "tags": [
       "context-management",
@@ -113,17 +113,17 @@
     "difficulty": "easy",
     "stem": "During a long codebase-exploration session, Claude Code starts giving inconsistent answers and refers to \"typical patterns\" rather than the specific classes it identified earlier. The verbose discovery output has filled the context. What is the most appropriate first action?",
     "options": {
-      "A": "Restart from scratch in a brand-new session",
-      "B": "Ask the same questions repeatedly until answers stabilize",
-      "C": "Run /compact to condense the filled context while continuing the same session",
-      "D": "Raise the temperature so the model is more creative"
+      "A": "Restart from scratch in a brand-new session and re-explore the codebase",
+      "B": "Ask the same questions repeatedly until the answers stabilize on a consistent picture",
+      "C": "Run /compact to condense the filled context and continue in the same session",
+      "D": "Raise the temperature so the model produces more varied, less repetitive answers"
     },
     "answer": "C",
-    "explanation": "When context fills with verbose discovery output and answers degrade, /compact condenses the conversation so the session can continue with the important information retained. It directly targets the bloat causing degradation.",
+    "explanation": "When context fills with verbose discovery output and answers degrade into generalities, /compact condenses the conversation in place (C) so the session continues with the important information retained. It targets the bloat that is actually causing the degradation, at the lowest cost of the four.",
     "distractors": {
-      "A": "A full restart throws away all the discovered findings and wastes the prior exploration.",
-      "B": "Re-asking does not reclaim context space and will keep producing degraded, generic answers.",
-      "D": "Higher temperature increases variability, worsening the inconsistency."
+      "A": "A full restart throws away every finding from the exploration and pays to rediscover all of it.",
+      "B": "Re-asking reclaims no context space, so the answers stay generic — the bloat causing them is untouched.",
+      "D": "Higher temperature increases variability, which makes the inconsistency worse rather than better."
     },
     "tags": [
       "context-degradation",
@@ -139,17 +139,17 @@
     "difficulty": "medium",
     "stem": "A customer provides only a common name, \"John Smith.\" The get_customer tool returns three distinct accounts matching that name. What should the agent do before taking any account action?",
     "options": {
-      "A": "Ask the customer for an additional identifier (email, order number, or account ID) to disambiguate",
-      "B": "Pick the account with the most recent activity as the most likely match",
-      "C": "Proceed with all three accounts in parallel and let the customer correct any mistakes",
-      "D": "Pick the account whose city best matches the customer's IP geolocation"
+      "A": "Ask the customer for an email, order number, or account ID that disambiguates the three matches",
+      "B": "Pick the account with the most recent activity, since that is the likeliest to be the current customer",
+      "C": "Act on all three accounts in parallel and let the customer flag whichever one was not theirs",
+      "D": "Pick the account whose city best matches the customer's IP geolocation and proceed with that one"
     },
     "answer": "A",
-    "explanation": "When a lookup returns multiple customer matches, the agent should request additional identifiers to disambiguate rather than guessing. Heuristic selection risks acting on the wrong person's account.",
+    "explanation": "When a lookup returns multiple customer matches, the agent should request an additional identifier and disambiguate (A) before taking any account action. Every alternative substitutes a heuristic guess for identity verification, and the cost of guessing wrong is action on another person's account.",
     "distractors": {
-      "B": "\"Most recent activity\" is a heuristic that can easily select the wrong customer.",
-      "C": "Acting on all three accounts risks exposing or modifying other customers' data.",
-      "D": "IP geolocation is an unreliable heuristic and can act on the wrong account."
+      "B": "\"Most recent activity\" is a heuristic that can easily select the wrong John Smith, and nothing in the conversation supports it.",
+      "C": "Acting on all three accounts risks exposing or modifying two other customers' data before anyone can object.",
+      "D": "IP geolocation is unreliable at city granularity and is not identity evidence; it can act on the wrong account."
     },
     "tags": [
       "ambiguity-resolution",
@@ -166,17 +166,17 @@
     "difficulty": "medium",
     "stem": "A document-analysis subagent fails on 2 of 5 documents (one timeout, one parse error) but succeeds on 3. Its current behavior is to return an empty result set marked as successful so the workflow does not halt. Why is this the wrong design?",
     "options": {
-      "A": "It should terminate the entire workflow so a human can intervene",
-      "B": "It should retry the failed documents forever until they succeed",
-      "C": "It is correct — returning empty-as-success keeps the pipeline running",
-      "D": "It silently suppresses errors and discards partial results, hiding the failures from the coordinator and corrupting downstream synthesis"
+      "A": "It should terminate the entire workflow immediately so a human can intervene before synthesis",
+      "B": "It should retry the two failed documents indefinitely until both eventually parse successfully",
+      "C": "It is correct — an empty success keeps the pipeline running and the coordinator can detect the gap",
+      "D": "It silently suppresses errors and drops the partial results, hiding both from the coordinator"
     },
     "answer": "D",
-    "explanation": "Returning empty results marked as success is the silent-suppression anti-pattern: the coordinator cannot tell that 2 documents failed or that 3 succeeded, so synthesis silently treats incomplete data as complete. The subagent should return structured error context plus the partial (3 successful) results.",
+    "explanation": "Returning empty results marked as success is the silent-suppression anti-pattern (D): the coordinator cannot tell that 2 documents failed, nor that 3 succeeded, so downstream synthesis treats incomplete data as complete. The subagent should return structured error context — failure type per document — alongside the 3 partial results.",
     "distractors": {
-      "A": "Terminating the whole workflow on a partial failure discards the 3 successful results and over-reacts.",
-      "B": "Unbounded retries can hang the pipeline; retries must be bounded and failures eventually reported with context.",
-      "C": "Empty-as-success hides failures and makes the system look complete when it is not."
+      "A": "Terminating the whole workflow on a partial failure discards the 3 successful analyses and over-reacts to a recoverable problem.",
+      "B": "Unbounded retries can hang the pipeline, and a parse error on a malformed document will never resolve itself.",
+      "C": "Empty-as-success gives the coordinator nothing to detect — an empty set is indistinguishable from a genuine zero-result run."
     },
     "tags": [
       "error-propagation",
@@ -193,17 +193,17 @@
     "difficulty": "medium",
     "stem": "A web-search subagent hits a transient timeout, then propagates {\"status\": \"error\", \"message\": \"search unavailable\"} to the coordinator. The coordinator blindly retries the same query, which times out again. What two problems does this reveal?",
     "options": {
-      "A": "The subagent should average across whatever data it has and report success",
-      "B": "The coordinator should never retry, and the subagent should escalate to a human",
-      "C": "The error should have been a JSON-RPC protocol error, and the coordinator should ignore it",
-      "D": "The subagent should attempt local recovery for transient failures, and when it does propagate, it must include structured context (failure type, attempted query, partial results, alternatives)"
+      "A": "The subagent should average across whatever data it did retrieve and report the call as a success",
+      "B": "The coordinator should never retry a failed search, and the subagent should escalate straight to a human",
+      "C": "The failure should have been raised as a JSON-RPC protocol error, which the coordinator can safely ignore",
+      "D": "Recover transient failures inside the subagent, and give any propagated error structured context"
     },
     "answer": "D",
-    "explanation": "Two issues: (1) transient failures should first be handled by local recovery in the subagent, and (2) any propagated error must carry structured context — failure type, what was attempted, partial results, and potential alternatives — so the coordinator can decide intelligently rather than blindly retrying.",
+    "explanation": "Two issues (D). First, a transient timeout should be handled by local recovery inside the subagent before it is propagated at all. Second, an error that does reach the coordinator must carry structured context — failure type, the query attempted, any partial results, and viable alternatives — so the coordinator can choose a different query or source instead of blindly resending the one that just failed.",
     "distractors": {
-      "A": "Fabricating success from incomplete data is exactly the silent-suppression anti-pattern.",
-      "B": "Retries are appropriate for transient faults with the right context; jumping straight to human escalation is premature.",
-      "C": "Tool/agent failures should be reported as readable error context the coordinator can reason over, not buried in protocol errors."
+      "A": "Fabricating a success from incomplete data is the silent-suppression anti-pattern; the coordinator would never learn the search failed.",
+      "B": "Retries are appropriate for transient faults given the right context; jumping straight to a human on a timeout is premature.",
+      "C": "Tool and agent failures belong in readable error context the coordinator can reason over, not buried in a protocol error it ignores."
     },
     "tags": [
       "error-propagation",
@@ -220,17 +220,17 @@
     "difficulty": "hard",
     "stem": "A coordinator must distinguish between a search tool that timed out and a search tool that completed successfully but found zero matching records. Why does this distinction matter for reliability?",
     "options": {
-      "A": "An access failure (timeout/service down) needs a retry decision, while a valid empty result is correct data and must not trigger retries or be reported as an error",
-      "B": "Both should be reported as empty successes to keep the pipeline simple",
-      "C": "Only the empty result needs handling; timeouts can be ignored",
-      "D": "It does not matter; both should be treated as failures and retried"
+      "A": "A timeout is an unresolved access failure that may warrant a retry, while a zero-result response is correct data",
+      "B": "Both should be reported as empty successes so the coordinator's handling stays simple and uniform",
+      "C": "Only the empty result needs special handling; a timeout can be ignored and the query treated as done",
+      "D": "It does not matter — both mean no data came back, so both should be retried the same way"
     },
     "answer": "A",
-    "explanation": "An access failure (timeout, service down) is unresolved and may warrant a retry; a valid empty result is a successful query that genuinely found nothing. Conflating them either wastes retries on real zero-result answers or silently drops real failures, so error reporting must keep them distinguishable.",
+    "explanation": "An access failure (timeout, service down) is unresolved and may warrant a retry; a valid empty result is a successful query that genuinely found nothing (A). Conflating them either wastes retries on real zero-result answers or silently drops real failures, so error reporting must keep the two distinguishable at the coordinator.",
     "distractors": {
-      "B": "Marking a timeout as an empty success hides a real failure from the coordinator.",
-      "C": "Ignoring timeouts means real access failures silently corrupt the results.",
-      "D": "Retrying a genuine zero-result query wastes resources and can never \"succeed\" differently."
+      "B": "Reporting a timeout as an empty success hides a real failure and makes an unanswered question look answered.",
+      "C": "Ignoring timeouts lets real access failures pass silently into the results as though the source had been checked.",
+      "D": "Retrying a genuine zero-result query burns budget on a call that can only ever return the same correct answer."
     },
     "tags": [
       "error-propagation",
@@ -247,17 +247,17 @@
     "difficulty": "medium",
     "stem": "A final research report states \"Battery storage costs fell 76% over the last decade\" with no source. The synthesis step compressed findings and dropped the source URLs, excerpts, and dates from the subagents. What design change best prevents this loss of provenance?",
     "options": {
-      "A": "Have the synthesis agent re-search each claim to re-attach a source after the fact",
-      "B": "Append a generic bibliography of every URL visited at the end of the report",
-      "C": "Require subagents to output structured claim-source mappings (source URL/document, relevant excerpt, publication or collection date) that are preserved through synthesis",
-      "D": "Instruct the synthesis agent to only include claims it is confident about"
+      "A": "Have the synthesis agent re-search each claim afterwards and attach whatever source it then finds",
+      "B": "Append a generic bibliography listing every URL any subagent visited at the end of the report",
+      "C": "Require subagents to emit structured claim-source mappings that synthesis is required to preserve",
+      "D": "Instruct the synthesis agent to include only the claims it is confident it can stand behind"
     },
     "answer": "C",
-    "explanation": "Provenance is lost when findings are compressed without preserving claim-source links. Requiring subagents to emit structured claim-source mappings — URL/document, excerpt, and date — keeps each claim traceable through summarization rather than relying on after-the-fact reconstruction.",
+    "explanation": "Provenance is lost when findings are compressed without preserving the claim-to-source link. Requiring subagents to emit structured claim-source mappings (C) — source URL or document, the relevant excerpt, and the publication or collection date — and treating those mappings as data synthesis must carry through keeps each statistic traceable instead of reconstructed after the fact.",
     "distractors": {
-      "A": "Re-searching after the fact is unreliable and may attach a different source than the one that produced the claim.",
-      "B": "A bulk bibliography does not map specific claims to specific sources, so individual statistics remain unverifiable.",
-      "D": "Confidence filtering does not restore the missing source attribution for the claims that remain."
+      "A": "Re-searching after the fact is unreliable and may attach a different source than the one that actually produced the claim.",
+      "B": "A bulk bibliography does not map a specific claim to a specific source, so the 76% figure remains unverifiable.",
+      "D": "Confidence filtering removes some claims but restores no attribution for the ones that survive."
     },
     "tags": [
       "provenance",
@@ -274,17 +274,17 @@
     "difficulty": "medium",
     "stem": "Two sources report a key figure differently: one says \"45% growth (2022 data)\" and another says \"52% growth (2024 data).\" The synthesis agent must decide how to present this. What is the correct approach?",
     "options": {
-      "A": "Silently keep the higher figure since it is more recent",
-      "B": "Report both figures with their source attribution and collection dates, annotating the conflict so the coordinator/reader can reconcile",
-      "C": "Drop both figures because they conflict and report only that growth occurred",
-      "D": "Average the two figures and report 48.5% as a single number"
+      "A": "Silently keep the higher figure, on the grounds that the more recent 2024 collection supersedes the older",
+      "B": "Report both figures with their sources and dates, flagging the conflict for the reader to reconcile",
+      "C": "Drop both figures because they conflict, and report only that growth occurred over the period",
+      "D": "Average the two figures and report a single 48.5% growth rate to avoid confusing the reader"
     },
     "answer": "B",
-    "explanation": "Conflicting source values should be annotated with their source attribution and dates rather than arbitrarily resolved. Preserving the dates also prevents a temporal difference from being misread as a contradiction. The reconciliation decision belongs to the coordinator/reader, not a silent heuristic.",
+    "explanation": "Conflicting source values should be annotated with their attribution and dates rather than resolved by a silent heuristic (B). Preserving the dates also prevents a temporal difference — 2022 data versus 2024 data — from being read as a contradiction at all. The reconciliation decision belongs to the coordinator or reader, who can see both.",
     "distractors": {
-      "A": "Silently picking one value discards provenance and hides a real conflict.",
-      "C": "Dropping both throws away genuine, datable data points.",
-      "D": "Averaging fabricates a number neither source reported and erases the temporal distinction."
+      "A": "Picking one value silently discards provenance and hides a difference the reader needs to see to judge either figure.",
+      "C": "Dropping both throws away two genuine, datable data points to avoid a conflict that annotation would resolve.",
+      "D": "Averaging fabricates a number neither source reported and erases the temporal distinction between them."
     },
     "tags": [
       "provenance",
@@ -301,17 +301,17 @@
     "difficulty": "medium",
     "stem": "You explored a large codebase yesterday and built up significant findings in the session. Overnight, three specific files were modified by teammates. You want to continue the investigation today. What is the best approach?",
     "options": {
-      "A": "Start a fresh session and re-explore the entire codebase from scratch",
-      "B": "Resume with --resume and explicitly tell the agent which three files changed so it can re-analyze them in a targeted way",
-      "C": "Resume with --resume and let the agent rediscover any changes naturally as it works",
-      "D": "Start a fresh session because resuming will always operate on stale data"
+      "A": "Start a fresh session and re-explore the whole codebase so nothing carried over can be stale",
+      "B": "Resume with --resume and tell the agent which three files changed so it re-analyzes them",
+      "C": "Resume with --resume and let the agent rediscover the overnight changes as it works",
+      "D": "Start a fresh session, since a resumed session always reasons over stale cached tool results"
     },
     "answer": "B",
-    "explanation": "When prior context is mostly still valid but a few files changed, resume with --resume AND explicitly inform the agent which files changed so it can re-analyze them. This preserves the valid prior work while preventing the agent from reasoning over stale tool results for the changed files.",
+    "explanation": "When prior context is mostly still valid but a few files changed, resume with --resume AND name the three changed files (B) so the agent re-analyzes exactly those. That preserves yesterday's valid findings while preventing the agent from reasoning over stale tool results for the files that moved underneath it.",
     "distractors": {
-      "A": "Re-exploring everything discards a large amount of still-valid prior work.",
-      "C": "Without being told, the agent may keep using stale cached tool results for the changed files and never notice.",
-      "D": "Resuming is appropriate when most context is valid; a fresh start is only needed when prior results are extensively stale."
+      "A": "Re-exploring everything discards a large body of still-valid work to correct three files.",
+      "C": "Without being told, the agent has no reason to re-read those files and may keep using yesterday's cached results.",
+      "D": "Resuming is appropriate when most context is valid; a fresh start is only warranted when prior results are extensively stale."
     },
     "tags": [
       "session-resume",
@@ -328,17 +328,17 @@
     "difficulty": "medium",
     "stem": "During a long, multi-phase codebase exploration you are worried key findings from early phases will be lost as the session grows. Which combination best preserves them across context boundaries?",
     "options": {
-      "A": "Persist key findings to scratchpad files, delegate focused questions to subagents, and inject phase summaries into the initial context of the next phase",
-      "B": "Increase the context window and disable any compaction",
-      "C": "Keep everything in the conversation and rely on the model's memory of earlier turns",
-      "D": "Restart the session between phases to keep each phase's context clean"
+      "A": "Write findings to scratchpad files, delegate narrow questions to subagents, and seed each phase with the last summary",
+      "B": "Switch to a model with a larger context window and disable compaction so nothing is ever condensed",
+      "C": "Keep everything in the one conversation and rely on the model recalling the earlier phases accurately",
+      "D": "Restart the session between phases so each phase begins with a clean, uncluttered context"
     },
     "answer": "A",
-    "explanation": "The recommended pattern is to externalize findings into scratchpad files, delegate narrow questions to subagents while the main agent coordinates, and summarize each phase's key findings before starting the next phase (injecting those summaries into the new context). This keeps durable knowledge available across context boundaries.",
+    "explanation": "The recommended pattern combines three moves (A): externalize findings into scratchpad files the agent can re-read, delegate narrow questions to subagents so their verbose output never lands in the main context, and summarize each phase's key findings into the initial context of the next. Together they keep durable knowledge available across context boundaries.",
     "distractors": {
-      "B": "A larger window still degrades and fills; without externalized findings, early phases are still lost.",
-      "C": "Relying on in-context memory is exactly what fails in long sessions as context degrades.",
-      "D": "Restarting between phases loses cross-phase continuity unless findings are carried forward via summaries/scratchpads."
+      "B": "A larger window still fills and still degrades; without externalized findings, the early phases are lost just the same.",
+      "C": "In-context recall over many phases is exactly what fails here — it is the mechanism the question is asking you to replace.",
+      "D": "Restarting clears the clutter but also drops cross-phase continuity, unless findings are carried forward some other way."
     },
     "tags": [
       "context-degradation",
@@ -356,17 +356,17 @@
     "difficulty": "medium",
     "stem": "A team wants the agent to auto-escalate cases it is unsure about. A proposal is to have the model output a self-reported confidence score per case and escalate when it falls below a threshold. Why is this routing signal unreliable?",
     "options": {
-      "A": "Confidence scores always trend high, so the threshold can simply be raised",
-      "B": "Confidence scores are only valid for extraction tasks, not support routing",
-      "C": "Confidence scores are too expensive to compute at scale",
-      "D": "LLM self-reported confidence is poorly calibrated — models are often confidently wrong on exactly the hard cases that should escalate"
+      "A": "Confidence scores trend high across the board, so the escalation threshold simply needs raising",
+      "B": "Confidence scores are calibrated for extraction tasks only and do not transfer to a support routing decision",
+      "C": "Computing a confidence score for every case is too expensive to run at the team's ticket volume",
+      "D": "Self-reported confidence is poorly calibrated — models are often confidently wrong on the hard cases"
     },
     "answer": "D",
-    "explanation": "Self-reported confidence is poorly calibrated: a model can be highly confident yet wrong, particularly on difficult cases — the very ones that need escalation. Routing on this signal lets hard, confidently-wrong cases slip through. A more reliable approach uses an independent review/verification instance rather than the model grading itself.",
+    "explanation": "Self-reported confidence is poorly calibrated: a model can be highly confident and wrong, and it is most likely to be so on difficult cases — the very ones the threshold is meant to catch (D). Routing on this signal lets hard, confidently-wrong cases through. An independent review or verification pass is a more reliable trigger than the model grading itself.",
     "distractors": {
-      "A": "The failure is not a simple offset that a higher threshold fixes; confidence does not track correctness.",
-      "B": "Poor calibration of self-reported confidence is a general property, not specific to extraction.",
-      "C": "Cost is not the core issue; calibration is."
+      "A": "The failure is not a uniform offset a higher threshold would correct; the score does not track correctness at all.",
+      "B": "Poor calibration of self-reported confidence is a general property of the signal, not a quirk of support routing.",
+      "C": "The score is one extra token per case, so cost is not the objection; calibration is."
     },
     "tags": [
       "escalation",
@@ -383,17 +383,17 @@
     "difficulty": "medium",
     "stem": "An extraction pipeline reports 97% overall accuracy on a labeled set, so the team proposes turning off human review entirely. What is the strongest objection?",
     "options": {
-      "A": "Accuracy should be measured at higher temperature first",
-      "B": "The model should self-report confidence and route low-confidence items, replacing all validation",
-      "C": "97% is fine; human review can be removed immediately",
-      "D": "Aggregate accuracy can mask segment-level failures — specific document types or fields may perform far worse — so validate accuracy stratified by document type and field before reducing review"
+      "A": "Accuracy should be re-measured at a higher temperature before any change to review is made",
+      "B": "The model should self-report confidence per item and route the low-confidence ones, replacing validation",
+      "C": "97% clears the bar the team set, so human review can be removed across all document types now",
+      "D": "Aggregate accuracy can mask segment-level failures, so validate stratified by document type and field"
     },
     "answer": "D",
-    "explanation": "A high aggregate metric can hide poor performance on particular document types or fields. Before reducing human review you must validate stratified by document type AND field to confirm performance is acceptable across all segments, not just on average.",
+    "explanation": "A high aggregate can hide a segment performing far worse — one document type, or one field across all types. Before reducing human review, validate accuracy stratified by document type AND by field (D) to confirm the number holds everywhere, not just on average across a mix dominated by easy documents.",
     "distractors": {
-      "A": "Temperature is irrelevant to whether the aggregate masks segment-level failures.",
-      "B": "Self-reported confidence is poorly calibrated and cannot, by itself, substitute for stratified validation.",
-      "C": "Acting on the aggregate alone is exactly the trap; it can hide a failing segment."
+      "A": "Temperature has no bearing on whether an aggregate figure conceals a failing segment beneath it.",
+      "B": "Self-reported confidence is poorly calibrated and cannot substitute for measuring accuracy against labels.",
+      "C": "Acting on the aggregate alone is precisely the trap: the 3% may be concentrated in one document type."
     },
     "tags": [
       "human-review",
@@ -410,17 +410,17 @@
     "difficulty": "hard",
     "stem": "An extraction call fails a semantic check: the line items do not sum to the stated invoice total (the JSON is syntactically valid). You implement retry-with-error-feedback that resends the document, the failed extraction, and the specific validation error. What additional safeguard is most important?",
     "options": {
-      "A": "Bound the number of retries and, when the bound is exhausted, route the item to human review with the captured error context",
-      "B": "Switch to a larger model only after 50 consecutive failures",
-      "C": "Allow unlimited retries until the extraction eventually validates",
-      "D": "Disable validation so the extraction always succeeds"
+      "A": "Bound the retries and, once the bound is exhausted, route the item to human review with the error context",
+      "B": "Escalate to a larger, more capable model once an item has failed validation 50 consecutive times",
+      "C": "Allow unlimited retries with error feedback so every extraction is resent until it validates",
+      "D": "Drop the sum check and accept any syntactically valid JSON the extraction call returns"
     },
     "answer": "A",
-    "explanation": "Retry-with-error-feedback must be bounded. Some documents will never validate (e.g., the source itself is inconsistent), so unbounded retries waste cost and can loop forever. After the retry bound is hit, escalate the item to human review carrying the validation error context.",
+    "explanation": "Retry-with-error-feedback must be bounded (A). Some documents will never validate — the source invoice may genuinely not sum — so unbounded retries burn cost and can loop forever on an unwinnable item. When the bound is hit, hand the item to a human with the captured validation error so the reviewer starts from the diagnosis rather than from scratch.",
     "distractors": {
-      "B": "An arbitrary 50-failure threshold is still effectively unbounded per item and delays human handling.",
-      "C": "Unlimited retries can loop indefinitely on inputs that can never satisfy the check, burning cost.",
-      "D": "Disabling validation hides genuine extraction errors — the opposite of reliability."
+      "B": "A 50-failure threshold is effectively unbounded per item, and a larger model cannot reconcile a document that is internally inconsistent.",
+      "C": "Unlimited retries loop indefinitely on inputs that can never satisfy the check, and nothing ever reaches a human.",
+      "D": "Removing the check makes every extraction \"succeed\" while letting genuinely wrong totals through — the opposite of reliability."
     },
     "tags": [
       "retry-feedback",
@@ -437,17 +437,17 @@
     "difficulty": "hard",
     "stem": "A research synthesis must produce a report when one subagent's source domain was unreachable, so that subtopic has thin coverage while others are well-supported. The coordinator's instinct is to abort the whole report. What is the most reliable behavior?",
     "options": {
-      "A": "Continue with the partial results, explicitly annotate which findings are well-supported versus which subtopics have gaps due to unavailable sources, and proceed",
-      "B": "Silently fill the gap with the model's general knowledge so the report looks complete",
-      "C": "Abort the report entirely because one subtopic is incomplete",
-      "D": "Replace the missing subtopic by duplicating findings from a different subtopic"
+      "A": "Continue with the partial results and annotate which subtopics are well-supported and which have gaps",
+      "B": "Fill the thin subtopic from the model's own general knowledge so the report reads as complete",
+      "C": "Abort the report entirely, since one thinly-sourced subtopic makes the whole thing untrustworthy",
+      "D": "Replace the missing subtopic with findings duplicated from a better-covered subtopic"
     },
     "answer": "A",
-    "explanation": "Graceful degradation: a single source/subagent failure should not terminate the whole workflow. Continue with partial results and annotate coverage — distinguishing well-established findings from subtopics with gaps caused by unavailable sources — so the report is honest and still useful.",
+    "explanation": "Graceful degradation: one unreachable source should not terminate a workflow that succeeded everywhere else. Continue with the partial results and annotate coverage (A), distinguishing well-supported findings from the subtopic left thin by an unavailable source, so the report stays honest and still useful to the reader.",
     "distractors": {
-      "B": "Backfilling with general knowledge fabricates coverage and destroys provenance.",
-      "C": "Terminating on a single failure discards substantial valid work and is the anti-pattern to avoid.",
-      "D": "Copying unrelated findings misrepresents the missing subtopic."
+      "B": "Backfilling from general knowledge fabricates coverage and gives the reader no way to tell sourced findings from invented ones.",
+      "C": "Terminating on a single source failure discards substantial valid work and is the anti-pattern graceful degradation exists to avoid.",
+      "D": "Copying findings from a different subtopic misrepresents what was actually researched about the missing one."
     },
     "tags": [
       "graceful-degradation",
@@ -464,17 +464,17 @@
     "difficulty": "hard",
     "stem": "Downstream agents in your pipeline have small context budgets. A research subagent currently returns long prose with its full reasoning chain, overflowing those budgets. How should the subagent's output be redesigned, and how should the final report render mixed content?",
     "options": {
-      "A": "Return raw tool outputs unchanged and let each downstream agent trim them itself",
-      "B": "Return the full prose and reasoning verbatim, and convert the entire final report to a single uniform format",
-      "C": "Return structured outputs (key facts, citations, relevance scores) with required metadata, and render content types appropriately — financial data as tables, news as prose, technical findings as structured lists",
-      "D": "Return only a one-sentence summary with no metadata, and render everything as a flat bullet list"
+      "A": "Return the raw tool outputs unchanged and let each downstream agent trim them to fit its own context budget",
+      "B": "Return the full prose and reasoning chain verbatim, and convert the entire report to a single uniform format",
+      "C": "Return compact structured findings with citations and metadata, rendering each type in its natural form",
+      "D": "Return a one-sentence summary with no metadata, and render the whole report as a flat bullet list"
     },
     "answer": "C",
-    "explanation": "When downstream agents have limited context budgets, subagents should return compact structured data — key facts, citations, relevance scores, and required metadata (dates, source locations) — instead of verbose prose and reasoning chains. The final report should also render each content type in its natural form (tables for financial data, prose for news, structured lists for technical findings) rather than forcing one uniform format.",
+    "explanation": "With small downstream budgets, subagents should return compact structured data — key facts, citations, relevance scores, and required metadata such as dates and source locations — rather than prose and reasoning chains (C). The final report should then render each content type in its natural form: financial data as tables, news as prose, technical findings as structured lists, instead of flattening everything into one format.",
     "distractors": {
-      "A": "Pushing trimming downstream wastes each agent's scarce budget receiving the bloat first.",
-      "B": "Verbatim prose overflows small budgets, and a single uniform format misrepresents different content types.",
-      "D": "Stripping all metadata destroys provenance, and a flat bullet list is wrong for tabular financial data."
+      "A": "Pushing the trimming downstream still spends each agent's scarce budget receiving the bloat before it can discard it.",
+      "B": "Verbatim prose overflows the small budgets the stem describes, and one uniform format misrepresents tabular and narrative content alike.",
+      "D": "Stripping metadata destroys the provenance downstream agents need, and a flat bullet list is the wrong shape for financial tables."
     },
     "tags": [
       "structured-subagent-output",
@@ -492,17 +492,17 @@
     "difficulty": "medium",
     "stem": "Your support agent resolves only 55% of issues against a target of 80%. Analysis shows miscalibration in both directions: it escalates simple cases a human should not need to see, yet attempts to handle complex policy exceptions autonomously. How do you improve its escalation calibration?",
     "options": {
-      "A": "Add explicit escalation criteria to the prompt, with few-shot examples showing which cases to escalate and which to handle autonomously",
-      "B": "Have the model self-rate its confidence (1-10) on each case and escalate automatically below a threshold",
-      "C": "Train a separate classifier on historical ticket data to make the escalation decision",
-      "D": "Run sentiment analysis on customer messages and escalate when negative sentiment is detected"
+      "A": "Add explicit escalation criteria to the prompt, with few-shot examples of cases on each side",
+      "B": "Have the model self-rate its confidence 1-10 per case and escalate automatically below a threshold",
+      "C": "Train a separate classifier on historical ticket data and let it make the escalation decision",
+      "D": "Run sentiment analysis on the customer's messages and escalate whenever the tone turns negative"
     },
     "answer": "A",
-    "explanation": "The root cause of two-directional miscalibration is unclear decision boundaries: the agent does not know what it should and should not handle. Explicit escalation criteria paired with few-shot examples teach the boundary directly, fixing both over-escalation of simple cases and over-confidence on complex policy exceptions.",
+    "explanation": "Miscalibration in both directions points to one root cause: the decision boundary was never stated. Explicit escalation criteria paired with few-shot examples of cases on each side (A) teach that boundary directly, which fixes the over-escalation of simple cases and the over-confidence on policy exceptions at the same time.",
     "distractors": {
-      "B": "LLM self-rated confidence is poorly calibrated — the model can be confidently wrong on exactly the hard cases that should escalate, so it is an unreliable routing signal.",
-      "C": "A separately trained classifier is overengineering when the problem is simply that the decision boundary has never been clearly communicated to the agent.",
-      "D": "Sentiment measures the customer's mood, not case complexity; an angry customer can have a trivial issue and a calm one a complex policy exception."
+      "B": "LLM self-rated confidence is poorly calibrated — the model is confidently wrong on exactly the complex policy cases that should escalate.",
+      "C": "Training a classifier is heavy engineering for a problem whose cause is that nobody ever wrote the boundary down.",
+      "D": "Sentiment measures mood, not complexity: an angry customer may have a trivial issue and a calm one a genuine policy exception."
     },
     "tags": [
       "escalation",
@@ -520,16 +520,16 @@
     "stem": "Your document-analysis subagent encounters a corrupted PDF file that it cannot parse. When designing the system's error handling, what is the most effective way to handle this failure?",
     "options": {
       "A": "Return an error with context to the coordinator agent, allowing it to decide how to proceed",
-      "B": "Silently skip the corrupted document and continue processing the remaining files to avoid interrupting the workflow",
+      "B": "Silently skip the corrupted document and continue with the remaining files so the workflow is not interrupted",
       "C": "Automatically retry parsing the document three times with exponential backoff before reporting a failure",
-      "D": "Throw an exception that terminates the entire research workflow"
+      "D": "Throw an exception that terminates the entire research workflow so the corruption cannot be missed"
     },
     "answer": "A",
-    "explanation": "Returning an error with context to the coordinator lets it make an informed decision — skip the file, try an alternative parsing method, or notify the user — while maintaining full visibility into the failure.",
+    "explanation": "Returning a structured error with context to the coordinator (A) lets it make an informed decision — skip the file, try an alternative parser, or notify the user — while keeping full visibility of the failure. The subagent's job is to report accurately; the routing decision belongs one level up.",
     "distractors": {
-      "B": "Silently skipping hides the failure from the coordinator, so the final output appears complete when a source document was never analyzed.",
-      "C": "File corruption is deterministic, not transient; retrying with backoff wastes time on a failure that will never resolve itself.",
-      "D": "One unparseable file should not kill the entire workflow and discard all other valid progress."
+      "B": "Silently skipping hides the failure, so the final output looks complete when a source document was never analyzed.",
+      "C": "File corruption is deterministic, not transient; three backed-off retries spend time on a failure that cannot resolve itself.",
+      "D": "One unparseable file should not kill the workflow and discard every other document's valid progress."
     },
     "tags": [
       "error-propagation",
@@ -546,17 +546,17 @@
     "difficulty": "hard",
     "stem": "After calling `get_customer` and `lookup_order`, your support agent has all available system data but still faces uncertainty. Which situation is the most justified trigger for calling `escalate_to_human`?",
     "options": {
-      "A": "A customer wants to cancel an order that shipped yesterday and arrives tomorrow; the agent should escalate because the customer might change their mind after receiving the package.",
-      "B": "A customer claims they never received an order, but tracking shows it was delivered and signed for at their address three days ago; the agent should escalate because presenting contradictory evidence could harm the customer relationship.",
-      "C": "A customer requests competitor price matching; your policies allow price adjustments for price drops on your own site within 14 days but say nothing about competitor prices, so the agent should escalate for policy interpretation.",
-      "D": "A customer message contains both a billing question and a product return; the agent should escalate so a human can coordinate both issues in one interaction."
+      "A": "An order shipped yesterday arrives tomorrow and the customer wants it cancelled — escalate, since they may change their mind",
+      "B": "A customer denies receiving an order that tracking shows delivered and signed for — escalate rather than contradict them",
+      "C": "A customer asks for competitor price matching; your policy covers only price drops on your own site — escalate for interpretation",
+      "D": "One message contains both a billing question and a return — escalate so a human can coordinate the two together"
     },
     "answer": "C",
-    "explanation": "Competitor price matching is a genuine policy gap: the documented rules cover price drops on the company's own site but are silent on competitor prices. An agent must never invent or extend policy on its own — interpreting or extending the rules is exactly the kind of judgment that requires human escalation.",
+    "explanation": "Competitor price matching is a genuine policy gap (C): the documented rules cover price drops on the company's own site within 14 days and say nothing about competitors. An agent must never invent or extend policy, so interpreting a rule that does not exist is exactly the judgment call that belongs with a human.",
     "distractors": {
-      "A": "Cancelling a shipped order is a standard operational case the agent can handle under existing policy; speculating about whether the customer might later change their mind is not an escalation criterion.",
-      "B": "Tracking data directly contradicts the claim, and presenting documented evidence is within the agent's capability; discomfort with a conversation is not a policy gap requiring human judgment.",
-      "D": "Handling multiple issues in one interaction is exactly what a capable agent should do via decomposition; a multi-part request alone does not justify escalation."
+      "A": "Cancelling a shipped order is a standard operational case covered by existing policy; speculation about a future change of mind is not an escalation criterion.",
+      "B": "Tracking data directly answers the claim, and presenting documented evidence is within the agent's capability; an uncomfortable conversation is not a policy gap.",
+      "D": "Handling several issues in one interaction is exactly what decomposition is for; a multi-part request alone does not require a human."
     },
     "tags": [
       "escalation",
@@ -573,17 +573,17 @@
     "difficulty": "easy",
     "stem": "Over several turns discussing investment strategy, a user stated \"I have a very low risk tolerance\" and later \"I want to maximize my returns.\" They now ask: \"What should I invest in?\" Which approach best ensures the recommendation aligns with the user's actual priority?",
     "options": {
-      "A": "Surface the contradiction between the two stated preferences and ask the user to clarify which matters more.",
-      "B": "Provide two separate recommendations, one for each stated preference.",
-      "C": "Proceed using the most recently stated preference as the governing one.",
-      "D": "Recommend a balanced portfolio without addressing the conflict."
+      "A": "Surface the contradiction between the two stated preferences and ask which one should govern.",
+      "B": "Give two separate recommendations, one built for each of the two preferences the user has stated.",
+      "C": "Proceed using the most recently stated preference, treating it as the governing one.",
+      "D": "Recommend a balanced portfolio that splits the difference without raising the conflict."
     },
     "answer": "A",
-    "explanation": "Low risk tolerance and maximizing returns are fundamentally incompatible goals. When a user's stated preferences directly contradict each other, surfacing the conflict and asking for clarification is the only approach guaranteed to align with their true intent — every alternative substitutes an assumption that may be wrong.",
+    "explanation": "Low risk tolerance and maximizing returns are fundamentally incompatible goals. When stated preferences directly contradict each other, surfacing the conflict and asking which one governs (A) is the only approach that does not substitute an assumption for the user's actual priority.",
     "distractors": {
-      "B": "Two parallel recommendations dodge the decision and push the unresolved contradiction back onto the user without even explaining that the goals conflict.",
-      "C": "Recency is an arbitrary tiebreaker — the user never retracted the earlier risk constraint, so the latest statement is not evidence of their actual priority.",
-      "D": "A balanced portfolio silently substitutes the assistant's compromise for the user's unknown priority and hides the fact that a conflict exists at all."
+      "B": "Two parallel recommendations dodge the decision and hand the unresolved contradiction back without even naming it.",
+      "C": "Recency is an arbitrary tiebreaker — the user never retracted the risk constraint, so the later statement is not evidence of priority.",
+      "D": "A balanced portfolio silently substitutes the assistant's compromise for the user's unknown priority and hides that a conflict exists."
     },
     "tags": [
       "ambiguity-resolution",
@@ -600,14 +600,14 @@
     "stem": "In your playlist assistant, users refine their preferences over multiple conversation turns. Two messages after a user said \"I love jazz,\" Claude asks \"What genres do you enjoy?\" What is the most likely cause?",
     "options": {
       "A": "Claude requires a vector database connection to maintain conversation memory, and none is configured.",
-      "B": "The model's context window has been exceeded, so earlier turns were dropped.",
+      "B": "The model's context window has been exceeded, so the earliest turns were silently dropped.",
       "C": "The Claude API requires a `session_id` parameter to link requests, which your application is not sending.",
-      "D": "Your application is not including the prior conversation turns in the `messages` array of each API request."
+      "D": "Your application is not including prior turns in the `messages` array of each API request."
     },
     "answer": "D",
-    "explanation": "The Claude API is stateless — it has no server-side memory of previous calls. Every request must carry the full conversation history in the `messages` array; if the application sends only the latest message, Claude has no knowledge of anything said earlier, including \"I love jazz.\"",
+    "explanation": "The Claude API is stateless — it holds no server-side memory of previous calls. Every request must carry the full conversation history in the `messages` array (D); if the application sends only the latest message, Claude has no knowledge of anything said earlier, including \"I love jazz\" two turns ago.",
     "distractors": {
-      "A": "Claude has no vector-database dependency; conversation memory is simply whatever the caller includes in the request.",
+      "A": "Claude has no vector-database dependency; conversation memory is simply whatever the caller chooses to include in the request.",
       "B": "A two-message exchange is nowhere near any context-window limit, so truncation cannot explain the loss.",
       "C": "The Messages API has no `session_id` parameter; maintaining conversation state is entirely the application's responsibility."
     },
@@ -626,17 +626,17 @@
     "difficulty": "medium",
     "stem": "After a 40-minute cooking-assistant session, the conversation reaches 78,000 tokens. The history includes the user's allergies, recipe scaling calculations, clarified cooking terms, and general discussion. You must reduce token usage while preserving important information. Which approach best balances preservation with token reduction?",
     "options": {
-      "A": "Summarize the entire conversation history into a single condensed narrative.",
-      "B": "Keep only the most recent 20,000 tokens and drop everything earlier.",
-      "C": "Extract critical structured data (allergies, quantities, preferences) into a compact block, summarize the general discussion, and keep recent exchanges verbatim.",
-      "D": "Store the full conversation externally and retrieve relevant parts via semantic search on each turn."
+      "A": "Summarize the entire conversation history into a single condensed narrative of the session.",
+      "B": "Keep only the most recent 20,000 tokens of history and drop everything stated before that.",
+      "C": "Extract the critical facts into a compact block, summarize the general discussion, keep recent turns verbatim.",
+      "D": "Store the full conversation externally and retrieve the relevant parts by semantic search on each turn."
     },
     "answer": "C",
-    "explanation": "The hybrid approach preserves the highest-value information at the lowest token cost: safety-critical precise facts like allergies and quantities are extracted into a compact structured block (immune to summarization's precision loss), low-value general discussion is compressed, and recent exchanges stay verbatim for conversational coherence.",
+    "explanation": "The hybrid approach preserves the highest-value information at the lowest token cost (C): safety-critical precise facts — allergies, quantities, preferences — go into a compact structured block immune to summarization's precision loss; low-value general discussion is compressed; and recent exchanges stay verbatim so the conversation still reads coherently.",
     "distractors": {
-      "A": "Whole-history summarization compresses safety-critical precise facts like allergies into lossy prose — exactly the data that must survive exactly.",
+      "A": "Whole-history summarization compresses allergies and scaling factors into lossy prose — exactly the data that has to survive exactly.",
       "B": "A pure recency window silently discards the allergy and recipe-scaling information stated early in the session.",
-      "D": "External storage with per-turn semantic retrieval is architectural overkill for a single session, and retrieval can miss critical facts that are not semantically similar to the current query."
+      "D": "External storage with per-turn retrieval is architectural overkill for one session, and retrieval can miss a critical fact that is not semantically close to the current question."
     },
     "tags": [
       "context-management",
@@ -653,17 +653,17 @@
     "difficulty": "easy",
     "stem": "Users of your conversational assistant report that latency increases and costs rise as conversations exceed 50 turns. What is the primary cause?",
     "options": {
-      "A": "The entire conversation history is sent with each API request, so input tokens grow with every turn.",
-      "B": "The model generates progressively longer responses as conversations continue.",
-      "C": "Database operations slow down as the stored conversation history grows.",
-      "D": "The model builds an internal user profile that requires more processing as it grows."
+      "A": "The full conversation history is sent with every request, so input tokens grow with each turn.",
+      "B": "The model generates progressively longer responses as the conversation continues past 50 turns.",
+      "C": "Database operations slow down as the stored conversation history grows larger over time.",
+      "D": "The model builds an internal user profile that costs progressively more to process as it grows."
     },
     "answer": "A",
-    "explanation": "Claude's API is stateless — each request must include the complete conversation history in the `messages` array. As the conversation grows, every request carries more input tokens, which directly increases both processing latency and per-request cost.",
+    "explanation": "Claude's API is stateless — each request must include the complete conversation history in the `messages` array (A). As the conversation grows, every request carries more input tokens, which raises both processing latency and per-request cost, and the growth is linear in turns.",
     "distractors": {
-      "B": "Response length is governed by the request and content, not by conversation age; output growth is not inherent to long conversations.",
-      "C": "Database latency in your application is independent of model API latency and would not explain rising API token costs.",
-      "D": "The API is stateless; the model maintains no internal profile or state between calls."
+      "B": "Response length is driven by the request and its content, not by how old the conversation is.",
+      "C": "Application database latency is independent of the model API and would not explain rising token costs.",
+      "D": "The API is stateless; the model keeps no internal profile or other state between calls."
     },
     "tags": [
       "stateless-api",
@@ -681,17 +681,17 @@
     "difficulty": "medium",
     "stem": "Your book-club assistant has accumulated 85,000 tokens of conversation history over three months of weekly sessions. When a user asks \"What did we conclude about the theme of isolation?\", the assistant gives generic answers instead of referencing the previous discussions. What is the most effective approach?",
     "options": {
-      "A": "Apply rolling-window truncation so only the most recent sessions stay in context.",
-      "B": "Use progressive summarization that captures the key conclusions from each session.",
-      "C": "Index the conversation history with semantic embeddings and retrieve the relevant past exchanges when a question references earlier discussion.",
-      "D": "Add structured XML tags marking discussion conclusions throughout the history."
+      "A": "Apply rolling-window truncation so only the most recent weekly sessions stay in context.",
+      "B": "Use progressive summarization that captures each session's key conclusions as the session ends.",
+      "C": "Index the history with semantic embeddings and retrieve the relevant past exchanges on demand.",
+      "D": "Add structured XML tags marking each session's discussion conclusions throughout the stored history."
     },
     "answer": "C",
-    "explanation": "Semantic retrieval over the archived history is the only approach that scales to months of discussion while still surfacing the specific past exchanges a question refers to. The relevant conclusion about \"isolation\" can be found and injected on demand, preserving the specificity that generic answers lack.",
+    "explanation": "Semantic retrieval over the archived history (C) is the only option that scales to three months of discussion while still surfacing the specific exchange a question refers to. The conclusion about isolation can be located and injected on demand, restoring the specificity the generic answers lack.",
     "distractors": {
-      "A": "Truncation discards exactly the months-old discussions the user is asking about.",
-      "B": "Progressive summarization compresses specific conclusions into abstractions — the generic-answer problem would persist in a different form.",
-      "D": "Tagging conclusions requires restructuring all past content and still does not solve how to fit or locate 85,000 tokens of history at question time."
+      "A": "Truncation discards exactly the months-old sessions the user is asking about.",
+      "B": "Summarization compresses specific conclusions into abstractions, so the generic-answer problem returns in another form.",
+      "D": "Tagging requires restructuring all past content and still leaves 85,000 tokens that must be fitted or searched at question time."
     },
     "tags": [
       "semantic-retrieval",
@@ -708,17 +708,17 @@
     "difficulty": "medium",
     "stem": "During QA testing, Claude follows your system-prompt guidelines for the first 10-15 turns of a conversation, but later responses begin to deviate. The conversation is still well within token limits. What is the best solution?",
     "options": {
-      "A": "Move the behavioral guidelines out of the system prompt and into the first user message.",
-      "B": "Automatically start a new conversation after 20 turns.",
+      "A": "Move the behavioral guidelines out of the system prompt and into the first user message instead.",
+      "B": "Automatically start a new conversation after 20 turns so the guidelines stay dominant.",
       "C": "Insert user-role messages that reinforce the guidelines at natural conversation breakpoints.",
       "D": "Use post-response validation that detects non-compliant responses and regenerates them."
     },
     "answer": "C",
-    "explanation": "Periodic reinforcement directly counters instruction drift: as conversation history accumulates and dilutes the system prompt's influence, re-injecting the guidelines at natural breakpoints re-establishes the constraints while preserving the conversation. It is preventive, cheap, and keeps context intact.",
+    "explanation": "Periodic reinforcement directly counters instruction drift (C): as history accumulates and dilutes the system prompt's influence, re-injecting the guidelines at natural breakpoints re-establishes the constraints without discarding the conversation. It is preventive, cheap, and leaves the context intact.",
     "distractors": {
-      "A": "A first user message carries less persistent authority than the system prompt and drifts into the middle of the context just as quickly.",
-      "B": "Resetting the conversation destroys accumulated context and degrades the user experience to fix a problem that in-place reminders solve.",
-      "D": "Regeneration is corrective rather than preventive, adds latency and cost on every violation, and itself requires a reliable compliance detector."
+      "A": "A first user message carries less persistent authority than the system prompt and drifts into the middle of the context just as fast.",
+      "B": "Resetting every 20 turns destroys accumulated context and degrades the experience to fix what an in-place reminder solves.",
+      "D": "Regeneration is corrective rather than preventive, adds latency and cost per violation, and needs a reliable compliance detector of its own."
     },
     "tags": [
       "instruction-drift",
@@ -735,17 +735,17 @@
     "difficulty": "medium",
     "stem": "Users of your event-planning assistant frequently send requests like \"Book a venue for the party.\" The assistant responds with four or more clarifying questions, and 35% of users abandon the conversation. What approach best improves the clarification-versus-friction trade-off?",
     "options": {
-      "A": "Proceed using hidden default values for the unspecified details.",
-      "B": "Ask all the clarifying questions at once in a single compound message.",
-      "C": "State reasonable assumptions explicitly, proceed with them, and invite the user to correct any that are wrong.",
-      "D": "Replace the conversation with a structured intake form that collects all details up front."
+      "A": "Proceed immediately using hidden default values for every detail of the booking the user left unspecified",
+      "B": "Ask all four clarifying questions at once in a single compound message at the start of the conversation",
+      "C": "State reasonable assumptions explicitly, proceed with them, and invite the user to correct any.",
+      "D": "Replace the conversation with a structured intake form that collects every required detail up front"
     },
     "answer": "C",
-    "explanation": "Stating assumptions explicitly and proceeding gives the user an immediately useful response — removing the friction that drives abandonment — while keeping them informed and in control: any wrong assumption is visible and trivially correctable.",
+    "explanation": "Stating assumptions explicitly and proceeding (C) gives the user an immediately useful response — removing the friction that drives the 35% abandonment — while keeping them informed and in control, because any wrong assumption is visible on the page and trivially correctable.",
     "distractors": {
-      "A": "Hidden defaults produce results the user cannot sanity-check — they never learn what was assumed, so errors surface late and erode trust.",
-      "B": "A wall of questions still demands the full upfront effort that is driving abandonment, just compressed into one message.",
-      "D": "A form adds even more upfront friction than the questions did, working directly against the abandonment problem."
+      "A": "Hidden defaults produce a result the user cannot sanity-check; they never learn what was assumed, so errors surface late.",
+      "B": "A wall of questions still demands the same upfront effort that is driving abandonment, merely compressed into one message.",
+      "D": "A form adds more upfront friction than the questions did, pushing directly against the abandonment problem."
     },
     "tags": [
       "ambiguity-resolution",
@@ -761,17 +761,17 @@
     "difficulty": "hard",
     "stem": "Your assistant uses a contractor-persona system prompt. Early turns follow the persona rules, but by turn 7 the assistant is giving generic advice. The whole conversation is only about 2,500 tokens. What is the most likely cause?",
     "options": {
-      "A": "System prompts only establish initial behavior and stop applying after the first few turns.",
-      "B": "The model's attention mechanism weakens over long contexts as turns accumulate.",
-      "C": "Accumulated assistant responses in the history increasingly dilute the system prompt's influence, as the model pattern-matches to its own prior outputs.",
-      "D": "The system prompt is only sent on the first API call and is absent from later requests."
+      "A": "System prompts establish only the initial behavior and stop applying once the conversation is underway.",
+      "B": "The model's attention mechanism weakens as more conversation turns accumulate in the context window.",
+      "C": "Accumulated assistant responses dilute the system prompt as the model pattern-matches its own output.",
+      "D": "The system prompt is sent only on the first API call and is absent from every later request."
     },
     "answer": "C",
-    "explanation": "As assistant responses accumulate, the proportion of context reflecting the system prompt's constraints shrinks relative to the model's own generated content. The model increasingly pattern-matches to its prior outputs — if those drifted slightly generic, the drift compounds — which explains persona decay even at a short 2,500 tokens.",
+    "explanation": "As assistant responses accumulate, the share of context reflecting the system prompt's constraints shrinks against the model's own generated content (C). The model increasingly pattern-matches to its prior outputs, so a slight drift toward generic advice compounds — which is why the persona decays even at only 2,500 tokens.",
     "distractors": {
-      "A": "System prompts apply for the whole conversation on every request; there is no built-in expiry after early turns.",
-      "B": "Attention-related degradation is a long-context phenomenon; it does not explain drift at only 2,500 tokens.",
-      "D": "In a correctly built integration the system prompt is included in every API call, and a genuinely missing prompt would cause an abrupt behavior change, not gradual drift."
+      "A": "System prompts apply to the whole conversation on every request; there is no built-in expiry after early turns.",
+      "B": "Attention-related degradation is a long-context phenomenon and cannot explain drift at 2,500 tokens.",
+      "D": "A correct integration sends the system prompt on every call, and a genuinely missing prompt would cause an abrupt break, not gradual drift."
     },
     "tags": [
       "instruction-drift",
@@ -789,18 +789,18 @@
     "stem": "An analytics team wants a nightly job that summarizes and categorizes the day's ~8,000 closed support transcripts to populate a quality dashboard that reviewers open the next morning. They are deciding whether to route this workload through the asynchronous Message Batches API instead of the synchronous Messages API. Select the TWO signs that indicate this workload is a good fit for the Message Batches API.",
     "options": {
       "A": "The results are not needed until the next morning, so no user is blocked waiting on them",
-      "B": "The job processes thousands of independent records in bulk rather than one interactive request at a time",
-      "C": "Each transcript must be categorized with the lowest possible per-request latency",
-      "D": "The categorization output must stream token-by-token into a live UI as it is produced"
+      "B": "The job processes thousands of independent records in bulk rather than one request at a time",
+      "C": "Each transcript must be categorized at the lowest possible per-request latency the API allows",
+      "D": "The categorization output must stream token-by-token into a live reviewer UI as it is produced"
     },
     "answer": [
       "A",
       "B"
     ],
-    "explanation": "The Message Batches API is asynchronous (up to a 24-hour processing window) and roughly 50% cheaper, which fits bulk, non-time-sensitive workloads. The deciding question is whether the workflow is blocking: here nobody is waiting on the results until morning (A), and it is a large volume of independent requests processed in bulk for throughput and cost (B). Both are hallmark batch signals.",
+    "explanation": "The Message Batches API is asynchronous, with a processing window of up to 24 hours, and roughly 50% cheaper — which fits bulk, non-time-sensitive work. The deciding question is whether the workflow blocks: here nobody waits on the results until morning (A), and it is a large volume of independent requests run for throughput and cost rather than interactivity (B).",
     "distractors": {
-      "C": "A need for the lowest possible per-request latency is an interactive requirement that points to the synchronous Messages API, not the batch path, which trades latency for cost and throughput.",
-      "D": "Streaming output into a live UI requires a blocking, synchronous request; batch jobs return results asynchronously and cannot feed a token-by-token live view."
+      "C": "A requirement for the lowest possible per-request latency is an interactive signal pointing at the synchronous Messages API, which is what batch trades away.",
+      "D": "Streaming into a live UI needs a blocking synchronous request; batch results return asynchronously and cannot feed a token-by-token view."
     },
     "tags": [
       "message-batches-api",
@@ -818,17 +818,17 @@
     "difficulty": "medium",
     "stem": "Your agent calls an issue_refund tool. Intermittently the call times out or returns HTTP 503 with no body, so the agent retries it. Some customers then receive two refunds, because the original request had actually succeeded but its response was lost in transit. What is the most reliable fix?",
     "options": {
-      "A": "Add a fixed 5-second delay before every refund call to avoid overloading the service",
-      "B": "Send each refund with a unique idempotency key so the payment service deduplicates retries of the same logical operation",
-      "C": "Stop retrying refund calls entirely and escalate every 503 to a human",
-      "D": "Have the model track which customers it has already refunded this conversation and skip them"
+      "A": "Add a fixed 5-second delay before every refund call so the payment service is never overloaded",
+      "B": "Send each refund with a unique idempotency key so the payment service deduplicates the retry",
+      "C": "Stop retrying refund calls and escalate every timeout or 503 to a human for manual issue",
+      "D": "Have the model track which customers it has already refunded in this conversation and skip them"
     },
     "answer": "B",
-    "explanation": "Timeouts and 503s are transient and safe to retry, but issue_refund is a side-effecting operation, so a retry can execute a second time when only the response was lost. An idempotency key lets the payment service recognize the retry as the same logical operation and return the original result instead of issuing a duplicate. This is the deterministic fix that makes retry-with-backoff safe for non-idempotent actions.",
+    "explanation": "Timeouts and 503s are transient and safe to retry, but issue_refund has a side effect, so a retry can execute the refund a second time when only the response was lost. An idempotency key (B) lets the payment service recognize the retry as the same logical operation and return the original result instead of issuing a duplicate — the deterministic fix that makes retry-with-backoff safe for non-idempotent actions.",
     "distractors": {
-      "A": "A fixed delay addresses the wrong root cause; it does not prevent a retry from executing a refund that already succeeded, so duplicates still occur.",
-      "C": "Abandoning retries and escalating every transient 503 over-reacts to a routinely retryable error and needlessly dumps automatable work onto humans; the duplicate problem is solved by idempotency, not by giving up.",
-      "D": "Relying on the model to remember prior refunds is a probabilistic substitute for a deterministic guarantee; that memory is unreliable and does not survive across sessions, retries after a crash, or parallel agents."
+      "A": "A fixed delay treats the wrong cause; it does nothing to stop a retry from re-executing a refund that already succeeded.",
+      "C": "Abandoning retries over-reacts to a routinely retryable error and dumps automatable work on humans; idempotency solves the duplicate, not giving up.",
+      "D": "Model memory is a probabilistic substitute for a deterministic guarantee and does not survive a crash, a new session, or parallel agents."
     },
     "tags": [
       "retry-backoff",
@@ -846,17 +846,17 @@
     "difficulty": "hard",
     "stem": "To cut human review, your extraction pipeline asks the model to emit a self-reported confidence score for each field and auto-approves anything scoring above 0.9. Spot checks reveal a steady stream of confidently wrong values sitting well above that threshold. What is the core problem, and the right fix?",
     "options": {
-      "A": "Self-reported confidence is not inherently calibrated, so 0.9 does not mean 90% correct; validate the score against labeled outcomes, measure the actual precision at each cutoff, and set the routing threshold from that measurement.",
-      "B": "The threshold is simply too permissive; raise it to 0.99 and auto-approve everything above that.",
-      "C": "The model lacks context to judge its own output; enlarge the context window so its confidence scores become trustworthy.",
-      "D": "Self-reported confidence is unusable in principle; route 100% of extractions to human review."
+      "A": "Self-reported confidence is not calibrated; measure precision against labeled outcomes and set the cutoff there.",
+      "B": "The threshold is simply too permissive; raise it to 0.99 and auto-approve everything above that line.",
+      "C": "The model lacks context to judge its own output; enlarge the context window so the scores become trustworthy.",
+      "D": "Self-reported confidence is unusable in principle, so route all extractions to human review instead."
     },
     "answer": "A",
-    "explanation": "A self-reported confidence value is just another generated token, not a calibrated probability — nothing guarantees that items scoring 0.9 are correct 90% of the time. Before routing on it you must compare scores against labeled ground truth, measure the real precision at candidate cutoffs, and choose the threshold empirically.",
+    "explanation": "A self-reported confidence value is just another generated token, not a calibrated probability — nothing makes items scoring 0.9 correct 90% of the time. Before routing on it, compare the scores against labeled ground truth, measure the real precision at each candidate cutoff, and set the threshold from that measurement (A).",
     "distractors": {
-      "B": "Moving an uncalibrated number to a stricter value just relocates an arbitrary line; without measuring precision at the cutoff you still cannot say what auto-approval buys or costs.",
-      "C": "Miscalibration is not caused by context size — the score is a generated token either way, and a larger window does not make it a probability.",
-      "D": "Confidence routing is effective once calibrated against labeled data; abandoning it discards the main lever for safely reducing review volume."
+      "B": "Moving an uncalibrated number to a stricter value relocates an arbitrary line; without measured precision you still cannot say what auto-approval costs.",
+      "C": "Miscalibration is not caused by context size — the score is a generated token either way, and a bigger window does not make it a probability.",
+      "D": "Confidence routing works well once calibrated against labeled data; abandoning it throws away the main lever for safely cutting review volume."
     },
     "tags": [
       "confidence-calibration",
@@ -874,17 +874,17 @@
     "difficulty": "medium",
     "stem": "You have limited human-review capacity and want to spend it where it matters. Your extraction model can emit a confidence score per field. How should you use it to route review?",
     "options": {
-      "A": "Have the model output field-level confidence scores calibrated against a labeled validation set, then route low-confidence and ambiguous/contradictory extractions to humans, prioritizing scarce reviewer capacity",
-      "B": "Review a fixed random 10% of all extractions regardless of confidence",
-      "C": "Trust the model's raw confidence scores as-is without calibration, and only review anything below 0.5",
-      "D": "Review only the extractions the model is most confident about, since those are highest-value"
+      "A": "Calibrate the confidence scores against a labeled set, then route low-confidence and ambiguous items to review",
+      "B": "Review a fixed random 10% sample of all extractions, ignoring the confidence scores entirely",
+      "C": "Trust the raw confidence scores uncalibrated and send only extractions scoring below 0.5 to review",
+      "D": "Review only the extractions the model scored most confidently, since those carry the highest value"
     },
     "answer": "A",
-    "explanation": "Raw model confidence is often mis-calibrated, so calibrate field-level confidence against a labeled validation set first, then route the low-confidence and ambiguous/contradictory cases to your limited reviewers. That concentrates human attention where errors are most likely.",
+    "explanation": "Raw model confidence is often mis-calibrated, so calibrate the field-level scores against a labeled validation set first, then route the low-confidence and ambiguous or self-contradictory extractions to your reviewers (A). That concentrates scarce human attention where errors are most likely, which is the whole point of routing.",
     "distractors": {
-      "B": "A blanket random 10% ignores the confidence signal, wasting review on easy cases and missing risky ones.",
-      "C": "Uncalibrated raw scores can be systematically over- or under-confident, so a fixed 0.5 cutoff routes the wrong cases.",
-      "D": "Reviewing the most-confident extractions spends scarce capacity where errors are least likely — backwards."
+      "B": "A blanket random sample ignores the signal you already have, spending review on easy cases and missing risky ones.",
+      "C": "Uncalibrated scores can be systematically over- or under-confident, so a fixed 0.5 cutoff routes the wrong population.",
+      "D": "Reviewing the most-confident extractions spends scarce capacity where errors are least likely — exactly backwards."
     },
     "tags": [
       "field-level-confidence",
@@ -902,17 +902,17 @@
     "difficulty": "medium",
     "stem": "A research agent has spent hours mapping a large repository. Its recent summaries describe components in generic terms and contradict details it had established earlier, and its transcript is now dominated by raw file dumps from the discovery phase. Which combination best addresses this?",
     "options": {
-      "A": "Increase the context window size and continue",
-      "B": "Have the agent persist key findings to scratchpad files it can re-read, and use /compact to reduce context when it fills with verbose discovery output",
-      "C": "Restart the exploration from scratch whenever answers drift",
-      "D": "Tell the agent in the system prompt to \"remember everything accurately\""
+      "A": "Move the session to a model with a larger context window and carry on exploring exactly as before",
+      "B": "Persist key findings to scratchpad files the agent re-reads, and run /compact when context fills",
+      "C": "Restart the exploration in a fresh session whenever the agent's answers start to drift from earlier detail",
+      "D": "Add a system-prompt instruction telling the agent to remember every established detail accurately"
     },
     "answer": "B",
-    "explanation": "Context degradation in long sessions is addressed by offloading key findings to scratchpad files the agent re-reads (so knowledge survives context pressure) and using /compact to shrink accumulated verbose discovery output. Together they counteract the drift toward vague \"typical patterns.\"",
+    "explanation": "Context degradation in a long session is addressed on two fronts (B): offload key findings to scratchpad files the agent can re-read, so knowledge survives context pressure, and use /compact to shrink the accumulated raw file dumps. Together they reverse the drift toward generic \"typical patterns\" descriptions.",
     "distractors": {
-      "A": "A bigger window delays but does not prevent degradation as verbose output keeps accumulating.",
-      "C": "Restarting throws away all the exploration progress every time drift appears.",
-      "D": "A prompt instruction to \"remember\" cannot overcome the mechanical degradation of an overloaded context."
+      "A": "A bigger window delays degradation without preventing it, because the verbose discovery output keeps accumulating.",
+      "C": "Restarting discards hours of mapping every time drift appears, and the same drift returns as the new session fills.",
+      "D": "A prompt instruction to remember cannot overcome the mechanical degradation of an overloaded context."
     },
     "tags": [
       "context-degradation",
@@ -930,17 +930,17 @@
     "difficulty": "hard",
     "stem": "In your research system, two credible source subagents return different figures for the same metric, and a third pair of figures differ only because they are from different years. The synthesis agent currently picks one value and drops the rest, and sometimes flags year-over-year changes as \"contradictions.\" What should the synthesis design do instead?",
     "options": {
-      "A": "Always average conflicting figures into one number",
-      "B": "Always keep the figure from whichever subagent responded first",
-      "C": "Drop any metric where sources disagree, to avoid reporting anything contested",
-      "D": "Require subagents to output structured claim-source mappings (value, source, publication/collection date); annotate genuine conflicts with their sources rather than silently picking one, and use the dates so temporal differences are not misread as contradictions"
+      "A": "Average the conflicting figures into a single consensus value and report that",
+      "B": "Keep the figure from whichever subagent responded first and discard the later ones",
+      "C": "Drop any metric where sources disagree so the report contains only uncontested figures",
+      "D": "Require each figure to carry its source and date, and surface unresolved conflicts rather than picking one"
     },
     "answer": "D",
-    "explanation": "Preserving provenance is the fix: structured claim-source mappings (with publication/collection dates) let synthesis annotate real conflicts with their sources instead of arbitrarily choosing one, and let it distinguish a genuine disagreement from a legitimate year-over-year change so temporal differences are not misread as contradictions.",
+    "explanation": "Preserving provenance is the fix (D): structured claim-source mappings — value, source URL or document, and publication or collection date — let synthesis annotate a real conflict with both sources instead of arbitrarily choosing one. The dates do the second job, separating a genuine disagreement from a legitimate year-over-year change so temporal differences are not reported as contradictions.",
     "distractors": {
-      "A": "Averaging invents a value neither source supports and erases the provenance a reader needs.",
-      "B": "Response order has nothing to do with which figure is correct or more authoritative.",
-      "C": "Dropping contested metrics discards real signal; the goal is to annotate and attribute conflicts, not hide them."
+      "A": "Averaging invents a value neither source supports and erases the provenance a reader would need to check either figure.",
+      "B": "Response order says nothing about which figure is correct or better sourced; the slower subagent may have the better citation.",
+      "C": "Dropping contested metrics discards real signal, and the year-over-year pair is not even in conflict — this suppresses correct data too."
     },
     "tags": [
       "provenance",

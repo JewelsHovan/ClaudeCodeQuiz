@@ -11,6 +11,10 @@ This project is Julien's personalized study environment for the Claude Certified
 - `profile/` — Personal learner profile (gitignored); `profile-template/` is the committed blank
 - `.claude-plans/` — Implementation plans (ephemeral, gitignored)
 - `docs/research/` — Sourced research from Anthropic primary sources, with explicit verification-gap sections
+- `scripts/` — Bank guards, run by `.github/workflows/bank-quality.yml` on every PR touching a question
+  source: `validate_bank.py` (invariants), `audit_bank.py` (quality — length bias, filler, balance;
+  `--markdown` for the readable sets), `audit_datamon_bank.mjs` (the game's bank),
+  `check_bank_diff.py` (proves a bulk edit changed no answer or stem)
 
 ## Key Study Files
 - `docs/practice-workflow.md` — **How to use this repo**: the generate → take → paste-JSON → walkthrough loop, all generator flags, recipes
@@ -30,7 +34,7 @@ This project is Julien's personalized study environment for the Claude Certified
 - `docs/domain3-claude-code-config-workflows.md` — Domain 3 (20% of exam)
 - `docs/domain4-prompt-engineering-structured-output.md` — Domain 4 (20% of exam)
 - `docs/domain5-context-management-reliability.md` — Domain 5 (15% of exam)
-- `quiz/bank/*.json` — 100+ tagged, exam-accurate questions (domain/scenario/difficulty) — powers `/mock-exam`
+- `quiz/bank/*.json` — 191 tagged, exam-accurate questions (domain/scenario/difficulty) — powers `/mock-exam`
 - `quiz/practice-questions.md` / `quiz/scenario-questions.md` / `quiz/flashcards.md` — readable practice sets
 - `profile/learner.md` — Persistent learner profile (now incl. spaced-repetition memory + mistake log)
 - `profile/session-log.md` — Study session history with scores and coach notes

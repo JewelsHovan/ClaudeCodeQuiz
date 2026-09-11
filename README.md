@@ -139,17 +139,34 @@ are wrong answers on it. The cheat sheet marks those explicitly.
 `/mock-exam`. Also `quiz/practice-questions.md`, `scenario-questions.md` and `flashcards.md` as
 readable sets.
 
-Two scripts guard it:
+Scripts guard it, and CI runs them on every pull request that touches a question source:
 
 ```bash
-uv run python scripts/validate_bank.py   # invariants: schema, ids, answers, coverage
-uv run python scripts/audit_bank.py      # quality: length bias, filler, scenario balance
+uv run python scripts/validate_bank.py       # invariants: schema, ids, answers, coverage
+uv run python scripts/audit_bank.py          # quality: length bias, filler, scenario balance
+uv run python scripts/audit_bank.py --markdown   # the readable practice sets
+node scripts/audit_datamon_bank.mjs          # the DATAMON battle bank
 ```
 
-> ⚠️ **Known issue.** The September 2026 audit found the correct answer is the longest option in
-> **83%** of questions — meaning a candidate who always picks the longest scores 83% without reading
-> the stem. Practice scores from this bank are inflated until that is fixed. See the length-parity
-> rule in `docs/writing-questions.md`; `audit_bank.py --worst 20` lists what to fix first.
+### The length-bias repair
+
+A September 2026 audit found the correct answer was **the longest option in 83% of questions** —
+so anyone who always picked the longest scored 83% without reading a stem, against a ~72% pass
+mark. Every practice score this bank had ever produced was inflated, and it trained
+pattern-matching instead of the judgment the exam actually tests.
+
+The same defect turned out to be in **every** question source in the repo. All four are now
+repaired, and `always-pick-longest` scores about what chance does:
+
+| Source | Questions | Key was longest | Now |
+|---|---|---|---|
+| `quiz/bank/*.json` | 191 | 83% | **29%** |
+| `datamon/questions.js` | 120 | 83% | **28%** |
+| `quiz/practice-questions.md` + `scenario-questions.md` | 32 | 72% | **25%** |
+
+Chance is 25%. The repair moved reasoning out of the correct option and into `explanation`, and
+gave terse distractors the concrete mechanism they were missing — no answer, stem or tag changed.
+The rule, and how to write against it, is in [`docs/writing-questions.md`](docs/writing-questions.md).
 
 ## Recommended order
 
