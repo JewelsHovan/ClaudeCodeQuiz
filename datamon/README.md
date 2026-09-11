@@ -560,6 +560,21 @@ the run they are judging.
 
 ### Guarded public Cloudflare deployment
 
+The project [DATAMON release skill](../.agents/skills/datamon-deploy/SKILL.md) adds a
+reusable test/evaluate/deploy/verify workflow in Pi. Start a new trusted project session
+(or `/reload` after adding the skill), then use:
+
+```text
+/skill:datamon-deploy check        # Full local tests + evaluations; no publishing
+/skill:datamon-deploy deploy main  # Explicitly publish production after all gates
+/skill:datamon-deploy deploy dev   # Explicitly publish the preview branch
+/skill:datamon-deploy verify main  # Compare live with the matching checked artifact
+```
+
+No arguments defaults to checks only. The skill checks account/upstream state, records
+performance and locomotion evidence, and verifies live commit/payload identity plus
+changed features. It does not enable deployment on Git pushes or bypass these commands:
+
 ```bash
 just deploy
 ```

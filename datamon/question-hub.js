@@ -266,7 +266,8 @@
     isOpen: function () { return !!(dialog && dialog.open); },
     sync: function (available, missed) {
       if (!dock) return;
-      dock.hidden = !available || (dialog && dialog.open);
+      var hidden = !!(!available || (dialog && dialog.open));
+      if (dock.hidden !== hidden) dock.hidden = hidden;
       var label = "Q · Question Hub" + (missed ? " · " + missed + " missed" : "");
       if (label !== lastDockLabel) { dock.textContent = label; lastDockLabel = label; }
     },

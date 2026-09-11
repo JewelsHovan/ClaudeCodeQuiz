@@ -309,8 +309,13 @@ test.describe("Agent Operations Incident Command arena", () => {
     await page.keyboard.press("m");
     await playCorrectQuery(page);
     await page.waitForTimeout(10);
-    const beforeHide = await page.evaluate(() => window.__toneLog.filter(item => item.type === "start").length);
-    await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide")));
+    const beforeHide = await page.evaluate(() => {
+      // Snapshot and hide in one browser task: a scheduled tone may legitimately start
+      // between two CDP round trips, but must never start after the hide event.
+      const starts = window.__toneLog.filter(item => item.type === "start").length;
+      window.dispatchEvent(new PageTransitionEvent("pagehide"));
+      return starts;
+    });
     await page.waitForTimeout(220);
     const afterHide = await page.evaluate(() => ({
       starts: window.__toneLog.filter(item => item.type === "start").length,

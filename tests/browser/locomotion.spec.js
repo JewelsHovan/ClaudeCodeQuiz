@@ -14,7 +14,9 @@ async function setup(page, slug = "julien-hovan") {
   await page.addInitScript(coreJs);
   await page.goto("/");
   await page.waitForFunction(() => { try { return (0,eval)("state") === "title" && (0,eval)("officeMapCv") !== null; } catch { return false; } });
-  await page.keyboard.press("Enter"); await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.evaluate(slug => (0,eval)("setSelect")((0,eval)("ROSTER").indexOf(slug)), slug);
+  await page.keyboard.press("Enter");
   await page.waitForFunction(() => (0,eval)("state") === "dialogue");
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => (0,eval)("state") === "overworld");
@@ -205,7 +207,7 @@ test("repaired vertical art keeps every phase and anchor at walk/run speeds and 
     const page=await context.newPage(),observed=await setup(page,"duc-an-nguyen");
     const result=await page.evaluate(async ({views,dpr})=>{
       const ge=(0,eval),p=ge("player"),ctx=ge("ctx"),original=ctx.drawImage;
-      for(const slug of new Set(views.map(view=>view.slug)))await ge("loadWalkAnim")(slug);
+      // Movement residency is player-only; load each reviewed subject at its draw boundary.
       const sheets=[0,1,2].map(()=>{const c=document.createElement("canvas");c.width=760*dpr;c.height=660*dpr;
         const g=c.getContext("2d");g.scale(dpr,dpr);g.fillStyle="#18202c";g.fillRect(0,0,760,660);
         g.fillStyle="#e4e9ef";g.font="11px monospace";g.fillText("WALK  0    1    2    3        RUN  0    1    2    3",255,14);return{c,g};});
@@ -213,6 +215,7 @@ test("repaired vertical art keeps every phase and anchor at walk/run speeds and 
       try{
         for(let row=0;row<views.length;row++){
           const {slug,direction}=views[row],sheet=sheets[Math.floor(row/7)],y=25+(row%7)*90;
+          await ge("loadWalkAnim")(slug);
           p.slug=slug;p.dir=direction;p.moving=true;
           sheet.g.fillText(`${slug} / ${direction}`,4,y+44);
           for(const running of [false,true])for(let index=0;index<4;index++){

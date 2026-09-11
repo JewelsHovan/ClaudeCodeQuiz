@@ -195,8 +195,10 @@ test.describe("DATAMON smoke test (dist/ artifact)", () => {
     const { errors, failedRequests } = await setupPage(page);
     await page.waitForFunction(() => { try { return eval("state") === "title"; } catch (_) { return false; } });
 
-    const title = await page.evaluate(() => {
+    const title = await page.evaluate(async () => {
       const ge = (0, eval), roster = ge("ROSTER"), sprites = ge("sprites");
+      // Verify every original trainer remains available, without requiring eager boot PNGs.
+      await ge("loadImages")();
       return {
         roster,
         trainersReady: roster.every(slug => sprites[slug]?.naturalWidth === 256 && sprites[slug]?.naturalHeight === 256),

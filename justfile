@@ -63,6 +63,7 @@ check:
     python3 datamon/tools/gen_wayfinding_assets.py --validate-twice
     python3 datamon/tools/gen_locomotion_art_manifest.py --check
     python3 datamon/tools/gen_audio_assets.py --check
+    python3 datamon/tools/gen_roster_atlas.py --check
     python3 datamon/tools/art_pipeline.py validate-active
     if [[ -f datamon/.environment-work/staging/batch-agent-wing/manifest.json ]]; then python3 datamon/tools/art_pipeline.py validate datamon/.environment-work/staging/batch-agent-wing datamon/.environment-work/staging/batch-agent-wing/manifest.json; fi
     node --test tests/unit/*.test.js

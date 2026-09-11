@@ -16,7 +16,7 @@ const DATAMON = path.join(ROOT, "datamon");
 const META_FILES = new Set(["artifact-metadata.json", "file-manifest.txt"]);
 const RUNTIME_SCRIPTS = ["state.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "progress.js", "question-hub.js", "dialogue-runtime.js", "dialogue.js", "world-art.js", "world-layout.js", "music.js", "audio.js", "locomotion.js", "game.js"];
 const PAYLOAD_ALLOWLIST = [
-  "index.html", "game.js", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "state.js",
+  "index.html", "game.js", "roster-atlas.webp", "roster-atlas.json", "battle-presentation.js", "battle-arena.js", "attributes.js", "battle-ops.js", "agent-arena.js", "questions.js", "state.js",
   "progress.js", "question-hub.js", "dialogue-runtime.js", "dialogue.js",
   "world-art.js", "world-layout.js", "music.js", "audio.js", "locomotion.js",
   "portraits/*.png", "headshots/*.png", "sprites/*.png", "sprites-walk/**/*.png", "sprites-walk/**/manifest.json", "sprites-walk/manifest.json",

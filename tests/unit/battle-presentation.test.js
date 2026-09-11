@@ -224,6 +224,7 @@ describe("bounded alpha scanning and lazy loading", () => {
     assert.deepEqual(JSON.parse(JSON.stringify(loaded.api.computeAlphaBounds(image))), { x: 1, y: 1, w: 2, h: 3 });
     assert.deepEqual(JSON.parse(JSON.stringify(loaded.api.computeAlphaBounds(image))), { x: 1, y: 1, w: 2, h: 3 });
     assert.equal(loaded.api.getDiagnostics().alphaCacheSize, 1);
+    assert.equal(loaded.api.getDiagnostics().alphaScanBytes, 4*4*4);
   });
 
   it("fetches one manifest, coalesces one accepted sheet, and draws its requested frame", async () => {
@@ -240,7 +241,7 @@ describe("bounded alpha scanning and lazy loading", () => {
     assert.deepEqual(JSON.parse(JSON.stringify(loaded.api.getDiagnostics())), {
       manifestStatus: "accepted", manifestEntryCount: 35, loadedSheetCount: 1,
       inFlightSheetCount: 0, failedSheetCount: 0, fallbackDomainCount: 0, activeSheetCount: 0,
-      loadedSheetDecodedBytes: 768*128*4, fallbackDecodedBytes: 0, alphaCacheSize: 0,
+      loadedSheetDecodedBytes: 768*128*4, fallbackDecodedBytes: 0, alphaCacheSize: 0, alphaScanBytes: 0,
     });
   });
 

@@ -59,6 +59,12 @@
   var optionalLayers = Object.create(null);
   var frameSamples = [];
   var lastEntranceOffset = 0;
+  var backgroundCanvas = null;
+  var backgroundBuilds = 0;
+  api.releaseRenderCache = function () {
+    if (backgroundCanvas) backgroundCanvas.width = backgroundCanvas.height = 0;
+    backgroundCanvas = null;
+  };
 
   var reducedMotion = false;
   var motionQuery = null;
@@ -493,6 +499,7 @@
   };
 
   api.setOptionalLayers = function (layers) {
+    api.releaseRenderCache();
     optionalLayers = Object.create(null);
     layers = layers || {};
     OPTIONAL_LAYER_NAMES.forEach(function (name) {
@@ -529,6 +536,7 @@
   };
 
   api.reset = function () {
+    api.releaseRenderCache();
     api.stopAllAudio();
     clearMotionState();
     turnNumber = 0;
@@ -1056,6 +1064,23 @@
     return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * fraction) - 1)];
   }
 
+  // Immutable opaque wall/table are rasterized once at the display's backing resolution.
+  // Topology, trainers, text, boss state, hover, and effects remain live and uncached.
+  api.drawBackground = function (ctx, useCache) {
+    if (useCache === false) { drawBackWall(ctx); drawCommandTable(ctx); return; }
+    var width = ctx.canvas.width, height = ctx.canvas.height;
+    if (!backgroundCanvas || backgroundCanvas.width !== width || backgroundCanvas.height !== height) {
+      api.releaseRenderCache();
+      backgroundCanvas = document.createElement("canvas");
+      backgroundCanvas.width = width; backgroundCanvas.height = height;
+      var target = backgroundCanvas.getContext("2d");
+      target.setTransform(width / W, 0, 0, height / H, 0, 0);
+      target.imageSmoothingEnabled = false;
+      drawBackWall(target); drawCommandTable(target); backgroundBuilds++;
+    }
+    ctx.drawImage(backgroundCanvas, 0, 0, W, H);
+  };
+
   api.draw = function (battle, ctx, frame, deltaFrames) {
     if (!battle || !battle.agentOps) return;
     var started = typeof performance !== "undefined" && performance.now ? performance.now() : 0;
@@ -1072,8 +1097,7 @@
       cameraShake = Math.max(0, cameraShake - Math.max(0.25, deltaFrames * 0.45));
     } else cameraShake = 0;
 
-    drawBackWall(ctx);
-    drawCommandTable(ctx);
+    api.drawBackground(ctx);
     drawBoard(ctx, battle.agentOps);
     drawPhaseCards(ctx, battle.agentOps);
     drawTrainers(ctx, battle);
@@ -1123,6 +1147,8 @@
       optionalLayerCount: Object.keys(optionalLayers).length,
       visualMode: Object.keys(optionalLayers).length ? "layered+procedural" : "procedural-fallback",
       entranceOffset: lastEntranceOffset,
+      backgroundBytes: backgroundCanvas ? backgroundCanvas.width * backgroundCanvas.height * 4 : 0,
+      backgroundBuilds: backgroundBuilds,
       frameSamples: frameSamples.length,
       frameP95Ms: percentile(frameSamples, 0.95),
       playerSlug: playerSlug,

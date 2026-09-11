@@ -270,7 +270,8 @@
 
   API.loadManifest = function () {
     if (hdManifestPromise) return hdManifestPromise;
-    hdManifestPromise = fetch("environment/manifest.json")
+    hdManifestPromise = fetch("environment/manifest.json", typeof AbortSignal !== "undefined"
+      ? { signal: AbortSignal.timeout(12000) } : undefined)
       .then(function (response) { return response.ok ? response.json() : []; })
       .then(function (entries) {
         hdManifest = API.normalizeManifest(entries);
@@ -313,7 +314,13 @@
 
     hdLoads[entry.id] = new Promise(function (resolve) {
       var img = new Image();
+      var timer = typeof setTimeout === "function" ? setTimeout(function () {
+        img.onload = img.onerror = null;
+        if (img.removeAttribute) img.removeAttribute("src");
+        hdStore[entry.id] = null; resolve(null);
+      }, 12000) : null;
       img.onload = function () {
+        if (timer !== null) clearTimeout(timer);
         var expected = API.expectedSourceSize(entry);
         if (img.naturalWidth !== expected.w && img.width !== expected.w) {
           diagRejectedAssets.push(entry.id + ":dimensions");
@@ -351,6 +358,7 @@
         resolve(img);
       };
       img.onerror = function () {
+        if (timer !== null) clearTimeout(timer);
         hdStore[entry.id] = null;
         resolve(null);
       };
