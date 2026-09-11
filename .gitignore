@@ -62,3 +62,7 @@ datamon/.battle-arena-ai-raw/
 
 # Environment art pipeline staging, review, and history (#044)
 datamon/.environment-work/
+
+# Ephemeral session handoff written by the precompact hook (per-session, not project state)
+.claude/session-state.md
+.claude/session-state.md.previous
